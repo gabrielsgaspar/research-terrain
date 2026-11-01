@@ -1,0 +1,116 @@
+"""Rules about the repository itself, checked on every PR.
+
+Data lives in GCS, never in git; the only data allowed in the repository is
+small text fixtures. These tests make that a failing check, not a convention.
+"""
+
+import os
+import re
+import subprocess
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[1]
+SKIP_DIRS = {
+    ".git",
+    ".venv",
+    "node_modules",
+    "overleaf",
+    "local",
+    "_local",
+    ".ruff_cache",
+    ".pytest_cache",
+    "__marimo__",
+}
+DATA_SUFFIXES = {
+    ".parquet",
+    ".csv",
+    ".tsv",
+    ".dta",
+    ".sav",
+    ".rds",
+    ".xlsx",
+    ".xls",
+    ".zip",
+    ".gz",
+    ".tif",
+    ".tiff",
+    ".gpkg",
+    ".shp",
+    ".dbf",
+    ".geojson",
+    ".feather",
+    ".pkl",
+    ".npy",
+}
+FIXTURE_TEXT_SUFFIXES = {".csv", ".tsv", ".json", ".geojson", ".txt", ".md"}
+FIXTURE_MAX_BYTES = 200_000
+
+REQUIRED = [
+    "AGENTS.md",
+    "README.md",
+    "data/catalog.yaml",
+    "research/questions.md",
+    "research/lessons.md",
+    "research/ideas/TEMPLATE.md",
+    "confirm/specs/TEMPLATE.yaml",
+]
+
+
+def repo_files():
+    """Files git would commit: tracked, plus untracked ones not ignored.
+
+    Falls back to walking the tree when git is unavailable.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+            cwd=REPO,
+            check=True,
+            capture_output=True,
+        ).stdout.decode("utf-8")
+        for name in out.split("\0"):
+            if name and (REPO / name).is_file():
+                yield Path(name)
+        return
+    except (OSError, subprocess.CalledProcessError):
+        pass
+    for root, dirs, files in os.walk(REPO):
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        for name in files:
+            yield Path(root, name).relative_to(REPO)
+
+
+def test_required_files_exist():
+    missing = [path for path in REQUIRED if not (REPO / path).is_file()]
+    assert not missing, f"missing: {missing}"
+
+
+def test_no_data_files_outside_fixtures():
+    offenders = [
+        str(path)
+        for path in repo_files()
+        if path.suffix.lower() in DATA_SUFFIXES and path.parts[:2] != ("data", "fixtures")
+    ]
+    assert not offenders, f"data files belong in GCS, not git: {offenders}"
+
+
+def test_fixtures_are_small_text_files():
+    fixtures = REPO / "data" / "fixtures"
+    for path in fixtures.rglob("*"):
+        if path.is_file() and path.name != ".gitkeep":
+            assert path.suffix.lower() in FIXTURE_TEXT_SUFFIXES, f"{path}: fixtures must be text"
+            assert path.stat().st_size <= FIXTURE_MAX_BYTES, f"{path}: fixture over 200 KB"
+
+
+def test_split_hash_is_well_formed_if_sealed():
+    path = REPO / "confirm" / "split.sha256"
+    if path.exists():
+        assert re.fullmatch(r"[0-9a-f]{64}\n?", path.read_text()), "split.sha256 must be one hash"
+
+
+def test_idea_files_follow_the_template():
+    ideas = REPO / "research" / "ideas"
+    for path in ideas.glob("[0-9][0-9][0-9][0-9]-*.md"):
+        text = path.read_text(encoding="utf-8")
+        for heading in ("## Claim", "## Prediction", "## Status"):
+            assert heading in text, f"{path.name} lacks {heading}"

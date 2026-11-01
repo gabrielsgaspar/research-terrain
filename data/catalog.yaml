@@ -1,0 +1,67 @@
+# Every dataset the project uses. Code reads GCS paths from here and never
+# hard-codes them. Add an entry (status: planned) before writing code for it.
+#
+# Fields:
+#   name:     id used in code and idea files
+#   source:   where it comes from (URL or publisher)
+#   licence:  terms of use
+#   gcs:      path under gs://research-terrain/ (raw is write-once: new
+#             downloads go to a new dated folder)
+#   sha256:   of the raw file(s), filled in by the acquire workflow
+#   status:   planned | acquired | built
+#   contract: schema file in data/contracts/, once built
+#   notes:    caveats
+
+datasets:
+  - name: ibge_legal_amazon_municipalities
+    source: IBGE, list of Legal Amazon municipalities
+    licence: public
+    gcs: data/raw/ibge/legal_amazon/
+    status: planned
+    notes: input to scripts/seal_split.py; needs columns code_ibge and uf
+
+  - name: tse_votes_by_section
+    source: https://dadosabertos.tse.jus.br/ (votacao_secao, municipal elections)
+    licence: public
+    gcs: data/raw/tse/votacao_secao/
+    status: planned
+    notes: check the earliest municipal year available (2008 or 2004?)
+
+  - name: tse_candidates
+    source: https://dadosabertos.tse.jus.br/ (consulta_cand)
+    licence: public
+    gcs: data/raw/tse/consulta_cand/
+    status: planned
+    notes: self-declared race from 2014; ethnicity declaration from 2024
+
+  - name: polling_stations_geocoded
+    source: https://github.com/fdhidalgo/geocode_br_polling_stations
+    licence: check the repository licence
+    gcs: data/raw/geocodes/hidalgo/
+    status: planned
+    notes: use the per-station error bound to drop poorly located stations
+
+  - name: mapbiomas_deforestation
+    source: MapBiomas annual collection, exported via Earth Engine
+    licence: check MapBiomas terms
+    gcs: data/raw/mapbiomas/
+    status: planned
+
+  - name: funai_indigenous_lands
+    source: FUNAI indigenous land boundaries
+    licence: public
+    gcs: data/raw/funai/
+    status: planned
+
+  - name: cnfp_public_forests
+    source: Servico Florestal Brasileiro, Cadastro Nacional de Florestas Publicas
+    licence: public
+    gcs: data/raw/cnfp/
+    status: planned
+    notes: defines undesignated public forest (land without owner or voters)
+
+  - name: incra_settlements
+    source: INCRA agrarian reform settlements
+    licence: public
+    gcs: data/raw/incra/
+    status: planned

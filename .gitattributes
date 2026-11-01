@@ -1,0 +1,8 @@
+# Normalise line endings so shell scripts and workflows work the same on
+# Windows, WSL and GitHub's Linux runners.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.pdf binary
+*.parquet binary
+*.zip binary

@@ -1,0 +1,22 @@
+# Copy to confirm/specs/<NNNN>-<slug>.yaml and fill in. Registered when merged
+# to main; never edited afterwards (a change is a new file).
+id: NNNN-slug
+idea: research/ideas/NNNN-slug.md
+registered: YYYY-MM-DD
+hypothesis: ""
+predicted_sign: ""          # positive | negative | zero
+sample: confirm             # confirm | explore
+outcome:
+  dataset: ""               # name from data/catalog.yaml
+  variable: ""
+  window: term_years        # term_years | pre_years (placebo)
+treatment:
+  design: close_pair_swap
+  bandwidth_rule: ""
+exposure: ""
+fixed_effects: [municipality_by_year]
+inference:
+  method: randomisation
+  draws: 2000
+  cluster: municipality
+seed_policy: "fixed in the workflow, logged in the ledger"
