@@ -1,0 +1,27 @@
+{
+  "dataset": "municipalities",
+  "stage": "build",
+  "status": "created",
+  "gcs_prefix": "data/derived/municipalities/03690186b97be705/",
+  "created_at": "2026-11-02T19:50:04.793790+00:00",
+  "code_commit": "fd1fc2b9e20e1dfdcf2d6442aebba357e458e0ea",
+  "sources": [],
+  "files": [
+    {
+      "path": "data/derived/municipalities/03690186b97be705/municipalities.parquet",
+      "sha256": "477c0a096411996dec5a8725d04603fd4cb1cb642f7d572e17d6a0f6192d2003",
+      "bytes": 101106
+    },
+    {
+      "path": "data/derived/municipalities/03690186b97be705/legal_amazon.csv",
+      "sha256": "fe34f4d2bcf22dc2ecd6bbad321ceba463f7665b4c8dd7f07888e4c99056ca81",
+      "bytes": 8516
+    }
+  ],
+  "notes": "municipalities=5571; legal_amazon=773; with_tse_code=5571; name_check exact=5555, variant=14, unchecked=2; non-municipal sg_ue values in candidates ignored=0",
+  "inputs": [
+    "data/raw/ibge/municipalities/2026-11-02/_MANIFEST.json",
+    "data/raw/geocodes/hidalgo/2026-11-02/_MANIFEST.json",
+    "data/derived/tse_candidates/73af2aca241094a0/_MANIFEST.json"
+  ]
+}
