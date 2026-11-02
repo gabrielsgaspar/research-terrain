@@ -8,7 +8,8 @@
       "Read(**/*.pem)",
       "Read(**/*-key.json)",
       "Read(**/gha-creds-*.json)",
-      "Read(./.overleaf-token)"
+      "Read(./.overleaf-token)",
+      "Read(~/.config/gcloud/**)"
     ]
   },
   "sandbox": {
@@ -16,11 +17,27 @@
     "failIfUnavailable": true,
     "allowUnsandboxedCommands": false,
     "filesystem": {
-      "denyRead": ["./.env", "./.env.local", "./.env.production", "./**/.env", "./**/*.pem", "./**/*-key.json", "./**/gha-creds-*.json"],
-      "allowWrite": ["~/.cache/uv"]
+      "denyRead": [
+        "./.env",
+        "./.env.local",
+        "./.env.production",
+        "./**/.env",
+        "./**/*.pem",
+        "./**/*-key.json",
+        "./**/gha-creds-*.json",
+        "~/.config/gcloud"
+      ],
+      "allowWrite": [
+        "~/.cache/uv"
+      ]
     },
     "network": {
-      "allowedDomains": ["pypi.org", "files.pythonhosted.org", "github.com", "api.github.com"]
+      "allowedDomains": [
+        "pypi.org",
+        "files.pythonhosted.org",
+        "github.com",
+        "api.github.com"
+      ]
     }
   }
 }

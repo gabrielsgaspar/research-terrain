@@ -7,10 +7,12 @@ Date: 2026-11-01
 - The repository is public. On a free GitHub plan, rulesets and secret push
   protection exist only for public repositories, and standard Actions runners
   are free there. The agent pipeline depends on both.
-- Data lives in `gs://research-terrain/data/` (`raw/` write-once, `derived/`,
-  `explore/` deleted after 90 days); the sealed split lives in
-  `gs://research-terrain-sealed/`. Both buckets enforce public access
-  prevention.
+- Everything lives in one bucket, `gs://research-terrain/`: `data/raw/`
+  (write-once), `data/derived/` (content-addressed, never overwritten),
+  `data/explore/` (deleted after 90 days) and `sealed/` (the full split,
+  readable only by the unblind account). Access is granted per prefix with
+  IAM conditions, set up by `scripts/gcp/setup_gcs.sh`. The bucket enforces
+  public access prevention.
 - GitHub Actions reach GCP only through Workload Identity Federation, in jobs
   bound to the `data-write`, `analysis` or `unblind` environments, which only
   run from main. Code on a pull request never gets GCP credentials.
