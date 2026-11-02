@@ -76,6 +76,8 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
 - Fixtures are small text files (CSV or JSON, under 200 KB) cut from real data,
   used by tests. Binary files are refused by the build checks.
 - Tests never call the network, GCS or a model.
+- Every text read, write and `open()` names its encoding (`encoding="utf-8"`).
+  Windows defaults to cp1252; a test in `tests/test_repo_rules.py` checks.
 - Tests are deterministic. Zips built in tests use a fixed timestamp
   (`zipfile.ZipInfo(name, date_time=...)`): otherwise the same input gets a
   different SHA-256 a second later, and anything hashed from it changes.

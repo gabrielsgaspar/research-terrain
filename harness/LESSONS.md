@@ -21,6 +21,16 @@ plan review. They fall into five groups:
 Expect the rate to fall: each first use of a capability (first build, first
 deletion, first big task) has now happened once.
 
+## 2026-11-02: A test passed on Linux CI and failed on Windows (tse_parties)
+- Tried: running the full suite locally on Windows.
+- Result: `test_changing_the_source_of_tse_candidates_changes_the_path` failed
+  with a UnicodeDecodeError; CI on Linux passed.
+- Why: `Path.write_text(text)` without an encoding writes cp1252 on Windows,
+  so accented characters in the copied module were not valid UTF-8 when read
+  back. Nine calls in the tests had no explicit encoding.
+- Implication: every text read, write and `open()` names its encoding; a
+  repository test walks the code and fails on any call that does not.
+
 ## 2026-11-02: The secret scan flagged ordinary Python as a credential (issue #44)
 - Tried: building task 06a.
 - Result: verify stopped on a line in `src/terrain/builds/tse_results.py`

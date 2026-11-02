@@ -483,7 +483,9 @@ def test_changing_any_input_sha_changes_the_output_path():
 
 def test_changing_the_source_of_tse_candidates_changes_the_path(tmp_path):
     other = tmp_path / "tse_candidates_changed.py"
-    other.write_text(Path(tse_candidates.__file__).read_text(encoding="utf-8") + "\n# fix\n")
+    other.write_text(
+        Path(tse_candidates.__file__).read_text(encoding="utf-8") + "\n# fix\n", encoding="utf-8"
+    )
     this = CODE_MODULES[0]
     shas = ["1" * 64, "2" * 64]
     assert input_hash(shas, CODE_MODULES) == input_hash(shas, [this, CODE_MODULES[1]])

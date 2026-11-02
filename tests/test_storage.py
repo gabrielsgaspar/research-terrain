@@ -42,7 +42,7 @@ def test_gcs_create_bytes_uses_generation_match_zero():
 
 def test_gcs_create_file_uses_generation_match_zero(tmp_path):
     f = tmp_path / "f.txt"
-    f.write_text("x")
+    f.write_text("x", encoding="utf-8")
     client = MagicMock()
     blob = client.bucket.return_value.blob.return_value
     GCSStore("bkt", client=client).create("p/x", f)

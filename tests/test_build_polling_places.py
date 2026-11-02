@@ -443,7 +443,9 @@ def test_changing_the_module_source_changes_the_output_prefix(tmp_path, monkeypa
     assert input_hash(files, YEARS, code=["a"]) == input_hash(files[::-1], YEARS, code=["a"])
 
     changed = tmp_path / "polling_places_changed.py"
-    changed.write_text(Path(pp.__file__).read_text(encoding="utf-8") + "\n# edit\n")
+    changed.write_text(
+        Path(pp.__file__).read_text(encoding="utf-8") + "\n# edit\n", encoding="utf-8"
+    )
     monkeypatch.setattr(pp, "CODE_MODULES", (changed,))
     second = run(store, manifests, tmp_path)
     assert second["status"] == "created"

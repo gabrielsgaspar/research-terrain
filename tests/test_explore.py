@@ -59,7 +59,7 @@ def test_names_and_prefixes():
 
 def test_write_results_enforces_limits(tmp_path):
     write_results(tmp_path, "# Result\nfine", {"n": 1})
-    assert json.loads((tmp_path / "results.json").read_text())["n"] == 1
+    assert json.loads((tmp_path / "results.json").read_text(encoding="utf-8"))["n"] == 1
     with pytest.raises(ExploreError):
         write_results(tmp_path, "x" * 20_001, {})
     with pytest.raises(ExploreError):
