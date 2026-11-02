@@ -1,0 +1,87 @@
+{
+  "dataset": "tse_results",
+  "stage": "build",
+  "status": "created",
+  "gcs_prefix": "data/derived/tse_results/6f2af3d28c84af90/",
+  "created_at": "2026-11-02T22:09:34.885618+00:00",
+  "code_commit": "ff3d1e484a0053ca553569fa5a889e0423dc9fdd",
+  "sources": [],
+  "files": [
+    {
+      "path": "data/derived/tse_results/6f2af3d28c84af90/candidate_votes_2000.parquet",
+      "sha256": "a74efdd90031658e0550adb5feed8f0ed225ffcb7ab52227cd88eee06871483d",
+      "bytes": 13270581
+    },
+    {
+      "path": "data/derived/tse_results/6f2af3d28c84af90/turnout_2000.parquet",
+      "sha256": "5605a4c4899afa6c1d0d74e95a3d0a64d6b6d58a92528b210658e54a6d3512eb",
+      "bytes": 638058
+    },
+    {
+      "path": "data/derived/tse_results/6f2af3d28c84af90/candidate_votes_2004.parquet",
+      "sha256": "b276fed155ac69f4d1c7f6e2a41a2d44d337bc097386a414f142b7c969b73902",
+      "bytes": 13012578
+    },
+    {
+      "path": "data/derived/tse_results/6f2af3d28c84af90/turnout_2004.parquet",
+      "sha256": "d4c9f57f85db2f1cf6d29dcc46cde61f1f3aea06b3aa28ab1d8601842ed0ff41",
+      "bytes": 636203
+    },
+    {
+      "path": "data/derived/tse_results/6f2af3d28c84af90/candidate_votes_2008.parquet",
+      "sha256": "0d349a54a02c486d85aeaba98e9c4504ed118a3aff7b67dda4d23d8f633a20c3",
+      "bytes": 13977136
+    },
+    {
+      "path": "data/derived/tse_results/6f2af3d28c84af90/turnout_2008.parquet",
+      "sha256": "5ba2a5304a2e1e7c009083005b2d9725817b24da0d08d0d8c98ab369670e80a7",
+      "bytes": 629647
+    },
+    {
+      "path": "data/derived/tse_results/6f2af3d28c84af90/candidate_votes_2012.parquet",
+      "sha256": "542371a215ab481dcc97d06be053764bd48498a043682b732e6d564b2541011d",
+      "bytes": 17861180
+    },
+    {
+      "path": "data/derived/tse_results/6f2af3d28c84af90/turnout_2012.parquet",
+      "sha256": "a5d76fe4100525212d6b61599b38be80c2c807967b126ab3120e5d7ccc2d0548",
+      "bytes": 603954
+    },
+    {
+      "path": "data/derived/tse_results/6f2af3d28c84af90/candidate_votes_2016.parquet",
+      "sha256": "2efe51ec9464397632c1fe6f325708ce9d4bc7455deab1ff3dfd0b73746ba2c6",
+      "bytes": 25392100
+    },
+    {
+      "path": "data/derived/tse_results/6f2af3d28c84af90/turnout_2016.parquet",
+      "sha256": "fd9ec4da3ea0b1249d418c970174935c91e1acd5cfb839c55b28ae278779edc5",
+      "bytes": 687659
+    },
+    {
+      "path": "data/derived/tse_results/6f2af3d28c84af90/candidate_votes_2020.parquet",
+      "sha256": "7fa70675c4c47e99a3dd9f4fb573a9dbb5a9f79e829c0e6856f149c8901e2d6f",
+      "bytes": 24691443
+    },
+    {
+      "path": "data/derived/tse_results/6f2af3d28c84af90/turnout_2020.parquet",
+      "sha256": "e9c3131acce82679904ba68da0025603124f04c85aa512b7869f247e4e6d092b",
+      "bytes": 682301
+    },
+    {
+      "path": "data/derived/tse_results/6f2af3d28c84af90/candidate_votes_2024.parquet",
+      "sha256": "d740bc128b54c1d370a466bf8bae5eaf5d7cad84b31e5a40376b3faba6e7846e",
+      "bytes": 22275289
+    },
+    {
+      "path": "data/derived/tse_results/6f2af3d28c84af90/turnout_2024.parquet",
+      "sha256": "a1f2af78e49567c769e795244c7fd352e0a03429a75cc1a86fa068213027e36f",
+      "bytes": 688795
+    }
+  ],
+  "notes": "candidate_votes rows per year: 2000=633801, 2004=641652, 2008=646941, 2012=860792, 2016=943082, 2020=983614, 2024=717288; turnout rows per year: 2000=12570, 2004=12689, 2008=12925, 2012=12955, 2016=13137, 2020=12630, 2024=12493; unmatched candidacies per year: 2000=67, 2004=126, 2008=1458, 2012=4, 2016=0, 2020=0, 2024=0; votes agree with turnout (municipality-office-rounds): 2000=10377/11143, 2004=11141/11226, 2008=11305/11306, 2012=11298/11299, 2016=11349/11362, 2020=11308/11311, 2024=11202/11232",
+  "inputs": [
+    "data/raw/tse/results/2026-11-02/_MANIFEST.json",
+    "data/derived/tse_candidates/73af2aca241094a0/_MANIFEST.json",
+    "data/derived/municipalities/03690186b97be705/_MANIFEST.json"
+  ]
+}
