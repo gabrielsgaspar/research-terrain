@@ -13,6 +13,16 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-02: Token prefixes in code trip the secret scan (issue #6)
+- Tried: the storage-helpers task, which asked manifest validation to apply
+  "the same rules" as the workflow's manifest check.
+- Result: verify failed. The builder copied the workflow's credential regex
+  into `src/terrain/manifest.py`, and the literal prefixes in it matched the
+  secret scan (the escaped ones did not).
+- Why: the task was ambiguous; the scan cannot tell a pattern from a secret.
+- Implication: credential scanning stays in the workflows; tasks that mirror
+  a workflow check say which parts to mirror. Rule added to AGENTS.md.
+
 ## 2026-11-02: Agents cannot add dependencies (issue #6)
 - Tried: the storage-helpers task, whose plan added `google-cloud-storage`.
 - Result: the builder stopped as blocked. It installs offline
