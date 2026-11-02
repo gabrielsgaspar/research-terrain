@@ -199,6 +199,49 @@ datasets:
       candidate votes, the candidacy key. Votes are votes cast: candidacies
       annulled in the results are flagged, and margins must use counted votes.
 
+  - name: ibge_localities
+    source: IBGE, Localidades do Brasil 2022 (points)
+    licence: public
+    gcs: data/raw/ibge/localities/
+    status: planned
+    notes: >
+      96,163 localities with a category: Cidade (municipal seat), Vila and
+      Nucleo Urbano (towns), Povoado, Lugarejo, Nucleo Rural and Outras
+      Localidades (rural), Localidade Indigena, Localidade Quilombola, Agrovila
+      do PA (agrarian-reform settlement village). GeoPackage, read with
+      sqlite3: the table has LAT_LOCALIDADE and LONG_LOCALIDADE columns, so no
+      geometry library is needed. Every Legal Amazon municipality has a seat.
+    acquire:
+      files:
+        - url: https://geoftp.ibge.gov.br/organizacao_do_territorio/estrutura_territorial/localidades/Localidades_do_Brasil/2022/Localidades_Brasil_gpkg.zip
+          check: {type: zip, member: "BR_localidades_2022.gpkg"}
+
+  - name: ibge_urbanized_areas
+    source: IBGE, Areas Urbanizadas do Brasil 2022 (polygons)
+    licence: public
+    gcs: data/raw/ibge/urbanized_areas/
+    status: planned
+    notes: >
+      190,172 polygons (37,491 in the Legal Amazon box), SIRGAS 2000. The
+      field Tipo holds the type (Area urbanizada, Outros equipamentos urbanos,
+      Vazio intraurbano, Loteamento vazio); Densidade holds the density. Read
+      with pyshp and shapely. Editions 2005 and 2019 exist for robustness.
+    acquire:
+      files:
+        - url: https://geoftp.ibge.gov.br/organizacao_do_territorio/tipologias_do_territorio/areas_urbanizadas_do_brasil/2022/Shapefile/AreasUrbanizadas2022_Brasil.zip
+          check: {type: zip, member: "*.shp"}
+
+  - name: polling_place_types
+    source: built from polling_places, ibge_localities, ibge_urbanized_areas and tse_polling_places
+    licence: public
+    derived: data/derived/polling_place_types/
+    contract: data/contracts/polling_place_types.md
+    status: planned
+    notes: >
+      Each Legal Amazon polling place, 2008-2024, typed as seat, town, rural,
+      quilombola, indigenous, settlement or dispersed, with eligible voters
+      (2012-2024). Draft: harness/issue-drafts/09-build-polling-place-types.md.
+
   - name: mapbiomas_deforestation
     source: MapBiomas annual collection, exported via Earth Engine
     licence: check MapBiomas terms

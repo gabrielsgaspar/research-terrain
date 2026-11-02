@@ -21,6 +21,15 @@ plan review. They fall into five groups:
 Expect the rate to fall: each first use of a capability (first build, first
 deletion, first big task) has now happened once.
 
+## 2026-11-02: Validate on every state, not one (section votes)
+- Tried: task 07b and its first fix, both checked on Pará only.
+- Result: the build failed twice on the full Legal Amazon: first on
+  annulled candidacies, then on four states' incomplete 2004 files.
+- Why: Pará was complete and representative for one check, not for all.
+- Implication: before shipping a build or its fix, run it on the real files
+  for every state and year it covers, exactly as the pipeline will. The
+  coverage fix was run that way (54 state-year files) before it was sent.
+
 ## 2026-11-02: A task's facts were checked on one case, not the general one (07b)
 - Tried: task 07b, whose draft said annulled votes show as 0 in the results.
 - Result: true for 2012 only; other years omit those candidacies, so the

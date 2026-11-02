@@ -35,6 +35,12 @@ SKIPPED_YEARS = (2000,)
 FILE_SQ_FROM = 2024
 # Share of candidates with votes in the results whose section sums must equal them.
 MIN_AGREE_SHARE = 0.99
+# Share of the year's Legal Amazon municipalities (those in the results) that
+# must have section data. The TSE's 2004 section files are incomplete (AP 3 of
+# 16 municipalities, RR 1 of 15, MT 83 of 141, MA 170 of 181: 675 of 772
+# overall, 87%); 2008-2024 are complete. Agreement is measured only over
+# municipalities with section data, and coverage is reported per state.
+MIN_COVERAGE_SHARE = 0.8
 # Share of distinct candidate numbers that may be left without a candidacy.
 # Candidate numbers voted for in the sections that match no candidacy at all,
 # neither in the results (counted votes) nor in the candidate file. Numbers
@@ -289,6 +295,17 @@ def check_agreement(year: int, agree: int, total: int, min_share: float) -> None
         )
 
 
+def check_coverage(year: int, covered: int, total: int, min_share: float) -> None:
+    """Stop when too few municipalities with results have section data."""
+    if total == 0:
+        raise BuildError(f"{year}: no municipalities with results")
+    if covered / total < min_share:
+        raise BuildError(
+            f"{year}: only {covered} of {total} municipalities with results have section data "
+            f"(min share {min_share})"
+        )
+
+
 def check_unmatched(year: int, numbers: int, unmatched: int, max_share: float) -> None:
     """Stop when candidate numbers without a candidacy reach `max_share` of all numbers."""
     if numbers and unmatched / numbers >= max_share:
@@ -329,6 +346,7 @@ def process_file(
     df = df.select(OUTPUT_COLUMNS).sort(KEY)
     check_key(df)
     stats = {
+        "municipalities": set(df["sg_ue"].unique().to_list()),
         "rows": df.height,
         "other_year": other_year,
         "outside": outside,
@@ -410,6 +428,7 @@ def build(
     years: tuple[int, ...] = YEARS,
     min_agree_share: float = MIN_AGREE_SHARE,
     max_unmatched_share: float = MAX_UNMATCHED_SHARE,
+    min_coverage_share: float = MIN_COVERAGE_SHARE,
     code_commit: str | None = None,
     created_at: str | None = None,
 ) -> dict[str, Any]:
@@ -467,12 +486,17 @@ def build(
         parts: list[pl.DataFrame] = []
         totals = {"rows": 0, "other_year": 0, "outside": 0, "numbers": 0, "unmatched": 0}
         totals["annulled"] = 0
+        covered: set[str] = set()
+        by_state: dict[str, int] = {}
         for uf in sorted(by_year[y]):
             zip_path = _fetch(store, by_year[y][uf], tmp_dir)
             raw = read_section_zip(zip_path)
             zip_path.unlink()
             df, sec, stats = process_file(raw, y, cand, pick, legal, registered)
             del raw
+            munis = stats.pop("municipalities")
+            covered |= munis
+            by_state[uf] = len(munis)
             for k, v in stats.items():
                 totals[k] += v
             parts.append(sec)
@@ -482,13 +506,19 @@ def build(
             local.append((output_name(y, uf), path))
         check_unmatched(y, totals["numbers"], totals["unmatched"], max_unmatched_share)
         sums = pl.concat(parts)
-        results = cand.filter(pl.col("nominal") > 0).join(
-            sums.select(*CANDIDACY, "sec_votes"), on=CANDIDACY, how="left"
-        )
+        # Municipalities that have results this year; those without section
+        # data are left out of the agreement check and counted instead.
+        with_results = set(cand.filter(pl.col("nominal") > 0)["sg_ue"].unique().to_list())
+        check_coverage(y, len(covered & with_results), len(with_results), min_coverage_share)
+        results = cand.filter(
+            (pl.col("nominal") > 0) & pl.col("sg_ue").is_in(sorted(covered))
+        ).join(sums.select(*CANDIDACY, "sec_votes"), on=CANDIDACY, how="left")
         agree = results.filter(pl.col("sec_votes") == pl.col("nominal")).height
         check_agreement(y, agree, results.height, min_agree_share)
         notes.append(
             _note(y, {**totals, "agree": agree, "total": results.height, "several": several})
+            + f", municipalities_with_sections={len(covered & with_results)}/{len(with_results)}"
+            + f" (by state: {', '.join(f'{u}={n}' for u, n in sorted(by_state.items()))})"
         )
 
     files: list[dict[str, Any]] = []
