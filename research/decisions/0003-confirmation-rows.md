@@ -1,6 +1,6 @@
 # 0003: Where confirmation-half rows live
 
-Date: 2026-11-02. Status: proposed (decide before any outcome data is built).
+Date: 2026-11-02. Status: accepted (decide before any outcome data is built).
 
 ## The question
 
