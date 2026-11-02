@@ -1,0 +1,46 @@
+{
+  "dataset": "polling_stations_geocoded",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/geocodes/hidalgo/2026-11-02/",
+  "created_at": "2026-11-02T17:29:15.163026+00:00",
+  "code_commit": "168cf09b079265e08156ab1b0f927f6d22919cb4",
+  "sources": [
+    {
+      "url": "https://github.com/fdhidalgo/geocode_br_polling_stations/releases/download/v0.16/geocoded_polling_stations.csv.gz",
+      "last_modified": "Thu, 20 Aug 2026 14:28:16 GMT",
+      "etag": "\"0x8DEFEC74656E5AC\"",
+      "bytes": 53738324
+    },
+    {
+      "url": "https://github.com/fdhidalgo/geocode_br_polling_stations/releases/download/v0.16/panel_ids.csv.gz",
+      "last_modified": "Thu, 20 Aug 2026 14:28:14 GMT",
+      "etag": "\"0x8DEFEC745504E10\"",
+      "bytes": 5992273
+    },
+    {
+      "url": "https://github.com/fdhidalgo/geocode_br_polling_stations/releases/download/v0.16/section_panel_mapping.csv.gz",
+      "last_modified": "Thu, 20 Aug 2026 14:28:15 GMT",
+      "etag": "\"0x8DEFEC7459C1CD0\"",
+      "bytes": 18623471
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/geocodes/hidalgo/2026-11-02/geocoded_polling_stations.csv.gz",
+      "sha256": "ccf70bc98b914aef8779578bc1ad38fb087e4fc73a8d453840459086bd2c784c",
+      "bytes": 53738324
+    },
+    {
+      "path": "data/raw/geocodes/hidalgo/2026-11-02/panel_ids.csv.gz",
+      "sha256": "18a6f20e60e8475e075e0942ada68e28b457b5ce0b619ec59caf05a162f4b4fd",
+      "bytes": 5992273
+    },
+    {
+      "path": "data/raw/geocodes/hidalgo/2026-11-02/section_panel_mapping.csv.gz",
+      "sha256": "a3322f8f2212b2ea72272fc9b3f776531615f530a58eff99a4db84454476b707",
+      "bytes": 18623471
+    }
+  ],
+  "notes": ""
+}
