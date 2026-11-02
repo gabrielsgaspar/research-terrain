@@ -464,7 +464,7 @@ jobs:
             "files":[{"path":"~/.claude/.credentials.json","mode":"deny"},{"path":"~/.claude.json","mode":"deny"}]}}}
           claude_args: |
             --model claude-opus-5-5
-            --max-turns 30
+            --max-turns 50
             --tools "Read,Grep,Glob,Bash"
             --allowedTools "Read" "Grep" "Glob" "Bash(git log *)"
             --disallowedTools "mcp__*" "Edit" "Write" "NotebookEdit" "Bash(* --output*)" "Bash(git diff --no-index*)" "Bash(* --no-index*)" "Read(./.git/config)" "Read(//proc/**)" "Read(//etc/**)" "Read(//root/**)" "Read(//tmp/**)" "Read(//home/runner/.*)" "Read(//home/runner/.*/**)" "Read(//home/runner/work/_temp/**)" "Read(//home/runner/work/_actions/**)" "Read(//home/runner/work/_tool/**)" "Read(//home/runner/runners/**)"

@@ -19,3 +19,34 @@ acquired or built (its manifest merged into `data/manifests/`).
 | 06 | Results: votes, party votes, turnout, coalitions | 05 built; `tse_results` acquired |
 | 07 | Section votes and polling places | 06 built; sections and polling places acquired |
 | 08 | Candidates build tolerates invalid birth dates | done (#21) |
+
+## Before filing a task
+
+1. Search: `gh issue list --state all --search "<title words>"`.
+2. If it reads real data, profile the real files first (values a build will
+   reject, keys, row counts) and put the numbers in the task. Fixtures are
+   anonymised and can hide defects.
+3. Everything it needs exists: dependencies added by a person, fixtures
+   committed, input manifests merged.
+4. It asks only for what the builder can do (AGENTS.md, "What the builder
+   can do"). Anything else is a step for a person, done first.
+5. "Done when" items are checkable on fixtures or inputs built in the test,
+   and say exactly which parts of anything they mirror.
+6. Size: at most about ten files changed. Split larger work.
+7. After editing a draft, update the issue (`gh issue edit N --body-file
+   ...`) before adding `agent-plan`.
+
+## Before building a plan
+
+- **Files to change:** one full path per bullet, deletions included, no
+  braces or globs.
+- Nothing under protected paths, `pyproject.toml` or `uv.lock`.
+- Every step uses only the builder's commands.
+- The "Done when" list matches the issue's.
+
+## Before merging a workflow change
+
+- Run each inline script under bash with sample inputs, and run
+  `actionlint`.
+- After merging, start a new run (Run workflow or `gh workflow run`);
+  re-running an old run uses the old workflow.

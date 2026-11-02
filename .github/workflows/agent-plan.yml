@@ -173,7 +173,10 @@ jobs:
             printf '%s\n' "${ISSUE_BODY}"
           } > .agent-plan/issue.md
 
-      # 3. Claude, read-only. `--tools` limits which built-in tools exist;
+      # 3. Claude, read-only. 40 turns: a data task's plan reads the issue,
+      #    AGENTS.md, the catalog, manifests, fixture notes and the code it
+      #    replaces; task 04 needed 21 and hit the old limit of 20 (issue #26).
+      #    `--tools` limits which built-in tools exist;
       #    --allowedTools limits Bash to git log; --disallowedTools removes MCP
       #    tools, blocks `--output` (which would let git write a file) and
       #    `--no-index` (which lets git read any file), and denies Read of the
@@ -201,7 +204,7 @@ jobs:
           settings: '{"permissions":{"blockReadsOutsideWorkingDirectories":true}}'
           claude_args: |
             --model claude-opus-5-5
-            --max-turns 20
+            --max-turns 40
             --tools "Read,Grep,Glob,Bash"
             --allowedTools "Read" "Grep" "Glob" "Bash(git log *)"
             --disallowedTools "mcp__*" "Edit" "Write" "NotebookEdit" "Bash(* --output*)" "Bash(git diff --no-index*)" "Bash(* --no-index*)" "Read(//proc/**)" "Read(//etc/**)" "Read(//root/**)" "Read(//tmp/**)" "Read(//home/runner/.*)" "Read(//home/runner/.*/**)" "Read(//home/runner/work/_temp/**)" "Read(//home/runner/work/_actions/**)" "Read(//home/runner/work/_tool/**)" "Read(//home/runner/runners/**)"
