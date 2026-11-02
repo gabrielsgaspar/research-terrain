@@ -13,6 +13,19 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-02: What the TSE candidate files actually contain (idea 0001, 0002)
+- Tried: downloading and profiling consulta_cand for every municipal election
+  from 2000 to 2024, and the complementary files.
+- Result: about 3.19 million candidate rows. Race is recorded in municipal
+  elections only from 2016 (1,715 Indigenous candidates in 2016, 2,223 in 2020,
+  2,578 in 2024); named Indigenous ethnicity exists only in 2024. Each zip
+  repeats every row in a BRASIL file; files include later supplementary
+  elections; columns change across years; the TSE re-generates files.
+- Why: the TSE's schema and collection changed over time.
+- Implication: the earlier note "self-declaration from 2014" applies to
+  general elections, not municipal ones. Any identity-based analysis of
+  councilors starts in 2016. Details in data/fixtures/tse/README.md.
+
 ## 2026-11-01: The original design's headline effect is implausibly large (idea 0002)
 - Tried: reading the legacy paper's close-election RDD on indigenous councilors.
 - Result: the estimate of 0.003 against a mean of about 0.004 is roughly a 75%

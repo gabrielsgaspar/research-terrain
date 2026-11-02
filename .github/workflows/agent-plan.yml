@@ -221,8 +221,9 @@ jobs:
                read. Your only output is the structured result described below.
             3. Never read, print or ask about `.env` or any secret.
             4. Read `AGENTS.md` first; it is the standing rule set. Use
-               `research/questions.md`, `research/ideas/`, `research/lessons.md`
-               and `data/catalog.yaml` for context, and `git log` (for changes,
+               `research/questions.md`, `research/ideas/`, `research/lessons.md`,
+               `data/catalog.yaml` and `data/manifests/` (what has actually been
+               acquired or built) for context, and `git log` (for changes,
                `git log -p`) for history.
 
             Decide the status:

@@ -31,8 +31,10 @@ bound to a GitHub environment.
 
 ## Never twice
 
-1. `catalog.yaml` is the registry agents read when planning. A dataset marked
-   `acquired` or `built` is reused, not fetched again.
+1. `catalog.yaml` says what each dataset is and where it comes from;
+   `manifests/<stage>/<name>.json` says what has actually reached GCS. The
+   `data-pipeline` workflow opens a PR adding the manifest after every run, so
+   the planner sees new data once you merge it.
 2. Every raw folder has a `_MANIFEST.json`: source URL, retrieval time,
    SHA-256 and size per file, and the commit of the script that fetched it.
    Acquire scripts skip a source whose target path already has one.

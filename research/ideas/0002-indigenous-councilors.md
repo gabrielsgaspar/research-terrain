@@ -22,7 +22,7 @@ outcomes from Hansen et al. forest loss.
 ## Data needed
 
 The legacy data in `legacy/`, rebuilt from `tse_candidates` with a new
-indigenous measure (self-declaration from 2014, ethnicity from 2024).
+indigenous measure (self-declared race from 2016, named ethnicity in 2024).
 
 ## Status
 
