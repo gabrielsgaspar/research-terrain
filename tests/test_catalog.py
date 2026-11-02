@@ -14,6 +14,11 @@ def test_gets_complementar_entry():
     assert entry["gcs"] == dataset("tse_candidates")["gcs"]
 
 
+def test_tse_candidates_has_an_acquire_block():
+    assert dataset("tse_candidates")["acquire"]["files"]
+    assert "acquire" not in dataset("tse_candidates_complementar")
+
+
 def test_unknown_name_raises():
     with pytest.raises(KeyError):
         dataset("no_such_dataset")
