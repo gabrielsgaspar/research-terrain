@@ -20,3 +20,21 @@ thousands of times. Parsers must expand the attribute and cap it.
 
 Kept municipalities include Boa Esperança do Norte (MT, `5101837`), created
 after 2020, which a community crosswalk lacks.
+
+## Localities and urbanized areas (2022)
+
+- `BR_localidades_2022_sample.csv`: every row of IBGE's Localidades do
+  Brasil 2022 for the two polling-place fixture towns (IBGE 1507706, TSE
+  05533; IBGE 1507979, TSE 04367): 25 localities, categories Cidade,
+  Povoado, Outras Localidades and Localidade Indígena. The real file is a
+  GeoPackage (SQLite) with a table `BR_localidades_2022`; tests write these
+  rows into an SQLite file of that name with `sqlite3`.
+- `AreasUrbanizadas2022_sample.geojson`: the 20 urbanized-area polygons
+  within about 1 km of those towns' polling places and seats (14 Área
+  urbanizada, 6 Loteamento vazio), simplified to 0.00003 degrees. Properties
+  `Tipo` and `Densidade` as in the real shapefile. Tests write them to a
+  shapefile with pyshp and zip it.
+
+Classified with the rules in task 09, the 2024 fixture's 18 polling places
+are 5 seat, 3 town, 1 rural and 9 dispersed; the 2008 Hidalgo stations of
+town 04367 are 9 seat, 1 rural and 4 dispersed.

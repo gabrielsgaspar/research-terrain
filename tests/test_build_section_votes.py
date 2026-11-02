@@ -428,3 +428,30 @@ def test_without_the_candidate_file_a_missing_number_is_unmatched(tmp_path):
     manifests = stage(store, tmp_path, sections=sections, results={2008: counted})
     with pytest.raises(BuildError, match="have no candidacy"):
         run_staged(store, tmp_path, manifests, max_unmatched_share=0.0001)
+
+
+# --- Incomplete section files (2004): agreement only where sections exist
+
+
+def test_municipalities_without_section_data_are_left_out_of_agreement_and_counted(tmp_path):
+    sections, results = one_year(2008)
+    cv = results[2008]
+    # A second municipality with results but no section file, as in 2004.
+    # 05533 is a Legal Amazon municipality in the test table with no 2008 section file.
+    extra = cv.with_columns(pl.lit("05533").alias("sg_ue"), (pl.col("sq_candidato") + "9"))
+    store = MemoryStore()
+    manifests = stage(store, tmp_path, sections=sections, results={2008: pl.concat([cv, extra])})
+    out = run_staged(store, tmp_path, manifests, min_coverage_share=0.5)
+    assert "municipalities_with_sections=1/2" in out["notes"]
+    assert "(by state: PA=1)" in out["notes"]
+
+
+def test_coverage_below_the_share_stops_the_build(tmp_path):
+    sections, results = one_year(2008)
+    cv = results[2008]
+    # 05533 is a Legal Amazon municipality in the test table with no 2008 section file.
+    extra = cv.with_columns(pl.lit("05533").alias("sg_ue"), (pl.col("sq_candidato") + "9"))
+    store = MemoryStore()
+    manifests = stage(store, tmp_path, sections=sections, results={2008: pl.concat([cv, extra])})
+    with pytest.raises(BuildError, match="have section data"):
+        run_staged(store, tmp_path, manifests, min_coverage_share=0.8)

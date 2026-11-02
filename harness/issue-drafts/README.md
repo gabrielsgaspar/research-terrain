@@ -21,6 +21,8 @@ acquired or built (its manifest merged into `data/manifests/`).
 | 07a | Located polling places | 05 built |
 | 07b | Section votes linked to candidacies | 06a built |
 | 08 | Candidates build tolerates invalid birth dates | done (#21) |
+| 09 | Type every polling place (seat, town, rural, ...) | `uv add shapely pyshp`; `ibge_localities` and `ibge_urbanized_areas` acquired |
+| 10 | Feasibility census | 09 built; definitions agreed (see the chat) |
 
 ## Before filing a task
 

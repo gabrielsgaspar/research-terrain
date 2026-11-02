@@ -16,6 +16,28 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-02: Nearest locality alone mistypes big-city polling places
+- Tried: typing Legal Amazon polling places by their nearest IBGE locality.
+- Result: in municipalities with more than 100,000 voters, 15% of voters were
+  typed quilombola and 12.5% indigenous, including central Manaus
+  neighbourhoods. Outside those cities the rule looked sensible.
+- Why: a city has one seat point; at its edges some locality point is closer.
+- Implication: urban clusters from IBGE's 2022 urbanized areas come first
+  (seat cluster, other clusters), and the nearest locality types only places
+  outside every urban area. Big cities are then 85% seat and 14% town.
+  Constituency types (indigenous, settlement) need FUNAI and INCRA polygons.
+
+## 2026-11-02: The 2004 section files are incomplete in four states
+- Tried: the section-votes build over the whole Legal Amazon.
+- Result: in 2004 only 675 of 771 municipalities have section data: Amapá
+  3 of 16, Roraima 1 of 15, Mato Grosso 83 of 141, Maranhão 170 of 181 (the
+  others complete). 2008-2024 are complete in every state.
+- Why: gaps in the TSE's 2004 section files.
+- Implication: 2004 section data cannot place every candidate's votes;
+  strongholds for 2004 would cover 87% of municipalities, and 2004 has no
+  coordinates anyway. The build measures agreement only where sections
+  exist (99.6% in 2004; 99.9-100% from 2008) and reports coverage by state.
+
 ## 2026-11-02: Annulled candidacies are missing from the results file, not only zeroed
 - Tried: the first real run of the section-votes build.
 - Result: it stopped on 2004: 390 of 44,183 candidate numbers voted for in
