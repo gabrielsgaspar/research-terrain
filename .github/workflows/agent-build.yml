@@ -600,7 +600,13 @@ jobs:
               ("Google service-account key file", re.compile(r"\"type\"\s*:\s*\"service_account\"")),
               ("Google OAuth access token prefix", re.compile(r"ya29\.")),
               ("Overleaf Git token prefix", re.compile(r"olp_")),
-              ("KEY= or TOKEN= assignment with a long value", re.compile(r"(?:KEY|TOKEN)\s*=\s*['\"]?[^\s'\"]{16,}")),
+              # A long value made of token characters, with at least one digit and one letter,
+              # assigned to a KEY/TOKEN/SECRET/PASSWORD name. Code such as
+              # `TURNOUT_KEY = CANDIDATE_VOTES_KEY[:3]` no longer matches (issue #44).
+              ("KEY/TOKEN/SECRET/PASSWORD assignment with a secret-like value", re.compile(
+                  r"""(?i)(?:KEY|TOKEN|SECRET|PASSWORD)\s*[:=]\s*['"]?(?=[A-Za-z0-9_\-+/.=]*\d)(?=[A-Za-z0-9_\-+/.=]*[A-Za-z])[A-Za-z0-9_\-+/.=]{20,}['"]?\s*(?:[,;)#]|$)""",
+                  re.M,
+              )),
           ]
 
 

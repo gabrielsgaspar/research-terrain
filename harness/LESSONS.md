@@ -21,6 +21,20 @@ plan review. They fall into five groups:
 Expect the rate to fall: each first use of a capability (first build, first
 deletion, first big task) has now happened once.
 
+## 2026-11-02: The secret scan flagged ordinary Python as a credential (issue #44)
+- Tried: building task 06a.
+- Result: verify stopped on a line in `src/terrain/builds/tse_results.py`
+  matching "KEY= or TOKEN= assignment with a long value". Nothing was pushed.
+- Why: that pattern matched any name ending in KEY followed by 16
+  non-space characters, so a line such as
+  `TURNOUT_KEY = CANDIDATE_VOTES_KEY[:3]` looked like a secret. Builds with
+  composite keys name constants that way.
+- Implication: the pattern now needs a secret-like value (20+ token
+  characters with at least one digit and one letter, ending the
+  assignment), case-insensitive, and also covers SECRET and PASSWORD. It
+  still catches `.env`-style and quoted secrets, and fires on no current
+  code. Known token prefixes are checked separately, unchanged.
+
 ## 2026-11-02: A task named a column that is in a different file (issue #46)
 - Tried: task 07a, which asked for Hidalgo's `panel_id`.
 - Result: the planner found `panel_id` is not in the geocoded file and made
