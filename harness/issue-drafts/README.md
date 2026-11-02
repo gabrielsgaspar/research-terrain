@@ -13,11 +13,13 @@ acquired or built (its manifest merged into `data/manifests/`).
 | --- | --- | --- |
 | 01 | Storage and manifest helpers | done (#6) |
 | 02 | Acquire TSE candidates | done (#11) |
-| 03 | Build the candidates table | `acquire/tse_candidates` manifest (merged) |
-| 04 | Catalog-driven acquirer and five new acquisitions | 02 merged |
-| 05 | Municipalities and TSE-IBGE crosswalk | 03 built; `ibge_municipalities` and `polling_stations_geocoded` acquired |
-| 06 | Results: votes, party votes, turnout, coalitions | 05 built; `tse_results` acquired |
-| 07 | Section votes and polling places | 06 built; sections and polling places acquired |
+| 03 | Build the candidates table | done (#18) |
+| 04 | Catalog-driven acquirer and five new acquisitions | done (#26) |
+| 05 | Municipalities and TSE-IBGE crosswalk | build `tse_candidates` merged (done) |
+| 06a | Candidate votes and turnout | 05 built; `acquire/tse_results` merged |
+| 06b | Party votes and coalitions | 05 built; `acquire/tse_results` merged |
+| 07a | Located polling places | 05 built |
+| 07b | Section votes linked to candidacies | 06a built |
 | 08 | Candidates build tolerates invalid birth dates | done (#21) |
 
 ## Before filing a task

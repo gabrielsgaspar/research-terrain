@@ -21,6 +21,17 @@ plan review. They fall into five groups:
 Expect the rate to fall: each first use of a capability (first build, first
 deletion, first big task) has now happened once.
 
+## 2026-11-02: The plan's file list is now structured data
+- Tried: two plans in a row had file lists verify could not read (brace
+  shorthand; a deletion mentioned only in a step).
+- Result: both were caught by reading the plan, not by a check.
+- Why: verify parsed a Markdown section the planner wrote freely.
+- Implication: the planner returns `files` (path, add / modify / delete,
+  why); the workflow validates every path, prints the list, and embeds it as
+  JSON that verify and the reviewer read. A bad list, an empty result or a
+  credential match now posts a "withheld" notice on the issue instead of
+  failing silently. Old plans still work through the Markdown fallback.
+
 ## 2026-11-02: The planner ran out of turns on a large task (issue #26)
 - Tried: planning task 04 (16 files: a new module, six scripts, deletions,
   tests).

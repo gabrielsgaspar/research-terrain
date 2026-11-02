@@ -208,7 +208,7 @@ jobs:
             --tools "Read,Grep,Glob,Bash"
             --allowedTools "Read" "Grep" "Glob" "Bash(git log *)"
             --disallowedTools "mcp__*" "Edit" "Write" "NotebookEdit" "Bash(* --output*)" "Bash(git diff --no-index*)" "Bash(* --no-index*)" "Read(//proc/**)" "Read(//etc/**)" "Read(//root/**)" "Read(//tmp/**)" "Read(//home/runner/.*)" "Read(//home/runner/.*/**)" "Read(//home/runner/work/_temp/**)" "Read(//home/runner/work/_actions/**)" "Read(//home/runner/work/_tool/**)" "Read(//home/runner/runners/**)"
-            --json-schema '{"type":"object","properties":{"status":{"type":"string","enum":["plan","unclear","out_of_scope"]},"comment":{"type":"string"}},"required":["status","comment"]}'
+            --json-schema '{"type":"object","properties":{"status":{"type":"string","enum":["plan","unclear","out_of_scope"]},"comment":{"type":"string"},"files":{"type":"array","items":{"type":"object","properties":{"path":{"type":"string"},"change":{"type":"string","enum":["add","modify","delete"]},"why":{"type":"string"}},"required":["path","change"]}}},"required":["status","comment"]}'
           prompt: |
             You are the planner for the research-terrain repository. You write one plan for
             one GitHub issue. You cannot and must not change anything.
@@ -247,8 +247,6 @@ jobs:
             For `plan`, write `comment` in Markdown with these sections:
 
             - **Summary**: two or three sentences.
-            - **Files to change**: each file, with one line on what changes. Name
-              only files that exist or that the plan creates. Include tests.
             - **Steps**: numbered, small, in order.
             - **Risks**: what could go wrong or is uncertain, including anything
               you could not verify from the repository.
@@ -260,8 +258,16 @@ jobs:
               Data checks run against small text fixtures in `data/fixtures/`,
               never against the bucket.
 
+            Do not write a "Files to change" section in `comment`. Instead, for
+            `plan`, return `files`: every file the build may touch, tests and
+            deletions included, each as {"path": "<full path from the repository
+            root>", "change": "add" | "modify" | "delete", "why": "<one line>"}.
+            One object per file: no braces, wildcards or directories. The
+            workflow prints this list in the comment, and the build's checks
+            enforce exactly this list.
+
             Keep the comment under 600 words. Return the structured result with
-            `status` and `comment` and nothing else.
+            `status`, `comment` and, for `plan`, `files`, and nothing else.
 
       # 4. One comment, written by a deterministic step with the job token.
       #    The agent has no way to post it. Skipped when the guard failed.
@@ -280,37 +286,99 @@ jobs:
           STRUCTURED: ${{ steps.claude.outputs.structured_output }}
         run: |
           set -euo pipefail
-          status="$(jq -r '.status // empty' <<< "${STRUCTURED:-}" 2>/dev/null || true)"
-          comment="$(jq -r '.comment // empty' <<< "${STRUCTURED:-}" 2>/dev/null || true)"
-          case "${status}" in
-            plan) title="Plan" ;;
-            unclear) title="Needs clarification - no plan yet" ;;
-            out_of_scope) title="Out of scope under AGENTS.md - no plan" ;;
-            *) status="" ;;
-          esac
-          {
-            if [ -n "${status}" ] && [ -n "${comment}" ]; then
-              printf '## Agent plan: %s\n\n' "${title}"
-              printf '%s\n' "${comment:0:60000}"
-              printf '\n\n---\n'
-              # The backticks are literal Markdown for the comment, not a command substitution.
-              # shellcheck disable=SC2016
-              printf '_Written by the `agent-plan` workflow. Read-only: it changed no files, labels or settings. [Run](%s)._\n' "${RUN_URL}"
-            else
-              printf '## Agent plan: no result\n\n'
-              printf 'The planner did not return a usable result. See the [run](%s).\n' "${RUN_URL}"
-            fi
-          } > "${RUNNER_TEMP}/comment.md"
+          # Compose the comment. Any problem (no usable result, a bad file
+          # list) produces a short "withheld" notice instead, so the reason
+          # shows on the issue, not only in this log. The build refuses a
+          # withheld plan: it only accepts "## Agent plan: Plan".
+          python3 -I - <<'PY'
+          import json, os, re, sys
+
+          out = os.path.join(os.environ["RUNNER_TEMP"], "comment.md")
+          run = os.environ["RUN_URL"]
+          footer = (
+              "\n\n---\n_Written by the `agent-plan` workflow. Read-only: it changed "
+              f"no files, labels or settings. [Run]({run})._\n"
+          )
+
+
+          def withheld(reason):
+              with open(out, "w", encoding="utf-8") as f:
+                  f.write(
+                      f"## Agent plan: withheld\n\n{reason}\n\nNothing was planned. See the "
+                      f"[run]({run}), fix the cause, then add `agent-plan` again.\n"
+                  )
+              sys.exit(0)
+
+
+          try:
+              data = json.loads(os.environ.get("STRUCTURED") or "")
+          except ValueError:
+              data = None
+          if not isinstance(data, dict):
+              withheld("The planner returned no usable result. Common causes: it ran out of turns, or the run failed before it finished.")
+          titles = {
+              "plan": "Plan",
+              "unclear": "Needs clarification - no plan yet",
+              "out_of_scope": "Out of scope under AGENTS.md - no plan",
+          }
+          status, comment = data.get("status"), (data.get("comment") or "").strip()
+          if status not in titles or not comment:
+              withheld("The planner returned no usable result.")
+          body = comment[:60000]
+          if status == "plan":
+              files = data.get("files")
+              if not isinstance(files, list) or not files:
+                  withheld("The plan has no file list, so the build could not check what it changes.")
+              path_ok = re.compile(r"[A-Za-z0-9_.][A-Za-z0-9_./-]*")
+              labels = {"add": "new", "modify": "changed", "delete": "deleted with git rm"}
+              clean, seen, problems = [], set(), []
+              for item in files:
+                  item = item if isinstance(item, dict) else {}
+                  path = str(item.get("path", "")).strip().removeprefix("./")
+                  change = item.get("change")
+                  why = " ".join(str(item.get("why", "")).split())[:300]
+                  parts = path.split("/")
+                  if not path_ok.fullmatch(path) or ".." in parts or "" in parts:
+                      problems.append(path or "(empty)")
+                  elif change not in labels:
+                      problems.append(f"{path} (change must be add, modify or delete)")
+                  elif path not in seen:
+                      seen.add(path)
+                      clean.append({"path": path, "change": change, "why": why})
+              if problems:
+                  shown = ", ".join(f"`{p}`" for p in problems[:20])
+                  withheld(
+                      f"The plan's file list has entries that are not single full paths: {shown}. "
+                      "Each file must be listed on its own, with no braces, wildcards or directories."
+                  )
+              section = ["**Files to change**", ""]
+              for f in clean:
+                  section.append(f"- `{f['path']}` ({labels[f['change']]})" + (f": {f['why']}" if f["why"] else ""))
+              block = "\n".join(section) + "\n\n"
+              at = body.find("**Steps**")
+              body = body[:at] + block + body[at:] if at >= 0 else body + "\n\n" + block
+              # Machine-readable copy for verify and the reviewer. Paths are
+              # checked above, so they cannot close the HTML comment.
+              hidden = json.dumps([{"path": f["path"], "change": f["change"]} for f in clean], separators=(",", ":"))
+              body += f"\n\n<!-- agent-files: {hidden} -->"
+          with open(out, "w", encoding="utf-8") as f:
+              f.write(f"## Agent plan: {titles[status]}\n\n{body}{footer}")
+          PY
           body="$(< "${RUNNER_TEMP}/comment.md")"
+          blocked=""
           # An empty value is skipped: an empty pattern would match everything.
           for secret in "${CLAUDE_CODE_OAUTH_TOKEN:-}" "${JOB_TOKEN:-}"; do
-            if [ -n "${secret}" ] && [[ "${body}" == *"${secret}"* ]]; then
-              echo "::error::The comment contains a secret value. Not posting it."
-              exit 1
-            fi
+            if [ -n "${secret}" ] && [[ "${body}" == *"${secret}"* ]]; then blocked="a secret value"; fi
           done
           if grep -qE 'sk-ant-|ghp_|ghs_|github_pat_|ya29\.|olp_' <<< "${body}"; then
-            echo "::error::The comment contains something that looks like a token. Not posting it."
+            blocked="text that looks like a credential prefix"
+          fi
+          if [ -n "${blocked}" ]; then
+            # The notice names the kind of match, never the text itself.
+            printf '## Agent plan: withheld\n\nThe plan was not posted because it contained %s. Nothing was planned. See the [run](%s), then add `agent-plan` again. AGENTS.md: never write credential prefixes anywhere.\n' \
+              "${blocked}" "${RUN_URL}" > "${RUNNER_TEMP}/comment.md"
+            gh issue comment "${ISSUE_NUMBER}" --body-file "${RUNNER_TEMP}/comment.md"
+            echo "::error::The plan contained ${blocked}; posted a withheld notice instead."
             exit 1
           fi
           gh issue comment "${ISSUE_NUMBER}" --body-file "${RUNNER_TEMP}/comment.md"

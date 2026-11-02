@@ -754,10 +754,17 @@ jobs:
 
           plan = open(os.environ["PLAN"], encoding="utf-8").read()
           entries = []
-          for line in section(plan, "Files to change"):
-              match = ENTRY.match(line)
-              if match:
-                  entries.append(match.group(1).strip().removeprefix("./"))
+          # Plans carry their file list as JSON in a hidden comment, written by
+          # the agent-plan workflow after checking every path. Older plans fall
+          # back to the Markdown "Files to change" section.
+          listed = re.search(r"<!-- agent-files: (\[.*?\]) -->", plan, re.S)
+          if listed:
+              entries = [item["path"] for item in json.loads(listed.group(1))]
+          else:
+              for line in section(plan, "Files to change"):
+                  match = ENTRY.match(line)
+                  if match:
+                      entries.append(match.group(1).strip().removeprefix("./"))
           if not entries:
               fail(["the plan has no backticked paths under Files to change"])
           print("Plan allows:", json.dumps(entries))
