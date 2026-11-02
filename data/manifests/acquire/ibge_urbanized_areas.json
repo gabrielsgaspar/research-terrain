@@ -1,0 +1,24 @@
+{
+  "dataset": "ibge_urbanized_areas",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/ibge/urbanized_areas/2026-11-02/",
+  "created_at": "2026-11-02T23:41:16.338008+00:00",
+  "code_commit": "6227e257a1c21020277e9d5223219010753eb735",
+  "sources": [
+    {
+      "url": "https://geoftp.ibge.gov.br/organizacao_do_territorio/tipologias_do_territorio/areas_urbanizadas_do_brasil/2022/Shapefile/AreasUrbanizadas2022_Brasil.zip",
+      "last_modified": "Mon, 17 Aug 2026 18:40:42 GMT",
+      "etag": "\"33edc7b-6594281e13e80\"",
+      "bytes": 54451323
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/ibge/urbanized_areas/2026-11-02/AreasUrbanizadas2022_Brasil.zip",
+      "sha256": "5e41d6c72c4d733f43f95cbe87a7a50861bf8d8032b3d158b703c5198cbdb434",
+      "bytes": 54451323
+    }
+  ],
+  "notes": ""
+}
