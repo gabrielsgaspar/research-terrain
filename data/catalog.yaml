@@ -150,6 +150,18 @@ datasets:
         - url: https://github.com/fdhidalgo/geocode_br_polling_stations/releases/download/v0.16/section_panel_mapping.csv.gz
           check: {type: gzip}
 
+  - name: municipalities
+    source: built from ibge_municipalities, polling_stations_geocoded and tse_candidates
+    licence: public
+    derived: data/derived/municipalities/
+    contract: data/contracts/municipalities.md
+    status: planned
+    notes: >
+      One row per IBGE municipality (DTB 2024) with its TSE code, both names
+      and a Legal Amazon flag. Every TSE-IBGE pair is checked by name;
+      reviewed exceptions are in data/reference/tse_ibge_name_variants.yaml.
+      Also writes legal_amazon.csv, the input to scripts/seal_split.py.
+
   - name: mapbiomas_deforestation
     source: MapBiomas annual collection, exported via Earth Engine
     licence: check MapBiomas terms
