@@ -6,8 +6,9 @@ name: GCS smoke test
 #   - it cannot overwrite that object (raw is create-only);
 #   - it cannot write under data/derived/;
 #   - it cannot list sealed/.
-# A refusal only counts if GCP answers 403; any other error is a failure, so
-# an empty prefix cannot pass for a denied one. There is no checkout: this job
+# A refusal only counts if GCP says the permission is missing (a 403, or
+# "does not have ... access"); any other error is a failure, so an empty
+# prefix or a typo cannot pass for a denied one. There is no checkout: this job
 # runs no repository code while it holds GCP credentials. The test object
 # stays in data/raw/_smoke/ (acquire cannot delete it); remove it yourself.
 on:
@@ -48,16 +49,19 @@ jobs:
               echo "PASS: ${what}"
             else
               echo "::error::FAIL: ${what}"; cat "${RUNNER_TEMP}/err"; ok=0
+              # Show which list prefixes the command asked for (tokens are
+              # redacted by gcloud, and only the prefix parameter is printed).
+              "$@" --log-http 2>&1 | grep -oE 'prefix=[^&" ]*' | sort -u || true
             fi
           }
           refused() {  # refused DESCRIPTION COMMAND...
             local what=$1; shift
             if "$@" > /dev/null 2> "${RUNNER_TEMP}/err"; then
               echo "::error::FAIL: ${what} was allowed"; ok=0
-            elif grep -q "403" "${RUNNER_TEMP}/err"; then
-              echo "PASS: ${what} refused (403)"
+            elif grep -Eq "403|does not have [a-zA-Z.]+ access|Permission '[a-zA-Z.]+' denied" "${RUNNER_TEMP}/err"; then
+              echo "PASS: ${what} refused: $(grep -oE "storage\.[a-zA-Z]+\.[a-zA-Z]+" "${RUNNER_TEMP}/err" | head -1) missing"
             else
-              echo "::error::FAIL: ${what} failed, but not with 403"; cat "${RUNNER_TEMP}/err"; ok=0
+              echo "::error::FAIL: ${what} failed, but not for lack of permission"; cat "${RUNNER_TEMP}/err"; ok=0
             fi
           }
 

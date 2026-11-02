@@ -64,16 +64,23 @@ sleep 20
 
 # grant SA ROLE TITLE PREFIX...: ROLE on the bucket, limited by an IAM
 # condition to objects under the prefixes, and to listings of those prefixes.
+# A listing counts if its prefix starts with "data/raw/" or is exactly
+# "data/raw": gcloud lists a folder's top level with the trailing slash
+# dropped. Any earlier bindings of the same role for the account are removed
+# first, so re-running the script replaces conditions instead of piling them up.
 grant() {
   local sa=$1 role=$2 title=$3
   shift 3
   local expr="" p
+  local attr='api.getAttribute("storage.googleapis.com/objectListPrefix", "")'
   for p in "$@"; do
     [ -n "$expr" ] && expr+=" || "
     expr+="resource.name.startsWith(\"${OBJ}/${p}\")"
-    expr+=" || api.getAttribute(\"storage.googleapis.com/objectListPrefix\", \"\").startsWith(\"${p}\")"
+    expr+=" || ${attr}.startsWith(\"${p}\") || ${attr} == \"${p%/}\""
   done
   printf "title: %s\nexpression: '%s'\n" "$title" "$expr" > "$tmp/condition.yaml"
+  gcloud storage buckets remove-iam-policy-binding "gs://${BUCKET}" \
+    --member="serviceAccount:$(sa_email "$sa")" --role="$role" --all >/dev/null 2>&1 || true
   gcloud storage buckets add-iam-policy-binding "gs://${BUCKET}" \
     --member="serviceAccount:$(sa_email "$sa")" --role="$role" \
     --condition-from-file="$tmp/condition.yaml" >/dev/null
