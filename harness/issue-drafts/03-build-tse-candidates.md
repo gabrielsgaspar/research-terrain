@@ -41,7 +41,6 @@ lists the pitfalls this task must handle.
   `sq_candidato`) is unique; every complementary row joins.
 - `data/contracts/tse_candidates.md`: every output column, its type, its
   source column per year, and the missing-value rule.
-- `polars` in `pyproject.toml` and `uv.lock`.
 - Tests in `tests/test_build_tse_candidates.py`, building from zips made in
   memory from `data/fixtures/tse/`, with `MemoryStore`.
 
@@ -51,7 +50,8 @@ lists the pitfalls this task must handle.
 - Vote results, polling stations, any analysis.
 - Logging or printing names, CPF, voter-ID numbers or e-mails anywhere,
   including tests and the manifest notes.
-- Workflow files, `data/manifests/`, `data/fixtures/`.
+- Workflow files, `data/manifests/`, `data/fixtures/`, `pyproject.toml`,
+  `uv.lock` (`polars` is already a dependency).
 
 ## Done when
 

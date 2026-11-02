@@ -7,7 +7,10 @@ authors = [
     { name = "Gabriel Gaspar", email = "gabrielsgaspar@gmail.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "google-cloud-storage>=3.17.1",
+    "polars>=2.1.0",
+]
 
 [build-system]
 requires = ["uv_build>=0.13.5,<0.14.0"]
