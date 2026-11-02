@@ -1,0 +1,35 @@
+{
+  "dataset": "ibge_municipalities",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/ibge/municipalities/2026-11-02/",
+  "created_at": "2026-11-02T17:29:10.892302+00:00",
+  "code_commit": "168cf09b079265e08156ab1b0f927f6d22919cb4",
+  "sources": [
+    {
+      "url": "https://geoftp.ibge.gov.br/organizacao_do_territorio/estrutura_territorial/divisao_territorial/2024/DTB_2024.zip",
+      "last_modified": "Wed, 30 Apr 2025 18:15:20 GMT",
+      "etag": "\"1c7d03-63402e66788d0\"",
+      "bytes": 1867011
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/organizacao_do_territorio/estrutura_territorial/amazonia_legal/2024/Municipios_da_Amazonia_Legal_2024.ods",
+      "last_modified": "Tue, 24 Jun 2025 12:04:44 GMT",
+      "etag": "\"1166c-63850224b749f\"",
+      "bytes": 71276
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/ibge/municipalities/2026-11-02/DTB_2024.zip",
+      "sha256": "218d2017cc29ff21cb6e8a0b015c40ea8f456900f95aa18f534be4ea94b473f0",
+      "bytes": 1867011
+    },
+    {
+      "path": "data/raw/ibge/municipalities/2026-11-02/Municipios_da_Amazonia_Legal_2024.ods",
+      "sha256": "0282c8d5788dd78f083eb9886d3e99a675f5e745a318afa5bdfbe5d712bd7927",
+      "bytes": 71276
+    }
+  ],
+  "notes": ""
+}
