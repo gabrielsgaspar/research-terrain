@@ -4,6 +4,18 @@ What setting up and running the agent pipeline, GitHub and GCP has taught
 us. Research and data findings live in `research/lessons.md`. Newest first,
 same format.
 
+## 2026-11-02: A plan asked the builder for a command it did not have (issue #26)
+- Tried: task 04, whose plan deletes `src/terrain/sources/tse.py` and its
+  test after moving the logic.
+- Result: the builder wrote most of the work, then stopped as blocked: its
+  allowed commands could not delete a file. It also flagged that "Done
+  when" item 5 would wrongly catch the root prefixes in `manifest.py`.
+- Why: neither the planner nor the task knew the builder's command list.
+- Implication: `git rm` is now allowed (verify still rejects unplanned or
+  protected deletions), the builder's full command list is in AGENTS.md so
+  plans stay within it, and the task's item 5 now exempts the root
+  prefixes.
+
 ## 2026-11-02: An unanchored `build/` in .gitignore hid two project folders (candidates build)
 - Tried: recording the first `build` manifest.
 - Result: `git add` refused `data/manifests/build/`. The same pattern also

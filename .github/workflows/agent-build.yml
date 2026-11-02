@@ -327,6 +327,10 @@ jobs:
       #      files and token variables and blocks github.com; verify scans
       #      every commit's message and diff before publish pushes anything;
       #      and a person reviews the PR.
+      #    - `git rm` lets a plan delete files (issue #26 could not finish
+      #      without it). It is not a new risk: Edit can already empty any
+      #      file, and verify rejects a deleted path the plan does not list
+      #      or that is protected, exactly as it does for an edited one.
       #    - The same Read deny rules as agent-plan, plus .git/config.
       #    - classify_inline_comments is off, so the action's post-Claude
       #      step (bun, run in the checkout, with GITHUB_TOKEN) does not run.
@@ -355,7 +359,7 @@ jobs:
             --model claude-sonnet-5-5
             --max-turns 60
             --tools "Read,Grep,Glob,Edit,Write,Bash"
-            --allowedTools "Read" "Grep" "Glob" "Edit(./**)" "Bash(uv sync)" "Bash(uv run ruff *)" "Bash(uv run pytest *)" "Bash(git status)" "Bash(git diff)" "Bash(git add *)" "Bash(git commit -m *)"
+            --allowedTools "Read" "Grep" "Glob" "Edit(./**)" "Bash(uv sync)" "Bash(uv run ruff *)" "Bash(uv run pytest *)" "Bash(git status)" "Bash(git diff)" "Bash(git add *)" "Bash(git rm *)" "Bash(git commit -m *)"
             --disallowedTools "mcp__*" "NotebookEdit" "WebFetch" "WebSearch" "Edit(./.git/**)" "Edit(./.agent-build/**)" "Bash(git commit *-F *)" "Bash(git commit *--file*)" "Bash(git commit *--template*)" "Bash(git commit *-t *)" "Bash(git * --pathspec-from-file*)" "Read(./.git/config)" "Read(//proc/**)" "Read(//etc/**)" "Read(//root/**)" "Read(//tmp/**)" "Read(//home/runner/.*)" "Read(//home/runner/.*/**)" "Read(//home/runner/work/_temp/**)" "Read(//home/runner/work/_actions/**)" "Read(//home/runner/work/_tool/**)" "Read(//home/runner/runners/**)"
             --json-schema '{"type":"object","properties":{"status":{"type":"string","enum":["done","blocked"]},"summary":{"type":"string"}},"required":["status","summary"]}'
           prompt: |
@@ -384,8 +388,9 @@ jobs:
             4. Never read, print or create `.env` or any secret. You have no
                network access and need none.
             5. Your shell commands are exactly: `uv sync`, `uv run ruff ...`,
-               `uv run pytest ...`, `git status`, `git diff`, `git add <paths>`
-               and `git commit -m "<message>"`. Nothing else will run. Do not
+               `uv run pytest ...`, `git status`, `git diff`, `git add <paths>`,
+               `git rm <paths>` (only for files the plan says to delete) and
+               `git commit -m "<message>"`. Nothing else will run. Do not
                create branches, push, amend or rewrite history.
             6. When the code is written, run `uv run ruff format .`,
                `uv run ruff check .` and `uv run pytest`. All must pass. Tests

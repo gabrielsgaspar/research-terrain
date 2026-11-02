@@ -70,8 +70,10 @@ Infrastructure for `research/ideas/0001-electoral-strongholds.md`. Read the
    leaves the store unchanged.
 4. A changed `ETag` creates a suffixed dated folder; a short download and a
    GET/HEAD mismatch raise and leave the store unchanged.
-5. No pipeline script or module under `src/terrain/` contains a hard-coded
-   source URL or GCS path; they come from the catalog.
+5. No pipeline script or module under `src/terrain/` contains a source URL
+   or a dataset's GCS folder (such as `data/raw/tse/`); they come from the
+   catalog. The two root prefixes `data/raw/` and `data/derived/` in
+   `src/terrain/manifest.py`'s validation are allowed.
 6. No test touches the network or GCS.
 7. `uv run ruff check .`, `uv run ruff format --check .` and `uv run pytest`
    pass.
