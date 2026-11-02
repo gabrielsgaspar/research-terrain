@@ -21,6 +21,14 @@ plan review. They fall into five groups:
 Expect the rate to fall: each first use of a capability (first build, first
 deletion, first big task) has now happened once.
 
+## 2026-11-02: A task's facts were checked on one case, not the general one (07b)
+- Tried: task 07b, whose draft said annulled votes show as 0 in the results.
+- Result: true for 2012 only; other years omit those candidacies, so the
+  build stopped on its unmatched check.
+- Why: the draft generalised from the 2012 Pará check.
+- Implication: when a task states how the data behaves, check every year it
+  covers, not the first one that shows the pattern.
+
 ## 2026-11-02: Review findings now go back to the builder (fix loop)
 - Tried: three must-fix findings (PRs #38, #52 and the results build) each
   needed a person to patch the branch.

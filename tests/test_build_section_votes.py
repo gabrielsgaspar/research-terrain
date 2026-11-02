@@ -372,3 +372,59 @@ def test_the_contract_documents_the_flag_and_the_key():
     text = CONTRACT.read_text(encoding="utf-8")
     for word in ("annulled_in_results", "vote_type", "counted votes", "nr_votavel"):
         assert word in text
+
+
+# --- Votes cast for candidacies that the results file does not list (annulled)
+
+CANDIDATES = "data/derived/tse_candidates/0123456789abcdef/"
+
+
+def candidates_manifest(store: MemoryStore, tmp_path: Path, year: int, cv: pl.DataFrame) -> dict:
+    """A candidates table holding every candidacy of `cv` (the candidate file)."""
+    df = cv.select(
+        pl.lit(year, dtype=pl.Int64).alias("ano_eleicao"),
+        pl.col("cd_eleicao").cast(pl.Int64),
+        "sg_ue",
+        "cd_cargo",
+        "nr_candidato",
+        "sq_candidato",
+    )
+    local = tmp_path / f"candidates_{year}.parquet"
+    df.write_parquet(local)
+    blob = local.read_bytes()
+    path = CANDIDATES + "candidates.parquet"
+    store.create(path, blob)
+    return manifest("tse_candidates", "build", CANDIDATES, [entry(path, blob)])
+
+
+@pytest.mark.parametrize("year", [2008, 2024])
+def test_numbers_missing_from_the_results_are_annulled_not_unmatched(tmp_path, year):
+    sections, results = one_year(year)
+    full = results[year]
+    dropped = full.filter(pl.col("cd_cargo") == "13").row(0, named=True)
+    counted = full.filter(pl.col("sq_candidato") != dropped["sq_candidato"])
+    store = MemoryStore()
+    manifests = stage(store, tmp_path, sections=sections, results={year: counted})
+    cands = candidates_manifest(store, tmp_path, year, full)
+    out = run_staged(
+        store, tmp_path, manifests, candidates_manifest=cands, max_unmatched_share=0.0001
+    )
+    df = read_output(store, out, sv.output_name(year, "PA"))
+    rows = df.filter(
+        (pl.col("cd_cargo") == "13") & (pl.col("nr_votavel") == int(dropped["nr_candidato"]))
+    )
+    assert rows.height > 0
+    assert rows["sq_candidato"].unique().to_list() == [dropped["sq_candidato"]]
+    assert rows["annulled_in_results"].all()
+    assert "unmatched_candidate_numbers=0/" in out["notes"]
+
+
+def test_without_the_candidate_file_a_missing_number_is_unmatched(tmp_path):
+    sections, results = one_year(2008)
+    full = results[2008]
+    dropped = full.filter(pl.col("cd_cargo") == "13").row(0, named=True)
+    counted = full.filter(pl.col("sq_candidato") != dropped["sq_candidato"])
+    store = MemoryStore()
+    manifests = stage(store, tmp_path, sections=sections, results={2008: counted})
+    with pytest.raises(BuildError, match="have no candidacy"):
+        run_staged(store, tmp_path, manifests, max_unmatched_share=0.0001)
