@@ -1,0 +1,112 @@
+{
+  "dataset": "tse_candidates",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/tse/candidates/2026-11-02/",
+  "created_at": "2026-11-02T14:36:59.854502+00:00",
+  "code_commit": "5b25d60a19861bcd057734e779a6db7443b5e32d",
+  "sources": [
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_2000.zip",
+      "last_modified": "Mon, 22 Jan 2024 13:30:57 GMT",
+      "etag": "\"485d681-60f88d6fae640\"",
+      "bytes": 75880065
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_2004.zip",
+      "last_modified": "Wed, 01 Sep 2021 14:02:27 GMT",
+      "etag": "\"504b150-5caef842ba2c0\"",
+      "bytes": 84193616
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_2008.zip",
+      "last_modified": "Wed, 01 Sep 2021 14:02:29 GMT",
+      "etag": "\"52ecf6c-5caef844a2740\"",
+      "bytes": 86953836
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_2012.zip",
+      "last_modified": "Fri, 22 Jul 2022 20:04:53 GMT",
+      "etag": "\"6eabb40-5e46a58eac340\"",
+      "bytes": 116046656
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_2016.zip",
+      "last_modified": "Thu, 11 May 2023 21:05:54 GMT",
+      "etag": "\"85a4ec3-5fb715aa21080\"",
+      "bytes": 140136131
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_2020.zip",
+      "last_modified": "Tue, 06 Jan 2026 19:52:44 GMT",
+      "etag": "\"516dbbe-647bd84ee6405\"",
+      "bytes": 85384126
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_2024.zip",
+      "last_modified": "Sun, 01 Nov 2026 05:24:27 GMT",
+      "etag": "\"41eb47c-65f303e384413\"",
+      "bytes": 69121148
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand_complementar/consulta_cand_complementar_2020.zip",
+      "last_modified": "Tue, 06 Jan 2026 19:51:09 GMT",
+      "etag": "\"23b3ad5-647bd7f43bf6c\"",
+      "bytes": 37436117
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand_complementar/consulta_cand_complementar_2024.zip",
+      "last_modified": "Sun, 01 Nov 2026 05:23:48 GMT",
+      "etag": "\"2032789-65f303be737f4\"",
+      "bytes": 33761161
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/tse/candidates/2026-11-02/consulta_cand_2000.zip",
+      "sha256": "f1b29fa847acd74c739ad6c1d5efa3fb8b8412a168303fc580c6ab4972cda032",
+      "bytes": 75880065
+    },
+    {
+      "path": "data/raw/tse/candidates/2026-11-02/consulta_cand_2004.zip",
+      "sha256": "917c224c0c5de85b3f75e56ed6c5723840d04486ed28c6679894723be06194d5",
+      "bytes": 84193616
+    },
+    {
+      "path": "data/raw/tse/candidates/2026-11-02/consulta_cand_2008.zip",
+      "sha256": "5bb3f77e70495acb49e4e88e6fb744830723a4a8f8f129f7c945b01e5ff8c8b0",
+      "bytes": 86953836
+    },
+    {
+      "path": "data/raw/tse/candidates/2026-11-02/consulta_cand_2012.zip",
+      "sha256": "bf205075f34b7f04c902eeee36abfd3628efc2f0ee02ece0a29142e84a07e94e",
+      "bytes": 116046656
+    },
+    {
+      "path": "data/raw/tse/candidates/2026-11-02/consulta_cand_2016.zip",
+      "sha256": "9fd0066979b45172870eca4f5434131d019d87f6018002a241e91d2c91658be1",
+      "bytes": 140136131
+    },
+    {
+      "path": "data/raw/tse/candidates/2026-11-02/consulta_cand_2020.zip",
+      "sha256": "8079b01adfa406ebe38ff1617abc835f0f5f8d09d18032c410fee04427baea26",
+      "bytes": 85384126
+    },
+    {
+      "path": "data/raw/tse/candidates/2026-11-02/consulta_cand_2024.zip",
+      "sha256": "485cde2150e2f03535dc0822d26e579d6b8081346c69dab619e369a96380f952",
+      "bytes": 69121148
+    },
+    {
+      "path": "data/raw/tse/candidates/2026-11-02/consulta_cand_complementar_2020.zip",
+      "sha256": "e73e9baafab2f607407664e1d505405ce6431aa76248caf836615abbc04c184c",
+      "bytes": 37436117
+    },
+    {
+      "path": "data/raw/tse/candidates/2026-11-02/consulta_cand_complementar_2024.zip",
+      "sha256": "a3745719797acbf2428e7048b18026738b478021333c81ac85655e092df5613e",
+      "bytes": 33761161
+    }
+  ],
+  "notes": ""
+}
