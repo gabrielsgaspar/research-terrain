@@ -187,6 +187,18 @@ datasets:
       otherwise Hidalgo's; 2008 from Hidalgo only. Carries panel_id and an
       error bound (conf_dist_km). Phone numbers are never kept.
 
+  - name: section_votes
+    source: built from tse_votes_by_section, tse_results and municipalities
+    licence: public
+    derived: data/derived/section_votes/
+    contract: data/contracts/section_votes.md
+    status: planned
+    notes: >
+      Votes by section for the Legal Amazon, 2004-2024 (2000 skipped), one
+      Parquet per state and year, with the polling-place number and, for
+      candidate votes, the candidacy key. Votes are votes cast: candidacies
+      annulled in the results are flagged, and margins must use counted votes.
+
   - name: mapbiomas_deforestation
     source: MapBiomas annual collection, exported via Earth Engine
     licence: check MapBiomas terms
