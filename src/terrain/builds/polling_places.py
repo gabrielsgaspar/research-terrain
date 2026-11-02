@@ -29,6 +29,16 @@ GEOCODED_FILE = "geocoded_polling_stations.csv.gz"
 PANEL_FILE = "panel_ids.csv.gz"
 TSE_MEMBER = "eleitorado_local_votacao_*.csv"
 MAX_MISSING_SHARE = 0.05
+# Coordinates that are present but do not parse as numbers become null and are
+# counted per year and source; above this share of a year's rows the build
+# stops, because a systematic format change (decimal commas, say) would
+# otherwise be hidden by the Hidalgo fallback. Checked on the real files
+# (2026-11-02): none in the TSE files for 2012-2024; 3 empty Hidalgo rows.
+MAX_UNPARSED_SHARE = 0.001
+# The TSE's only "no coordinate" code in these files is -1 (checked for
+# 2012-2024; -3 and -4 do not occur in the coordinate columns). Values written
+# without a leading zero near the equator (".0075", "-.0065") parse correctly.
+NO_COORDINATE = "-1"
 
 # The only TSE columns ever read. NR_TELEFONE_LOCAL is deliberately absent.
 TSE_COLUMNS = (
@@ -84,7 +94,10 @@ def read_tse_year(zip_path: Path) -> pl.DataFrame:
 
     A column a year lacks is filled with null. Latitude and longitude become
     floats; `-1` (the TSE's "no coordinate") and text that is not a number
-    become null. Zone and polling-place number are integers.
+    become null. Zone and polling-place number are integers. `coord_unparsed`
+    flags rows whose coordinate text was present (not empty, not `-1`) but did
+    not parse; the raw text itself is not kept, only counted (see
+    `check_unparsed`).
     """
     with zipfile.ZipFile(zip_path) as zf:
         raw = zf.read(_tse_member(zf)).decode("latin-1")
@@ -100,12 +113,20 @@ def read_tse_year(zip_path: Path) -> pl.DataFrame:
         pl.col("nr_local_votacao").cast(pl.Int32),
         _coordinate("nr_latitude").alias("lat"),
         _coordinate("nr_longitude").alias("long"),
+        (_unparsed("nr_latitude") | _unparsed("nr_longitude")).alias("coord_unparsed"),
     ).drop("nr_latitude", "nr_longitude")
 
 
 def _coordinate(column: str) -> pl.Expr:
     value = pl.col(column).cast(pl.Float64, strict=False)
-    return pl.when(value == -1).then(None).otherwise(value)
+    return pl.when(pl.col(column) == NO_COORDINATE).then(None).otherwise(value)
+
+
+def _unparsed(column: str, missing: tuple[str, ...] = ("", NO_COORDINATE)) -> pl.Expr:
+    """True where the text is present but is not a number."""
+    text = pl.col(column)
+    present = text.is_not_null() & ~text.is_in(list(missing))
+    return (present & text.cast(pl.Float64, strict=False).is_null()).fill_null(False)
 
 
 def read_hidalgo(geocoded_gz: Path, panel_gz: Path) -> pl.DataFrame:
@@ -143,6 +164,11 @@ def read_hidalgo(geocoded_gz: Path, panel_gz: Path) -> pl.DataFrame:
         pl.col("lat").cast(pl.Float64, strict=False),
         pl.col("long").cast(pl.Float64, strict=False),
         pl.col("conf_dist_km").cast(pl.Float64, strict=False),
+        (
+            _unparsed("lat", ("", "NA"))
+            | _unparsed("long", ("", "NA"))
+            | _unparsed("conf_dist_km", ("", "NA"))
+        ).alias("coord_unparsed"),
     )
     panel = pl.read_csv(panel_gz, columns=["panel_id", "local_id"], infer_schema=False)
     if stations["local_id"].is_duplicated().any():
@@ -287,6 +313,15 @@ def check_legal_amazon(df: pl.DataFrame, legal_codes: set[str]) -> None:
         raise BuildError(f"{bad.height} rows have a cd_ibge outside the Legal Amazon")
 
 
+def check_unparsed(year: int, source: str, rows: int, unparsed: int, max_share: float) -> None:
+    """Stop when too many present coordinates failed to parse."""
+    if rows and unparsed / rows > max_share:
+        raise BuildError(
+            f"{year}: {unparsed} of {rows} {source} rows have coordinates that are not numbers "
+            f"(max share {max_share}); check the file's number format"
+        )
+
+
 def check_coverage(year: int, rows: int, missing: int, max_share: float) -> None:
     if rows == 0:
         raise BuildError(f"{year}: no polling places")
@@ -347,7 +382,10 @@ def _note(year: int, s: dict[str, int]) -> str:
         f"{year}: rows={rows}, missing_coord_share={s['missing'] / rows:.4f}, "
         f"tse={s['tse']}, hidalgo={s['hidalgo']}, two_pair_places={s['two_pair']}, "
         f"panel_id_share={s['with_panel'] / rows:.4f}, "
-        f"hidalgo_stations_not_in_tse={s['hidalgo_not_in_tse']}"
+        f"hidalgo_stations_not_in_tse={s['hidalgo_not_in_tse']}, "
+        f"tse_unparsed={s.get('tse_unparsed', 0)}, "
+        f"hidalgo_unparsed={s.get('hidalgo_unparsed', 0)}, "
+        f"tse_other_election_year_rows={s.get('tse_other_year', 0)}"
     )
 
 
@@ -361,6 +399,7 @@ def build(
     tmp_dir: Path,
     years: tuple[int, ...] = YEARS,
     max_missing_share: float = MAX_MISSING_SHARE,
+    max_unparsed_share: float = MAX_UNPARSED_SHARE,
     code_commit: str | None = None,
     created_at: str | None = None,
 ) -> dict[str, Any]:
@@ -396,9 +435,25 @@ def build(
     notes: list[str] = []
     for y in sorted(years):
         tse_rows = None
+        tse_unparsed = tse_other_year = 0
         if y in tse_entries:
             tse_rows = read_tse_year(_fetch(store, tse_entries[y], tmp_dir))
+            # A file can carry rows of a later supplementary election; keep only
+            # this election year and count the rest (none in 2012-2024 so far).
+            other = pl.col("aa_eleicao").is_not_null() & (pl.col("aa_eleicao") != str(y))
+            tse_other_year = tse_rows.filter(other).height
+            tse_rows = tse_rows.filter(~other)
+            tse_unparsed = int(tse_rows["coord_unparsed"].sum())
+            check_unparsed(y, "TSE", tse_rows.height, tse_unparsed, max_unparsed_share)
+        year_stations = hidalgo.filter(pl.col("ano") == y)
+        hidalgo_unparsed = int(year_stations["coord_unparsed"].sum())
+        check_unparsed(y, "Hidalgo", year_stations.height, hidalgo_unparsed, max_unparsed_share)
         table, stats = place_table(y, hidalgo, tse_rows, municipalities)
+        stats.update(
+            tse_unparsed=tse_unparsed,
+            hidalgo_unparsed=hidalgo_unparsed,
+            tse_other_year=tse_other_year,
+        )
         del tse_rows
         check_key(table)
         check_legal_amazon(table, legal_codes)

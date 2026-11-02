@@ -492,3 +492,60 @@ def test_the_contract_exists_and_names_the_checks():
     text = CONTRACT.read_text(encoding="utf-8")
     for word in ("coord_source", "conf_dist_km", "panel_id", "max_missing_share"):
         assert word in text
+
+
+# --- Present coordinates that are not numbers: counted, and the build stops above a share
+
+
+def test_unparsed_coordinates_are_counted_and_stop_the_build_above_the_share(tmp_path):
+    def comma_1058(fields):
+        if fields[F_PLACE] == b"1058":
+            fields[F_LAT] = b'"-1,5"'  # a decimal comma: present, not a number
+        return [fields]
+
+    hidalgo = set_hidalgo(
+        hidalgo_frame(), "2024", "5533", "1058", lat="-1.5", long="-49.5", conf_dist_km="7.5"
+    )
+    tse = edit_rows(tse_bytes(), comma_1058)
+
+    # Within a permissive share: the place falls back to Hidalgo and the count is noted.
+    store = MemoryStore()
+    manifests = stage(store, tmp_path, tse=tse, hidalgo=hidalgo)
+    manifest = run(store, manifests, tmp_path, max_unparsed_share=1.0)
+    note = note_for(manifest, 2024)
+    unparsed = int(re.search(r"tse_unparsed=(\d+)", note).group(1))
+    assert unparsed > 0
+    out = read_year(store, manifest, 2024)
+    assert out.filter(pl.col("nr_local_votacao") == 1058)["coord_source"].to_list() == ["hidalgo"]
+
+    # At the default share the same input stops the build, naming the problem.
+    store = MemoryStore()
+    manifests = stage(store, tmp_path, tse=tse, hidalgo=hidalgo)
+    with pytest.raises(BuildError, match="not numbers"):
+        run(store, manifests, tmp_path)
+
+
+def test_equator_coordinates_without_a_leading_zero_parse():
+    df = pl.DataFrame({"x": [".00756662", "-.0065359", "-1", "", "abc"]})
+    parsed = df.select(pp._coordinate("x").alias("value"), pp._unparsed("x").alias("bad"))
+    assert parsed["value"].to_list()[:3] == [0.00756662, -0.0065359, None]
+    assert parsed["bad"].to_list() == [False, False, False, False, True]
+
+
+def test_rows_of_another_election_year_are_dropped_and_counted(tmp_path):
+    first = {"done": False}
+
+    def later_election(fields):
+        rows = [fields]
+        if not first["done"]:
+            first["done"] = True
+            extra = list(fields)
+            extra[F_PLACE] = b"9999"
+            extra[2] = b"2026"  # AA_ELEICAO
+            rows.append(extra)
+        return rows
+
+    store, manifest = built(tmp_path, tse=edit_rows(tse_bytes(), later_election))
+    assert "tse_other_election_year_rows=1" in note_for(manifest, 2024)
+    out = read_year(store, manifest, 2024)
+    assert 9999 not in out["nr_local_votacao"].to_list()

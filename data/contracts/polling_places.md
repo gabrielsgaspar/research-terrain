@@ -54,6 +54,21 @@ that key.
 - From 2012 the universe is the TSE file. Hidalgo stations with no TSE place are
   dropped; their number is in the notes.
 
+## Unparseable coordinates and other election years
+
+- `-1` is the TSE's only "no coordinate" code in these files (checked
+  2012-2024; `-3` and `-4` do not occur there). Values written without a
+  leading zero near the equator (`.0075`, `-.0065`) parse normally.
+- A coordinate that is present but is not a number (for example a decimal
+  comma) becomes null and falls back to Hidalgo. The raw text is not kept: it
+  is never useful downstream, and the count is what matters. Counts per year
+  and source are in the notes (`tse_unparsed`, `hidalgo_unparsed`), and the
+  build stops when they exceed 0.1% of a year's rows, so a format change in a
+  whole file cannot hide behind the fallback.
+- TSE rows whose `AA_ELEICAO` is not the build year (a later supplementary
+  election) are dropped and counted (`tse_other_election_year_rows`); none
+  occur in 2012-2024.
+
 ## Checks the build enforces
 
 Each raises `BuildError` before that year is written.
