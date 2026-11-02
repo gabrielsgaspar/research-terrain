@@ -1,0 +1,74 @@
+# polling_places
+
+Located polling places of the Legal Amazon, one Parquet per election year:
+`polling_places_2008.parquet`, `_2012`, `_2016`, `_2020` and `_2024`. Built by
+`src/terrain/builds/polling_places.py`; written to
+`data/derived/polling_places/<hash>/`, where `<hash>` is `content_hash` of the
+sorted input SHA-256s, the years and the build code. The build imports no other
+data-handling `terrain` module.
+
+## Sources
+
+- TSE polling places (`eleitorado_local_votacao_<year>.zip`, 2012 onward): one
+  row per section and round. Only these columns are read: `aa_eleicao`,
+  `cd_municipio`, `nr_zona`, `nr_local_votacao`, `nm_local_votacao`,
+  `ds_endereco`, `nm_bairro`, `nr_latitude`, `nr_longitude`. The phone column is
+  never selected. A column a year lacks is filled with null. Not read for 2008.
+- Hidalgo v0.16 `geocoded_polling_stations.csv.gz`: `cd_localidade_tse` is
+  zero-padded to 5 digits; (`ano`, TSE code, `nr_zona`, `nr_locvot`) is unique.
+- Hidalgo v0.16 `panel_ids.csv.gz`: `panel_id` joined on `local_id` (unique in
+  both files); stations without a row get a null `panel_id`.
+- The built `municipalities` table: `cd_ibge`, `cd_tse` and `legal_amazon`. Only
+  Legal Amazon municipalities are kept; `sg_ue` is the TSE code.
+
+## Columns
+
+One row per (`ano`, `cd_ibge`, `sg_ue`, `nr_zona`, `nr_local_votacao`), sorted by
+that key.
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| `ano` | int | election year |
+| `cd_ibge` | text | 7-digit IBGE code |
+| `sg_ue` | text | 5-digit TSE municipality code |
+| `nr_zona` | int | electoral zone |
+| `nr_local_votacao` | int | polling-place number (Hidalgo's `nr_locvot`) |
+| `lat`, `long` | float | coordinates; null when neither source has one |
+| `coord_source` | text | `tse` or `hidalgo`; null when there is no coordinate |
+| `conf_dist_km` | float | error bound: 0 for TSE, Hidalgo's value otherwise; null with no coordinate |
+| `panel_id` | text | Hidalgo panel ID of the matched station; null if none |
+| `nm_local_votacao`, `ds_endereco`, `nm_bairro` | text | name, address, neighbourhood |
+
+## Coordinates
+
+- 2008: Hidalgo only (`coord_source = hidalgo`). The TSE file does not exist.
+- Other years: places come from the TSE file. The TSE coordinate is used where
+  it is not `-1` (`coord_source = tse`, `conf_dist_km = 0`); otherwise Hidalgo's
+  station, matched on (`ano`, TSE code, `nr_zona`, `nr_locvot`). Text that is not
+  a number counts as missing.
+- A place with several distinct non-missing TSE pairs takes the most frequent
+  pair; a tie goes to the smallest (`lat`, `long`). Such places are counted, in
+  the Legal Amazon only.
+- `panel_id` comes through the matched Hidalgo station for every year, including
+  places whose coordinate is the TSE's.
+- From 2012 the universe is the TSE file. Hidalgo stations with no TSE place are
+  dropped; their number is in the notes.
+
+## Checks the build enforces
+
+Each raises `BuildError` before that year is written.
+
+- The key is unique.
+- Every `cd_ibge` is in the Legal Amazon.
+- The share of places without any coordinate is under 5% (parameter
+  `max_missing_share`).
+- `local_id` is unique in both Hidalgo files, and the Hidalgo station key is
+  unique.
+- Each downloaded file matches the SHA-256 in its manifest.
+
+## Notes
+
+The manifest `notes` give, per year: rows, share without a coordinate, places
+by `coord_source`, places with two TSE pairs, share with a `panel_id`, and
+Hidalgo stations missing from the TSE file. On the real data expect 14 places
+with two pairs in 2024; the tests cannot check that.

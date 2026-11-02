@@ -1,0 +1,435 @@
+"""Build located polling places of the Legal Amazon, one Parquet per election year.
+
+Contract of the output: data/contracts/polling_places.md. Pitfalls of the source
+files: data/fixtures/tse/README.md and data/fixtures/hidalgo/README.md.
+
+Coordinates come from the TSE polling-place files (2012 onward) where they are
+not -1, and from Hidalgo's geocoded stations otherwise. 2008 uses Hidalgo only.
+Phone numbers are never selected, so they cannot reach the output.
+"""
+
+from __future__ import annotations
+
+import fnmatch
+import io
+import json
+import zipfile
+from pathlib import Path
+from typing import Any
+
+import polars as pl
+
+from terrain.manifest import MANIFEST_NAME, build_manifest, content_hash, sha256_file
+from terrain.storage import Store
+
+DATASET = "polling_places"
+YEARS = (2008, 2012, 2016, 2020, 2024)
+HIDALGO_ONLY_YEARS = (2008,)
+GEOCODED_FILE = "geocoded_polling_stations.csv.gz"
+PANEL_FILE = "panel_ids.csv.gz"
+TSE_MEMBER = "eleitorado_local_votacao_*.csv"
+MAX_MISSING_SHARE = 0.05
+
+# The only TSE columns ever read. NR_TELEFONE_LOCAL is deliberately absent.
+TSE_COLUMNS = (
+    "aa_eleicao",
+    "cd_municipio",
+    "nr_zona",
+    "nr_local_votacao",
+    "nm_local_votacao",
+    "ds_endereco",
+    "nm_bairro",
+    "nr_latitude",
+    "nr_longitude",
+)
+PLACE = ["cd_municipio", "nr_zona", "nr_local_votacao"]
+KEY = ["ano", "cd_ibge", "sg_ue", "nr_zona", "nr_local_votacao"]
+OUTPUT_COLUMNS = [
+    "ano",
+    "cd_ibge",
+    "sg_ue",
+    "nr_zona",
+    "nr_local_votacao",
+    "lat",
+    "long",
+    "coord_source",
+    "conf_dist_km",
+    "panel_id",
+    "nm_local_votacao",
+    "ds_endereco",
+    "nm_bairro",
+]
+
+
+class BuildError(ValueError):
+    """Raised when an input or a check breaks the contract."""
+
+
+def output_name(year: int) -> str:
+    return f"polling_places_{year}.parquet"
+
+
+# --- Readers
+
+
+def _tse_member(zf: zipfile.ZipFile) -> str:
+    members = [n for n in zf.namelist() if fnmatch.fnmatch(n.lower(), TSE_MEMBER)]
+    if len(members) != 1:
+        raise BuildError(f"expected one {TSE_MEMBER} member, found {len(members)}")
+    return members[0]
+
+
+def read_tse_year(zip_path: Path) -> pl.DataFrame:
+    """The allowlisted columns of one TSE polling-place zip, as text.
+
+    A column a year lacks is filled with null. Latitude and longitude become
+    floats; `-1` (the TSE's "no coordinate") and text that is not a number
+    become null. Zone and polling-place number are integers.
+    """
+    with zipfile.ZipFile(zip_path) as zf:
+        raw = zf.read(_tse_member(zf)).decode("latin-1")
+    df = pl.read_csv(io.BytesIO(raw.encode("utf-8")), separator=";", infer_schema=False)
+    df = df.rename({c: c.strip().lower() for c in df.columns})
+    df = df.select(
+        pl.col(c).str.strip_chars() if c in df.columns else pl.lit(None, dtype=pl.String).alias(c)
+        for c in TSE_COLUMNS
+    )
+    return df.with_columns(
+        pl.col("cd_municipio").str.zfill(5),
+        pl.col("nr_zona").cast(pl.Int32),
+        pl.col("nr_local_votacao").cast(pl.Int32),
+        _coordinate("nr_latitude").alias("lat"),
+        _coordinate("nr_longitude").alias("long"),
+    ).drop("nr_latitude", "nr_longitude")
+
+
+def _coordinate(column: str) -> pl.Expr:
+    value = pl.col(column).cast(pl.Float64, strict=False)
+    return pl.when(value == -1).then(None).otherwise(value)
+
+
+def read_hidalgo(geocoded_gz: Path, panel_gz: Path) -> pl.DataFrame:
+    """Hidalgo stations with `panel_id`, one row per `local_id`.
+
+    `cd_localidade_tse` is zero-padded to 5 digits and the panel IDs are joined on
+    `local_id`. Raises if `local_id` repeats in either file, or if a station key
+    (`ano`, TSE code, zone, polling-place number) repeats.
+    """
+    stations = pl.read_csv(
+        geocoded_gz,
+        columns=[
+            "local_id",
+            "ano",
+            "cd_localidade_tse",
+            "nr_zona",
+            "nr_locvot",
+            "nm_locvot",
+            "ds_endereco",
+            "ds_bairro",
+            "lat",
+            "long",
+            "conf_dist_km",
+        ],
+        infer_schema=False,
+    ).select(
+        pl.col("local_id"),
+        pl.col("ano").cast(pl.Int32),
+        pl.col("cd_localidade_tse").str.strip_chars().str.zfill(5).alias("sg_ue"),
+        pl.col("nr_zona").cast(pl.Int32),
+        pl.col("nr_locvot").cast(pl.Int32).alias("nr_local_votacao"),
+        pl.col("nm_locvot").alias("nm_local_votacao"),
+        pl.col("ds_endereco"),
+        pl.col("ds_bairro").alias("nm_bairro"),
+        pl.col("lat").cast(pl.Float64, strict=False),
+        pl.col("long").cast(pl.Float64, strict=False),
+        pl.col("conf_dist_km").cast(pl.Float64, strict=False),
+    )
+    panel = pl.read_csv(panel_gz, columns=["panel_id", "local_id"], infer_schema=False)
+    if stations["local_id"].is_duplicated().any():
+        raise BuildError("Hidalgo: local_id repeats in the geocoded file")
+    if panel["local_id"].is_duplicated().any():
+        raise BuildError("Hidalgo: local_id repeats in panel_ids")
+    if stations.select("ano", "sg_ue", "nr_zona", "nr_local_votacao").is_duplicated().any():
+        raise BuildError("Hidalgo: (ano, cd_localidade_tse, nr_zona, nr_locvot) repeats")
+    return stations.join(panel, on="local_id", how="left")
+
+
+# --- Collapse and combine
+
+
+def collapse_places(rows: pl.DataFrame) -> tuple[pl.DataFrame, int]:
+    """One row per (`cd_municipio`, `nr_zona`, `nr_local_votacao`).
+
+    `rows` has one row per section; `lat` and `long` are null where missing. The
+    place's coordinate is the most frequent non-missing pair; ties go to the
+    smallest (`lat`, `long`). Also returns how many places have more than one
+    distinct pair. Names and address are the smallest value among the rows.
+    """
+    meta = rows.group_by(PLACE).agg(
+        pl.col("nm_local_votacao").drop_nulls().min(),
+        pl.col("ds_endereco").drop_nulls().min(),
+        pl.col("nm_bairro").drop_nulls().min(),
+    )
+    pairs = (
+        rows.filter(pl.col("lat").is_not_null() & pl.col("long").is_not_null())
+        .group_by(PLACE + ["lat", "long"])
+        .agg(pl.len().alias("n"))
+    )
+    several = pairs.group_by(PLACE).agg(pl.len().alias("k")).filter(pl.col("k") > 1).height
+    best = pairs.sort(PLACE + ["n", "lat", "long"], descending=[False] * 3 + [True, False, False])
+    best = best.unique(subset=PLACE, keep="first", maintain_order=True).drop("n")
+    return meta.join(best, on=PLACE, how="left"), several
+
+
+def place_table(
+    year: int,
+    hidalgo: pl.DataFrame,
+    tse_rows: pl.DataFrame | None,
+    municipalities: pl.DataFrame,
+) -> tuple[pl.DataFrame, dict[str, int]]:
+    """The polling places of one year, Legal Amazon only, and counts for the notes.
+
+    `tse_rows` is the section-level TSE frame (`read_tse_year`); it is not used,
+    and may be None, for the years in HIDALGO_ONLY_YEARS.
+    """
+    legal = municipalities.filter(pl.col("legal_amazon") & pl.col("cd_tse").is_not_null()).select(
+        "cd_ibge", pl.col("cd_tse").alias("sg_ue")
+    )
+    stations = hidalgo.filter(pl.col("ano") == year).join(legal, on="sg_ue", how="inner")
+    stations = stations.select(
+        "cd_ibge",
+        "sg_ue",
+        "nr_zona",
+        "nr_local_votacao",
+        "panel_id",
+        pl.col("lat").alias("h_lat"),
+        pl.col("long").alias("h_long"),
+        pl.col("conf_dist_km").alias("h_conf"),
+        pl.col("nm_local_votacao").alias("h_name"),
+        pl.col("ds_endereco").alias("h_address"),
+        pl.col("nm_bairro").alias("h_bairro"),
+    )
+    two_pair = 0
+    unmatched = 0
+    if year in HIDALGO_ONLY_YEARS:
+        table = stations.with_columns(
+            pl.col("h_name").alias("nm_local_votacao"),
+            pl.col("h_address").alias("ds_endereco"),
+            pl.col("h_bairro").alias("nm_bairro"),
+            pl.lit(None, dtype=pl.Float64).alias("t_lat"),
+            pl.lit(None, dtype=pl.Float64).alias("t_long"),
+        )
+    else:
+        if tse_rows is None:
+            raise BuildError(f"{year}: the TSE polling-place file is needed")
+        legal_tse = tse_rows.filter(pl.col("cd_municipio").is_in(legal["sg_ue"].to_list()))
+        places, two_pair = collapse_places(legal_tse)
+        places = places.rename({"lat": "t_lat", "long": "t_long", "cd_municipio": "sg_ue"})
+        keys = ["sg_ue", "nr_zona", "nr_local_votacao"]
+        unmatched = stations.join(places.select(keys), on=keys, how="anti").height
+        table = places.join(legal, on="sg_ue", how="inner")
+        table = table.join(
+            stations.drop("cd_ibge"), on=keys, how="left", validate="1:1"
+        ).with_columns(
+            pl.col("nm_local_votacao").fill_null(pl.col("h_name")),
+            pl.col("ds_endereco").fill_null(pl.col("h_address")),
+            pl.col("nm_bairro").fill_null(pl.col("h_bairro")),
+        )
+    has_tse = pl.col("t_lat").is_not_null() & pl.col("t_long").is_not_null()
+    has_hidalgo = pl.col("h_lat").is_not_null() & pl.col("h_long").is_not_null()
+    source = pl.when(has_tse).then(pl.lit("tse")).when(has_hidalgo).then(pl.lit("hidalgo"))
+    out = table.select(
+        pl.lit(year, dtype=pl.Int32).alias("ano"),
+        "cd_ibge",
+        "sg_ue",
+        "nr_zona",
+        "nr_local_votacao",
+        pl.when(has_tse).then(pl.col("t_lat")).otherwise(pl.col("h_lat")).alias("lat"),
+        pl.when(has_tse).then(pl.col("t_long")).otherwise(pl.col("h_long")).alias("long"),
+        source.alias("coord_source"),
+        pl.when(has_tse).then(pl.lit(0.0)).otherwise(pl.col("h_conf")).alias("conf_dist_km"),
+        "panel_id",
+        "nm_local_votacao",
+        "ds_endereco",
+        "nm_bairro",
+    )
+    # The conf_dist_km of a place without any coordinate means nothing.
+    out = out.with_columns(
+        pl.when(pl.col("coord_source").is_null())
+        .then(None)
+        .otherwise(pl.col("conf_dist_km"))
+        .alias("conf_dist_km")
+    ).sort(KEY)
+    stats = {
+        "rows": out.height,
+        "missing": out.filter(pl.col("coord_source").is_null()).height,
+        "tse": out.filter(pl.col("coord_source") == "tse").height,
+        "hidalgo": out.filter(pl.col("coord_source") == "hidalgo").height,
+        "two_pair": two_pair,
+        "with_panel": out["panel_id"].count(),
+        "hidalgo_not_in_tse": unmatched,
+    }
+    return out, stats
+
+
+# --- Checks
+
+
+def check_key(df: pl.DataFrame) -> None:
+    repeated = df.select(KEY).is_duplicated().sum()
+    if repeated:
+        raise BuildError(f"{repeated} rows repeat (ano, cd_ibge, sg_ue, nr_zona, nr_local_votacao)")
+
+
+def check_legal_amazon(df: pl.DataFrame, legal_codes: set[str]) -> None:
+    bad = df.filter(pl.col("cd_ibge").is_null() | ~pl.col("cd_ibge").is_in(list(legal_codes)))
+    if bad.height:
+        raise BuildError(f"{bad.height} rows have a cd_ibge outside the Legal Amazon")
+
+
+def check_coverage(year: int, rows: int, missing: int, max_share: float) -> None:
+    if rows == 0:
+        raise BuildError(f"{year}: no polling places")
+    if missing / rows >= max_share:
+        raise BuildError(
+            f"{year}: {missing} of {rows} places have no coordinate (max share {max_share})"
+        )
+
+
+# --- Build
+
+
+def _file(manifest: dict[str, Any], suffix: str) -> dict[str, Any]:
+    found = [f for f in manifest["files"] if f["path"].endswith(suffix)]
+    if len(found) != 1:
+        raise BuildError(f"{manifest.get('dataset')}: expected one file ending {suffix}")
+    return found[0]
+
+
+def _tse_entries(tse_manifest: dict[str, Any], years: tuple[int, ...]) -> dict[int, dict[str, Any]]:
+    return {
+        y: _file(tse_manifest, f"eleitorado_local_votacao_{y}.zip")
+        for y in years
+        if y not in HIDALGO_ONLY_YEARS
+    }
+
+
+# Every module whose code decides what this build writes. Its source is part of
+# the output path. This build imports no other data-handling terrain module.
+CODE_MODULES = (Path(__file__),)
+
+
+def code_sources(modules: tuple[Path, ...] | None = None) -> list[str]:
+    return [
+        m.read_text(encoding="utf-8") for m in sorted(CODE_MODULES if modules is None else modules)
+    ]
+
+
+def input_hash(
+    files: list[dict[str, Any]], years: tuple[int, ...], code: list[str] | None = None
+) -> str:
+    shas = ",".join(sorted(f["sha256"] for f in files))
+    sources = code_sources() if code is None else code
+    return content_hash(shas, ",".join(str(y) for y in sorted(years)), *sources)
+
+
+def _fetch(store: Store, entry: dict[str, Any], tmp_dir: Path) -> Path:
+    target = tmp_dir / entry["path"].rsplit("/", 1)[-1]
+    store.download(entry["path"], target)
+    if sha256_file(target) != entry["sha256"]:
+        raise BuildError(f"{target.name} does not match the sha256 in its manifest")
+    return target
+
+
+def _note(year: int, s: dict[str, int]) -> str:
+    rows = s["rows"]
+    return (
+        f"{year}: rows={rows}, missing_coord_share={s['missing'] / rows:.4f}, "
+        f"tse={s['tse']}, hidalgo={s['hidalgo']}, two_pair_places={s['two_pair']}, "
+        f"panel_id_share={s['with_panel'] / rows:.4f}, "
+        f"hidalgo_stations_not_in_tse={s['hidalgo_not_in_tse']}"
+    )
+
+
+def build(
+    store: Store,
+    tse_manifest: dict[str, Any],
+    hidalgo_manifest: dict[str, Any],
+    municipalities_manifest: dict[str, Any],
+    *,
+    derived_root: str,
+    tmp_dir: Path,
+    years: tuple[int, ...] = YEARS,
+    max_missing_share: float = MAX_MISSING_SHARE,
+    code_commit: str | None = None,
+    created_at: str | None = None,
+) -> dict[str, Any]:
+    """Build one Parquet per year into `<derived_root><hash>/`; return the manifest.
+
+    The caller writes the manifest (`terrain.manifest.write_manifest`) when `status`
+    is `created`. When the output path already has a manifest, nothing is read or
+    written and the status is `unchanged`.
+    """
+    tse_entries = _tse_entries(tse_manifest, years)
+    geocoded_entry = _file(hidalgo_manifest, GEOCODED_FILE)
+    panel_entry = _file(hidalgo_manifest, PANEL_FILE)
+    mun_entry = _file(municipalities_manifest, ".parquet")
+    entries = [geocoded_entry, panel_entry, mun_entry, *tse_entries.values()]
+
+    prefix = f"{derived_root}{input_hash(entries, years)}/"
+    if store.exists(prefix + MANIFEST_NAME):
+        existing = json.loads(store.read_bytes(prefix + MANIFEST_NAME))
+        existing["status"] = "unchanged"
+        return existing
+
+    hidalgo = read_hidalgo(
+        _fetch(store, geocoded_entry, tmp_dir), _fetch(store, panel_entry, tmp_dir)
+    )
+    municipalities = pl.read_parquet(
+        _fetch(store, mun_entry, tmp_dir), columns=["cd_ibge", "cd_tse", "legal_amazon"]
+    )
+    legal_codes = set(municipalities.filter(pl.col("legal_amazon"))["cd_ibge"].to_list())
+
+    # Every year is built and checked locally first; nothing reaches the store
+    # unless all of them pass, so a failed run leaves no partial output.
+    local: list[tuple[int, Path]] = []
+    notes: list[str] = []
+    for y in sorted(years):
+        tse_rows = None
+        if y in tse_entries:
+            tse_rows = read_tse_year(_fetch(store, tse_entries[y], tmp_dir))
+        table, stats = place_table(y, hidalgo, tse_rows, municipalities)
+        del tse_rows
+        check_key(table)
+        check_legal_amazon(table, legal_codes)
+        check_coverage(y, stats["rows"], stats["missing"], max_missing_share)
+        path = tmp_dir / output_name(y)
+        table.select(OUTPUT_COLUMNS).write_parquet(path)
+        local.append((y, path))
+        notes.append(_note(y, stats))
+
+    files: list[dict[str, Any]] = []
+    for y, path in local:
+        store.create(prefix + output_name(y), path)
+        files.append(
+            {
+                "path": prefix + output_name(y),
+                "sha256": sha256_file(path),
+                "bytes": path.stat().st_size,
+            }
+        )
+
+    return build_manifest(
+        dataset=DATASET,
+        stage="build",
+        status="created",
+        gcs_prefix=prefix,
+        files=files,
+        inputs=[
+            m["gcs_prefix"] + MANIFEST_NAME
+            for m in (tse_manifest, hidalgo_manifest, municipalities_manifest)
+        ],
+        notes="; ".join(notes),
+        code_commit=code_commit,
+        created_at=created_at,
+    )
