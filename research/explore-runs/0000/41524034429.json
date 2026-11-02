@@ -1,0 +1,15 @@
+{
+  "by_state": {
+    "AC": 11,
+    "AM": 31,
+    "AP": 8,
+    "MA": 91,
+    "MT": 71,
+    "PA": 72,
+    "RO": 26,
+    "RR": 8,
+    "TO": 69
+  },
+  "exploration_half": 387,
+  "legal_amazon": 773
+}
