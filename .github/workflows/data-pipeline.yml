@@ -155,6 +155,12 @@ jobs:
         run: |
           set -euo pipefail
           dest="data/manifests/${STAGE}/${TARGET}.json"
+          status="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["status"])' "${RUNNER_TEMP}/in/manifest.json")"
+          if [ "${status}" = "unchanged" ]; then
+            echo "The run created nothing new (status unchanged); nothing to record."
+            echo "changed=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
           mkdir -p "$(dirname "${dest}")"
           cp "${RUNNER_TEMP}/in/manifest.json" "${dest}"
           if git diff --quiet -- "${dest}" && git ls-files --error-unmatch "${dest}" > /dev/null 2>&1; then

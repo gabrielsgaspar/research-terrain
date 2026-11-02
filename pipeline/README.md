@@ -37,9 +37,9 @@ and a target (the script name without `.py`).
    ```
    `gcs_prefix` ends in `/`; every file path starts with it. The workflow
    rejects a manifest that breaks these rules.
-4. The workflow then opens a PR adding the manifest as
-   `data/manifests/<stage>/<target>.json`. Merging it is how later tasks learn
-   the data exists.
+4. When `status` is `created`, the workflow opens a PR adding the manifest
+   as `data/manifests/<stage>/<target>.json`. Merging it is how later tasks
+   learn the data exists. An `unchanged` run opens no PR.
 
 Keep scripts thin: logic lives in `src/terrain/` with tests that use fixtures
 and an in-memory store, never the network or GCS.
