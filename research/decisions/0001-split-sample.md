@@ -29,7 +29,8 @@ in the exploration list. The protection is therefore procedural, not secrecy:
    any other use as a must-fix error.
 3. Every confirmation run is logged in `confirm/ledger/`.
 
-A stronger version, to decide before outcomes are built: derived outcome
+A stronger version, to decide before outcomes are built (proposed in
+`0003-confirmation-rows.md`): derived outcome
 panels in the main bucket contain exploration rows only, and full panels are
 written only under `sealed/`.
 

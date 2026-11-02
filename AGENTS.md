@@ -89,7 +89,9 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
 
 - Municipalities are split into an exploration half and a confirmation half
   (`research/decisions/0001-split-sample.md`). All exploration uses the
-  exploration half only, through `data/derived/split/explore_municipalities.csv`.
+  exploration half only: every `explore/` script calls
+  `terrain.explore.exploration_municipalities` and `restrict` (a test checks),
+  and runs only through the `explore-run` workflow.
   Touching the confirmation half outside the `confirm-run` workflow is a
   serious error.
 - Every exploration task updates its idea file in `research/ideas/` and adds a
