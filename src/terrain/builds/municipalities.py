@@ -319,10 +319,22 @@ def _file(manifest: dict[str, Any], suffix: str) -> dict[str, Any]:
     return found[0]
 
 
-def input_hash(files: list[dict[str, Any]], variants_path: Path) -> str:
-    code = Path(__file__).read_text(encoding="utf-8")
-    shas = ",".join(f["sha256"] for f in files)
-    return content_hash(shas, variants_path.read_text(encoding="utf-8"), code)
+# Every module whose code decides what this build writes. Its source is part
+# of the output path, so a fix to any of them (the ODS reader included) gives
+# a new path and a rebuild, never a stale "unchanged".
+CODE_MODULES = (Path(__file__), Path(read_sheet.__code__.co_filename))
+
+
+def code_sources(modules: tuple[Path, ...] = CODE_MODULES) -> list[str]:
+    return [m.read_text(encoding="utf-8") for m in sorted(modules)]
+
+
+def input_hash(
+    files: list[dict[str, Any]], variants_path: Path, code: list[str] | None = None
+) -> str:
+    shas = ",".join(sorted(f["sha256"] for f in files))
+    sources = code_sources() if code is None else code
+    return content_hash(shas, variants_path.read_text(encoding="utf-8"), *sources)
 
 
 def _fetch(store: Store, entry: dict[str, Any], tmp_dir: Path) -> Path:

@@ -10,9 +10,11 @@ import polars as pl
 import pytest
 
 from terrain.builds.municipalities import (
+    CODE_MODULES,
     BuildError,
     build,
     check_legal_amazon,
+    input_hash,
     normalise_name,
 )
 from terrain.catalog import dataset
@@ -408,3 +410,15 @@ def test_changed_input_gives_a_new_path(built, tmp_path):
     hidalgo = hidalgo_frame().filter(pl.col("cd_localidade_tse") != "5436")
     other = run(store, stage(store, hidalgo=hidalgo), tmp_path)
     assert other["gcs_prefix"] != out["gcs_prefix"]
+
+
+def test_output_path_covers_the_ods_reader_and_input_order(tmp_path):
+    names = {m.name for m in CODE_MODULES}
+    assert names == {"municipalities.py", "ods.py"}
+    variants = tmp_path / "variants.yaml"
+    variants.write_text("variants: []\n", encoding="utf-8")
+    files = [{"sha256": "a" * 64}, {"sha256": "b" * 64}]
+    base = input_hash(files, variants, code=["build", "ods"])
+    assert input_hash(list(reversed(files)), variants, code=["build", "ods"]) == base
+    assert input_hash(files, variants, code=["build", "ods changed"]) != base
+    assert input_hash(files, variants) != base  # the real sources are hashed by default
