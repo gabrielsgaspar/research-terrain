@@ -21,8 +21,11 @@ Infrastructure for `research/ideas/0001-electoral-strongholds.md`.
     uploads with `if_generation_match=0` so GCS itself refuses an overwrite.
 - `src/terrain/manifest.py`: build, validate, write and find manifests
   exactly as specified in `pipeline/README.md` ("The contract every script
-  follows"). Validation applies the same rules as the "Check the manifest"
-  step in `.github/workflows/data-pipeline.yml`. Also: `sha256_file(path)`,
+  follows"). Validation applies the same structural rules as the "Check
+  the manifest" step in `.github/workflows/data-pipeline.yml` (keys,
+  dataset, stage, status, prefix, file paths, SHA-256), but not its
+  credential scan: the workflow already does that, and token prefixes
+  written in code would trip the builder's own secret scan. Also: `sha256_file(path)`,
   `latest_manifest(store, prefix)` (newest `_MANIFEST.json` under a prefix),
   and `content_hash(*parts)` for build output paths.
 - Tests in `tests/test_storage.py` and `tests/test_manifest.py`.
