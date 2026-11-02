@@ -425,7 +425,9 @@ def test_an_invalid_election_date_still_stops_the_build(tmp_path):
 
 
 def contract_columns() -> list[tuple[str, str]]:
-    rows = re.findall(r"^\| `(\w+)` \| (int|date|text) \|", CONTRACT.read_text("utf-8"), re.M)
+    rows = re.findall(
+        r"^\| `(\w+)` \| (int|date|text) \|", CONTRACT.read_text(encoding="utf-8"), re.M
+    )
     return [(name, kind) for name, kind in rows]
 
 

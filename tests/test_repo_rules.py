@@ -105,7 +105,9 @@ def test_fixtures_are_small_text_files():
 def test_split_hash_is_well_formed_if_sealed():
     path = REPO / "confirm" / "split.sha256"
     if path.exists():
-        assert re.fullmatch(r"[0-9a-f]{64}\n?", path.read_text()), "split.sha256 must be one hash"
+        assert re.fullmatch(r"[0-9a-f]{64}\n?", path.read_text(encoding="utf-8")), (
+            "split.sha256 must be one hash"
+        )
 
 
 def test_idea_files_follow_the_template():
@@ -151,3 +153,37 @@ def test_gitignore_keeps_project_paths_and_blocks_data():
     assert not wrongly_ignored, f".gitignore hides project paths: {wrongly_ignored}"
     not_blocked = [p for p in IGNORED if not _ignored(p)]
     assert not not_blocked, f".gitignore lets these through: {not_blocked}"
+
+
+def test_text_files_are_read_and_written_with_an_explicit_encoding():
+    """Windows defaults to cp1252, so `write_text(s)` there corrupts accented
+    text that a UTF-8 read then rejects. Every text read, write and open names
+    its encoding (as a keyword, or as read_text's first positional argument)."""
+    import ast
+
+    problems = []
+    for root in ("src", "tests", "pipeline", "explore", "scripts"):
+        for path in sorted((REPO / root).rglob("*.py")):
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+                keywords = {k.arg for k in node.keywords}
+                func = node.func
+                where = f"{path.relative_to(REPO)}:{node.lineno}"
+                if isinstance(func, ast.Attribute) and func.attr in ("read_text", "write_text"):
+                    positional = node.args[:1] if func.attr == "read_text" else node.args[1:2]
+                    if "encoding" not in keywords and not positional:
+                        problems.append(f"{where}: .{func.attr}() without an encoding")
+                elif (
+                    isinstance(func, ast.Name) and func.id == "open" and "encoding" not in keywords
+                ):
+                    mode = "r"
+                    if len(node.args) > 1 and isinstance(node.args[1], ast.Constant):
+                        mode = str(node.args[1].value)
+                    for k in node.keywords:
+                        if k.arg == "mode" and isinstance(k.value, ast.Constant):
+                            mode = str(k.value.value)
+                    if "b" not in mode:
+                        problems.append(f"{where}: open() in text mode without an encoding")
+    assert not problems, "\n".join(problems)

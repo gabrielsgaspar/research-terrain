@@ -146,7 +146,7 @@ def test_write_manifest_writes_local_and_store(tmp_path):
     out = tmp_path / "m.json"
     write_manifest(m, store, out)
     key = m["gcs_prefix"] + "_MANIFEST.json"
-    assert json.loads(out.read_text()) == m
+    assert json.loads(out.read_text(encoding="utf-8")) == m
     assert json.loads(store.read_bytes(key)) == m
     with pytest.raises(FileExistsError):
         write_manifest(m, store, out)

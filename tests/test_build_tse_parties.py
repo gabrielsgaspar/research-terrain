@@ -350,7 +350,9 @@ def test_changing_the_source_of_tse_candidates_changes_the_path(tmp_path):
     from terrain.builds.tse_parties import input_hash
 
     other = tmp_path / "tse_candidates_changed.py"
-    other.write_text(Path(tse_candidates.__file__).read_text(encoding="utf-8") + "\n# fix\n")
+    other.write_text(
+        Path(tse_candidates.__file__).read_text(encoding="utf-8") + "\n# fix\n", encoding="utf-8"
+    )
     this = CODE_MODULES[0]
     shas = ["1" * 64, "2" * 64]
     assert input_hash(shas, CODE_MODULES) == input_hash(shas, [this, CODE_MODULES[1]])
@@ -367,7 +369,7 @@ def test_injected_code_list_changes_the_built_path(tmp_path):
     acquire, muni = stage(store)
     a = run(store, acquire, muni, tmp_path)
     other = tmp_path / "other.py"
-    other.write_text("# changed\n")
+    other.write_text("# changed\n", encoding="utf-8")
     b = run(store, acquire, muni, tmp_path, code_modules=[CODE_MODULES[0], other])
     assert a["gcs_prefix"] != b["gcs_prefix"]
     assert b["status"] == "created"

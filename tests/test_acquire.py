@@ -136,7 +136,9 @@ def test_duplicate_file_names_raise():
 def test_real_tse_candidates_manifest_gives_unchanged(tmp_path):
     entry = dataset("tse_candidates")
     manifest = json.loads(
-        (REPO / "data" / "manifests" / "acquire" / "tse_candidates.json").read_text("utf-8")
+        (REPO / "data" / "manifests" / "acquire" / "tse_candidates.json").read_text(
+            encoding="utf-8"
+        )
     )
     store = MemoryStore()
     store.create(manifest["gcs_prefix"] + MANIFEST_NAME, json.dumps(manifest).encode())
