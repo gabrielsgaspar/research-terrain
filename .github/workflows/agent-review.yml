@@ -295,7 +295,7 @@ jobs:
           python3 -I - <<'EOF'
           import json, os, re, sys
 
-          PROTECTED_DIRS = (".github/", ".claude/", "harness/", "legacy/", "confirm/pap/", "confirm/specs/", "confirm/ledger/", "data/fixtures/", "data/manifests/")
+          PROTECTED_DIRS = (".github/", ".claude/", "harness/", "legacy/", "confirm/pap/", "confirm/specs/", "confirm/ledger/", "data/fixtures/", "data/manifests/", "data/reference/")
           PROTECTED_FILES = ("pyproject.toml", "uv.lock", "AGENTS.md", "CLAUDE.md", "confirm/split.sha256")
           work = os.path.join(os.environ["RUNNER_TEMP"], "agent-review")
 

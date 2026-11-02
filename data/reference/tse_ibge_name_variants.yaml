@@ -1,0 +1,26 @@
+# Reviewed exceptions for the TSE-IBGE municipality crosswalk.
+#
+# The crosswalk takes its TSE-IBGE code pairs from the Hidalgo geocoded
+# polling stations (catalog: polling_stations_geocoded) and checks every pair
+# by comparing the TSE name with the IBGE DTB 2024 name, after upper-casing,
+# removing accents and treating apostrophes and hyphens as spaces. The pairs
+# below fail that comparison for known reasons (spelling or a renamed
+# municipality) and were checked by hand on 2026-11-02. Any other mismatch
+# fails the build.
+#
+# Human-maintained: agents may read this file but not change it.
+variants:
+  - {tse: "00256", ibge: "1100098", uf: RO, tse_name: "ESPIGÃO DO OESTE", ibge_name: "Espigão D'Oeste"}
+  - {tse: "00337", ibge: "1100346", uf: RO, tse_name: "ALVORADA DO OESTE", ibge_name: "Alvorada D'Oeste"}
+  - {tse: "04120", ibge: "1502954", uf: PA, tse_name: "ELDORADO DOS CARAJÁS", ibge_name: "Eldorado do Carajás"}
+  - {tse: "05290", ibge: "1506500", uf: PA, tse_name: "SANTA ISABEL DO PARÁ", ibge_name: "Santa Izabel do Pará"}
+  - {tse: "16039", ibge: "2400208", uf: RN, tse_name: "ASSÚ", ibge_name: "Açu"}
+  - {tse: "16233", ibge: "2401206", uf: RN, tse_name: "AREZ", ibge_name: "Arês"}
+  - {tse: "17035", ibge: "2405306", uf: RN, tse_name: "BOA SAÚDE", ibge_name: "Januário Cicco", note: "renamed"}
+  - {tse: "31011", ibge: "2800100", uf: SE, tse_name: "AMPARO DE SÃO FRANCISCO", ibge_name: "Amparo do São Francisco"}
+  - {tse: "34118", ibge: "2905602", uf: BA, tse_name: "CAMACÃ", ibge_name: "Camacan"}
+  - {tse: "41092", ibge: "3105509", uf: MG, tse_name: "BARÃO DE MONTE ALTO", ibge_name: "Barão do Monte Alto"}
+  - {tse: "44571", ibge: "3122900", uf: MG, tse_name: "DONA EUSÉBIA", ibge_name: "Dona Euzébia"}
+  - {tse: "53031", ibge: "3165206", uf: MG, tse_name: "SÃO THOMÉ DAS LETRAS", ibge_name: "São Tomé das Letras"}
+  - {tse: "71013", ibge: "3550001", uf: SP, tse_name: "SÃO LUÍS DO PARAITINGA", ibge_name: "São Luiz do Paraitinga"}
+  - {tse: "91553", ibge: "5107800", uf: MT, tse_name: "SANTO ANTÔNIO DO LEVERGER", ibge_name: "Santo Antônio de Leverger"}

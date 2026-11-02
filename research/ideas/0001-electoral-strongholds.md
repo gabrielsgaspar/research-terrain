@@ -39,13 +39,19 @@ effect at all with adequate power.
 
 ## Data needed
 
-`tse_votes_by_section`, `polling_stations_geocoded`, `tse_candidates`,
+`tse_votes_by_section`, `tse_polling_places`, `polling_stations_geocoded`,
+`tse_candidates`, `tse_results`, `ibge_municipalities`,
 `mapbiomas_deforestation`, `funai_indigenous_lands`, `cnfp_public_forests`,
-`incra_settlements`, `ibge_legal_amazon_municipalities`.
+`incra_settlements`.
+
+Elections with usable geography: 2008, 2012, 2016, 2020 and 2024 (see
+`research/lessons.md`, 2026-11-02).
 
 ## Status
 
 - 2026-11-01: proposed. First step is the feasibility census: how many close
   pairs exist, and how many candidates have rural strongholds.
+- 2026-11-02: still proposed. Data profiling limits the design to the 2008-2024
+  elections; polling places can be located for about 98% of sections.
 
 ## Log

@@ -29,7 +29,7 @@ lists the pitfalls this task must handle.
     `nr_titulo_eleitoral_candidato`, `sg_ue`) stay strings with leading zeros;
   - dates (`dt_eleicao`, `dt_nascimento`) become dates;
   - supplementary elections kept, identified by `cd_eleicao` and
-    `cd_tipo_eleicao`.
+    `cd_tipo_eleicao` (never by the label, which changes across years).
 - For 2020 and 2024, join the complementary file on (`ano_eleicao`,
   `cd_eleicao`, `sq_candidato`), adding `cd_etnia_indigena`,
   `ds_etnia_indigena` and `st_quilombola`.
@@ -37,8 +37,10 @@ lists the pitfalls this task must handle.
   `<hash>` is `content_hash` of the input file SHA-256s and the build code.
   If that path already has a manifest, do nothing and report `unchanged`.
 - Checks the build itself enforces before writing: rows per year equal the
-  rows of that year's `BRASIL` file; (`ano_eleicao`, `cd_eleicao`,
-  `sq_candidato`) is unique; every complementary row joins.
+  rows of that year's `BRASIL` file; (`ano_eleicao`, `cd_eleicao`, `sg_ue`,
+  `sq_candidato`) is unique (before 2012 `sq_candidato` alone repeats across
+  municipalities; see "Keys and joins" in `data/fixtures/tse/README.md`);
+  every complementary row joins.
 - `data/contracts/tse_candidates.md`: every output column, its type, its
   source column per year, and the missing-value rule.
 - Tests in `tests/test_build_tse_candidates.py`, building from zips made in
@@ -67,7 +69,8 @@ lists the pitfalls this task must handle.
 6. Changing one input SHA-256 changes the output path; building twice with
    the same inputs reports `unchanged` and writes nothing.
 7. The row-count, uniqueness and join checks raise on deliberately broken
-   inputs (one test each).
+   inputs (one test each); the uniqueness test shows two 2000 rows with the
+   same `sq_candidato` in different municipalities are accepted.
 8. `data/contracts/tse_candidates.md` lists every output column.
 9. `uv run ruff check .`, `uv run ruff format --check .` and `uv run pytest`
    pass.

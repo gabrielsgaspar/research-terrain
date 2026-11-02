@@ -377,7 +377,8 @@ jobs:
                the work cannot be done without another file, stop and return
                `blocked` with the reason. Do not edit `.github/`, `.claude/`,
                `harness/`, `legacy/`, `confirm/pap/`, `confirm/specs/`,
-               `confirm/ledger/`, `data/fixtures/`, `data/manifests/`, `AGENTS.md`, `CLAUDE.md`,
+               `confirm/ledger/`, `data/fixtures/`, `data/manifests/`, `data/reference/`,
+               `AGENTS.md`, `CLAUDE.md`,
                `confirm/split.sha256`, `pyproject.toml` or `uv.lock` unless the
                plan names them.
             4. Never read, print or create `.env` or any secret. You have no
@@ -672,7 +673,8 @@ jobs:
       # Every path any commit changes must be listed under the plan's "Files
       # to change": an exact path, or a directory ending in `/`. Globs do not
       # count. Anything under .github/, .claude/, harness/, legacy/, confirm/pap/,
-      # confirm/specs/, confirm/ledger/, data/fixtures/ or data/manifests/, pyproject.toml,
+      # confirm/specs/, confirm/ledger/, data/fixtures/, data/manifests/ or data/reference/,
+      # pyproject.toml,
       # uv.lock, AGENTS.md, CLAUDE.md and confirm/split.sha256, and any .gitattributes (it can change how
       # git shows a file), need their exact file path; a directory entry
       # never unlocks them. No file whose name starts with `.env` is allowed,
@@ -694,7 +696,7 @@ jobs:
 
           HEADER = re.compile(r"^(?:\*\*(.+?)\*\*:?|#{1,6}\s+(.+?))\s*$")
           ENTRY = re.compile(r"^\s*[-*+]\s+`([^`]+)`")
-          PROTECTED_DIRS = (".github/", ".claude/", "harness/", "legacy/", "confirm/pap/", "confirm/specs/", "confirm/ledger/", "data/fixtures/", "data/manifests/")
+          PROTECTED_DIRS = (".github/", ".claude/", "harness/", "legacy/", "confirm/pap/", "confirm/specs/", "confirm/ledger/", "data/fixtures/", "data/manifests/", "data/reference/")
           PROTECTED_FILES = ("pyproject.toml", "uv.lock", "AGENTS.md", "CLAUDE.md", "confirm/split.sha256")
 
 

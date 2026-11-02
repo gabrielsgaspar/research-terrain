@@ -42,7 +42,7 @@ DATA_SUFFIXES = {
     ".pkl",
     ".npy",
 }
-FIXTURE_TEXT_SUFFIXES = {".csv", ".tsv", ".json", ".geojson", ".txt", ".md"}
+FIXTURE_TEXT_SUFFIXES = {".csv", ".tsv", ".json", ".geojson", ".txt", ".md", ".xml"}
 FIXTURE_MAX_BYTES = 200_000
 
 REQUIRED = [
