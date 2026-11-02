@@ -204,7 +204,7 @@ jobs:
           helper='!f() { echo username=x-access-token; echo "password=${PUSH_TOKEN}"; }; f'
           git -c core.hooksPath=/dev/null -c credential.helper= -c "credential.helper=${helper}" \
             push "https://github.com/${REPO}.git" "refs/heads/${branch}:refs/heads/${branch}"
-          summary="$(python3 -I -c 'import json,sys; m=json.load(open(sys.argv[1])); print(f"{m[\"status\"]}: {len(m[\"files\"])} files under gs://research-terrain/{m[\"gcs_prefix\"]}")' "${dest}")"
+          summary="$(python3 -I -c 'import json,sys; m=json.load(open(sys.argv[1])); print("%s: %d files under gs://research-terrain/%s" % (m["status"], len(m["files"]), m["gcs_prefix"]))' "${dest}")"
           printf 'Records the output of the `data-pipeline` run (%s).\n\n- %s\n- Manifest: `%s`\n\nMerge to make this data visible to the planner and later tasks.\n' \
             "${RUN_URL}" "${summary}" "${dest}" > "${RUNNER_TEMP}/body.md"
           gh pr create --repo "${REPO}" --base "${BASE_BRANCH}" --head "${branch}" \
