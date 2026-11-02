@@ -14,6 +14,7 @@ import json
 import re
 import zipfile
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -37,7 +38,13 @@ COMPLEMENTAR_COLUMNS = ["cd_etnia_indigena", "ds_etnia_indigena", "st_quilombola
 
 INT_COLUMNS = {"ano_eleicao", "cd_tipo_eleicao", "nr_turno", "cd_eleicao"}
 DATE_COLUMNS = {"dt_eleicao", "dt_nascimento"}
+STRICT_DATE_COLUMNS = {"dt_eleicao"}  # a bad value stops the build
 DATE_FORMAT = "%d/%m/%Y"
+
+# Birth dates: a bad value becomes null (original text kept in dt_nascimento_raw).
+BIRTH_MIN = date(1900, 1, 1)
+MIN_AGE_YEARS = 18
+MAX_BAD_BIRTH_SHARE = 0.001
 
 _CAND_ZIP = re.compile(r"consulta_cand_(\d{4})\.zip$")
 _COMP_ZIP = re.compile(r"consulta_cand_complementar_(\d{4})\.zip$")
@@ -122,8 +129,9 @@ def read_year(zip_path: Path) -> tuple[pl.DataFrame, int]:
 
 
 def harmonise(df: pl.DataFrame, key: list[str] = KEY) -> pl.DataFrame:
-    """Snake_case names, missing codes to null, dates and integers typed.
+    """Snake_case names, missing codes to null, integers and `dt_eleicao` typed.
 
+    `dt_nascimento` stays text here; see `type_birth_dates`.
     `key` columns must exist and are never nulled.
     """
     df = df.rename({c: snake(c) for c in df.columns})
@@ -138,9 +146,51 @@ def harmonise(df: pl.DataFrame, key: list[str] = KEY) -> pl.DataFrame:
     for c in df.columns:
         if c in INT_COLUMNS:
             typed.append(pl.col(c).cast(pl.Int32))
-        elif c in DATE_COLUMNS:
+        elif c in STRICT_DATE_COLUMNS:
             typed.append(pl.col(c).str.to_date(DATE_FORMAT, strict=True))
     return df.with_columns(typed)
+
+
+def type_birth_dates(df: pl.DataFrame) -> tuple[pl.DataFrame, int, int]:
+    """Type `dt_nascimento` leniently; keep the original text in `dt_nascimento_raw`.
+
+    Spaces are removed and parsing is non-strict. A value that does not parse, or
+    that falls before BIRTH_MIN or under MIN_AGE_YEARS before `dt_eleicao`, becomes
+    null. Returns the frame, the number of unparseable and of implausible values.
+    """
+    if "dt_nascimento" not in df.columns:
+        return df, 0, 0
+    parsed = (
+        pl.col("dt_nascimento")
+        .str.replace_all(" ", "", literal=True)
+        .str.to_date(DATE_FORMAT, strict=False)
+    )
+    df = df.with_columns(pl.col("dt_nascimento").alias("dt_nascimento_raw"))
+    df = df.with_columns(parsed.alias("dt_nascimento"))
+    unparseable = df.filter(
+        pl.col("dt_nascimento_raw").is_not_null() & pl.col("dt_nascimento").is_null()
+    ).height
+    implausible_mask = pl.col("dt_nascimento").is_not_null() & (
+        (pl.col("dt_nascimento") < BIRTH_MIN)
+        | (pl.col("dt_nascimento") > pl.col("dt_eleicao").dt.offset_by(f"-{MIN_AGE_YEARS}y"))
+    )
+    implausible = df.filter(implausible_mask).height
+    df = df.with_columns(
+        pl.when(implausible_mask)
+        .then(None)
+        .otherwise(pl.col("dt_nascimento"))
+        .alias("dt_nascimento")
+    )
+    return df, unparseable, implausible
+
+
+def check_birth_dates(
+    year: int, rows: int, unparseable: int, implausible: int, max_share: float
+) -> None:
+    """Raise if more than `max_share` of a year's birth dates are unusable. Counts only."""
+    for label, n in (("unparseable", unparseable), ("implausible", implausible)):
+        if rows and n / rows > max_share:
+            raise BuildError(f"{year}: {n} of {rows} birth dates {label} (max share {max_share})")
 
 
 def join_complementar(df: pl.DataFrame, comp: pl.DataFrame) -> pl.DataFrame:
@@ -189,6 +239,7 @@ def build(
     tmp_dir: Path,
     code_commit: str | None = None,
     created_at: str | None = None,
+    max_bad_birth_share: float = MAX_BAD_BIRTH_SHARE,
 ) -> dict[str, Any]:
     """Build the table into `<derived_root><hash>/candidates.parquet`.
 
@@ -215,13 +266,19 @@ def build(
     columns: list[str] = []
     for y in years:
         columns += [c for c in read_header(local[(False, y)]) if c not in columns]
+    if "dt_nascimento" in columns:
+        columns.insert(columns.index("dt_nascimento") + 1, "dt_nascimento_raw")
     columns += [c for c in COMPLEMENTAR_COLUMNS if c not in columns]
 
     parts: list[Path] = []
     rows: dict[int, int] = {}
+    bad_birth: dict[int, tuple[int, int]] = {}
     for y in years:
         df, raw_rows = read_year(local[(False, y)])
         df = harmonise(df)
+        df, unparseable, implausible = type_birth_dates(df)
+        check_birth_dates(y, df.height, unparseable, implausible, max_bad_birth_share)
+        bad_birth[y] = (unparseable, implausible)
         if (True, y) in local:
             comp, _ = read_year(local[(True, y)])
             df = join_complementar(df, harmonise(comp, COMPLEMENTAR_KEY))
@@ -249,7 +306,14 @@ def build(
             }
         ],
         inputs=[acquire_manifest["gcs_prefix"] + MANIFEST_NAME],
-        notes="rows per year: " + ", ".join(f"{y}={n}" for y, n in rows.items()),
+        notes=(
+            "rows per year: "
+            + ", ".join(f"{y}={n}" for y, n in rows.items())
+            + "; birth dates unparseable: "
+            + ", ".join(f"{y}={u}" for y, (u, _) in bad_birth.items())
+            + "; implausible: "
+            + ", ".join(f"{y}={i}" for y, (_, i) in bad_birth.items())
+        ),
         code_commit=code_commit,
         created_at=created_at,
     )
