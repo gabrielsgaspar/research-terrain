@@ -10,7 +10,7 @@ labels: []
 <!--
 Write it as if a stranger will read it: the planner sees this issue text and
 the repository, nothing else. Read AGENTS.md first; work on confirm/, the
-paper, legacy/ or the sealed bucket will be sent back.
+paper, legacy/ or sealed/ in GCS will be sent back.
 -->
 
 ## Goal

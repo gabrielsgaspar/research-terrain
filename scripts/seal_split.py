@@ -6,8 +6,8 @@
 list from IBGE). The script uses a system random source with no seed, so the
 split can never be regenerated. It writes, OUTSIDE the repository:
 
-    split.csv                     the full split  -> upload to the sealed bucket
-    explore_municipalities.csv    exploration half -> upload to data/derived/split/
+    split.csv                     the full split   -> gs://research-terrain/sealed/split/
+    explore_municipalities.csv    exploration half -> gs://research-terrain/data/derived/split/
 
 and prints the SHA-256 of split.csv, which you commit as confirm/split.sha256.
 Never commit split.csv itself.

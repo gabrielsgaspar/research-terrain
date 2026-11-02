@@ -2,7 +2,7 @@
 
 The split is drawn once, before any outcome data exists, with a system random
 source (no seed), so it cannot be regenerated or tuned later. The full split is
-stored in the sealed bucket; only its SHA-256 is committed, in
+stored under sealed/ in the bucket; only its SHA-256 is committed, in
 `confirm/split.sha256`. See research/decisions/0001-split-sample.md.
 """
 

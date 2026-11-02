@@ -14,7 +14,7 @@ confirmation half by the `confirm-run` workflow.
 
 - `scripts/seal_split.py` draws the split with a system random source and no
   seed, so it cannot be regenerated or tuned.
-- The full split goes to `gs://research-terrain-sealed/`; the exploration list
+- The full split goes to `gs://research-terrain/sealed/split/`; the exploration list
   goes to `data/derived/split/`; only the SHA-256 is committed, as
   `confirm/split.sha256`.
 
@@ -31,7 +31,7 @@ in the exploration list. The protection is therefore procedural, not secrecy:
 
 A stronger version, to decide before outcomes are built: derived outcome
 panels in the main bucket contain exploration rows only, and full panels are
-written only to the sealed bucket.
+written only under `sealed/`.
 
 ## Cost
 

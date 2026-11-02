@@ -229,7 +229,7 @@ jobs:
 
             - `out_of_scope`: the issue asks for something AGENTS.md puts out of
               scope (for example editing the pre-analysis plan, registered specs,
-              the ledger or the paper, reading the sealed bucket, committing data
+              the ledger or the paper, reading sealed/ in GCS, committing data
               files, or a new dependency without a stated reason), or
               something that conflicts with its rules. Do NOT plan anyway. In
               `comment`, say plainly that it is out of scope, quote or name the

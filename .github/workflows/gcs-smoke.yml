@@ -1,12 +1,15 @@
 name: GCS smoke test
 
-# Manual only. Proves the bucket permissions behave as designed:
-#   - terrain-acquire can create an object under data/raw/;
+# Manual only. Proves the bucket permissions behave as designed for
+# terrain-acquire:
+#   - it can create an object under data/raw/ and list data/raw/;
 #   - it cannot overwrite that object (raw is create-only);
-#   - it cannot write under data/derived/.
-# There is no checkout: this job runs no repository code while it holds GCP
-# credentials. The test object stays in data/raw/_smoke/ (acquire cannot
-# delete it); remove it yourself with gcloud afterwards.
+#   - it cannot write under data/derived/;
+#   - it cannot list sealed/.
+# A refusal only counts if GCP answers 403; any other error is a failure, so
+# an empty prefix cannot pass for a denied one. There is no checkout: this job
+# runs no repository code while it holds GCP credentials. The test object
+# stays in data/raw/_smoke/ (acquire cannot delete it); remove it yourself.
 on:
   workflow_dispatch:
 
@@ -31,32 +34,37 @@ jobs:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
           service_account: terrain-acquire@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com
       - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
-      - name: Check create, overwrite and scope
+      - name: Check create, list, overwrite and scope
         run: |
           set -uo pipefail
           file="${RUNNER_TEMP}/smoke.txt"
           echo "smoke test ${GITHUB_RUN_ID}" > "${file}"
           raw="${BUCKET}/data/raw/_smoke/${GITHUB_RUN_ID}.txt"
-          derived="${BUCKET}/data/derived/_smoke/${GITHUB_RUN_ID}.txt"
           ok=1
-          if gcloud storage cp "${file}" "${raw}"; then
-            echo "PASS: created ${raw}"
-          else
-            echo "::error::FAIL: could not create under data/raw/"; ok=0
-          fi
-          if gcloud storage cp "${file}" "${raw}"; then
-            echo "::error::FAIL: overwrote an object under data/raw/"; ok=0
-          else
-            echo "PASS: overwrite under data/raw/ was refused"
-          fi
-          if gcloud storage cp "${file}" "${derived}"; then
-            echo "::error::FAIL: wrote under data/derived/"; ok=0
-          else
-            echo "PASS: write under data/derived/ was refused"
-          fi
-          if gcloud storage ls "${BUCKET}/data/" > /dev/null; then
-            echo "PASS: can list data/"
-          else
-            echo "::error::FAIL: cannot list data/"; ok=0
-          fi
+
+          allowed() {  # allowed DESCRIPTION COMMAND...
+            local what=$1; shift
+            if "$@" > /dev/null 2> "${RUNNER_TEMP}/err"; then
+              echo "PASS: ${what}"
+            else
+              echo "::error::FAIL: ${what}"; cat "${RUNNER_TEMP}/err"; ok=0
+            fi
+          }
+          refused() {  # refused DESCRIPTION COMMAND...
+            local what=$1; shift
+            if "$@" > /dev/null 2> "${RUNNER_TEMP}/err"; then
+              echo "::error::FAIL: ${what} was allowed"; ok=0
+            elif grep -q "403" "${RUNNER_TEMP}/err"; then
+              echo "PASS: ${what} refused (403)"
+            else
+              echo "::error::FAIL: ${what} failed, but not with 403"; cat "${RUNNER_TEMP}/err"; ok=0
+            fi
+          }
+
+          allowed "create under data/raw/" gcloud storage cp "${file}" "${raw}"
+          allowed "list data/raw/" gcloud storage ls "${BUCKET}/data/raw/"
+          refused "overwrite under data/raw/" gcloud storage cp "${file}" "${raw}"
+          refused "write under data/derived/" \
+            gcloud storage cp "${file}" "${BUCKET}/data/derived/_smoke/${GITHUB_RUN_ID}.txt"
+          refused "list sealed/" gcloud storage ls "${BUCKET}/sealed/"
           [ "${ok}" = 1 ]
