@@ -35,6 +35,7 @@ flowchart LR
   M["Read the diff, merge"]:::human
   RF["Referee checklist<br/>(explore tasks)"]:::todo
   I --> P --> A --> B --> V --> PR --> R --> M
+  R -- "changes needed<br/>(fix round, up to 3)" --> B
   R -.-> RF -.-> M
 ```
 
@@ -94,8 +95,10 @@ flowchart TD
 
 **Run an agent task.** Open an issue with the **Agent task** template (ready
 drafts are in `harness/issue-drafts/`), add `agent-plan`, read the plan,
-swap to `agent-build`, then review and merge the PR. If anything fails, the
-issue gets `needs-human` and the reason; the full log is in the Actions tab.
+swap to `agent-build`, then review and merge the PR. If the reviewer asks for
+changes, the PR goes back to the builder by itself, up to three fix rounds;
+after that, or if anything fails, it gets `needs-human` and the reason. The
+full log is in the Actions tab.
 
 **Acquire or build data.** Once the script is merged:
 

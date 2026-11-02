@@ -21,6 +21,20 @@ plan review. They fall into five groups:
 Expect the rate to fall: each first use of a capability (first build, first
 deletion, first big task) has now happened once.
 
+## 2026-11-02: Review findings now go back to the builder (fix loop)
+- Tried: three must-fix findings (PRs #38, #52 and the results build) each
+  needed a person to patch the branch.
+- Result: agent-review now dispatches agent-build for a fix round when its
+  verdict is "Changes needed", at most three rounds per PR.
+- Why: the findings were specific and within the plan's files; a person
+  added nothing but copying.
+- Implication: a fix round checks out the existing branch at the reviewed
+  commit, reads the review's Must fix list as data, may change only the
+  plan's files, and passes the same verify over all the branch's commits.
+  The review comment is accepted only if it is agent-review's own verdict for
+  the current head. After three rounds, a failed dispatch or any failure, the
+  PR or issue gets needs-human.
+
 ## 2026-11-02: A task's threshold used the wrong unit, and a failed build left files behind (tse_results)
 - Tried: the first real run of the candidate-votes build.
 - Result: it stopped on 2008: 1,834 of 646,941 rows unmatched (0.28%) against
