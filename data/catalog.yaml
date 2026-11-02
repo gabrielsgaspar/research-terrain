@@ -8,6 +8,8 @@
 #   gcs:      path under gs://research-terrain/ (raw is write-once: new
 #             downloads go to a new dated folder)
 #   status:   planned or available; what has reached GCS is in data/manifests/
+#   derived:  (optional) folder under gs://research-terrain/ where the build
+#             writes <hash>/ folders; code reads it from here
 #   contract: schema file in data/contracts/, once built
 #   notes:    caveats
 #   acquire:  (optional) what the generic acquirer downloads for this
@@ -102,6 +104,8 @@ datasets:
     source: https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_<year>.zip
     licence: public
     gcs: data/raw/tse/candidates/
+    derived: data/derived/tse_candidates/
+    contract: data/contracts/tse_candidates.md
     status: planned
     notes: >
       Municipal elections 2000-2024. Race self-declared from 2016 in municipal
