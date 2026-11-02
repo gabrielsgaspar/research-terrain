@@ -133,6 +133,8 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
 
 - Allowlists are enforced: every agent runs with the sandbox's
   `autoAllowBashIfSandboxed` off, so a command not on its list is refused.
+- Every build writes all its outputs locally and uploads them only after every
+  check has passed, so a failed run leaves nothing in the bucket.
 - Every build's output path hashes its own code and the code of each
   `terrain` module that reads, parses or transforms its data (for example
   `terrain.ods`, or helpers imported from another build), with input SHA-256s

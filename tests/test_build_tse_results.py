@@ -388,9 +388,13 @@ def test_checks_pass_on_good_input():
 
 def test_match_share_check_raises_above_the_share_and_counts_otherwise():
     df = pl.DataFrame({"matched": [True] * 999 + [False]})
-    assert check_matched(df, "votes 2000") == 1  # 0.1% exactly is allowed
+    assert check_matched(df, "votes 2000", max_share=0.001) == 1  # exactly the share is allowed
     with pytest.raises(BuildError, match="2 of 1000 rows match no candidacy"):
-        check_matched(pl.DataFrame({"matched": [True] * 998 + [False] * 2}), "votes 2000")
+        check_matched(
+            pl.DataFrame({"matched": [True] * 998 + [False] * 2}), "votes 2000", max_share=0.001
+        )
+    # The default allows 1%: the 2008 candidate file lacks 0.43% of candidacies.
+    assert check_matched(pl.DataFrame({"matched": [True] * 990 + [False] * 10}), "votes 2008") == 10
     with pytest.raises(BuildError, match="match no candidacy"):
         check_matched(df, "votes 2000", max_share=0.0001)
 
@@ -522,3 +526,22 @@ def test_second_build_is_unchanged_and_writes_nothing(tmp_path):
     assert second["status"] == "unchanged"
     assert second["gcs_prefix"] == first["gcs_prefix"]
     assert sorted(store.list("")) == before
+
+
+def test_match_share_counts_candidacies_not_rows():
+    # One unmatched candidacy with a row in each of 13 zones is 1 of 2 candidacies,
+    # not 13 of 14 rows.
+    key = {"ano_eleicao": [2008] * 14, "cd_eleicao": [1] * 14, "sg_ue": ["04367"] * 14}
+    df = pl.DataFrame({**key, "sq_candidato": ["a"] + ["b"] * 13, "matched": [True] + [False] * 13})
+    assert check_matched(df, "votes 2008", max_share=0.5) == 1
+    with pytest.raises(BuildError, match="1 of 2 candidacies match no candidacy"):
+        check_matched(df, "votes 2008", max_share=0.4)
+
+
+def test_a_failed_year_leaves_nothing_in_the_store(tmp_path):
+    store = MemoryStore()
+    manifests = stage(store)
+    before = set(store.list(""))
+    with pytest.raises(BuildError):
+        run(store, manifests, tmp_path, max_unmatched_share=0.0)
+    assert set(store.list("")) == before

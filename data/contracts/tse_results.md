@@ -77,7 +77,7 @@ For every file, the build stops with an error that carries counts only if:
 1. the rows built differ from the records in the `BRASIL` file;
 2. the key above repeats;
 3. any row has no `cd_ibge`;
-4. (`candidate_votes` only) unmatched candidacies exceed 0.1% of a year's rows.
+4. (`candidate_votes` only) unmatched candidacies exceed 1% of a year's candidacies (distinct candidacy keys, not rows).
 
 It also stops if a count is not an integer, if a file does not match its
 manifest SHA-256, if a year has only one of the two kinds of file, or if

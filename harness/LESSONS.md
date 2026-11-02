@@ -21,6 +21,21 @@ plan review. They fall into five groups:
 Expect the rate to fall: each first use of a capability (first build, first
 deletion, first big task) has now happened once.
 
+## 2026-11-02: A task's threshold used the wrong unit, and a failed build left files behind (tse_results)
+- Tried: the first real run of the candidate-votes build.
+- Result: it stopped on 2008: 1,834 of 646,941 rows unmatched (0.28%) against
+  a 0.1% limit. It had already uploaded the 2000 and 2004 files, which stay
+  in the bucket without a manifest.
+- Why: the draft quoted "140 SQs unmatched in 2008" (distinct SQ values,
+  which repeat across municipalities before 2012) next to a limit on rows.
+  The true figure is 1,458 candidacies (0.43%), a real gap in the TSE's 2008
+  candidate file. Separately, the build uploaded each year as it went.
+- Implication: thresholds state their unit and are checked against the real
+  number in the same unit before a task is filed; this one now counts
+  candidacies and allows 1%. Every build writes all outputs locally and
+  uploads only after every check passes (the polling-places build already
+  did). Reproduced end to end on the real files before shipping the fix.
+
 ## 2026-11-02: A test passed on Linux CI and failed on Windows (tse_parties)
 - Tried: running the full suite locally on Windows.
 - Result: `test_changing_the_source_of_tse_candidates_changes_the_path` failed
