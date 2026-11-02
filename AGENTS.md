@@ -24,7 +24,9 @@ methods code and simulations, the research notebook in `research/`, tests.
 Out of scope for agents, always: the pre-analysis plan (`confirm/pap/`),
 registered specifications (`confirm/specs/`), the run ledger
 (`confirm/ledger/`), `confirm/split.sha256`, `data/manifests/`,
-`data/fixtures/` (people cut these from real data), `sealed/` in GCS, the paper
+`data/fixtures/` (people cut these from real data), `data/reference/`
+(reviewed reference lists, such as crosswalk exceptions), `sealed/` in GCS,
+the paper
 (`overleaf/`), and `legacy/`. If a task seems to need one of these, say so and
 stop.
 

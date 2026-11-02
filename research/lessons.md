@@ -3,6 +3,9 @@
 A dated log of what was tried, what happened and what it means. Every
 exploration adds an entry, including failures. Newest first.
 
+This log is for research and data findings. Lessons about the agent
+pipeline, GitHub and GCP live in `harness/LESSONS.md`.
+
 Format:
 
 ```
@@ -13,36 +16,39 @@ Format:
 - Implication: what changes because of it.
 ```
 
-## 2026-11-02: A plan that greps for token prefixes cannot be posted (issue #6)
-- Tried: re-planning issue #6 after adding the "no prefixes in code" rule.
-- Result: the planner obeyed the rule for code, then added a Done-when check
-  that grepped for the prefixes by name; the comment step's scan refused to
-  post the plan.
-- Why: the rule named code only, so the planner tried to enforce it with a
-  check that contained the very strings it banned.
-- Implication: the rule now covers plans, comments, checks and commands, and
-  says the workflows' scan is the only credential check.
+## 2026-11-02: Strongholds can use 2008-2024, not 2000-2024 (idea 0001)
+- Tried: profiling TSE section votes, TSE polling places and the Hidalgo
+  geocodes for Pará, 2000-2024.
+- Result: 2000 section votes have no polling-place IDs and cover 93 of 143
+  municipalities; 2004 has IDs but no coordinates anywhere (TSE coordinates
+  start 2010, Hidalgo 2006). From 2008, 99.7% (2008) and 97.9% (2024) of
+  section polling places have coordinates. Section sums equal the results
+  file exactly for every candidate in 2008 and 2024.
+- Why: the TSE's section files and polling-place register changed over time.
+- Implication: the design uses five elections: 2008, 2012, 2016, 2020, 2024.
+  2004 is still usable for vote margins without geography.
 
-## 2026-11-02: Token prefixes in code trip the secret scan (issue #6)
-- Tried: the storage-helpers task, which asked manifest validation to apply
-  "the same rules" as the workflow's manifest check.
-- Result: verify failed. The builder copied the workflow's credential regex
-  into `src/terrain/manifest.py`, and the literal prefixes in it matched the
-  secret scan (the escaped ones did not).
-- Why: the task was ambiguous; the scan cannot tell a pattern from a secret.
-- Implication: credential scanning stays in the workflows; tasks that mirror
-  a workflow check say which parts to mirror. Rule added to AGENTS.md.
+## 2026-11-02: A community TSE-IBGE crosswalk had seven wrong codes
+- Tried: checking the widely used betafcc crosswalk against IBGE's DTB 2024
+  names, a name match within each state, and the Hidalgo pairs.
+- Result: five Bahia municipalities were rotated and two in Santa Catarina
+  swapped, and Boa Esperança do Norte (MT, Legal Amazon) was missing. The
+  Hidalgo pairs agree with the name match in every disputed case and cover
+  every TSE code in the candidate files; 14 pairs differ only in spelling or
+  a rename.
+- Why: hand-maintained tables drift; nothing checked the names.
+- Implication: the crosswalk is built from Hidalgo's pairs, every pair is
+  checked by name, and the 14 known variants are a reviewed list in
+  `data/reference/tse_ibge_name_variants.yaml`. Any other mismatch fails.
 
-## 2026-11-02: Agents cannot add dependencies (issue #6)
-- Tried: the storage-helpers task, whose plan added `google-cloud-storage`.
-- Result: the builder stopped as blocked. It installs offline
-  (`UV_OFFLINE=1`) from what `uv.lock` lists, so a new package cannot be
-  resolved.
-- Why: by design. The builder's sandbox has no general network, so an agent
-  can never pull a package nobody approved.
-- Implication: a person adds dependencies in their own PR before the task;
-  tasks and plans never list `pyproject.toml` or `uv.lock`. Rule added to
-  AGENTS.md.
+## 2026-11-02: Before 2012, SQ_CANDIDATO is not a national ID
+- Tried: checking which key identifies a candidacy in each candidate file.
+- Result: (election, SQ_CANDIDATO) repeats about 400,000 times in 2000;
+  (election, municipality, SQ_CANDIDATO) is unique in every year.
+- Why: until 2008 the TSE numbered candidates within each municipality.
+- Implication: every join and uniqueness check uses (year, election,
+  municipality, SQ_CANDIDATO). Task draft 03 had the wrong key and was fixed
+  before filing.
 
 ## 2026-11-02: What the TSE candidate files actually contain (idea 0001, 0002)
 - Tried: downloading and profiling consulta_cand for every municipal election

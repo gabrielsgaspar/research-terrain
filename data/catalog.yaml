@@ -10,21 +10,93 @@
 #   status:   planned or available; what has reached GCS is in data/manifests/
 #   contract: schema file in data/contracts/, once built
 #   notes:    caveats
+#   acquire:  (optional) what the generic acquirer downloads for this
+#             dataset (issue draft 04):
+#               files:
+#                 - url: https://.../name_<year>_<uf>.zip
+#                   years: [...]        # expands <year>, if present
+#                   ufs: [...]          # expands <uf>, if present
+#                   check: {type: zip, member: "*_BRASIL.csv"}
+#             check types: zip (optionally a required member glob), ods,
+#             gzip. Every file is checked before anything is uploaded.
 
 datasets:
-  - name: ibge_legal_amazon_municipalities
-    source: IBGE, list of Legal Amazon municipalities
+  - name: ibge_municipalities
+    source: IBGE territorial division (DTB) 2024 and the Legal Amazon list 2024
     licence: public
-    gcs: data/raw/ibge/legal_amazon/
+    gcs: data/raw/ibge/municipalities/
     status: planned
-    notes: input to scripts/seal_split.py; needs columns code_ibge and uf
+    notes: >
+      DTB 2024 has 5,571 municipalities; the Legal Amazon list has 773. Both
+      are ODS spreadsheets; read them with zipfile and ElementTree (no extra
+      dependency). Input to the municipalities build and to
+      scripts/seal_split.py.
+    acquire:
+      files:
+        - url: https://geoftp.ibge.gov.br/organizacao_do_territorio/estrutura_territorial/divisao_territorial/2024/DTB_2024.zip
+          check: {type: zip, member: "RELATORIO_DTB_BRASIL_2024_MUNICIPIOS.ods"}
+        - url: https://geoftp.ibge.gov.br/organizacao_do_territorio/estrutura_territorial/amazonia_legal/2024/Municipios_da_Amazonia_Legal_2024.ods
+          check: {type: ods}
 
   - name: tse_votes_by_section
-    source: https://dadosabertos.tse.jus.br/ (votacao_secao, municipal elections)
+    source: https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/
     licence: public
-    gcs: data/raw/tse/votacao_secao/
+    gcs: data/raw/tse/sections/
     status: planned
-    notes: check the earliest municipal year available (2008 or 2004?)
+    notes: >
+      One zip per state and year; the nine Legal Amazon states, about 740 MB.
+      2000 is unusable for geography (no polling-place IDs, and in PA only 93
+      of 143 municipalities). From 2004 every row has a polling-place ID;
+      from 2024 also SQ_CANDIDATO. In PA, section sums equal the results file
+      exactly for every candidate in 2008 and 2024.
+    acquire:
+      files:
+        - url: https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_<year>_<uf>.zip
+          years: [2000, 2004, 2008, 2012, 2016, 2020, 2024]
+          ufs: [AC, AM, AP, MA, MT, PA, RO, RR, TO]
+          check: {type: zip, member: "votacao_secao_*.csv"}
+
+  - name: tse_polling_places
+    source: https://cdn.tse.jus.br/estatistica/sead/odsele/eleitorado_locais_votacao/
+    licence: public
+    gcs: data/raw/tse/polling_places/
+    status: planned
+    notes: >
+      Polling place for every section, with TSE coordinates for 77% (2012) to
+      96% (2024) of rows. Not published before 2010; use
+      polling_stations_geocoded for 2008. Contains school phone numbers:
+      never print them.
+    acquire:
+      files:
+        - url: https://cdn.tse.jus.br/estatistica/sead/odsele/eleitorado_locais_votacao/eleitorado_local_votacao_<year>.zip
+          years: [2012, 2016, 2020, 2024]
+          check: {type: zip, member: "eleitorado_local_votacao_*.csv"}
+
+  - name: tse_results
+    source: https://cdn.tse.jus.br/estatistica/sead/odsele/ (votacao_candidato_munzona, votacao_partido_munzona, detalhe_votacao_munzona, consulta_coligacao)
+    licence: public
+    gcs: data/raw/tse/results/
+    status: planned
+    notes: >
+      Votes per candidate and per party by municipality and zone, turnout by
+      municipality and zone, and coalition composition; 2000-2024, about
+      480 MB. Each zip repeats every row in a BRASIL file. Before 2012
+      SQ_CANDIDATO is unique only within a municipality. See
+      data/fixtures/tse/README.md.
+    acquire:
+      files:
+        - url: https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_candidato_munzona/votacao_candidato_munzona_<year>.zip
+          years: [2000, 2004, 2008, 2012, 2016, 2020, 2024]
+          check: {type: zip, member: "*_BRASIL.csv"}
+        - url: https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_partido_munzona/votacao_partido_munzona_<year>.zip
+          years: [2000, 2004, 2008, 2012, 2016, 2020, 2024]
+          check: {type: zip, member: "*_BRASIL.csv"}
+        - url: https://cdn.tse.jus.br/estatistica/sead/odsele/detalhe_votacao_munzona/detalhe_votacao_munzona_<year>.zip
+          years: [2000, 2004, 2008, 2012, 2016, 2020, 2024]
+          check: {type: zip, member: "*_BRASIL.csv"}
+        - url: https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_coligacao/consulta_coligacao_<year>.zip
+          years: [2000, 2004, 2008, 2012, 2016, 2020, 2024]
+          check: {type: zip, member: "*_BRASIL.csv"}
 
   - name: tse_candidates
     source: https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_<year>.zip
@@ -48,11 +120,23 @@ datasets:
       SQ_CANDIDATO.
 
   - name: polling_stations_geocoded
-    source: https://github.com/fdhidalgo/geocode_br_polling_stations
+    source: https://github.com/fdhidalgo/geocode_br_polling_stations (release v0.16)
     licence: check the repository licence
     gcs: data/raw/geocodes/hidalgo/
     status: planned
-    notes: use the per-station error bound to drop poorly located stations
+    notes: >
+      Geocoded polling stations for 2006-2024, with TSE and IBGE municipality
+      codes, a per-station error bound (conf_dist_km) and panel IDs. Pinned to
+      v0.16: local_id is not comparable across releases. Its TSE-IBGE pairs
+      are the crosswalk source (a community crosswalk had 7 wrong codes).
+    acquire:
+      files:
+        - url: https://github.com/fdhidalgo/geocode_br_polling_stations/releases/download/v0.16/geocoded_polling_stations.csv.gz
+          check: {type: gzip}
+        - url: https://github.com/fdhidalgo/geocode_br_polling_stations/releases/download/v0.16/panel_ids.csv.gz
+          check: {type: gzip}
+        - url: https://github.com/fdhidalgo/geocode_br_polling_stations/releases/download/v0.16/section_panel_mapping.csv.gz
+          check: {type: gzip}
 
   - name: mapbiomas_deforestation
     source: MapBiomas annual collection, exported via Earth Engine
