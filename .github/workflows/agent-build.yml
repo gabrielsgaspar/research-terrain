@@ -350,7 +350,7 @@ jobs:
           classify_inline_comments: "false"
           settings: >-
             {"permissions":{"blockReadsOutsideWorkingDirectories":true},
-            "sandbox":{"filesystem":{"allowWrite":["/opt/uv-cache"]},
+            "sandbox":{"autoAllowBashIfSandboxed":false,"filesystem":{"allowWrite":["/opt/uv-cache"]},
             "network":{"deniedDomains":["github.com","api.github.com"]},
             "credentials":{
             "envVars":[{"name":"CLAUDE_CODE_OAUTH_TOKEN","mode":"deny"},{"name":"ANTHROPIC_API_KEY","mode":"deny"},{"name":"GITHUB_TOKEN","mode":"deny"},{"name":"GH_TOKEN","mode":"deny"},{"name":"ACTIONS_RUNTIME_TOKEN","mode":"deny"},{"name":"ACTIONS_ID_TOKEN_REQUEST_TOKEN","mode":"deny"}],

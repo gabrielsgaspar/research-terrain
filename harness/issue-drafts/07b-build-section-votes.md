@@ -48,6 +48,9 @@ Expected files (four): `src/terrain/builds/section_votes.py`,
 `pipeline/build/section_votes.py`, `data/contracts/section_votes.md`,
 `tests/test_build_section_votes.py`.
 
+The output path hashes this build's code and every data-handling `terrain`
+module it imports, with input SHA-256s sorted (AGENTS.md).
+
 ## Out of scope
 
 - Coordinates (they are in `polling_places`, task 07a; join later on

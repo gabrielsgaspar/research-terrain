@@ -21,6 +21,29 @@ plan review. They fall into five groups:
 Expect the rate to fall: each first use of a capability (first build, first
 deletion, first big task) has now happened once.
 
+## 2026-11-02: Allowlists were not enforced inside the sandbox (PR #38)
+- Tried: the reviewer on task 05, allowed only `git log`.
+- Result: it reported running `ls` and `cat` as well. Nothing changed, but
+  the allowlist did not hold.
+- Why: Claude Code's sandbox defaults to `autoAllowBashIfSandboxed: true`,
+  which runs any sandboxed command without checking `--allowedTools`. The
+  same was true for the planner and the builder (inherited from Alteram).
+  The sandbox itself still limited files, network and secrets.
+- Implication: `autoAllowBashIfSandboxed` is false in `.claude/settings.json`
+  and in each workflow's settings. Watch the first builder run after the
+  change: a command it relied on but is not listed (for example `tail` in a
+  pipe) is now refused. Apply the same change to Alteram.
+
+## 2026-11-02: A build's output path must hash every module it relies on (PR #38)
+- Tried: the municipalities build, whose path hashed only its own module.
+- Result: the reviewer flagged that a fix to `terrain.ods`, which parses both
+  IBGE inputs, would keep the same path, so a rebuild would report
+  `unchanged` and keep the old output.
+- Why: the hash covered the build file, not the code it imports.
+- Implication: builds hash their own code and every data-handling module they
+  import, with input SHA-256s sorted (AGENTS.md). Drafts 06a and 06b import
+  helpers from the candidates build, so they must hash it too.
+
 ## 2026-11-02: The plan's file list is now structured data
 - Tried: two plans in a row had file lists verify could not read (brace
   shorthand; a deletion mentioned only in a step).

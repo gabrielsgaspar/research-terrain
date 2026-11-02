@@ -127,6 +127,12 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
 
 ### Agents
 
+- Allowlists are enforced: every agent runs with the sandbox's
+  `autoAllowBashIfSandboxed` off, so a command not on its list is refused.
+- Every build's output path hashes its own code and the code of each
+  `terrain` module that reads, parses or transforms its data (for example
+  `terrain.ods`, or helpers imported from another build), with input SHA-256s
+  sorted. A fix to any of them must give a new path.
 - What the builder can do, so plans stay within it: edit files in the
   checkout, and run only `uv sync`, `uv run ruff ...`, `uv run pytest ...`,
   `git status`, `git diff`, `git add <paths>`, `git rm <paths>` and
