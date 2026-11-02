@@ -120,6 +120,17 @@ datasets:
           years: [2020, 2024]
           check: {type: zip, member: "*_BRASIL.csv"}
 
+  - name: tse_parties
+    source: built from tse_results (votacao_partido_munzona, consulta_coligacao) and municipalities
+    licence: public
+    derived: data/derived/tse_parties/
+    contract: data/contracts/tse_parties.md
+    status: planned
+    notes: >
+      Party votes by municipality, zone, office and round, and one row per
+      party in each coalition or federation, 2000-2024, with cd_ibge. One
+      Parquet file per year and kind.
+
   - name: tse_candidates_complementar
     source: https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand_complementar/consulta_cand_complementar_<year>.zip
     licence: public
