@@ -1,0 +1,57 @@
+{
+  "dataset": "tse_polling_places",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/tse/polling_places/2026-11-02/",
+  "created_at": "2026-11-02T17:31:42.201721+00:00",
+  "code_commit": "168cf09b079265e08156ab1b0f927f6d22919cb4",
+  "sources": [
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/eleitorado_locais_votacao/eleitorado_local_votacao_2012.zip",
+      "last_modified": "Wed, 20 Aug 2025 13:51:53 GMT",
+      "etag": "\"29fce99-63ccc466ff040\"",
+      "bytes": 44027545
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/eleitorado_locais_votacao/eleitorado_local_votacao_2016.zip",
+      "last_modified": "Wed, 20 Aug 2025 13:50:45 GMT",
+      "etag": "\"2b92cfe-63ccc42625740\"",
+      "bytes": 45690110
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/eleitorado_locais_votacao/eleitorado_local_votacao_2020.zip",
+      "last_modified": "Sat, 21 Sep 2024 19:31:27 GMT",
+      "etag": "\"1ee4d6b-622a633acd6d0\"",
+      "bytes": 32394603
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/eleitorado_locais_votacao/eleitorado_local_votacao_2024.zip",
+      "last_modified": "Tue, 29 Oct 2024 18:02:29 GMT",
+      "etag": "\"2b2de83-625a1638093d9\"",
+      "bytes": 45276803
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/tse/polling_places/2026-11-02/eleitorado_local_votacao_2012.zip",
+      "sha256": "34004f61986be68191d3f539970329442b549f19c95fea78e322966a21da8e40",
+      "bytes": 44027545
+    },
+    {
+      "path": "data/raw/tse/polling_places/2026-11-02/eleitorado_local_votacao_2016.zip",
+      "sha256": "817f5f5c8977de8159f8434f830ce083f25e698756b3d48f068cf4e5dfb32518",
+      "bytes": 45690110
+    },
+    {
+      "path": "data/raw/tse/polling_places/2026-11-02/eleitorado_local_votacao_2020.zip",
+      "sha256": "ae71d2f1fafdac239e785cabc026f0cea66a60646750d9ad0d585402f4a72b30",
+      "bytes": 32394603
+    },
+    {
+      "path": "data/raw/tse/polling_places/2026-11-02/eleitorado_local_votacao_2024.zip",
+      "sha256": "352ea0731f862b8a52a749f076e1b597438cfafdd03621fcc772f3076bb35aed",
+      "bytes": 45276803
+    }
+  ],
+  "notes": ""
+}
