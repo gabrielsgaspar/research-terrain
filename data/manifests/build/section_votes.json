@@ -1,0 +1,288 @@
+{
+  "dataset": "section_votes",
+  "stage": "build",
+  "status": "created",
+  "gcs_prefix": "data/derived/section_votes/c74725a2e911e8eb/",
+  "created_at": "2026-11-02T23:42:43.883848+00:00",
+  "code_commit": "6227e257a1c21020277e9d5223219010753eb735",
+  "sources": [],
+  "files": [
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2004_AC.parquet",
+      "sha256": "ea24331a9a62adb35db09fe9f1aea4bfb93d20a442fdb49f34b140afe466b6a1",
+      "bytes": 152101
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2004_AM.parquet",
+      "sha256": "860b99b9a9b8520df0f5189e7b11d9369b4ba3e4dc48a8da59123011f1fc8047",
+      "bytes": 1148693
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2004_AP.parquet",
+      "sha256": "602d2773c20b5c96688b70de825cbaddd5e6d2704fc36b83c93421b077c5870a",
+      "bytes": 100499
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2004_MA.parquet",
+      "sha256": "3a1f02b777a5144cf8b18a084033ff402b835910bcef00aa5ad05a2e0dbdb39f",
+      "bytes": 1346539
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2004_MT.parquet",
+      "sha256": "1a0dcceee17040bbb8a929bcdfbe6f54b27d09c97376a2e58c935d475f461c6e",
+      "bytes": 346795
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2004_PA.parquet",
+      "sha256": "1a9add47d99ba7f54ca3e82267632ec894d85cf7884e21196969e226fc4c8477",
+      "bytes": 2109989
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2004_RO.parquet",
+      "sha256": "78142f20f1ca2cba7f925da767a6d10cde728fa551446370b949ad8133751d79",
+      "bytes": 475009
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2004_RR.parquet",
+      "sha256": "6b2ede999cf906b0566a93e060bdfc76afc247fafc1fcdaa6bb403e37f48e1b7",
+      "bytes": 86359
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2004_TO.parquet",
+      "sha256": "0c3853af84ae0fa07574c7e2afc4552905f566f4b83bb8355e874e1f22638c2c",
+      "bytes": 321282
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2008_AC.parquet",
+      "sha256": "0cc8637e2e5df2b122809dac771d3f6a32d2df38c0e630cffd2a6893606587ff",
+      "bytes": 183969
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2008_AM.parquet",
+      "sha256": "509d7b0b836fe21707d0a3b70fb4ee072aa3557851a83b7109e36a2a0ad33f8b",
+      "bytes": 1409385
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2008_AP.parquet",
+      "sha256": "4a06e8e6eda303b7165efbf75ebd7510227d662760418e4fda54ee1056ce0d88",
+      "bytes": 199222
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2008_MA.parquet",
+      "sha256": "1f5240242732d319b379360709b797807351f39ffc26e5c9554289bd72e6ae75",
+      "bytes": 1573676
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2008_MT.parquet",
+      "sha256": "73155c9bcb8ac9528acda4948dc9d270e6d7cd363dc954a6f08fb4f0aa5f31b0",
+      "bytes": 848514
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2008_PA.parquet",
+      "sha256": "58168dc976157e59f4a328553fe75f7d2d6272967b1e7ed50cdffcc45c541440",
+      "bytes": 2367299
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2008_RO.parquet",
+      "sha256": "40c3cabcda839e4cbaa8ae81a4965cbfd322d459d1c399829f730a38c2b836d2",
+      "bytes": 490883
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2008_RR.parquet",
+      "sha256": "1e2139401b0d4e604336b9fc1ed8f6e4fd9ce4fa29724f32557e9258a8230bcb",
+      "bytes": 164115
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2008_TO.parquet",
+      "sha256": "a1be7edc76b88f3d8b3c3f496eb65238ce5c669fbce050123925c75d9936507f",
+      "bytes": 338058
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2012_AC.parquet",
+      "sha256": "fc5066deba81a11935e7c6ba99913d813bcf1c0cdee6c406acbba38d9b180c94",
+      "bytes": 302562
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2012_AM.parquet",
+      "sha256": "9483e69e50e15b5301a512380b24b04e372ddf42049ff9681d2a3471ef4320f9",
+      "bytes": 1608777
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2012_AP.parquet",
+      "sha256": "f771d2befb468beb4a076e47cb3dd6ea3784f5ddff153b800f0e4341eb05e7f6",
+      "bytes": 270607
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2012_MA.parquet",
+      "sha256": "035e1e80edd41061cdbfc319435efc417df90e1bd8db16bf18578e81f26b8c23",
+      "bytes": 1791977
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2012_MT.parquet",
+      "sha256": "daade07b01e3842a4a67dcc35f95db56023c5017ac0d8da99cd37ce41d10d493",
+      "bytes": 1077113
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2012_PA.parquet",
+      "sha256": "a3f0c9fcae23f4ff57e4390bbc4fe4a160a0db67ae12a78222151b472a8beaf1",
+      "bytes": 2916561
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2012_RO.parquet",
+      "sha256": "b166f5fb591defcb8ed6b8b2493dd54be84f6f8be61a3744639e8c9cba2afc79",
+      "bytes": 647427
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2012_RR.parquet",
+      "sha256": "6ac10f478b586f9bc8ea6c53ded5b5ff5da7139c5ab34ce0536f19386ae8c564",
+      "bytes": 203907
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2012_TO.parquet",
+      "sha256": "b0f0bd30e5313c9111c2244127c7bed4c848a6153a4f174d31db86cfe0ccf338",
+      "bytes": 423693
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2016_AC.parquet",
+      "sha256": "7f42ed812478ef7fb8a09aa7b831d435a240ef6bfa0155bedf46bab1b8e3698c",
+      "bytes": 317966
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2016_AM.parquet",
+      "sha256": "51b4c50b38e32bdfe3b914c25a12729ba980aa9f192f85d200da9dded1cb6198",
+      "bytes": 2128258
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2016_AP.parquet",
+      "sha256": "5671ec42f5ee4dce25231b567532c3551cf90a67f0ccec4af4ee41a0adeafa6a",
+      "bytes": 315658
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2016_MA.parquet",
+      "sha256": "70e6338085168250198f74aa37fc58eb83759724d6dc85721d260a2c70a934ad",
+      "bytes": 1900976
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2016_MT.parquet",
+      "sha256": "ce63a4fd21c1d6b5f423d07c9bf4a5cf19ab9faafcadab102d345a8b6b705314",
+      "bytes": 1133195
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2016_PA.parquet",
+      "sha256": "b74c613321b2356dbdf15518230dc43640ad87d1535fa1ab563f8d847bf6b3c0",
+      "bytes": 3365325
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2016_RO.parquet",
+      "sha256": "05cf45c9d1383a397d2f9eadd5c92ce58a91bc85dece71d5cd4866eaf5076fbe",
+      "bytes": 685612
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2016_RR.parquet",
+      "sha256": "2d10332b8c56f3ca77fac38e1d687ad7e407d0de3f3ba0e16c8376e40cd81333",
+      "bytes": 244450
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2016_TO.parquet",
+      "sha256": "f694b2f369d1f584f2d20729ad06ef73deed30575dcfd312c7b93e6d795044b2",
+      "bytes": 483917
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2020_AC.parquet",
+      "sha256": "e8d8728b0c95af09fdd3aadb9eb4ccbd9d210f894ac753792ec9eab159c60c6f",
+      "bytes": 400775
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2020_AM.parquet",
+      "sha256": "50116ec9c80bc58116145ba755c9a906a25b7430b9d1f93e266accf61285ec52",
+      "bytes": 2339458
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2020_AP.parquet",
+      "sha256": "523ba7a1fd26ceb416e125419c4ba0cdd2e4c0e6f9686b5a274784c536440954",
+      "bytes": 353255
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2020_MA.parquet",
+      "sha256": "9ade3e64715f27ba0a9ce530392ca6dda49d59227a2a3cab4030683817bc896c",
+      "bytes": 2105394
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2020_MT.parquet",
+      "sha256": "21f792263fa21d071278eadade7d5b2e020c559fd5582c4f92bb79adea874d80",
+      "bytes": 1437060
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2020_PA.parquet",
+      "sha256": "c32b26084035c95009bea4a7c8de8fcd7ca7633c8aefc3f1d63f049a9b83299f",
+      "bytes": 3869584
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2020_RO.parquet",
+      "sha256": "873ee244b2ddc5d9acb587a72bf6b600a15f2ae55f55bc3dc8a3a678d30fde8b",
+      "bytes": 739671
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2020_RR.parquet",
+      "sha256": "e6c6b70377af93e37f4d0344c97bf50ab015ed84d7898414d0d84e45d802fc67",
+      "bytes": 285587
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2020_TO.parquet",
+      "sha256": "ebbb52ff521f70ce458bb4918faa03124e32d750298ff729dc02f51e70daa47b",
+      "bytes": 632250
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2024_AC.parquet",
+      "sha256": "99290a668d27de95956a8e4c3211c723ae30397f726b5f91f59a9f8bf5b38373",
+      "bytes": 305444
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2024_AM.parquet",
+      "sha256": "9a2b5e358bca1e48d1c13717d085074cd824a4ad00d5bc515959f2d438085872",
+      "bytes": 1953081
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2024_AP.parquet",
+      "sha256": "7e4175a5dead1170c46add4dedb0c24643433d59c3c2c786a9f3ed547ccc4d3d",
+      "bytes": 322418
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2024_MA.parquet",
+      "sha256": "cb892d215a8e067e48ed7432f5de2e457af2b4520f3f8539d98614c4ceb3f656",
+      "bytes": 2042638
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2024_MT.parquet",
+      "sha256": "740be601dc1f70e916b74a2e4566b0019854586de663f10af0a3cd24812850ea",
+      "bytes": 1308565
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2024_PA.parquet",
+      "sha256": "9447e3cac7d37d25690093dffa85286a836e1aed50f2bda17ddab2d0074d75b8",
+      "bytes": 3451168
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2024_RO.parquet",
+      "sha256": "6cc41c12c681bc0ab7f8e6dc1c8800b13b17d8b35a5d3c8c0f0ef82ec11da761",
+      "bytes": 727743
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2024_RR.parquet",
+      "sha256": "1f7fd51a489058063902eca58bae5154a853e4fb907ec81d7555a95dd1601c5c",
+      "bytes": 219080
+    },
+    {
+      "path": "data/derived/section_votes/c74725a2e911e8eb/section_votes_2024_TO.parquet",
+      "sha256": "a7739e504d9ba0950e8364bececf73c6c6eeb85ea3cfc5ead222757dfee5dbee",
+      "bytes": 547287
+    }
+  ],
+  "notes": "2000: skipped, the section files have no polling-place IDs; 2004: rows=2806478, section_sums_equal_results=43711/43882 (0.9961), annulled_in_results_candidacies=390, unmatched_candidate_numbers=0/44183, numbers_with_several_voted_candidacies=16, rows_outside_legal_amazon=116919, other_election_year_rows=0, municipalities_with_sections=675/771 (by state: AC=22, AM=62, AP=3, MA=170, MT=83, PA=143, RO=52, RR=1, TO=139); 2008: rows=3503101, section_sums_equal_results=49670/49670 (1.0000), annulled_in_results_candidacies=1032, unmatched_candidate_numbers=6/50708, numbers_with_several_voted_candidacies=0, rows_outside_legal_amazon=130338, other_election_year_rows=0, municipalities_with_sections=771/771 (by state: AC=22, AM=62, AP=16, MA=181, MT=141, PA=143, RO=52, RR=15, TO=139); 2012: rows=4194936, section_sums_equal_results=57917/57949 (0.9994), annulled_in_results_candidacies=814, unmatched_candidate_numbers=0/58731, numbers_with_several_voted_candidacies=0, rows_outside_legal_amazon=160698, other_election_year_rows=0, municipalities_with_sections=772/772 (by state: AC=22, AM=62, AP=16, MA=181, MT=141, PA=144, RO=52, RR=15, TO=139); 2016: rows=4647490, section_sums_equal_results=62901/62901 (1.0000), annulled_in_results_candidacies=1313, unmatched_candidate_numbers=0/64214, numbers_with_several_voted_candidacies=0, rows_outside_legal_amazon=167712, other_election_year_rows=0, municipalities_with_sections=771/771 (by state: AC=22, AM=62, AP=16, MA=181, MT=141, PA=144, RO=52, RR=15, TO=139); 2020: rows=4954885, section_sums_equal_results=76739/76739 (1.0000), annulled_in_results_candidacies=2015, unmatched_candidate_numbers=0/78754, numbers_with_several_voted_candidacies=0, rows_outside_legal_amazon=166498, other_election_year_rows=0, municipalities_with_sections=772/772 (by state: AC=22, AM=62, AP=16, MA=181, MT=141, PA=144, RO=52, RR=15, TO=139); 2024: rows=4993733, section_sums_equal_results=61815/61815 (1.0000), annulled_in_results_candidacies=1419, unmatched_candidate_numbers=0/63234, numbers_with_several_voted_candidacies=0, rows_outside_legal_amazon=178989, other_election_year_rows=0, municipalities_with_sections=773/773 (by state: AC=22, AM=62, AP=16, MA=181, MT=142, PA=144, RO=52, RR=15, TO=139)",
+  "inputs": [
+    "data/raw/tse/sections/2026-11-02/_MANIFEST.json",
+    "data/derived/tse_results/6f2af3d28c84af90/_MANIFEST.json",
+    "data/derived/municipalities/03690186b97be705/_MANIFEST.json",
+    "data/derived/tse_candidates/73af2aca241094a0/_MANIFEST.json"
+  ]
+}
