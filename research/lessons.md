@@ -13,6 +13,17 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-02: Agents cannot add dependencies (issue #6)
+- Tried: the storage-helpers task, whose plan added `google-cloud-storage`.
+- Result: the builder stopped as blocked. It installs offline
+  (`UV_OFFLINE=1`) from what `uv.lock` lists, so a new package cannot be
+  resolved.
+- Why: by design. The builder's sandbox has no general network, so an agent
+  can never pull a package nobody approved.
+- Implication: a person adds dependencies in their own PR before the task;
+  tasks and plans never list `pyproject.toml` or `uv.lock`. Rule added to
+  AGENTS.md.
+
 ## 2026-11-02: What the TSE candidate files actually contain (idea 0001, 0002)
 - Tried: downloading and profiling consulta_cand for every municipal election
   from 2000 to 2024, and the complementary files.

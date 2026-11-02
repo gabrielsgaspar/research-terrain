@@ -25,12 +25,13 @@ Infrastructure for `research/ideas/0001-electoral-strongholds.md`.
   step in `.github/workflows/data-pipeline.yml`. Also: `sha256_file(path)`,
   `latest_manifest(store, prefix)` (newest `_MANIFEST.json` under a prefix),
   and `content_hash(*parts)` for build output paths.
-- `pyproject.toml` and `uv.lock`: add `google-cloud-storage`.
 - Tests in `tests/test_storage.py` and `tests/test_manifest.py`.
 
 ## Out of scope
 
 - Any acquire or build script, any TSE-specific code, any workflow file.
+- `pyproject.toml` and `uv.lock`: `google-cloud-storage` is already a
+  dependency.
 - Calling GCS or the network in tests (`GCSStore` is not exercised beyond
   construction with a mocked client).
 

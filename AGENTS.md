@@ -91,7 +91,10 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
 
 - Logic lives in `src/terrain/` with tests; scripts in `pipeline/` and
   `explore/` stay thin.
-- New dependencies need a stated reason in the plan.
+- Agents cannot add dependencies: the builder installs packages offline from
+  what `uv.lock` already lists. A person adds a new dependency in its own PR
+  (`uv add <package>`) before the task that needs it. Plans must not list
+  `pyproject.toml` or `uv.lock`.
 - Python 3.12, ruff, pytest. Prefer the standard library, polars or duckdb for
   data, and pyfixest for regressions, unless the plan says otherwise.
 
