@@ -21,6 +21,17 @@ plan review. They fall into five groups:
 Expect the rate to fall: each first use of a capability (first build, first
 deletion, first big task) has now happened once.
 
+## 2026-11-02: Exploration needed its own runner (explore-run)
+- Tried: planning the feasibility census.
+- Result: there was nowhere to run it: `data-pipeline` runs only acquire and
+  build scripts, as the acquire and build accounts.
+- Why: exploration was designed (split sample, analysis account, `explore/`)
+  but not built.
+- Implication: `explore-run` runs a merged `explore/` script as
+  `terrain-analysis`, and opens a PR recording every run in
+  `research/explore-runs/`. `terrain.explore` holds the contract; a test
+  fails if a script does not restrict to the exploration half.
+
 ## 2026-11-02: Allowlists were not enforced inside the sandbox (PR #38)
 - Tried: the reviewer on task 05, allowed only `git log`.
 - Result: it reported running `ls` and `cat` as well. Nothing changed, but
