@@ -103,9 +103,12 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
 - Never read, print, copy or edit `.env`, key files or credentials. Read
   configuration only through environment variables.
 - Never put a key, token or password in code, tests, logs, commits or chat.
-  That includes credential prefixes as literals (for example in a regex or a
-  test string): the build's secret scan rejects them. Credential scanning
-  lives in the workflows, not in `src/`.
+- Never write a credential prefix (the first characters of an API key, OAuth
+  token, GitHub token or private key) anywhere: not in code, regexes, tests,
+  plans, comments, Done-when checks or shell commands such as `grep`. The
+  workflows scan every plan, commit and comment for those prefixes and refuse
+  to post or push anything that contains one, even inside a check meant to
+  find them. That scan is the only credential check; never add another.
 - GCP access in GitHub Actions comes only through Workload Identity Federation
   in jobs bound to an environment (`data-write`, `analysis`, `unblind`), and
   only for code already merged to main.

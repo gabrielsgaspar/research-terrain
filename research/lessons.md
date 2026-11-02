@@ -13,6 +13,16 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-02: A plan that greps for token prefixes cannot be posted (issue #6)
+- Tried: re-planning issue #6 after adding the "no prefixes in code" rule.
+- Result: the planner obeyed the rule for code, then added a Done-when check
+  that grepped for the prefixes by name; the comment step's scan refused to
+  post the plan.
+- Why: the rule named code only, so the planner tried to enforce it with a
+  check that contained the very strings it banned.
+- Implication: the rule now covers plans, comments, checks and commands, and
+  says the workflows' scan is the only credential check.
+
 ## 2026-11-02: Token prefixes in code trip the secret scan (issue #6)
 - Tried: the storage-helpers task, which asked manifest validation to apply
   "the same rules" as the workflow's manifest check.
