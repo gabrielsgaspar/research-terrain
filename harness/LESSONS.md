@@ -4,6 +4,34 @@ What setting up and running the agent pipeline, GitHub and GCP has taught
 us. Research and data findings live in `research/lessons.md`. Newest first,
 same format.
 
+## Patterns so far (2026-11-02)
+
+About twenty failures in the first two days. None put bad code on main or
+bad data in the bucket: each was stopped by a check, a blocked build or a
+plan review. They fall into five groups:
+
+| Group | Examples | Share | What prevents it now |
+| --- | --- | --- | --- |
+| Mistakes in what a person or chat assistant wrote (tasks, fixtures, workflow scripts) | quoting bug, unanchored `build/`, fixtures that hid bad dates, ambiguous "same as X", over-broad Done when | largest | the checklists in `harness/issue-drafts/README.md`; workflow scripts run under bash before merging |
+| A pipeline limit met for the first time | offline installs, no `rm`, literal plan paths, turn limits | second | limits written down in AGENTS.md and in each workflow's comments |
+| One-time setup | nested action allowlist, App not installed, GCS list prefix | done | GCS smoke test; setup steps recorded here |
+| Process slips | issue not updated, duplicate issue | small | the filing checklist |
+| Outside us | GitHub API error | rare | start a new run later |
+
+Expect the rate to fall: each first use of a capability (first build, first
+deletion, first big task) has now happened once.
+
+## 2026-11-02: The planner ran out of turns on a large task (issue #26)
+- Tried: planning task 04 (16 files: a new module, six scripts, deletions,
+  tests).
+- Result: the planner finished its plan in 21 turns, but the limit was 20,
+  so the action failed and nothing was posted.
+- Why: the limits (planner 20, reviewer 30, builder 60) were sized for
+  Alteram's small tasks; data tasks read and touch more files.
+- Implication: limits raised to planner 40, reviewer 50, builder 100. Tasks
+  stay small enough to finish well inside them: aim for at most about ten
+  files changed, and split larger work into separate issues.
+
 ## 2026-11-02: A plan listed files with brace shorthand (issue #26)
 - Tried: re-planning task 04.
 - Result: the plan listed five new scripts as
