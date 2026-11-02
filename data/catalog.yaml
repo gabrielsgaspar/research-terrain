@@ -78,6 +78,8 @@ datasets:
     source: https://cdn.tse.jus.br/estatistica/sead/odsele/ (votacao_candidato_munzona, votacao_partido_munzona, detalhe_votacao_munzona, consulta_coligacao)
     licence: public
     gcs: data/raw/tse/results/
+    derived: data/derived/tse_results/
+    contract: data/contracts/tse_results.md
     status: planned
     notes: >
       Votes per candidate and per party by municipality and zone, turnout by
