@@ -16,6 +16,22 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-02: Annulled candidacies are missing from the results file, not only zeroed
+- Tried: the first real run of the section-votes build.
+- Result: it stopped on 2004: 390 of 44,183 candidate numbers voted for in
+  the sections had no candidacy in the results file (0.88%).
+- Why: votes for candidacies whose registration was refused, cancelled or
+  not apt are cast and recorded by section, but most years' results files
+  leave those candidacies out entirely (2012 lists them with 0 votes, which
+  is the only case task 07b expected). In Pará they are 1.5% (2004) to 4.3%
+  (2024) of numbers, with 16,646 to 324,228 votes a year; every one of them
+  is in the candidate file.
+- Implication: the build now takes those candidacies from the candidate
+  file and flags their rows `annulled_in_results`. Numbers in neither file
+  are 0 in Pará except 2 in 2008. On the real Pará files, 2004-2024, the build
+  passes: section sums equal counted votes for 99.6% (2004) to 100% of
+  candidates. Close-race margins must use counted votes only.
+
 ## 2026-11-02: Section files count votes cast, results files count votes counted
 - Tried: checking task 07b's vote-sum rule on Pará, 2004-2024, before filing.
 - Result: in 2012, 256 candidates have 0 nominal votes in the results file

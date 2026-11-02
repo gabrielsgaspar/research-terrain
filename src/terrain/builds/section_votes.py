@@ -36,6 +36,13 @@ FILE_SQ_FROM = 2024
 # Share of candidates with votes in the results whose section sums must equal them.
 MIN_AGREE_SHARE = 0.99
 # Share of distinct candidate numbers that may be left without a candidacy.
+# Candidate numbers voted for in the sections that match no candidacy at all,
+# neither in the results (counted votes) nor in the candidate file. Numbers
+# whose candidacy is in the candidate file but not in the results were
+# annulled (registration refused, cancelled or not apt): their votes were cast
+# but not counted, and they are flagged `annulled_in_results`, never counted
+# here. In Pará those are 1.5-4.3% of numbers per year (2004-2024); numbers in
+# neither are 0 except 2 in 2008, where the TSE's candidate file has gaps.
 MAX_UNMATCHED_SHARE = 0.005
 
 MEMBER = "votacao_secao_*.csv"
@@ -158,6 +165,38 @@ def vote_type() -> pl.Expr:
     )
 
 
+def read_registered(path: Path, year: int, sg_ue: list[str]) -> pl.DataFrame:
+    """Candidacies in the candidate file, one per number, for the annulled fallback.
+
+    Returns (`cd_eleicao`, `sg_ue`, `cd_cargo`, `nr_votavel`, `sq_registered`).
+    Where a number has several candidacies (substitutions), the smallest
+    `sq_candidato` is kept; these votes were not counted either way.
+    """
+    df = (
+        pl.read_parquet(
+            path,
+            columns=[
+                "ano_eleicao",
+                "cd_eleicao",
+                "sg_ue",
+                "cd_cargo",
+                "nr_candidato",
+                "sq_candidato",
+            ],
+        )
+        .filter((pl.col("ano_eleicao") == year) & pl.col("sg_ue").is_in(sg_ue))
+        .with_columns(
+            pl.col("cd_eleicao").cast(pl.Int64),
+            pl.col("cd_cargo").cast(pl.Utf8),
+            pl.col("nr_candidato").cast(pl.Int64, strict=False).alias("nr_votavel"),
+        )
+        .filter(pl.col("nr_votavel").is_not_null())
+    )
+    return df.group_by(["cd_eleicao", "sg_ue", "cd_cargo", "nr_votavel"]).agg(
+        pl.col("sq_candidato").min().alias("sq_registered")
+    )
+
+
 def pick_candidacy(cand: pl.DataFrame) -> tuple[pl.DataFrame, int]:
     """One candidacy per candidate number: the one with the most counted votes.
 
@@ -182,7 +221,11 @@ def pick_candidacy(cand: pl.DataFrame) -> tuple[pl.DataFrame, int]:
 
 
 def link_candidates(
-    df: pl.DataFrame, year: int, cand: pl.DataFrame, pick: pl.DataFrame
+    df: pl.DataFrame,
+    year: int,
+    cand: pl.DataFrame,
+    pick: pl.DataFrame,
+    registered: pl.DataFrame | None = None,
 ) -> tuple[pl.DataFrame, pl.DataFrame]:
     """Add `sq_candidato` (candidate votes only), `nominal`, and `annulled_in_results`.
 
@@ -196,6 +239,20 @@ def link_candidates(
         df = df.join(pick.rename({"sq_candidato": "sq_pick"}), on=NUMBER, how="left")
         df = df.with_columns(pl.when(is_candidate).then(pl.col("sq_pick")).alias("sq_candidato"))
         df = df.drop("sq_pick")
+        if registered is not None:
+            # Numbers not in the results: take the candidacy from the candidate
+            # file. Their votes were cast but not counted (annulled).
+            on = ["cd_eleicao", "sg_ue", "cd_cargo", "nr_votavel"]
+            df = (
+                df.join(registered, on=on, how="left")
+                .with_columns(
+                    pl.when(is_candidate & pl.col("sq_candidato").is_null())
+                    .then(pl.col("sq_registered"))
+                    .otherwise(pl.col("sq_candidato"))
+                    .alias("sq_candidato")
+                )
+                .drop("sq_registered")
+            )
     df = df.drop("sq_file")
     counted = cand.select(*CANDIDACY, "nominal")
     sec = (
@@ -205,7 +262,9 @@ def link_candidates(
         .join(counted, on=CANDIDACY, how="left")
     )
     df = df.join(sec.select(*CANDIDACY, "sec_votes", "nominal"), on=CANDIDACY, how="left")
-    flagged = ((pl.col("nominal") == 0) & (pl.col("sec_votes") > 0)).fill_null(False)
+    # Cast but not counted: the candidacy has 0 counted votes, or is not in the
+    # results at all (null `nominal`).
+    flagged = (pl.col("nominal").fill_null(0) == 0) & (pl.col("sec_votes") > 0).fill_null(False)
     df = df.with_columns(flagged.alias("annulled_in_results")).drop("sec_votes", "nominal")
     return df, sec
 
@@ -248,6 +307,7 @@ def process_file(
     cand: pl.DataFrame,
     pick: pl.DataFrame,
     legal: pl.DataFrame,
+    registered: pl.DataFrame | None = None,
 ) -> tuple[pl.DataFrame, pl.DataFrame, dict[str, int]]:
     """Classify, link and check one state-year; return rows, candidacy sums and counts.
 
@@ -259,7 +319,7 @@ def process_file(
     outside = df.height - inside.height
     df = inside.with_columns(vote_type())
     numbers = df.filter(pl.col("vote_type") == "candidate").select(NUMBER).unique().height
-    df, sec = link_candidates(df, year, cand, pick)
+    df, sec = link_candidates(df, year, cand, pick, registered)
     unmatched = (
         df.filter((pl.col("vote_type") == "candidate") & pl.col("sq_candidato").is_null())
         .select(NUMBER)
@@ -274,7 +334,9 @@ def process_file(
         "outside": outside,
         "numbers": numbers,
         "unmatched": unmatched,
-        "annulled": sec.filter((pl.col("nominal") == 0) & (pl.col("sec_votes") > 0)).height,
+        "annulled": sec.filter(
+            (pl.col("nominal").fill_null(0) == 0) & (pl.col("sec_votes") > 0)
+        ).height,
     }
     return df, sec.select(*CANDIDACY, "sec_votes"), stats
 
@@ -343,6 +405,7 @@ def build(
     municipalities_manifest: dict[str, Any],
     *,
     derived_root: str,
+    candidates_manifest: dict[str, Any] | None = None,
     tmp_dir: Path,
     years: tuple[int, ...] = YEARS,
     min_agree_share: float = MIN_AGREE_SHARE,
@@ -363,8 +426,10 @@ def build(
         raise BuildError("no section zips for the requested years")
     cand_entries = {y: _file(results_manifest, f"candidate_votes_{y}.parquet") for y in todo}
     mun_entry = _file(municipalities_manifest, ".parquet")
+    reg_entry = _file(candidates_manifest, "candidates.parquet") if candidates_manifest else None
     entries = [
         mun_entry,
+        *([reg_entry] if reg_entry else []),
         *cand_entries.values(),
         *(e for y in todo for e in by_year[y].values()),
     ]
@@ -386,6 +451,7 @@ def build(
 
     # Every state-year is built and checked locally first; nothing reaches the
     # store unless all of them pass, so a failed run leaves no partial output.
+    reg_path = _fetch(store, reg_entry, tmp_dir) if reg_entry else None
     local: list[tuple[str, Path]] = []
     notes = [f"{y}: skipped, the section files have no polling-place IDs" for y in skipped]
     for y in todo:
@@ -393,6 +459,11 @@ def build(
         cand = read_candidacies(cand_path, legal["sg_ue"].to_list())
         cand_path.unlink()
         pick, several = pick_candidacy(cand)
+        registered = (
+            read_registered(reg_path, y, legal["sg_ue"].to_list())
+            if reg_path and y < FILE_SQ_FROM
+            else None
+        )
         parts: list[pl.DataFrame] = []
         totals = {"rows": 0, "other_year": 0, "outside": 0, "numbers": 0, "unmatched": 0}
         totals["annulled"] = 0
@@ -400,7 +471,7 @@ def build(
             zip_path = _fetch(store, by_year[y][uf], tmp_dir)
             raw = read_section_zip(zip_path)
             zip_path.unlink()
-            df, sec, stats = process_file(raw, y, cand, pick, legal)
+            df, sec, stats = process_file(raw, y, cand, pick, legal, registered)
             del raw
             for k, v in stats.items():
                 totals[k] += v
@@ -435,7 +506,13 @@ def build(
         files=files,
         inputs=[
             m["gcs_prefix"] + MANIFEST_NAME
-            for m in (sections_manifest, results_manifest, municipalities_manifest)
+            for m in (
+                sections_manifest,
+                results_manifest,
+                municipalities_manifest,
+                candidates_manifest,
+            )
+            if m
         ],
         notes="; ".join(notes),
         code_commit=code_commit,

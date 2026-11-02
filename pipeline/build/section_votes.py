@@ -20,6 +20,7 @@ MANIFESTS = REPO / "data" / "manifests"
 SECTIONS_MANIFEST = MANIFESTS / "acquire" / "tse_votes_by_section.json"
 RESULTS_MANIFEST = MANIFESTS / "build" / "tse_results.json"
 MUNICIPALITIES_MANIFEST = MANIFESTS / "build" / "municipalities.json"
+CANDIDATES_MANIFEST = MANIFESTS / "build" / "tse_candidates.json"
 
 
 def _load(path: Path) -> dict:
@@ -39,6 +40,7 @@ def main() -> None:
             _load(RESULTS_MANIFEST),
             _load(MUNICIPALITIES_MANIFEST),
             derived_root=dataset("section_votes")["derived"],
+            candidates_manifest=_load(CANDIDATES_MANIFEST),
             tmp_dir=Path(tmp),
             code_commit=os.environ.get("CODE_COMMIT", ""),
         )

@@ -4,7 +4,10 @@ name: Agent review
 # passes on a pull request that agent-build opened, Claude (Opus, read-only)
 # reviews the diff against the plan's "Done when" list, and a plain step posts
 # one comment and sets one label: agent-approved or needs-human. The comment
-# is advisory. Nothing here approves, merges, pushes or starts a fix loop.
+# is advisory. Nothing here approves, merges or pushes. A "Changes needed"
+# verdict sends the PR back to agent-build for a fix round (workflow_dispatch),
+# at most three rounds per PR; after that, or if the dispatch fails, the PR
+# gets needs-human.
 #
 # Why workflow_run and not pull_request: workflow_run always runs this file
 # from the default branch, so no pull request can rewrite the guard below. A
@@ -680,6 +683,7 @@ jobs:
     permissions:
       issues: write # one comment, and adding or removing our labels (PRs are issues)
       pull-requests: write # the same calls on a PR, which 403 with issues: write alone; also reads the PR's head
+      actions: write # dispatch agent-build for a fix round; a dispatch is the one event the job token may start
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       PR: ${{ needs.review.outputs.pr }}
@@ -718,6 +722,19 @@ jobs:
           if [ "${REVIEW_RESULT}" = success ] && [ -n "${COMMENT}" ] && { [ "${VERDICT}" = approve ] || [ "${VERDICT}" = changes ]; }; then
             printf '%s\n' "${COMMENT}" > comment.md
             if [ "${VERDICT}" = approve ]; then add=agent-approved; remove=needs-human; else add=needs-human; remove=agent-approved; fi
+            if [ "${VERDICT}" = changes ]; then
+              # Rounds so far, counting this one.
+              rounds="$(gh api --paginate "repos/${REPO}/issues/${PR}/comments?per_page=100" \
+                --jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("## Agent review: Changes needed")))] | length' \
+                | awk '{ s += $1 } END { print s + 1 }')"
+              if [ "${rounds}" -le 3 ]; then
+                fix=true
+                add=""
+                printf '\n_Sent back to the builder: fix round %s of 3._\n' "${rounds}" >> comment.md
+              else
+                printf '\n_Three fix rounds used; a person must decide._\n' >> comment.md
+              fi
+            fi
           else
             reason="${REASON:-The run failed before it recorded a reason.}"
             if grep -qE 'sk-ant-|lsv2_|gh[pousr]_|github_pat_|-----BEGIN|ya29\.|olp_' <<< "${reason}"; then
@@ -738,10 +755,22 @@ jobs:
             echo "::error::The comment contains something that looks like a token. Not posting it."
             exit 1
           fi
-          jq -n --rawfile body comment.md '{body: $body}' \
-            | gh api --method POST "repos/${REPO}/issues/${PR}/comments" --input - > /dev/null
-          gh api --method POST "repos/${REPO}/issues/${PR}/labels" -f "labels[]=${add}" > /dev/null
+          comment_id="$(jq -n --rawfile body comment.md '{body: $body}' \
+            | gh api --method POST "repos/${REPO}/issues/${PR}/comments" --input - --jq .id)"
+          if [ "${fix:-}" = true ]; then
+            issue="${BRANCH#agent/issue-}"
+            if [[ "${issue}" =~ ^[0-9]+$ ]] && gh workflow run agent-build.yml --repo "${REPO}" --ref main \
+                -f issue="${issue}" -f review_comment="${comment_id}"; then
+              echo "Dispatched fix round for issue #${issue} (review comment ${comment_id})."
+            else
+              echo "::warning::Could not dispatch a fix round; marking needs-human."
+              add=needs-human
+            fi
+          fi
+          if [ -n "${add}" ]; then
+            gh api --method POST "repos/${REPO}/issues/${PR}/labels" -f "labels[]=${add}" > /dev/null
+          fi
           if gh api "repos/${REPO}/issues/${PR}/labels" --jq '.[].name' | grep -qx "${remove}"; then
             gh api --method DELETE "repos/${REPO}/issues/${PR}/labels/${remove}" > /dev/null
           fi
-          echo "Posted the review on #${PR} and added ${add}."
+          echo "Posted the review on #${PR}${add:+ and added ${add}}."
