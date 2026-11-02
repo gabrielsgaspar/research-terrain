@@ -1,0 +1,42 @@
+{
+  "dataset": "polling_places",
+  "stage": "build",
+  "status": "created",
+  "gcs_prefix": "data/derived/polling_places/697e4a75d8bc2b89/",
+  "created_at": "2026-11-02T22:08:54.129686+00:00",
+  "code_commit": "ff3d1e484a0053ca553569fa5a889e0423dc9fdd",
+  "sources": [],
+  "files": [
+    {
+      "path": "data/derived/polling_places/697e4a75d8bc2b89/polling_places_2008.parquet",
+      "sha256": "3227e2c6213fcd356318482bab57ed02910dec023f8bffb1dc3e1f41217a6df3",
+      "bytes": 683478
+    },
+    {
+      "path": "data/derived/polling_places/697e4a75d8bc2b89/polling_places_2012.parquet",
+      "sha256": "d034155b2e1c51d9bf63676c8d9fae14e5ba67a06de3f8777d25f8c24ace7c9e",
+      "bytes": 662952
+    },
+    {
+      "path": "data/derived/polling_places/697e4a75d8bc2b89/polling_places_2016.parquet",
+      "sha256": "cd9595d4efd00796b3bb8a96d4aa96a936e906a8b0228b06c062de2159df4e70",
+      "bytes": 685659
+    },
+    {
+      "path": "data/derived/polling_places/697e4a75d8bc2b89/polling_places_2020.parquet",
+      "sha256": "25826b08e3fc536f6b980826f9bc95dda3da9c7f294efb40984dd1c68076b417",
+      "bytes": 695241
+    },
+    {
+      "path": "data/derived/polling_places/697e4a75d8bc2b89/polling_places_2024.parquet",
+      "sha256": "eae82c25e34a8a0b1d27044486c9e3096a12a62cec094dc83dd116ba72063d4f",
+      "bytes": 719858
+    }
+  ],
+  "notes": "2008: rows=14641, missing_coord_share=0.0000, tse=0, hidalgo=14641, two_pair_places=0, panel_id_share=0.9884, hidalgo_stations_not_in_tse=0, tse_unparsed=0, hidalgo_unparsed=0, tse_other_election_year_rows=0; 2012: rows=15409, missing_coord_share=0.0046, tse=12389, hidalgo=2949, two_pair_places=0, panel_id_share=0.9666, hidalgo_stations_not_in_tse=439, tse_unparsed=0, hidalgo_unparsed=0, tse_other_election_year_rows=0; 2016: rows=15744, missing_coord_share=0.0015, tse=13540, hidalgo=2180, two_pair_places=0, panel_id_share=0.9799, hidalgo_stations_not_in_tse=24, tse_unparsed=0, hidalgo_unparsed=0, tse_other_election_year_rows=0; 2020: rows=16016, missing_coord_share=0.0042, tse=15155, hidalgo=794, two_pair_places=0, panel_id_share=0.9785, hidalgo_stations_not_in_tse=105, tse_unparsed=0, hidalgo_unparsed=0, tse_other_election_year_rows=0; 2024: rows=16312, missing_coord_share=0.0000, tse=15590, hidalgo=722, two_pair_places=0, panel_id_share=0.9324, hidalgo_stations_not_in_tse=0, tse_unparsed=0, hidalgo_unparsed=0, tse_other_election_year_rows=0",
+  "inputs": [
+    "data/raw/tse/polling_places/2026-11-02/_MANIFEST.json",
+    "data/raw/geocodes/hidalgo/2026-11-02/_MANIFEST.json",
+    "data/derived/municipalities/03690186b97be705/_MANIFEST.json"
+  ]
+}
