@@ -23,7 +23,8 @@ methods code and simulations, the research notebook in `research/`, tests.
 
 Out of scope for agents, always: the pre-analysis plan (`confirm/pap/`),
 registered specifications (`confirm/specs/`), the run ledger
-(`confirm/ledger/`), `confirm/split.sha256`, `sealed/` in GCS, the paper
+(`confirm/ledger/`), `confirm/split.sha256`, `data/manifests/`,
+`data/fixtures/` (people cut these from real data), `sealed/` in GCS, the paper
 (`overleaf/`), and `legacy/`. If a task seems to need one of these, say so and
 stop.
 
@@ -65,8 +66,9 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
 - `data/raw/` is write-once. Never design code that overwrites raw data;
   re-downloads go to a new dated path.
 - Never acquire or build the same thing twice. Before writing an acquire or
-  build script, check `data/catalog.yaml`: if the dataset is `acquired` or
-  `built`, reuse it. Acquire scripts skip any source whose raw path already
+  build script, check `data/manifests/`: it records every acquire and build run
+  that has reached GCS (written by the `data-pipeline` workflow, never by
+  agents). If the data exists, reuse it. Acquire scripts skip any source whose raw path already
   has a `_MANIFEST.json`; build outputs are written to a path keyed by the
   hash of their inputs and code, and skipped if that path exists.
 - Fixtures are small text files (CSV or JSON, under 200 KB) cut from real data,

@@ -1,0 +1,205 @@
+name: Data pipeline
+
+# Manual only. Runs one merged script, pipeline/<stage>/<target>.py, against
+# GCS, then opens a pull request that records what it produced as
+# data/manifests/<stage>/<target>.json. That file is how the planner, the
+# builder and you know what data already exists, so nothing is downloaded or
+# built twice.
+#
+# Safety:
+#   - Runs only from main, in the data-write environment (main-only), so the
+#     code that gets GCP credentials has been reviewed and merged.
+#   - stage is a fixed choice and target is checked against a strict pattern
+#     before either is used.
+#   - acquire runs as terrain-acquire (create-only in data/raw/); build runs as
+#     terrain-build (create-only in data/derived/). Neither can overwrite or
+#     delete anything.
+#   - The job holding GCP credentials has no GitHub write token. The job that
+#     opens the pull request has the App token and runs no repository code.
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: "acquire (downloads -> data/raw/) or build (raw -> data/derived/)"
+        type: choice
+        options: [acquire, build]
+        required: true
+      target:
+        description: "Script name in pipeline/<stage>/ without .py, e.g. tse_candidates"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: data-pipeline-${{ inputs.stage }}-${{ inputs.target }}
+  cancel-in-progress: false
+
+env:
+  STAGE: ${{ inputs.stage }}
+  TARGET: ${{ inputs.target }}
+
+jobs:
+  run:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 180
+    environment: data-write
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      TERRAIN_BUCKET: research-terrain
+    steps:
+      - name: Check the inputs
+        run: |
+          set -euo pipefail
+          [[ "${STAGE}" =~ ^(acquire|build)$ ]] || { echo "::error::stage must be acquire or build"; exit 1; }
+          [[ "${TARGET}" =~ ^[a-z][a-z0-9_]{0,63}$ ]] || { echo "::error::target must match ^[a-z][a-z0-9_]{0,63}$"; exit 1; }
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check the script exists
+        run: |
+          test -f "pipeline/${STAGE}/${TARGET}.py" \
+            || { echo "::error::pipeline/${STAGE}/${TARGET}.py does not exist on main"; exit 1; }
+
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: false
+
+      - run: uv sync --locked
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: terrain-${{ inputs.stage }}@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+
+      - name: Run pipeline/${{ inputs.stage }}/${{ inputs.target }}.py
+        env:
+          CODE_COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          uv run python "pipeline/${STAGE}/${TARGET}.py" --manifest-out "${RUNNER_TEMP}/manifest.json"
+
+      - name: Check the manifest
+        env:
+          MANIFEST: ${{ runner.temp }}/manifest.json
+        run: |
+          set -euo pipefail
+          python3 -I - <<'PY'
+          import json, os, re, sys
+
+          path = os.environ["MANIFEST"]
+          stage, target = os.environ["STAGE"], os.environ["TARGET"]
+          if not os.path.isfile(path):
+              sys.exit("::error::The script did not write a manifest.")
+          if os.path.getsize(path) > 1_000_000:
+              sys.exit("::error::The manifest is over 1 MB.")
+          text = open(path, encoding="utf-8").read()
+          if re.search(r"sk-ant-|gh[pousr]_|github_pat_|-----BEGIN|ya29\.|olp_|\"type\"\s*:\s*\"service_account\"", text):
+              sys.exit("::error::The manifest contains something that looks like a credential.")
+          m = json.loads(text)
+          root = {"acquire": "data/raw/", "build": "data/derived/"}[stage]
+          problems = []
+          for key in ("dataset", "stage", "status", "gcs_prefix", "created_at", "code_commit", "files"):
+              if key not in m:
+                  problems.append(f"missing key: {key}")
+          if m.get("dataset") != target:
+              problems.append("dataset must equal the target name")
+          if m.get("stage") != stage:
+              problems.append("stage must equal the stage input")
+          if m.get("status") not in ("created", "unchanged"):
+              problems.append("status must be created or unchanged")
+          prefix = m.get("gcs_prefix", "")
+          if not prefix.startswith(root) or ".." in prefix or not prefix.endswith("/"):
+              problems.append(f"gcs_prefix must be a folder under {root}")
+          for f in m.get("files", []):
+              if not str(f.get("path", "")).startswith(prefix):
+                  problems.append(f"file outside gcs_prefix: {f.get('path')}")
+              if not re.fullmatch(r"[0-9a-f]{64}", str(f.get("sha256", ""))):
+                  problems.append(f"bad sha256 for {f.get('path')}")
+          if problems:
+              print("\n".join(f"::error::{p}" for p in problems))
+              sys.exit(1)
+          print(f"Manifest OK: {m['status']}, {len(m['files'])} files under gs://research-terrain/{prefix}")
+          PY
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: manifest
+          path: ${{ runner.temp }}/manifest.json
+          retention-days: 3
+
+  record:
+    needs: run
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: manifest
+          path: ${{ runner.temp }}/in
+
+      - name: Write the manifest into the tree
+        id: write
+        run: |
+          set -euo pipefail
+          dest="data/manifests/${STAGE}/${TARGET}.json"
+          mkdir -p "$(dirname "${dest}")"
+          cp "${RUNNER_TEMP}/in/manifest.json" "${dest}"
+          if git diff --quiet -- "${dest}" && git ls-files --error-unmatch "${dest}" > /dev/null 2>&1; then
+            echo "The manifest on main is already current; nothing to record."
+            echo "changed=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "changed=true" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Get a GitHub App token
+        if: steps.write.outputs.changed == 'true'
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.AGENT_APP_CLIENT_ID }}
+          private-key: ${{ secrets.AGENT_APP_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Push a branch and open the pull request
+        if: steps.write.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PUSH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          REPO: ${{ github.repository }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          dest="data/manifests/${STAGE}/${TARGET}.json"
+          branch="data/${STAGE}-${TARGET}-${GITHUB_RUN_ID}"
+          bot_id="$(gh api "users/${APP_SLUG}%5Bbot%5D" --jq .id)"
+          git -c core.hooksPath=/dev/null switch -c "${branch}"
+          git add -- "${dest}"
+          git -c core.hooksPath=/dev/null \
+            -c user.name="${APP_SLUG}[bot]" \
+            -c user.email="${bot_id}+${APP_SLUG}[bot]@users.noreply.github.com" \
+            commit -m "Data: record ${STAGE} ${TARGET}" -m "From ${RUN_URL}"
+          helper='!f() { echo username=x-access-token; echo "password=${PUSH_TOKEN}"; }; f'
+          git -c core.hooksPath=/dev/null -c credential.helper= -c "credential.helper=${helper}" \
+            push "https://github.com/${REPO}.git" "refs/heads/${branch}:refs/heads/${branch}"
+          summary="$(python3 -I -c 'import json,sys; m=json.load(open(sys.argv[1])); print(f"{m[\"status\"]}: {len(m[\"files\"])} files under gs://research-terrain/{m[\"gcs_prefix\"]}")' "${dest}")"
+          printf 'Records the output of the `data-pipeline` run (%s).\n\n- %s\n- Manifest: `%s`\n\nMerge to make this data visible to the planner and later tasks.\n' \
+            "${RUN_URL}" "${summary}" "${dest}" > "${RUNNER_TEMP}/body.md"
+          gh pr create --repo "${REPO}" --base "${BASE_BRANCH}" --head "${branch}" \
+            --title "Data: ${STAGE} ${TARGET}" --body-file "${RUNNER_TEMP}/body.md"

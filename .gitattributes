@@ -6,3 +6,6 @@
 *.pdf binary
 *.parquet binary
 *.zip binary
+# Fixtures are byte-for-byte cuts of source files (TSE uses Latin-1 and
+# CRLF); never convert them.
+data/fixtures/** -text
