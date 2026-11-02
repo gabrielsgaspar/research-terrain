@@ -25,8 +25,9 @@ acquired or built (its manifest merged into `data/manifests/`).
 ## Before filing a task
 
 1. Search: `gh issue list --state all --search "<title words>"`.
-2. If it reads real data, profile the real files first (values a build will
-   reject, keys, row counts) and put the numbers in the task. Fixtures are
+2. If it reads real data, profile the real files first (every column the
+   task names exists in the file it names; values a build will reject;
+   keys; row counts) and put the numbers in the task. Fixtures are
    anonymised and can hide defects.
 3. Everything it needs exists: dependencies added by a person, fixtures
    committed, input manifests merged.

@@ -16,7 +16,17 @@ crosswalk:
 - Boa Esperança do Norte (TSE `73709`, IBGE `5101837`);
 - every candidate-fixture town.
 
-Columns used: `ano`, `cd_localidade_tse` (TSE code, not zero-padded),
-`cod_localidade_ibge`, `nr_zona`, `nr_locvot` (polling-place number, joins
-the TSE files' `NR_LOCAL_VOTACAO`), `lat`, `long`, `conf_dist_km` (0 when the
-coordinate is the TSE's own). `local_id` is not stable across releases.
+Columns used: `local_id`, `ano`, `cd_localidade_tse` (TSE code, not
+zero-padded), `cod_localidade_ibge`, `nr_zona`, `nr_locvot` (polling-place
+number, joins the TSE files' `NR_LOCAL_VOTACAO`), `lat`, `long`,
+`conf_dist_km` (0 when the coordinate is the TSE's own). `local_id` is
+unique within a release but not stable across releases.
+
+## Panel IDs fixture
+
+`panel_ids_sample.csv` is a cut of `panel_ids.csv.gz` from the same release:
+the rows whose `local_id` is in the geocoded fixture (88 of its 95 stations;
+the other 7 have no panel ID, as in the real data). Columns: `panel_id` (the
+same physical polling place across elections), `local_id` (unique; joins the
+geocoded file), `long`, `lat`, `conf_dist_km`. In the full release it covers
+922,458 of the 944,687 geocoded stations.

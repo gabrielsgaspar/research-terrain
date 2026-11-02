@@ -21,6 +21,18 @@ plan review. They fall into five groups:
 Expect the rate to fall: each first use of a capability (first build, first
 deletion, first big task) has now happened once.
 
+## 2026-11-02: A task named a column that is in a different file (issue #46)
+- Tried: task 07a, which asked for Hidalgo's `panel_id`.
+- Result: the planner found `panel_id` is not in the geocoded file and made
+  "add a fixture or drop the column" a step for a person; the builder
+  stopped without guessing. Nothing was built.
+- Why: the draft was written from the README's description of the release,
+  not from the files; `panel_id` lives in `panel_ids.csv.gz`, joined on
+  `local_id`.
+- Implication: every column a task names is checked against the real file
+  first (the filing checklist's step 2 covers columns, not just values).
+  Fixture and draft fixed.
+
 ## 2026-11-02: Exploration needed its own runner (explore-run)
 - Tried: planning the feasibility census.
 - Result: there was nowhere to run it: `data-pipeline` runs only acquire and
