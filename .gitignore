@@ -2,8 +2,10 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
-build/
-dist/
+# Anchored to the repository root: an unanchored `build/` would also hide
+# pipeline/build/ and data/manifests/build/.
+/build/
+/dist/
 .venv/
 .pytest_cache/
 .ruff_cache/
@@ -49,8 +51,8 @@ gha-creds-*.json
 *.pkl
 *.npy
 !data/fixtures/**
-local/
-_local/
+/local/
+/_local/
 
 # Agent harness logs
 .loop/

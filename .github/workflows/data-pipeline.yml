@@ -157,9 +157,15 @@ jobs:
           dest="data/manifests/${STAGE}/${TARGET}.json"
           status="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["status"])' "${RUNNER_TEMP}/in/manifest.json")"
           if [ "${status}" = "unchanged" ]; then
-            echo "The run created nothing new (status unchanged); nothing to record."
-            echo "changed=false" >> "${GITHUB_OUTPUT}"
-            exit 0
+            # Nothing new in GCS. Record it anyway if main has no manifest for
+            # this output (an earlier run created it, then failed to record).
+            recorded="$(python3 -I -c 'import json,os,sys; new=json.load(open(sys.argv[1])); old=json.load(open(sys.argv[2])) if os.path.isfile(sys.argv[2]) else {}; print("yes" if old.get("gcs_prefix") == new["gcs_prefix"] else "no")' "${RUNNER_TEMP}/in/manifest.json" "${dest}")"
+            if [ "${recorded}" = "yes" ]; then
+              echo "The run created nothing new and main already records it; nothing to record."
+              echo "changed=false" >> "${GITHUB_OUTPUT}"
+              exit 0
+            fi
+            echo "The data already exists in GCS but main does not record it; recording it now."
           fi
           mkdir -p "$(dirname "${dest}")"
           cp "${RUNNER_TEMP}/in/manifest.json" "${dest}"

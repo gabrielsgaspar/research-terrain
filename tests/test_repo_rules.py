@@ -114,3 +114,40 @@ def test_idea_files_follow_the_template():
         text = path.read_text(encoding="utf-8")
         for heading in ("## Claim", "## Prediction", "## Status"):
             assert heading in text, f"{path.name} lacks {heading}"
+
+
+# Paths that must stay committable, and paths that must never be committed.
+NOT_IGNORED = [
+    "pipeline/acquire/x.py",
+    "pipeline/build/x.py",
+    "src/terrain/builds/x.py",
+    "data/manifests/acquire/x.json",
+    "data/manifests/build/x.json",
+    "data/contracts/x.md",
+    "data/reference/x.yaml",
+    "data/fixtures/tse/x.csv",
+    "confirm/ledger/x.jsonl",
+    "explore/x.py",
+    "harness/x.md",
+]
+IGNORED = ["data/x.parquet", "x.csv", "gha-creds-1.json", ".env", "key.pem", "build/x"]
+
+
+def _ignored(path):
+    result = subprocess.run(
+        ["git", "check-ignore", "--no-index", "-q", path], cwd=REPO, capture_output=True
+    )
+    return result.returncode == 0
+
+
+def test_gitignore_keeps_project_paths_and_blocks_data():
+    try:
+        subprocess.run(["git", "--version"], check=True, capture_output=True)
+    except (OSError, subprocess.CalledProcessError):
+        import pytest
+
+        pytest.skip("git is not available")
+    wrongly_ignored = [p for p in NOT_IGNORED if _ignored(p)]
+    assert not wrongly_ignored, f".gitignore hides project paths: {wrongly_ignored}"
+    not_blocked = [p for p in IGNORED if not _ignored(p)]
+    assert not not_blocked, f".gitignore lets these through: {not_blocked}"

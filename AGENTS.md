@@ -76,6 +76,9 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
 - Fixtures are small text files (CSV or JSON, under 200 KB) cut from real data,
   used by tests. Binary files are refused by the build checks.
 - Tests never call the network, GCS or a model.
+- Tests are deterministic. Zips built in tests use a fixed timestamp
+  (`zipfile.ZipInfo(name, date_time=...)`): otherwise the same input gets a
+  different SHA-256 a second later, and anything hashed from it changes.
 - Real data is messier than fixtures. When a build types a column, decide
   per column whether a bad value should stop the build (keys, election
   dates) or become null. For the second kind: keep the original text in a
@@ -98,6 +101,8 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
 
 - Logic lives in `src/terrain/` with tests; scripts in `pipeline/` and
   `explore/` stay thin.
+- `.gitignore` directory patterns are anchored to the root (`/build/`, not
+  `build/`); a test lists paths that must stay committable.
 - Agents cannot add dependencies: the builder installs packages offline from
   what `uv.lock` already lists. A person adds a new dependency in its own PR
   (`uv add <package>`) before the task that needs it. Plans must not list

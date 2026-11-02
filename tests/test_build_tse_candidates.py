@@ -43,15 +43,24 @@ def records(data: bytes) -> int:
     return sum(1 for _ in csv.reader(io.StringIO(text, newline=""), delimiter=";")) - 1
 
 
+# A fixed timestamp: zip entries otherwise carry the current time, so the same
+# fixture would give a different SHA-256 (and output path) a second later.
+FIXED_TIME = (2024, 1, 1, 0, 0, 0)
+
+
+def _member(name: str) -> zipfile.ZipInfo:
+    return zipfile.ZipInfo(name, date_time=FIXED_TIME)
+
+
 def make_zip(name: str, data: bytes, *, state_files: bool = False) -> bytes:
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr(f"{name}_BRASIL.csv", data)
+        zf.writestr(_member(f"{name}_BRASIL.csv"), data)
         if state_files:
             # The real zips repeat every BRASIL row in per-state files.
-            zf.writestr(f"{name}_PA.csv", data)
-            zf.writestr(f"{name}_AM.csv", data)
-        zf.writestr("leiame.pdf", b"%PDF-")
+            zf.writestr(_member(f"{name}_PA.csv"), data)
+            zf.writestr(_member(f"{name}_AM.csv"), data)
+        zf.writestr(_member("leiame.pdf"), b"%PDF-")
     return buf.getvalue()
 
 
