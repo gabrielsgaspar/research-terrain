@@ -16,6 +16,18 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-02: Section files count votes cast, results files count votes counted
+- Tried: checking task 07b's vote-sum rule on Pará, 2004-2024, before filing.
+- Result: in 2012, 256 candidates have 0 nominal votes in the results file
+  but votes in the section file. Excluding them, section sums equal the
+  results for every candidate with votes in 2008-2024 and 99.7% in 2004.
+- Why: votes for candidates whose registration was refused or cancelled are
+  cast (and recorded by section) but not counted.
+- Implication: for close races, margins must use counted votes (the results
+  file, or section votes not flagged `annulled_in_results`). A candidate whose
+  votes are annulled can change who is "narrowly elected"; such races should
+  be identified and reported, not silently dropped.
+
 ## 2026-11-02: The 2008 candidate file is missing candidacies that have votes
 - Tried: building candidate votes for 2000-2024 against the candidates table.
 - Result: 1,458 of the 336,668 candidacies with votes in 2008 (0.43%) are
