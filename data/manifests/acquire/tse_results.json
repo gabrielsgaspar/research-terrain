@@ -1,0 +1,321 @@
+{
+  "dataset": "tse_results",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/tse/results/2026-11-02/",
+  "created_at": "2026-11-02T18:34:07.957620+00:00",
+  "code_commit": "f4b7c36a7bd5668b2dbc9474412cd5eb698b856d",
+  "sources": [
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_candidato_munzona/votacao_candidato_munzona_2000.zip",
+      "last_modified": "Tue, 05 Sep 2023 12:40:44 GMT",
+      "etag": "\"265a812-6049bef730b00\"",
+      "bytes": 40216594
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_candidato_munzona/votacao_candidato_munzona_2004.zip",
+      "last_modified": "Fri, 18 Mar 2022 17:36:41 GMT",
+      "etag": "\"2755121-5da8196e85c40\"",
+      "bytes": 41242913
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_candidato_munzona/votacao_candidato_munzona_2008.zip",
+      "last_modified": "Mon, 21 Mar 2022 15:38:58 GMT",
+      "etag": "\"28b194c-5dabc4b71a880\"",
+      "bytes": 42670412
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_candidato_munzona/votacao_candidato_munzona_2012.zip",
+      "last_modified": "Wed, 28 Jul 2021 18:10:49 GMT",
+      "etag": "\"371d865-5c832e7f3fc40\"",
+      "bytes": 57792613
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_candidato_munzona/votacao_candidato_munzona_2016.zip",
+      "last_modified": "Mon, 19 Jan 2026 17:11:48 GMT",
+      "etag": "\"39c99b5-648c0c9537402\"",
+      "bytes": 60594613
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_candidato_munzona/votacao_candidato_munzona_2020.zip",
+      "last_modified": "Tue, 06 Jan 2026 19:56:42 GMT",
+      "etag": "\"3723258-647bd93191cce\"",
+      "bytes": 57815640
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_candidato_munzona/votacao_candidato_munzona_2024.zip",
+      "last_modified": "Sun, 01 Nov 2026 05:28:25 GMT",
+      "etag": "\"2ff56fa-65f304c671555\"",
+      "bytes": 50288378
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_partido_munzona/votacao_partido_munzona_2000.zip",
+      "last_modified": "Mon, 31 Jan 2022 20:00:11 GMT",
+      "etag": "\"291fd9-5d6e63b6748c0\"",
+      "bytes": 2695129
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_partido_munzona/votacao_partido_munzona_2004.zip",
+      "last_modified": "Fri, 18 Mar 2022 17:36:46 GMT",
+      "etag": "\"32a960-5da819734a780\"",
+      "bytes": 3320160
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_partido_munzona/votacao_partido_munzona_2008.zip",
+      "last_modified": "Thu, 19 Aug 2021 17:10:04 GMT",
+      "etag": "\"37a6d4-5c9ec9f33f300\"",
+      "bytes": 3647188
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_partido_munzona/votacao_partido_munzona_2012.zip",
+      "last_modified": "Fri, 03 Sep 2021 20:12:15 GMT",
+      "etag": "\"3cf0dd-5cb1cea5c65c0\"",
+      "bytes": 3993821
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_partido_munzona/votacao_partido_munzona_2016.zip",
+      "last_modified": "Mon, 19 Jan 2026 17:07:49 GMT",
+      "etag": "\"add24b-648c0bb141f9c\"",
+      "bytes": 11391563
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_partido_munzona/votacao_partido_munzona_2020.zip",
+      "last_modified": "Tue, 06 Jan 2026 19:51:09 GMT",
+      "etag": "\"5d258c-647bd7f460571\"",
+      "bytes": 6104460
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_partido_munzona/votacao_partido_munzona_2024.zip",
+      "last_modified": "Mon, 02 Nov 2026 16:58:20 GMT",
+      "etag": "\"5dda5c-65f4e0da0afa7\"",
+      "bytes": 6150748
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/detalhe_votacao_munzona/detalhe_votacao_munzona_2000.zip",
+      "last_modified": "Fri, 08 Aug 2025 16:20:15 GMT",
+      "etag": "\"14e794-63bdcf2fd8be6\"",
+      "bytes": 1370004
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/detalhe_votacao_munzona/detalhe_votacao_munzona_2004.zip",
+      "last_modified": "Fri, 08 Aug 2025 16:17:03 GMT",
+      "etag": "\"156003-63bdce7890290\"",
+      "bytes": 1400835
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/detalhe_votacao_munzona/detalhe_votacao_munzona_2008.zip",
+      "last_modified": "Fri, 08 Aug 2025 16:15:26 GMT",
+      "etag": "\"15c936-63bdce1c3aeb7\"",
+      "bytes": 1427766
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/detalhe_votacao_munzona/detalhe_votacao_munzona_2012.zip",
+      "last_modified": "Fri, 08 Aug 2025 16:13:27 GMT",
+      "etag": "\"10cd6f-63bdcdaadb7d3\"",
+      "bytes": 1101167
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/detalhe_votacao_munzona/detalhe_votacao_munzona_2016.zip",
+      "last_modified": "Mon, 19 Jan 2026 17:07:45 GMT",
+      "etag": "\"17b30d-648c0bad4481b\"",
+      "bytes": 1553165
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/detalhe_votacao_munzona/detalhe_votacao_munzona_2020.zip",
+      "last_modified": "Fri, 16 Jan 2026 21:28:23 GMT",
+      "etag": "\"177908-6488805650ceb\"",
+      "bytes": 1538312
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/detalhe_votacao_munzona/detalhe_votacao_munzona_2024.zip",
+      "last_modified": "Mon, 02 Nov 2026 16:58:15 GMT",
+      "etag": "\"170450-65f4e0d460cb6\"",
+      "bytes": 1508432
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_coligacao/consulta_coligacao_2000.zip",
+      "last_modified": "Wed, 01 Sep 2021 14:44:23 GMT",
+      "etag": "\"4d5005-5caf01a22bfc0\"",
+      "bytes": 5066757
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_coligacao/consulta_coligacao_2004.zip",
+      "last_modified": "Wed, 01 Sep 2021 14:44:23 GMT",
+      "etag": "\"9b2dfa-5caf01a22bfc0\"",
+      "bytes": 10169850
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_coligacao/consulta_coligacao_2008.zip",
+      "last_modified": "Wed, 01 Sep 2021 14:44:24 GMT",
+      "etag": "\"c4328d-5caf01a320200\"",
+      "bytes": 12857997
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_coligacao/consulta_coligacao_2012.zip",
+      "last_modified": "Wed, 01 Sep 2021 14:44:30 GMT",
+      "etag": "\"e8d13d-5caf01a8d8f80\"",
+      "bytes": 15257917
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_coligacao/consulta_coligacao_2016.zip",
+      "last_modified": "Wed, 01 Sep 2021 14:44:36 GMT",
+      "etag": "\"119d76a-5caf01ae91d00\"",
+      "bytes": 18470762
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_coligacao/consulta_coligacao_2020.zip",
+      "last_modified": "Tue, 06 Jan 2026 19:51:12 GMT",
+      "etag": "\"94b653-647bd7f6dbd3b\"",
+      "bytes": 9746003
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_coligacao/consulta_coligacao_2024.zip",
+      "last_modified": "Mon, 02 Nov 2026 16:59:00 GMT",
+      "etag": "\"a80963-65f4e0ff9ade6\"",
+      "bytes": 11012451
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/tse/results/2026-11-02/votacao_candidato_munzona_2000.zip",
+      "sha256": "83b641495391734dc16640f89cfe545197dc9421a59d914f17ffb1ba0d98427c",
+      "bytes": 40216594
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/votacao_candidato_munzona_2004.zip",
+      "sha256": "902483586e4541a3415c5f2f50d865271493a9a1d4968b06d4f0138aef55d631",
+      "bytes": 41242913
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/votacao_candidato_munzona_2008.zip",
+      "sha256": "8e54af745a95f18f66158f711232bf9668e2df57694137db28fbab567216763f",
+      "bytes": 42670412
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/votacao_candidato_munzona_2012.zip",
+      "sha256": "9a369573ea67f06caf03e44de29a9e710c5bc3d344b8d30d24f89c9004d9cf6c",
+      "bytes": 57792613
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/votacao_candidato_munzona_2016.zip",
+      "sha256": "1be9bad725bf2869470cc8553727c19fc09a305c40cb1c0240056f24fbf1cdd1",
+      "bytes": 60594613
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/votacao_candidato_munzona_2020.zip",
+      "sha256": "a8a32d46e813dfd2c3ba032b0df4faaa57fc567ef3c4a5a73fc50d9a5e680763",
+      "bytes": 57815640
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/votacao_candidato_munzona_2024.zip",
+      "sha256": "abcfc3a2df423794e7d0b9c73b23d7d95e7c470a1cb4f10946b1cbd96705e502",
+      "bytes": 50288378
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/votacao_partido_munzona_2000.zip",
+      "sha256": "d90287e9d50bec4930b4b047a396dc9419d857997f55880310965c236f86b8c8",
+      "bytes": 2695129
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/votacao_partido_munzona_2004.zip",
+      "sha256": "dfc48a3f3a6098b4e0b365bfc71d0699f2d378682fc2b3150efe549b9ee48cc3",
+      "bytes": 3320160
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/votacao_partido_munzona_2008.zip",
+      "sha256": "37de8e24af94fb726002fbb6bc3e1bc27fc51d75116573a5be2a25da4c786bb2",
+      "bytes": 3647188
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/votacao_partido_munzona_2012.zip",
+      "sha256": "8ccb50040abf361aa451df4b584fa7b0e636cd114026d1f311be18c92d9b7ec1",
+      "bytes": 3993821
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/votacao_partido_munzona_2016.zip",
+      "sha256": "7cf2353594ee332b2cc8e2f2edb6c25e1da06f22d8125a2a9278967e264fa8d5",
+      "bytes": 11391563
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/votacao_partido_munzona_2020.zip",
+      "sha256": "f827862ff624bb1b3518c7ea809ce04ff6a98cac5600bef851d0e43498d993a0",
+      "bytes": 6104460
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/votacao_partido_munzona_2024.zip",
+      "sha256": "794f6eb19fc3cf8dcbbda3c5166c0b74a66f538708a0871e331dda687aa7ac6a",
+      "bytes": 6150748
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/detalhe_votacao_munzona_2000.zip",
+      "sha256": "6ddf1e3289dfafb184978dcc0195a7492b7685e3ca4a32cf670e35cd2e6e1e90",
+      "bytes": 1370004
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/detalhe_votacao_munzona_2004.zip",
+      "sha256": "eff233ffcd56fa9f2ebe94fa7c0e40e88aa201a510bfe8b6abab252075c8deb2",
+      "bytes": 1400835
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/detalhe_votacao_munzona_2008.zip",
+      "sha256": "eb842670e5d3a7df15debaf3bc2188bc70c8c5aa6237e92dbf55e9e564d503c5",
+      "bytes": 1427766
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/detalhe_votacao_munzona_2012.zip",
+      "sha256": "032fd85cba89ef411a31018764a1ea64fa842330718775b775c083de05221ddd",
+      "bytes": 1101167
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/detalhe_votacao_munzona_2016.zip",
+      "sha256": "2b6fa4b50d2cde9bb5f8668c4affe428bb3eaff721e5fd5c614586649e63d854",
+      "bytes": 1553165
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/detalhe_votacao_munzona_2020.zip",
+      "sha256": "9d6ffc73b024e2b27ff984a600008aab7e4cdc1fdd72707128dc4dc05b4fd591",
+      "bytes": 1538312
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/detalhe_votacao_munzona_2024.zip",
+      "sha256": "e0dd93f6020829ab0a39e617f766c31b11da5efceb748a123da6f4302c490fbb",
+      "bytes": 1508432
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/consulta_coligacao_2000.zip",
+      "sha256": "8e4f673584ade981dc2c32e567940b1caa91e9c89b28ceab35f23466c63081cf",
+      "bytes": 5066757
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/consulta_coligacao_2004.zip",
+      "sha256": "49e1d37d7ee5e07affa6b5c6e20c8d2d5603505969a0a4a5dc1d699a0acf1b58",
+      "bytes": 10169850
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/consulta_coligacao_2008.zip",
+      "sha256": "f08e42f521ce34612bdfd77b2faebe38e35ce3c6309a5319074118faf499e166",
+      "bytes": 12857997
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/consulta_coligacao_2012.zip",
+      "sha256": "0e8236386365cd4c2916fe15e58dabb12b568dfa654aca5a4d4380c0a334f208",
+      "bytes": 15257917
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/consulta_coligacao_2016.zip",
+      "sha256": "69c32b2d8de7e38dec5ecf6be99faeed8ee5a34594662600c53ceb8f6f1bd53d",
+      "bytes": 18470762
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/consulta_coligacao_2020.zip",
+      "sha256": "e4ee01ccee82eab237a4ee18d3a35da7d395219a4591ee66ee7b9dcaeaf80a60",
+      "bytes": 9746003
+    },
+    {
+      "path": "data/raw/tse/results/2026-11-02/consulta_coligacao_2024.zip",
+      "sha256": "a9b27d5fc53374a609b7162d9677faf6e6ffcf575ecd6d3b16af1bbe6bcb709e",
+      "bytes": 11012451
+    }
+  ],
+  "notes": ""
+}
