@@ -1,0 +1,86 @@
+{
+  "dataset": "tse_parties",
+  "stage": "build",
+  "status": "created",
+  "gcs_prefix": "data/derived/tse_parties/5163c8aeaaebe88c/",
+  "created_at": "2026-11-02T21:37:49.819638+00:00",
+  "code_commit": "fd1d05feac6ae529a4e8cbf40efa2ef8dcf7168a",
+  "sources": [],
+  "files": [
+    {
+      "path": "data/derived/tse_parties/5163c8aeaaebe88c/party_votes_2000.parquet",
+      "sha256": "219cd963889f41aa4749196bff30d81bfcfd1add71d701cd6223e191e6a6dd70",
+      "bytes": 1064682
+    },
+    {
+      "path": "data/derived/tse_parties/5163c8aeaaebe88c/party_votes_2004.parquet",
+      "sha256": "c318a7ee9ebae7efa737a94f499b43a6ad2a9b50273ffee5f2916607a822b48f",
+      "bytes": 1235742
+    },
+    {
+      "path": "data/derived/tse_parties/5163c8aeaaebe88c/party_votes_2008.parquet",
+      "sha256": "e192ebd801ed26706759961502ff732057bb905f395098a71f2259fc475dd79e",
+      "bytes": 1433683
+    },
+    {
+      "path": "data/derived/tse_parties/5163c8aeaaebe88c/party_votes_2012.parquet",
+      "sha256": "a0910cf208ea183be7fc5d1fc4e2bbc646564e332830bc6ec1c492e116617f7e",
+      "bytes": 1619103
+    },
+    {
+      "path": "data/derived/tse_parties/5163c8aeaaebe88c/party_votes_2016.parquet",
+      "sha256": "126b7fead79da66f6f67af284d1a50f268f24250aefe1f4e74b105b480df6c62",
+      "bytes": 3365734
+    },
+    {
+      "path": "data/derived/tse_parties/5163c8aeaaebe88c/party_votes_2020.parquet",
+      "sha256": "85760c3e9d96b930cb9d0bdbc15e763080bef1c82d727ac5b1ea7beb28739b9d",
+      "bytes": 2079534
+    },
+    {
+      "path": "data/derived/tse_parties/5163c8aeaaebe88c/party_votes_2024.parquet",
+      "sha256": "2bdd57440e66a23339bdc45d175a24db5deb0e2389e8f96fa46ff440b6dda87f",
+      "bytes": 2229608
+    },
+    {
+      "path": "data/derived/tse_parties/5163c8aeaaebe88c/coalitions_2000.parquet",
+      "sha256": "aa816ae9ec26ae0bc98f90c180bf6ecd143a3ae1ad936302c3a73fcdd9f6f07e",
+      "bytes": 1278838
+    },
+    {
+      "path": "data/derived/tse_parties/5163c8aeaaebe88c/coalitions_2004.parquet",
+      "sha256": "596ca0008553f3850eafc93b3ead3f9df2012bcd244a33e287d968f07e90eb14",
+      "bytes": 2655218
+    },
+    {
+      "path": "data/derived/tse_parties/5163c8aeaaebe88c/coalitions_2008.parquet",
+      "sha256": "3573ac9e243ddfc3b2e44332410b724c45e3ae6542ff1379ddc6ed36226fc459",
+      "bytes": 3310484
+    },
+    {
+      "path": "data/derived/tse_parties/5163c8aeaaebe88c/coalitions_2012.parquet",
+      "sha256": "ca2c86d3f1a3afe7e841cb5cee78b90dbc8c5ed5d390c6ebdbd40b1e13b99099",
+      "bytes": 4033698
+    },
+    {
+      "path": "data/derived/tse_parties/5163c8aeaaebe88c/coalitions_2016.parquet",
+      "sha256": "e6fbd0128c7ecb6fbfd1341128fa0925d35f5e5ed1e35912ebd1c12a09c6da06",
+      "bytes": 4570218
+    },
+    {
+      "path": "data/derived/tse_parties/5163c8aeaaebe88c/coalitions_2020.parquet",
+      "sha256": "ada5d3aebd6b96385dd911c1c5809c44d6e2906768de382ee60f28e3bacb5a11",
+      "bytes": 2373909
+    },
+    {
+      "path": "data/derived/tse_parties/5163c8aeaaebe88c/coalitions_2024.parquet",
+      "sha256": "2d35eb4665eb67138fad2e41c0b4528ae04338b8c5171a1090d9221732b8b5e5",
+      "bytes": 2641027
+    }
+  ],
+  "notes": "party_votes rows per year: 2000=79963, 2004=91839, 2008=100592, 2012=113613, 2016=125816, 2020=79134, 2024=80934; coalitions rows per year: 2000=90448, 2004=175300, 2008=196960, 2012=231949, 2016=251943, 2020=139935, 2024=157828",
+  "inputs": [
+    "data/raw/tse/results/2026-11-02/_MANIFEST.json",
+    "data/derived/municipalities/03690186b97be705/_MANIFEST.json"
+  ]
+}
