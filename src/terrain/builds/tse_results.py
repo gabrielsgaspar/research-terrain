@@ -51,7 +51,13 @@ GROUP = ["ano_eleicao", "cd_eleicao", "sg_ue", "cd_cargo", "nr_turno"]
 VALID = "qt_votos_nominais_validos"
 NOMINAL = "qt_votos_nominais"
 
-MAX_UNMATCHED_SHARE = 0.001
+# Share of a year's candidacies in the results file that may be missing from
+# the candidate file. A join bug would leave most rows unmatched; real gaps are
+# small but not negligible: the TSE's 2008 candidate file lacks 1,458 of the
+# 336,668 candidacies with votes (0.43%; 204 in Pará), with 311 of them in
+# municipalities that have no candidate rows at all. Unmatched rows are kept
+# (`matched` false) and counted in the notes.
+MAX_UNMATCHED_SHARE = 0.01
 
 _VOTES_ZIP = re.compile(r"votacao_candidato_munzona_(\d{4})\.zip$")
 _TURNOUT_ZIP = re.compile(r"detalhe_votacao_munzona_(\d{4})\.zip$")
@@ -154,10 +160,20 @@ def check(df: pl.DataFrame, expected_rows: int, key: list[str], what: str) -> No
 
 
 def check_matched(df: pl.DataFrame, what: str, max_share: float = MAX_UNMATCHED_SHARE) -> int:
-    """Raise if unmatched candidacies exceed `max_share` of the rows. Returns their count."""
-    unmatched = int((~df["matched"]).sum())
-    if df.height and unmatched / df.height > max_share:
-        raise BuildError(f"{what}: {unmatched} of {df.height} rows match no candidacy")
+    """Raise if unmatched candidacies exceed `max_share`; return how many there are.
+
+    The share is over distinct candidacies, not rows: one unmatched candidacy
+    has a row in every zone, so a row share inflates it (2008: 140 candidacies
+    are 1,834 of 646,941 rows, 0.28%, but 0.04% of candidacies). A frame
+    without the candidacy key columns falls back to rows.
+    """
+    if all(c in df.columns for c in CANDIDACY_KEY):
+        per = df.group_by(CANDIDACY_KEY).agg(pl.col("matched").all())
+        unmatched, total, unit = int((~per["matched"]).sum()), per.height, "candidacies"
+    else:
+        unmatched, total, unit = int((~df["matched"]).sum()), df.height, "rows"
+    if total and unmatched / total > max_share:
+        raise BuildError(f"{what}: {unmatched} of {total} {unit} match no candidacy")
     return unmatched
 
 
@@ -260,6 +276,7 @@ def build(
     columns[VOTES].append("matched")
 
     files: list[dict[str, Any]] = []
+    built: list[tuple[str, Path]] = []
     rows: dict[str, dict[int, int]] = {VOTES: {}, TURNOUT: {}}
     unmatched: dict[int, int] = {}
     agreement: dict[int, tuple[int, int]] = {}
@@ -283,15 +300,17 @@ def build(
             name = f"{OUTPUT_PREFIX[kind]}_{y}.parquet"
             out = tmp_dir / name
             align(frames[kind], columns[kind]).write_parquet(out)
-            store.create(prefix + name, out)
-            files.append(
-                {
-                    "path": prefix + name,
-                    "sha256": sha256_file(out),
-                    "bytes": out.stat().st_size,
-                }
-            )
+            built.append((name, out))
         del frames
+
+    # Every year is built and checked locally first; nothing reaches the store
+    # unless all of them pass, so a failed run leaves no partial output (a
+    # failed 2008 once left the 2000 and 2004 files behind).
+    for name, out in built:
+        store.create(prefix + name, out)
+        files.append(
+            {"path": prefix + name, "sha256": sha256_file(out), "bytes": out.stat().st_size}
+        )
 
     return build_manifest(
         dataset=DATASET,

@@ -201,6 +201,7 @@ def build(
         columns[kind] = cols
 
     files: list[dict[str, Any]] = []
+    built: list[tuple[str, Path]] = []
     rows: dict[str, dict[int, int]] = {VOTES: {}, COALITIONS: {}}
     for kind in (VOTES, COALITIONS):
         key = KEYS[kind]
@@ -214,14 +215,15 @@ def build(
             out = tmp_dir / name
             align(df, columns[kind]).write_parquet(out)
             del df
-            store.create(prefix + name, out)
-            files.append(
-                {
-                    "path": prefix + name,
-                    "sha256": sha256_file(out),
-                    "bytes": out.stat().st_size,
-                }
-            )
+            built.append((name, out))
+
+    # Upload only after every year and table has passed its checks, so a failed
+    # run leaves no partial output in the bucket.
+    for name, out in built:
+        store.create(prefix + name, out)
+        files.append(
+            {"path": prefix + name, "sha256": sha256_file(out), "bytes": out.stat().st_size}
+        )
 
     return build_manifest(
         dataset=DATASET,

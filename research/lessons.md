@@ -16,6 +16,21 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-02: The 2008 candidate file is missing candidacies that have votes
+- Tried: building candidate votes for 2000-2024 against the candidates table.
+- Result: 1,458 of the 336,668 candidacies with votes in 2008 (0.43%) are
+  not in the 2008 candidate file, 204 of them in Pará; 311 are in
+  municipalities with no candidate rows at all. Other years: 67 (2000), 126
+  (2004), 4 (2012), none from 2016. Votes agree with turnout in 11,305 of
+  11,306 municipality-office-rounds in 2008, so the results file is complete.
+- Why: gaps in the TSE's 2008 consulta_cand, not a join error (the same SQs
+  are not under another election code).
+- Implication: for 2008, candidate attributes (party, race, birth date) are
+  missing for those candidacies; vote margins are not, because the results
+  file carries party and number. Strongholds for 2008 should take party from
+  the results file, and any 2008 analysis using candidate attributes must
+  report this gap.
+
 ## 2026-11-02: Strongholds can use 2008-2024, not 2000-2024 (idea 0001)
 - Tried: profiling TSE section votes, TSE polling places and the Hidalgo
   geocodes for Pará, 2000-2024.
