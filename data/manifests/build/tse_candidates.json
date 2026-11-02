@@ -1,0 +1,20 @@
+{
+  "dataset": "tse_candidates",
+  "stage": "build",
+  "status": "unchanged",
+  "gcs_prefix": "data/derived/tse_candidates/73af2aca241094a0/",
+  "created_at": "2026-11-02T16:20:42.680995+00:00",
+  "code_commit": "e076559d4443bc3491fe546a42aaa8e2581c9b35",
+  "sources": [],
+  "files": [
+    {
+      "path": "data/derived/tse_candidates/73af2aca241094a0/candidates.parquet",
+      "sha256": "05f76389786eab7b251a12474f8548b4b54fe3789097dad39e2e79d57d83562b",
+      "bytes": 208458211
+    }
+  ],
+  "notes": "rows per year: 2000=399455, 2004=402157, 2008=382079, 2012=483741, 2016=498391, 2020=558804, 2024=463885; birth dates unparseable: 2000=17, 2004=6, 2008=0, 2012=0, 2016=0, 2020=0, 2024=0; implausible: 2000=109, 2004=312, 2008=56, 2012=225, 2016=27, 2020=15, 2024=9",
+  "inputs": [
+    "data/raw/tse/candidates/2026-11-02/_MANIFEST.json"
+  ]
+}
