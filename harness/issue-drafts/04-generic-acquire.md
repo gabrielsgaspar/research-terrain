@@ -42,8 +42,14 @@ Infrastructure for `research/ideas/0001-electoral-strongholds.md`. Read the
   acquirer, and new thin scripts: `ibge_municipalities.py`,
   `polling_stations_geocoded.py`, `tse_results.py`,
   `tse_votes_by_section.py`, `tse_polling_places.py`.
-- Remove `src/terrain/sources/tse.py` once nothing imports it; move or update
-  its tests (`tests/test_acquire_tse.py`, `tests/test_catalog.py`).
+- Delete `src/terrain/sources/tse.py` and `src/terrain/sources/__init__.py`
+  (the package is then empty) with `git rm`, and move the tests in
+  `tests/test_acquire_tse.py` into `tests/test_acquire.py`, deleting the old
+  file. Keep `tests/test_catalog.py`'s existing tests and add one that
+  `tse_candidates` has an `acquire:` block.
+- In the plan's **Files to change**, list each of the six scripts in
+  `pipeline/acquire/` and each deleted file as its own bullet with its full
+  path.
 - `tests/test_acquire.py`: generic tests with `MemoryStore` and a fake
   fetcher, using fixture-built zips, an ODS built from
   `data/fixtures/ibge/*.content.xml`, and a gzip built from

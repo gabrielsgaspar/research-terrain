@@ -4,6 +4,18 @@ What setting up and running the agent pipeline, GitHub and GCP has taught
 us. Research and data findings live in `research/lessons.md`. Newest first,
 same format.
 
+## 2026-11-02: A plan listed files with brace shorthand (issue #26)
+- Tried: re-planning task 04.
+- Result: the plan listed five new scripts as
+  `pipeline/acquire/{a,b,c,d,e}.py` and mentioned deleting
+  `src/terrain/sources/__init__.py` only inside a step. Verify matches
+  plan paths exactly, so the build would have failed on six files. Caught
+  in plan review, before building.
+- Why: nothing told the planner the file list is parsed literally.
+- Implication: AGENTS.md now requires one full path per bullet, deletions
+  included. The durable fix is BUILD_PLAN item 0.2 (a JSON file list in the
+  plan, parsed instead of markdown).
+
 ## 2026-11-02: A plan asked the builder for a command it did not have (issue #26)
 - Tried: task 04, whose plan deletes `src/terrain/sources/tse.py` and its
   test after moving the logic.
