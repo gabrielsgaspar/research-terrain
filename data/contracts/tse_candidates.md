@@ -28,6 +28,16 @@ A column a year does not have is null for that year.
 `int` is Int32, `date` is a calendar date read as `dd/mm/yyyy`, `text` is a
 string. Text is decoded from Latin-1.
 
+## Birth dates
+
+`dt_nascimento_raw` is the original text, after the missing-value rule.
+`dt_nascimento` is parsed from it with spaces removed, non-strictly. It is null
+when the text does not parse as `dd/mm/yyyy`, when the date is before
+1900-01-01, or when the candidate was under 18 on `dt_eleicao`. The build writes
+the per-year counts of unparseable and implausible values in the manifest
+`notes`, and raises if either exceeds 0.1% of a year's rows. `dt_eleicao` is
+strict: a value that does not parse stops the build.
+
 ## Columns
 
 Source names are upper case in the files. "Years" lists the candidate files
@@ -74,6 +84,7 @@ that have the column; the complementary file exists for 2020 and 2024 only.
 | `cd_municipio_nascimento` | text | `CD_MUNICIPIO_NASCIMENTO` | 2000-2016 |
 | `nm_municipio_nascimento` | text | `NM_MUNICIPIO_NASCIMENTO` | 2000-2016 |
 | `dt_nascimento` | date | `DT_NASCIMENTO` | all |
+| `dt_nascimento_raw` | text | `DT_NASCIMENTO`, as read | all |
 | `nr_idade_data_posse` | text | `NR_IDADE_DATA_POSSE` | 2000-2016 |
 | `nr_titulo_eleitoral_candidato` | text | `NR_TITULO_ELEITORAL_CANDIDATO` | all |
 | `cd_genero` | text | `CD_GENERO` | all |

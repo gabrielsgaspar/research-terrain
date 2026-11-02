@@ -15,10 +15,12 @@ from terrain.builds.tse_candidates import (
     BuildError,
     build,
     check,
+    check_birth_dates,
     dtype_of,
     harmonise,
     join_complementar,
     snake,
+    type_birth_dates,
 )
 from terrain.catalog import dataset
 from terrain.manifest import MANIFEST_NAME, validate_manifest, write_manifest
@@ -185,7 +187,8 @@ def test_harmonise_nulls_every_listed_code():
     assert out["nr_cpf_candidato"].null_count() == n
     assert out["email"].null_count() == n
     assert out["sg_ue"][0] == "01234"
-    assert out["dt_nascimento"][0] == date(1970, 7, 1)
+    # Birth dates are typed in type_birth_dates, not here.
+    assert out["dt_nascimento"].dtype == pl.String
 
 
 def test_email_columns_become_one():
@@ -326,6 +329,87 @@ def test_join_check_raises_on_a_repeated_complementary_row():
     )
     with pytest.raises(BuildError, match="repeats"):
         join_complementar(df, comp)
+
+
+# --- Birth dates and election dates
+
+
+def with_field_set(data: bytes, name: str, values: list[bytes]) -> bytes:
+    """Replace field `name` in the first len(values) data rows, in place."""
+    header = next(csv.reader(io.StringIO(data.decode("latin-1")), delimiter=";"))
+    field = header.index(name)
+    lines = data.split(b"\r\n")
+    for i, value in enumerate(values):
+        parts = lines[1 + i].split(b";")
+        parts[field] = b'"' + value + b'"'
+        lines[1 + i] = b";".join(parts)
+    return b"\r\n".join(lines)
+
+
+def test_birth_dates_bad_ones_become_null_and_raw_text_is_kept():
+    raw = ["29/02/1967", "01/8 /1970", "01/01/0001", "01/07/1970"]
+    df = pl.DataFrame({"dt_nascimento": raw, "dt_eleicao": [date(2000, 10, 1)] * 4})
+    out, unparseable, implausible = type_birth_dates(df)
+    assert out["dt_nascimento"].to_list() == [None, date(1970, 8, 1), None, date(1970, 7, 1)]
+    assert out["dt_nascimento_raw"].to_list() == raw
+    assert unparseable + implausible == 2
+
+
+def test_birth_date_under_18_on_election_day_becomes_null():
+    df = pl.DataFrame(
+        {
+            "dt_nascimento": ["02/10/1982", "01/10/1982", "01/10/2000"],
+            "dt_eleicao": [date(2000, 10, 1)] * 3,
+        }
+    )
+    out, unparseable, implausible = type_birth_dates(df)
+    assert out["dt_nascimento"].to_list() == [None, date(1982, 10, 1), None]
+    assert (unparseable, implausible) == (0, 2)
+
+
+def test_birth_dates_in_a_built_year_are_counted_in_the_notes(tmp_path):
+    data = with_field_set(
+        fixture("consulta_cand_2000"),
+        "DT_NASCIMENTO",
+        [b"29/02/1967", b"01/8 /1970", b"01/01/0001", b"01/07/1970"],
+    )
+    store = MemoryStore()
+    manifest = stage(store, overrides={"consulta_cand_2000": data})
+    with pytest.raises(BuildError, match="birth dates"):
+        run(store, manifest, tmp_path)
+    work = tmp_path / "work2"
+    work.mkdir()
+    out = build(
+        store,
+        manifest,
+        derived_root=DERIVED,
+        tmp_dir=work,
+        code_commit="abc",
+        max_bad_birth_share=1.0,
+    )
+    assert "birth dates unparseable: 2000=" in out["notes"]
+    assert "implausible: 2000=" in out["notes"]
+    df = read_output(store, out).filter(pl.col("ano_eleicao") == 2000)
+    assert df["dt_nascimento_raw"][:4].to_list()[1] == "01/8 /1970"
+    assert df["dt_nascimento"][1] == date(1970, 8, 1)
+    assert df["dt_nascimento"][0] is None
+    assert df["dt_nascimento"][2] is None
+
+
+def test_birth_date_check_raises_above_the_share_and_names_no_values():
+    check_birth_dates(2000, 1000, 1, 1, 0.001)
+    with pytest.raises(BuildError, match="2 of 1000"):
+        check_birth_dates(2000, 1000, 2, 0, 0.001)
+    with pytest.raises(BuildError, match="implausible"):
+        check_birth_dates(2000, 1000, 0, 2, 0.001)
+
+
+def test_an_invalid_election_date_still_stops_the_build(tmp_path):
+    data = with_field_set(fixture("consulta_cand_2000"), "DT_ELEICAO", [b"31/02/2000"])
+    store = MemoryStore()
+    manifest = stage(store, overrides={"consulta_cand_2000": data})
+    with pytest.raises(pl.exceptions.PolarsError):
+        run(store, manifest, tmp_path)
 
 
 # --- Done when 8: contract
