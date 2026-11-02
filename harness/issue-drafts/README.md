@@ -17,3 +17,4 @@ acquired or built (its manifest merged into `data/manifests/`).
 | 05 | Municipalities and TSE-IBGE crosswalk | 03 built; `ibge_municipalities` and `polling_stations_geocoded` acquired |
 | 06 | Results: votes, party votes, turnout, coalitions | 05 built; `tse_results` acquired |
 | 07 | Section votes and polling places | 06 built; sections and polling places acquired |
+| 08 | Candidates build tolerates invalid birth dates | 03 merged; do before running the 03 build again |
