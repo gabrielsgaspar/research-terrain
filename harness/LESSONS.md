@@ -4,6 +4,16 @@ What setting up and running the agent pipeline, GitHub and GCP has taught
 us. Research and data findings live in `research/lessons.md`. Newest first,
 same format.
 
+## 2026-11-02: Anonymised fixtures hid a real-data defect (candidates build)
+- Tried: the first real run of the candidates build, after all tests passed.
+- Result: it stopped on 17 invalid birth dates (such as 29 February 1950)
+  in the 2000 file. Nothing was written.
+- Why: the fixtures set every birth date to 1 July to anonymise them, which
+  also removed the invalid ones; the build parsed dates strictly.
+- Implication: before writing a build task, profile the real files for
+  values the build will reject, and put the counts in the task. Builds
+  decide per column between stopping and null-plus-count (AGENTS.md).
+
 ## 2026-11-02: Workflow scripts need the same testing as Python code (data-pipeline)
 - Tried: the first real `data-pipeline` acquire run.
 - Result: the data was downloaded and verified, but the PR step failed on a

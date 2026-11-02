@@ -76,6 +76,11 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
 - Fixtures are small text files (CSV or JSON, under 200 KB) cut from real data,
   used by tests. Binary files are refused by the build checks.
 - Tests never call the network, GCS or a model.
+- Real data is messier than fixtures. When a build types a column, decide
+  per column whether a bad value should stop the build (keys, election
+  dates) or become null. For the second kind: keep the original text in a
+  `_raw` column, count the failures per year in the manifest notes, and
+  raise only above a stated share.
 
 ### Credibility
 
