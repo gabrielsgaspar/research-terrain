@@ -175,6 +175,18 @@ datasets:
       reviewed exceptions are in data/reference/tse_ibge_name_variants.yaml.
       Also writes legal_amazon.csv, the input to scripts/seal_split.py.
 
+  - name: polling_places
+    source: built from tse_polling_places, polling_stations_geocoded and municipalities
+    licence: public
+    derived: data/derived/polling_places/
+    contract: data/contracts/polling_places.md
+    status: planned
+    notes: >
+      Located polling places of the Legal Amazon, one Parquet per election
+      year (2008, 2012, 2016, 2020, 2024). TSE coordinates where present,
+      otherwise Hidalgo's; 2008 from Hidalgo only. Carries panel_id and an
+      error bound (conf_dist_km). Phone numbers are never kept.
+
   - name: mapbiomas_deforestation
     source: MapBiomas annual collection, exported via Earth Engine
     licence: check MapBiomas terms
