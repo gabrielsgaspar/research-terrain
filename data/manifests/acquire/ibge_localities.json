@@ -1,0 +1,24 @@
+{
+  "dataset": "ibge_localities",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/ibge/localities/2026-11-02/",
+  "created_at": "2026-11-02T23:41:12.016067+00:00",
+  "code_commit": "6227e257a1c21020277e9d5223219010753eb735",
+  "sources": [
+    {
+      "url": "https://geoftp.ibge.gov.br/organizacao_do_territorio/estrutura_territorial/localidades/Localidades_do_Brasil/2022/Localidades_Brasil_gpkg.zip",
+      "last_modified": "Wed, 19 Nov 2025 19:12:39 GMT",
+      "etag": "\"62d6e4-643f75d25b7c0\"",
+      "bytes": 6477540
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/ibge/localities/2026-11-02/Localidades_Brasil_gpkg.zip",
+      "sha256": "1d96d5f0b379972a506d4b18c3696af974fbe59f8f6680557cb3a6dd38a0eb57",
+      "bytes": 6477540
+    }
+  ],
+  "notes": ""
+}
