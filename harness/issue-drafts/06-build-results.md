@@ -41,6 +41,9 @@ vote margins within lists). Read "Keys and joins" in
   turnout file's valid nominal votes (in Pará: 287/287 in 2008, 286/290 in
   2024), written in the manifest notes.
 - `data/contracts/tse_results.md`.
+- Memory and disk: GitHub runners have 16 GB of memory and 14 GB of disk.
+  Read one zip member at a time without extracting to disk, and never hold
+  more than one year in memory; write Parquet partitioned by year.
 
 ## Out of scope
 

@@ -39,7 +39,9 @@ and a target (the script name without `.py`).
    rejects a manifest that breaks these rules.
 4. When `status` is `created`, the workflow opens a PR adding the manifest
    as `data/manifests/<stage>/<target>.json`. Merging it is how later tasks
-   learn the data exists. An `unchanged` run opens no PR.
+   learn the data exists. An `unchanged` run opens no PR, unless main has no
+   manifest for that output (an earlier run created it but failed to
+   record it): then it records it.
 
 Keep scripts thin: logic lives in `src/terrain/` with tests that use fixtures
 and an in-memory store, never the network or GCS.

@@ -41,6 +41,10 @@ and "Keys and joins" in `data/fixtures/tse/README.md`, and
   sections whose polling place has no coordinate is reported per year and
   must be under 5% from 2008.
 - `data/contracts/sections.md`.
+- Memory and disk: GitHub runners have 16 GB of memory and 14 GB of disk.
+  Read one zip member at a time without extracting to disk, and never hold
+  more than one state-year file in memory (Pará 2024 alone has 1.6 million
+  section rows); write Parquet partitioned by year and state.
 
 ## Out of scope
 

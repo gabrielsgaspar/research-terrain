@@ -1,4 +1,7 @@
-"""Build the TSE candidates table. Contract: pipeline/README.md. Logic: terrain.builds.tse_candidates."""
+"""Build the TSE candidates table.
+
+Contract: pipeline/README.md. Logic: terrain.builds.tse_candidates.
+"""
 
 from __future__ import annotations
 

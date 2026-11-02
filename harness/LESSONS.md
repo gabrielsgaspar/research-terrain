@@ -4,6 +4,42 @@ What setting up and running the agent pipeline, GitHub and GCP has taught
 us. Research and data findings live in `research/lessons.md`. Newest first,
 same format.
 
+## 2026-11-02: An unanchored `build/` in .gitignore hid two project folders (candidates build)
+- Tried: recording the first `build` manifest.
+- Result: `git add` refused `data/manifests/build/`. The same pattern also
+  hid `pipeline/build/`, so ruff never checked the merged build script (it
+  had a lint error) and `git add -A` would silently skip new files there.
+- Why: `build/` in .gitignore matches a folder of that name anywhere, not
+  only the Python build folder at the root.
+- Implication: directory patterns are anchored (`/build/`), and
+  `tests/test_repo_rules.py` lists paths that must stay committable and
+  paths that must stay ignored. Rule in AGENTS.md.
+
+## 2026-11-02: A failed record step left data in GCS that main did not know about
+- Tried: rerunning a build after its PR step failed.
+- Result: the rerun would have reported `unchanged` and opened no PR, so the
+  manifest would never reach main.
+- Why: the record step skipped every `unchanged` run.
+- Implication: an `unchanged` run is now recorded when main has no manifest
+  for that output, so rerunning repairs a failed record step.
+
+## 2026-11-02: Test zips with the current time made a hash test flaky (issue #18)
+- Tried: running the suite repeatedly.
+- Result: `test_same_inputs_give_the_same_path` failed about one run in
+  three: two zips built from the same fixture a second apart had different
+  SHA-256s, so different output paths.
+- Why: `ZipFile.writestr(name, ...)` stamps entries with the current time.
+- Implication: test zips use a fixed timestamp. Rule in AGENTS.md.
+
+## 2026-11-02: Search issues before filing a draft (issue #23)
+- Tried: filing task 08 a second time.
+- Result: the planner answered "duplicate of #21, done in PR #22"; posting
+  its comment then failed on a transient GitHub API error.
+- Why: the draft had already been filed and built.
+- Implication: before filing, run `gh issue list --state all --search
+  "<title words>"`. GitHub API errors ("Something went wrong") are
+  transient: start a new run a few minutes later.
+
 ## 2026-11-02: Anonymised fixtures hid a real-data defect (candidates build)
 - Tried: the first real run of the candidates build, after all tests passed.
 - Result: it stopped on 17 invalid birth dates (such as 29 February 1950)
