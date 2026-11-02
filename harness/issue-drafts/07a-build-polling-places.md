@@ -20,6 +20,12 @@ Data for `research/ideas/0001-electoral-strongholds.md`. Read "Geography" in
 - Hidalgo (2006 onward): (`ano`, `cd_localidade_tse`, `nr_zona`,
   `nr_locvot`) is unique over all 944,687 rows. `cd_localidade_tse` is not
   zero-padded; `conf_dist_km` is 0 for the TSE's own coordinates.
+- `panel_id` is not in the geocoded file. It is in `panel_ids.csv.gz`
+  (columns `panel_id`, `local_id`, `long`, `lat`, `conf_dist_km`), joined on
+  `local_id`, which is unique there; it covers 922,458 of the 944,687
+  stations. Fixture: `data/fixtures/hidalgo/panel_ids_sample.csv`.
+- Each TSE polling-place zip holds one CSV
+  (`eleitorado_local_votacao_<year>.csv`) and a `leiame.pdf`; no state files.
 
 ## In scope
 
@@ -33,7 +39,8 @@ Data for `research/ideas/0001-electoral-strongholds.md`. Read "Geography" in
   for 2008, 2012, 2016, 2020 and 2024: one row per (`ano`, `cd_ibge`,
   `sg_ue`, `nr_zona`, `nr_local_votacao`) with `lat`, `long`,
   `coord_source` (`tse` or `hidalgo`), `conf_dist_km` (0 for TSE),
-  `panel_id` (Hidalgo's, where present), the place's name and address.
+  `panel_id` (from `panel_ids.csv.gz` through the Hidalgo station's
+  `local_id`; null where there is none), the place's name and address.
   Never keep phone numbers.
 - TSE coordinates first, where not `-1`; otherwise Hidalgo's. For a place
   with two TSE coordinates, take the most frequent and count such places.
@@ -65,6 +72,9 @@ module it imports, with input SHA-256s sorted (AGENTS.md).
 3. A place with two TSE coordinate pairs gets the most frequent, and the
    count appears in the notes.
 4. No output column holds a phone number.
+4a. Fixture places whose Hidalgo station has a panel row get its `panel_id`;
+    the others have null, and the per-year share with a `panel_id` is in the
+    notes.
 5. The key, Legal Amazon and coverage checks each raise on broken input.
 6. Test inputs are deterministic (fixed zip timestamps, gzip `mtime=0`); no
    test touches the network or GCS.
