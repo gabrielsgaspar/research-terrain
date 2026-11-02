@@ -7,8 +7,7 @@
 #   licence:  terms of use
 #   gcs:      path under gs://research-terrain/ (raw is write-once: new
 #             downloads go to a new dated folder)
-#   sha256:   of the raw file(s), filled in by the acquire workflow
-#   status:   planned | acquired | built
+#   status:   planned or available; what has reached GCS is in data/manifests/
 #   contract: schema file in data/contracts/, once built
 #   notes:    caveats
 
