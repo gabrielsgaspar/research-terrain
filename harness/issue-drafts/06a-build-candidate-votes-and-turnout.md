@@ -22,6 +22,9 @@ margins). Read "Keys and joins" in `data/fixtures/tse/README.md` first.
 - Reuse `snake`, `MISSING`, `read_header` and the member-reading helpers by
   importing them from `terrain.builds.tse_candidates`. Do not modify that
   module: its code is part of its output path's hash.
+- The output path hashes this build's code and
+  `src/terrain/builds/tse_candidates.py` (whose helpers it uses), with input
+  SHA-256s sorted.
 - Read only each zip's `*_BRASIL.csv`, one year at a time.
 - Outputs under `data/derived/tse_results/<hash>/`, one file per year:
   - `candidate_votes_<year>.parquet`: one row per candidacy, round and zone.

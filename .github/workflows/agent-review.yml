@@ -462,7 +462,7 @@ jobs:
           classify_inline_comments: "false"
           settings: >-
             {"permissions":{"blockReadsOutsideWorkingDirectories":true},
-            "sandbox":{"network":{"deniedDomains":["github.com","api.github.com"]},
+            "sandbox":{"autoAllowBashIfSandboxed":false,"network":{"deniedDomains":["github.com","api.github.com"]},
             "credentials":{
             "envVars":[{"name":"CLAUDE_CODE_OAUTH_TOKEN","mode":"deny"},{"name":"ANTHROPIC_API_KEY","mode":"deny"},{"name":"GITHUB_TOKEN","mode":"deny"},{"name":"GH_TOKEN","mode":"deny"},{"name":"ACTIONS_RUNTIME_TOKEN","mode":"deny"},{"name":"ACTIONS_ID_TOKEN_REQUEST_TOKEN","mode":"deny"}],
             "files":[{"path":"~/.claude/.credentials.json","mode":"deny"},{"path":"~/.claude.json","mode":"deny"}]}}}

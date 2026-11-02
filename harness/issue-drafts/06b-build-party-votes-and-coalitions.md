@@ -32,6 +32,8 @@ decided within lists (coalitions until 2016, parties and federations from
   `data/manifests/build/municipalities.json`.
 - Reuse the helpers in `terrain.builds.tse_candidates` by importing them; do
   not modify that module.
+- The output path hashes this build's code and
+  `src/terrain/builds/tse_candidates.py`, with input SHA-256s sorted.
 - Outputs under `data/derived/tse_parties/<hash>/`, one file per year:
   `party_votes_<year>.parquet` and `coalitions_<year>.parquet`, with
   `cd_ibge` on both.

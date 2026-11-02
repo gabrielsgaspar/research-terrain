@@ -176,6 +176,9 @@ jobs:
       # 3. Claude, read-only. 40 turns: a data task's plan reads the issue,
       #    AGENTS.md, the catalog, manifests, fixture notes and the code it
       #    replaces; task 04 needed 21 and hit the old limit of 20 (issue #26).
+      #    autoAllowBashIfSandboxed is false: with the sandbox's default
+      #    (true), any sandboxed command runs without matching --allowedTools,
+      #    so the allowlist would not be enforced (seen in PR #38's review).
       #    `--tools` limits which built-in tools exist;
       #    --allowedTools limits Bash to git log; --disallowedTools removes MCP
       #    tools, blocks `--output` (which would let git write a file) and
@@ -201,7 +204,7 @@ jobs:
           # The job token, not the Claude GitHub App: this skips the OIDC
           # exchange, so the job needs no `id-token: write`.
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          settings: '{"permissions":{"blockReadsOutsideWorkingDirectories":true}}'
+          settings: '{"permissions":{"blockReadsOutsideWorkingDirectories":true},"sandbox":{"autoAllowBashIfSandboxed":false}}'
           claude_args: |
             --model claude-opus-5-5
             --max-turns 40

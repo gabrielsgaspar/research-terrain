@@ -47,6 +47,9 @@ Expected files (four): `src/terrain/builds/polling_places.py`,
 `pipeline/build/polling_places.py`, `data/contracts/polling_places.md`,
 `tests/test_build_polling_places.py`.
 
+The output path hashes this build's code and every data-handling `terrain`
+module it imports, with input SHA-256s sorted (AGENTS.md).
+
 ## Out of scope
 
 - Section votes (07b); catchments, grids or strongholds.
