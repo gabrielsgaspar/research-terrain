@@ -1,0 +1,240 @@
+{
+  "2008": {
+    "all_candidates": {
+      "candidates": 23572,
+      "mean_share_votes_outside_seat": 0.23203366769657685,
+      "share_stronghold_outside_seat": 0.4173595791617173,
+      "share_with_stronghold": 1.0,
+      "stronghold_by_place_type": {
+        "dispersed": 2411,
+        "indigenous": 200,
+        "quilombola": 212,
+        "rural": 1299,
+        "seat": 13640,
+        "settlement": 24,
+        "town": 5692,
+        "unknown": 94
+      },
+      "stronghold_outside_seat": 9838,
+      "with_stronghold": 23572
+    },
+    "close": {
+      "0.25%": 478,
+      "0.5%": 765,
+      "1%": 1084,
+      "2%": 1343
+    },
+    "close_pair_candidates": {
+      "candidates": 1530,
+      "mean_share_votes_outside_seat": 0.25487797185890443,
+      "share_stronghold_outside_seat": 0.4797385620915033,
+      "share_with_stronghold": 1.0,
+      "stronghold_by_place_type": {
+        "dispersed": 170,
+        "indigenous": 18,
+        "quilombola": 15,
+        "rural": 109,
+        "seat": 788,
+        "town": 422,
+        "unknown": 8
+      },
+      "stronghold_outside_seat": 734,
+      "with_stronghold": 1530
+    },
+    "inverted": 0,
+    "main_election": 30,
+    "pairs": 1436,
+    "without_valid_votes": 0
+  },
+  "2012": {
+    "all_candidates": {
+      "candidates": 27746,
+      "mean_share_votes_outside_seat": 0.2435281525058799,
+      "share_stronghold_outside_seat": 0.443611461524599,
+      "share_with_stronghold": 0.9999639587688316,
+      "stronghold_by_place_type": {
+        "dispersed": 2835,
+        "indigenous": 243,
+        "quilombola": 259,
+        "rural": 1246,
+        "seat": 15275,
+        "settlement": 19,
+        "town": 7706,
+        "unknown": 162
+      },
+      "stronghold_outside_seat": 12308,
+      "with_stronghold": 27745
+    },
+    "close": {
+      "0.25%": 578,
+      "0.5%": 919,
+      "1%": 1258,
+      "2%": 1452
+    },
+    "close_pair_candidates": {
+      "candidates": 1838,
+      "mean_share_votes_outside_seat": 0.27970924933567226,
+      "share_stronghold_outside_seat": 0.529379760609358,
+      "share_with_stronghold": 1.0,
+      "stronghold_by_place_type": {
+        "dispersed": 248,
+        "indigenous": 22,
+        "quilombola": 21,
+        "rural": 86,
+        "seat": 854,
+        "settlement": 2,
+        "town": 594,
+        "unknown": 11
+      },
+      "stronghold_outside_seat": 973,
+      "with_stronghold": 1838
+    },
+    "inverted": 0,
+    "main_election": 47,
+    "pairs": 1507,
+    "without_valid_votes": 0
+  },
+  "2016": {
+    "all_candidates": {
+      "candidates": 30463,
+      "mean_share_votes_outside_seat": 0.23633906899202892,
+      "share_stronghold_outside_seat": 0.429026327883921,
+      "share_with_stronghold": 0.9999671732921905,
+      "stronghold_by_place_type": {
+        "dispersed": 3025,
+        "indigenous": 248,
+        "quilombola": 292,
+        "rural": 1311,
+        "seat": 17232,
+        "settlement": 40,
+        "town": 8153,
+        "unknown": 161
+      },
+      "stronghold_outside_seat": 13069,
+      "with_stronghold": 30462
+    },
+    "close": {
+      "0.25%": 596,
+      "0.5%": 940,
+      "1%": 1264,
+      "2%": 1459
+    },
+    "close_pair_candidates": {
+      "candidates": 1880,
+      "mean_share_votes_outside_seat": 0.27518302376878245,
+      "share_stronghold_outside_seat": 0.5382978723404256,
+      "share_with_stronghold": 1.0,
+      "stronghold_by_place_type": {
+        "dispersed": 240,
+        "indigenous": 23,
+        "quilombola": 23,
+        "rural": 118,
+        "seat": 857,
+        "settlement": 3,
+        "town": 605,
+        "unknown": 11
+      },
+      "stronghold_outside_seat": 1012,
+      "with_stronghold": 1880
+    },
+    "inverted": 0,
+    "main_election": 220,
+    "pairs": 1512,
+    "without_valid_votes": 0
+  },
+  "2020": {
+    "all_candidates": {
+      "candidates": 37264,
+      "mean_share_votes_outside_seat": 0.23751511739460374,
+      "share_stronghold_outside_seat": 0.41691713181623014,
+      "share_with_stronghold": 1.0,
+      "stronghold_by_place_type": {
+        "dispersed": 3541,
+        "indigenous": 356,
+        "quilombola": 278,
+        "rural": 1436,
+        "seat": 21417,
+        "settlement": 24,
+        "town": 9901,
+        "unknown": 311
+      },
+      "stronghold_outside_seat": 15536,
+      "with_stronghold": 37264
+    },
+    "close": {
+      "0.25%": 676,
+      "0.5%": 1060,
+      "1%": 1576,
+      "2%": 1918
+    },
+    "close_pair_candidates": {
+      "candidates": 2120,
+      "mean_share_votes_outside_seat": 0.2746894478160868,
+      "share_stronghold_outside_seat": 0.5283018867924528,
+      "share_with_stronghold": 1.0,
+      "stronghold_by_place_type": {
+        "dispersed": 271,
+        "indigenous": 23,
+        "quilombola": 28,
+        "rural": 106,
+        "seat": 991,
+        "town": 692,
+        "unknown": 9
+      },
+      "stronghold_outside_seat": 1120,
+      "with_stronghold": 2120
+    },
+    "inverted": 0,
+    "main_election": 426,
+    "pairs": 2110,
+    "without_valid_votes": 0
+  },
+  "2024": {
+    "all_candidates": {
+      "candidates": 29894,
+      "mean_share_votes_outside_seat": 0.24858773488073588,
+      "share_stronghold_outside_seat": 0.4451060413460895,
+      "share_with_stronghold": 1.0,
+      "stronghold_by_place_type": {
+        "dispersed": 3195,
+        "indigenous": 288,
+        "quilombola": 233,
+        "rural": 1316,
+        "seat": 16227,
+        "settlement": 21,
+        "town": 8253,
+        "unknown": 361
+      },
+      "stronghold_outside_seat": 13306,
+      "with_stronghold": 29894
+    },
+    "close": {
+      "0.25%": 541,
+      "0.5%": 891,
+      "1%": 1289,
+      "2%": 1664
+    },
+    "close_pair_candidates": {
+      "candidates": 1782,
+      "mean_share_votes_outside_seat": 0.2904082084987,
+      "share_stronghold_outside_seat": 0.55331088664422,
+      "share_with_stronghold": 1.0,
+      "stronghold_by_place_type": {
+        "dispersed": 219,
+        "indigenous": 20,
+        "quilombola": 15,
+        "rural": 113,
+        "seat": 775,
+        "settlement": 3,
+        "town": 616,
+        "unknown": 21
+      },
+      "stronghold_outside_seat": 986,
+      "with_stronghold": 1782
+    },
+    "inverted": 7,
+    "main_election": 619,
+    "pairs": 1900,
+    "without_valid_votes": 0
+  }
+}
