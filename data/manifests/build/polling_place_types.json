@@ -1,0 +1,43 @@
+{
+  "dataset": "polling_place_types",
+  "stage": "build",
+  "status": "created",
+  "gcs_prefix": "data/derived/polling_place_types/17e38ca50cc71dc7/",
+  "created_at": "2026-11-03T21:00:00.714834+00:00",
+  "code_commit": "b384c4413e9dee6d40829c4cd21cfbb2cb7fae59",
+  "sources": [],
+  "files": [
+    {
+      "path": "data/derived/polling_place_types/17e38ca50cc71dc7/polling_place_types_2008.parquet",
+      "sha256": "81e6b4053c889b0064003ecf50c356eaf5144675411d84f42498ce5a0f5e0036",
+      "bytes": 252086
+    },
+    {
+      "path": "data/derived/polling_place_types/17e38ca50cc71dc7/polling_place_types_2012.parquet",
+      "sha256": "7b079adb9fb22ab0cf7589e78476ed0b860cde8153ea765a04f712f84ea73f42",
+      "bytes": 295972
+    },
+    {
+      "path": "data/derived/polling_place_types/17e38ca50cc71dc7/polling_place_types_2016.parquet",
+      "sha256": "a16be108ba1c6c1ec2ff4f9d7c2b00e1a26413a009e78e25ab93ae6953989eb0",
+      "bytes": 305684
+    },
+    {
+      "path": "data/derived/polling_place_types/17e38ca50cc71dc7/polling_place_types_2020.parquet",
+      "sha256": "4a00f20c776161b16d405f6c4fb4c1967e4aa738d67bb81adc7b380890b60403",
+      "bytes": 310788
+    },
+    {
+      "path": "data/derived/polling_place_types/17e38ca50cc71dc7/polling_place_types_2024.parquet",
+      "sha256": "8b227bbd43521d6b1f4019ff51d060c879f9c06d6b87e9e936ab3fa621f39c5e",
+      "bytes": 315483
+    }
+  ],
+  "notes": "2008: rows=14641, no_coordinates=0, seat=7323 (0.5002), town=4169 (0.2847), dispersed=1625 (0.1110), rural=1188 (0.0811), quilombola=199 (0.0136), indigenous=118 (0.0081), settlement=19 (0.0013), seat_in_no_cluster=4 [1100205|1101401|1505536|5105259]; 2012: rows=15409, no_coordinates=71, seat=7256 (0.4709), town=4866 (0.3158), dispersed=1744 (0.1132), rural=1111 (0.0721), quilombola=209 (0.0136), indigenous=141 (0.0092), settlement=11 (0.0007), seat_in_no_cluster=4 [1100205|1101401|1505536|5105259]; 2016: rows=15744, no_coordinates=24, seat=7371 (0.4682), town=5033 (0.3197), dispersed=1777 (0.1129), rural=1152 (0.0732), quilombola=225 (0.0143), indigenous=149 (0.0095), settlement=13 (0.0008), seat_in_no_cluster=4 [1100205|1101401|1505536|5105259]; 2020: rows=16016, no_coordinates=67, seat=7491 (0.4677), town=5163 (0.3224), dispersed=1789 (0.1117), rural=1131 (0.0706), quilombola=205 (0.0128), indigenous=160 (0.0100), settlement=10 (0.0006), seat_in_no_cluster=4 [1100205|1101401|1505536|5105259]; 2024: rows=16312, no_coordinates=0, seat=7729 (0.4738), town=5292 (0.3244), dispersed=1798 (0.1102), rural=1090 (0.0668), quilombola=219 (0.0134), indigenous=176 (0.0108), settlement=8 (0.0005), seat_in_no_cluster=4 [1100205|1101401|1505536|5105259]",
+  "inputs": [
+    "data/derived/polling_places/697e4a75d8bc2b89/_MANIFEST.json",
+    "data/raw/ibge/localities/2026-11-02/_MANIFEST.json",
+    "data/raw/ibge/urbanized_areas/2026-11-02/_MANIFEST.json",
+    "data/raw/tse/polling_places/2026-11-02/_MANIFEST.json"
+  ]
+}
