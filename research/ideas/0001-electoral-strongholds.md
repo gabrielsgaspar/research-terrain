@@ -16,9 +16,10 @@ datasets:
   - cnfp_public_forests
   - incra_settlements
 kill_criteria:
-  - "Wrong signs by constituency type"
-  - "A non-flat placebo"
-  - "No effect at all with adequate power"
+  - "Too little constituency variation: after typing strongholds with FUNAI indigenous lands and INCRA settlements, fewer than 200 close-pair candidates (margin at most 0.5%, 2008-2024 pooled, exploration half) have a stronghold in or within 5 km of an indigenous land, or fewer than 200 in or within 5 km of a settlement."
+  - "A non-flat placebo: stronghold exposure in the four years before the election predicts clearing (randomisation-inference p below 0.05) on the exploration half."
+  - "Wrong signs by constituency type: the effect around indigenous-land strongholds is not below the effect around settlement or frontier strongholds, with at least 80% power for the effect size fixed in the pre-analysis plan."
+  - "No effect at all: the stronghold and displacement effects are both indistinguishable from zero, with at least 80% power for the effect size fixed in the pre-analysis plan."
 related: ["0002"]
 ---
 

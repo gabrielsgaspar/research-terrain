@@ -3,12 +3,13 @@ id: "0002"
 title: "Indigenous councilors and deforestation (the original design)"
 status: dead
 created: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-03
 datasets:
   - tse_candidates
 kill_criteria:
-  - "No increase in deforestation overall after an indigenous councilor is elected (drafted by agent; confirm)"
-  - "No concentration outside indigenous territories or when the councilor is outside the mayor's coalition (drafted by agent; confirm)"
+  - "Met 2026-11-01: the headline estimate is implausibly large, about a 75% rise in yearly deforestation from one councilor on a council of nine or more."
+  - "Met 2026-11-01: indigenous identity is measured from names, which mostly finds candidates who use an ethnonym as a political surname."
+  - "Met 2026-11-01: inference rests on 139 municipality-elections with grid cells treated as independent."
 related: ["0001"]
 ---
 
