@@ -1,3 +1,11 @@
+---
+id: "0002"
+title: "Public repository, GCS for data, Overleaf for the paper"
+status: accepted
+date: 2026-11-01
+supersedes: null
+---
+
 # 0002: Public repository, GCS for data, Overleaf for the paper
 
 Date: 2026-11-01

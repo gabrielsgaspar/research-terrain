@@ -1,3 +1,15 @@
+---
+id: "NNNN"
+title: "Title"
+status: proposed
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+datasets: []
+kill_criteria:
+  - "What result would make this idea dead"
+related: []
+---
+
 # NNNN: Title
 
 ## Claim

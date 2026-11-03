@@ -1,3 +1,27 @@
+---
+id: "0001"
+title: "Electoral strongholds and the geography of deforestation"
+status: exploring
+created: 2026-11-01
+updated: 2026-11-03
+datasets:
+  - tse_votes_by_section
+  - tse_polling_places
+  - polling_stations_geocoded
+  - tse_candidates
+  - tse_results
+  - ibge_municipalities
+  - mapbiomas_deforestation
+  - funai_indigenous_lands
+  - cnfp_public_forests
+  - incra_settlements
+kill_criteria:
+  - "Wrong signs by constituency type"
+  - "A non-flat placebo"
+  - "No effect at all with adequate power"
+related: ["0002"]
+---
+
 # 0001: Electoral strongholds and the geography of deforestation
 
 ## Claim

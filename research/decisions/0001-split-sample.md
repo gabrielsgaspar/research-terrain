@@ -1,3 +1,11 @@
+---
+id: "0001"
+title: "Split the sample before any outcome data exists"
+status: accepted
+date: 2026-11-01
+supersedes: null
+---
+
 # 0001: Split the sample before any outcome data exists
 
 Date: 2026-11-01

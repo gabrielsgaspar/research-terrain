@@ -1,3 +1,17 @@
+---
+id: "0002"
+title: "Indigenous councilors and deforestation (the original design)"
+status: dead
+created: 2026-11-01
+updated: 2026-11-01
+datasets:
+  - tse_candidates
+kill_criteria:
+  - "No increase in deforestation overall after an indigenous councilor is elected (drafted by agent; confirm)"
+  - "No concentration outside indigenous territories or when the councilor is outside the mayor's coalition (drafted by agent; confirm)"
+related: ["0001"]
+---
+
 # 0002: Indigenous councilors and deforestation (the original design)
 
 ## Claim

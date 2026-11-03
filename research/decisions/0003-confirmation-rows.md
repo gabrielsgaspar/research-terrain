@@ -1,3 +1,11 @@
+---
+id: "0003"
+title: "Where confirmation-half rows live"
+status: accepted
+date: 2026-11-02
+supersedes: null
+---
+
 # 0003: Where confirmation-half rows live
 
 Date: 2026-11-02. Status: accepted (decide before any outcome data is built).
