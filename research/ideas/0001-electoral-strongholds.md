@@ -53,5 +53,12 @@ Elections with usable geography: 2008, 2012, 2016, 2020 and 2024 (see
   pairs exist, and how many candidates have rural strongholds.
 - 2026-11-02: still proposed. Data profiling limits the design to the 2008-2024
   elections; polling places can be located for about 98% of sections.
+- 2026-11-03: exploring. The feasibility census finds 765-1,060 close
+  within-list pairs per election on the exploration half, about half of them
+  with the candidate's stronghold outside the municipal seat.
 
 ## Log
+
+- 2026-11-03: feasibility census: issue #70, PR #71, run 41719271978
+  (`research/explore-runs/0001/41719271978.md`); `research/lessons.md` entry of
+  the same date.

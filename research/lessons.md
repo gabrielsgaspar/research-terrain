@@ -16,6 +16,23 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-03: Feasibility census: enough close races with strongholds outside the seat (idea 0001)
+- Tried: `explore/0001_feasibility_census.py` on the exploration half, run
+  41719271978 (record in `research/explore-runs/0001/`), council elections
+  2008-2024, with the definitions in task 10.
+- Result: 765-1,060 within-list pairs per election decided by at most 0.5%
+  of the municipality's valid council votes (1,343-1,918 at 2%). Of the
+  candidates in those pairs, 48-55% have their stronghold outside the
+  municipal seat, mostly in other towns, then in dispersed and rural places,
+  and they cast 25-29% of their votes outside it. Among all candidates the
+  figures are 42-45% and 23-25%. 2024 has 7 inverted pairs (excluded).
+- Why: not tested here; the census is descriptive.
+- Implication: the design has enough variation to continue. Caveats: place
+  types use the 2022 urbanized areas for every year; the indigenous,
+  quilombola and settlement labels are weak (about 2% of close-pair
+  strongholds); a stronghold is one polling place. Next: constituency
+  polygons (FUNAI, INCRA, public forests), then stronghold catchments.
+
 ## 2026-11-02: Nearest locality alone mistypes big-city polling places
 - Tried: typing Legal Amazon polling places by their nearest IBGE locality.
 - Result: in municipalities with more than 100,000 voters, 15% of voters were
