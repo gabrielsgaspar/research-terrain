@@ -21,6 +21,15 @@ plan review. They fall into five groups:
 Expect the rate to fall: each first use of a capability (first build, first
 deletion, first big task) has now happened once.
 
+## 2026-11-02: Two builds store the same key with different types
+- Tried: joining section votes to polling-place types for the census.
+- Result: the join failed: `nr_zona` is text in `section_votes` and an
+  integer in `polling_place_types` (and `polling_places`).
+- Why: each build typed its keys on its own.
+- Implication: task 10 casts both sides. A later task should give shared keys
+  one type everywhere (documented in each contract), at the cost of
+  rebuilding the tables that change.
+
 ## 2026-11-02: Validate on every state, not one (section votes)
 - Tried: task 07b and its first fix, both checked on Pará only.
 - Result: the build failed twice on the full Legal Amazon: first on
