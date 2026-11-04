@@ -1,0 +1,173 @@
+name: Zotero sync
+
+# Weekly and manual. Runs scripts/zotero_sync.py against the curated Zotero
+# group library (`terrain`, read-only key) and, when anything changed, opens a
+# pull request with research/references/refs.bib and the stubs of new `core`
+# notes. A script, not a model (build plan 4.6).
+#
+# Safety:
+#   - Runs only from main, so the code that sees the Zotero key has been
+#     reviewed and merged. The key is read-only and covers one library.
+#   - The sync job holds no GitHub write token. It may change only
+#     research/references/refs.bib and add new research/references/<key>.md
+#     files; anything else, an oversized file or a file holding the key or a
+#     credential-like string stops the run.
+#   - The record job runs no repository code: it copies the checked files and
+#     only then asks for the App token.
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zotero-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: false
+
+      - run: uv sync --locked
+
+      - name: Run scripts/zotero_sync.py
+        env:
+          ZOTERO_READ_KEY: ${{ secrets.ZOTERO_READ_KEY }}
+          ZOTERO_GROUP_ID: ${{ vars.ZOTERO_GROUP_ID }}
+        run: |
+          set -euo pipefail
+          uv run python scripts/zotero_sync.py --references-dir research/references > "${RUNNER_TEMP}/report.json"
+          cat "${RUNNER_TEMP}/report.json"
+
+      - name: Check what changed
+        id: check
+        env:
+          ZOTERO_READ_KEY: ${{ secrets.ZOTERO_READ_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/out"
+          git add -N research/references
+          problems=0
+          changed=0
+          while IFS= read -r line; do
+            status="${line:0:2}" path="${line:3}"
+            if [[ "${path}" == research/references/refs.bib && "${status}" =~ ^(\ M|\ A|A\ |\?\?)$ ]]; then
+              :
+            elif [[ "${path}" =~ ^research/references/[A-Za-z0-9_.-]+\.md$ && "${status}" =~ ^(\ A|A\ |\?\?)$ ]]; then
+              :
+            else
+              echo "::error::unexpected change: ${line}"
+              problems=1
+              continue
+            fi
+            if [ "$(stat -c %s "${path}")" -gt 2000000 ]; then
+              echo "::error::${path} is over 2 MB"; problems=1
+            fi
+            if grep -qF -- "${ZOTERO_READ_KEY}" "${path}" \
+              || grep -qE -- 'sk-ant-|gh[pousr]_|github_pat_|-----BEGIN|ya29\.|olp_' "${path}"; then
+              echo "::error::${path} contains something that looks like a credential"; problems=1
+            fi
+            cp -- "${path}" "${RUNNER_TEMP}/out/"
+            changed=1
+          done < <(git status --porcelain=v1 --untracked-files=all -- research/references)
+          [ "${problems}" -eq 0 ] || exit 1
+          cp "${RUNNER_TEMP}/report.json" "${RUNNER_TEMP}/out/report.json"
+          echo "changed=${changed}" >> "${GITHUB_OUTPUT}"
+          if [ "${changed}" -eq 1 ]; then ls -l "${RUNNER_TEMP}/out"; else echo "Nothing changed."; fi
+
+      - if: steps.check.outputs.changed == '1'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: zotero-out
+          path: ${{ runner.temp }}/out/
+          retention-days: 3
+
+  record:
+    needs: sync
+    if: needs.sync.outputs.changed == '1'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: zotero-out
+          path: ${{ runner.temp }}/in
+
+      - name: Copy the files into the tree
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for f in "${RUNNER_TEMP}"/in/*; do
+            name="$(basename "$f")"
+            if [ "${name}" = report.json ]; then continue; fi
+            [[ "${name}" =~ ^[A-Za-z0-9_.-]+\.(md|bib)$ ]] || { echo "::error::unexpected file ${name}"; exit 1; }
+            if [[ "${name}" == *.md && -e "research/references/${name}" ]]; then
+              echo "::error::${name} already exists on main"; exit 1
+            fi
+            cp -- "$f" "research/references/${name}"
+          done
+          git status --short -- research/references
+
+      - name: Get a GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.AGENT_APP_CLIENT_ID }}
+          private-key: ${{ secrets.AGENT_APP_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Push a branch and open the pull request
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PUSH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          REPO: ${{ github.repository }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          branch="zotero/sync-${GITHUB_RUN_ID}"
+          bot_id="$(gh api "users/${APP_SLUG}%5Bbot%5D" --jq .id)"
+          git -c core.hooksPath=/dev/null switch -c "${branch}"
+          git add -- research/references
+          git -c core.hooksPath=/dev/null \
+            -c user.name="${APP_SLUG}[bot]" \
+            -c user.email="${bot_id}+${APP_SLUG}[bot]@users.noreply.github.com" \
+            commit -m "References: sync from Zotero (run ${GITHUB_RUN_ID})" -m "From ${RUN_URL}"
+          helper='!f() { echo username=x-access-token; echo "password=${PUSH_TOKEN}"; }; f'
+          git -c core.hooksPath=/dev/null -c credential.helper= -c "credential.helper=${helper}" \
+            push "https://github.com/${REPO}.git" "refs/heads/${branch}:refs/heads/${branch}"
+          {
+            printf 'Syncs `research/references/` from the Zotero `terrain` library (%s).\n\n' "${RUN_URL}"
+            printf 'Before merging: check new stubs and that unkeyed items (no pinned citation key) are expected.\n\n'
+            printf '```json\n'
+            head -c 6000 "${RUNNER_TEMP}/in/report.json"
+            printf '\n```\n\n'
+            git show --stat --format= HEAD
+          } > "${RUNNER_TEMP}/body.md"
+          gh pr create --repo "${REPO}" --base "${BASE_BRANCH}" --head "${branch}" \
+            --title "References: sync from Zotero (run ${GITHUB_RUN_ID})" --body-file "${RUNNER_TEMP}/body.md"
