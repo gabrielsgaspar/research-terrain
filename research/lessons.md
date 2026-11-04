@@ -16,6 +16,24 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-04: Kill criterion 1 for idea 0001 is not met
+- Tried: `explore/0001_kill_criterion_1.py` on the exploration half, run
+  41839642406 (record in `research/explore-runs/0001/`), close pairs and
+  strongholds as in the feasibility census, distances from
+  `polling_place_tenure`.
+- Result: of 9,150 close-pair candidates (margin at most 0.5%, 2008-2024
+  pooled), 9,090 have a stronghold with coordinates; 711 of those
+  strongholds are inside or within 5 km of an indigenous land (261 inside,
+  455 within 2 km) and 2,590 of a settlement (180 inside, 1,534 within
+  2 km), against the criterion's minimum of 200 for each. The preliminary
+  whole-Legal-Amazon estimate expected about 667 and 2,622.
+- Why: strongholds near indigenous lands and settlements are common enough
+  in close races to compare them.
+- Implication: idea 0001 survives its first kill criterion. The 5 km
+  settlement band takes in 28% of close-pair strongholds, so the design
+  should type constituencies at 0 or 2 km. Next: stronghold catchments, then
+  outcome data with decision 0003's split.
+
 ## 2026-11-04: Land-tenure sources: the public-forest register replaces FUNAI and INCRA (idea 0001)
 - Tried: finding official downloads for indigenous lands (FUNAI),
   settlements (INCRA) and undesignated public forests (CNFP).

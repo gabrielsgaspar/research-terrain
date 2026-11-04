@@ -3,7 +3,7 @@ id: "0001"
 title: "Electoral strongholds and the geography of deforestation"
 status: exploring
 created: 2026-11-01
-updated: 2026-11-03
+updated: 2026-11-04
 datasets:
   - tse_votes_by_section
   - tse_polling_places
@@ -81,9 +81,15 @@ Elections with usable geography: 2008, 2012, 2016, 2020 and 2024 (see
 - 2026-11-03: exploring. The feasibility census finds 765-1,060 close
   within-list pairs per election on the exploration half, about half of them
   with the candidate's stronghold outside the municipal seat.
+- 2026-11-04: still exploring. Kill criterion 1 is not met: 711
+  close-pair strongholds are within 5 km of an indigenous land and 2,590 of a
+  settlement on the exploration half (minimum 200 each).
 
 ## Log
 
 - 2026-11-03: feasibility census: issue #70, PR #71, run 41719271978
   (`research/explore-runs/0001/41719271978.md`); `research/lessons.md` entry of
   the same date.
+- 2026-11-04: kill criterion 1: issue #85, PR #86, run 41839642406
+  (`research/explore-runs/0001/41839642406.md`), record PR #87;
+  `research/lessons.md` entry of the same date.
