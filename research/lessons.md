@@ -16,13 +16,31 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-04: The 2010 grid undercounts the census; the 2022 grid does not (idea 0001)
+- Tried: assigning every 2022 1 km cell to the Legal Amazon municipality
+  that contains its centre (`BR_Municipios_2024`, the 773 municipalities of
+  the 2024 list), joining the 2010 grid on `nome_1KM`, and comparing state
+  totals with the census, before writing task 19.
+- Result: 5,029,081 cells (92.6% with nobody in 2022), 26,602,373 people in
+  2022 against IBGE's 26.6 million for the Legal Amazon. In the eight states
+  wholly inside it, the 2022 grid is within 0.7% of the census (RO 1,580,610
+  of 1,581,196; PA 8,116,522 of 8,120,131), but the 2010 grid is 2.3% (TO)
+  to 7.2% (RR) below the 2010 census (PA 7,295,449 of 7,581,051): 23,491,572
+  people in all. Every 2010 parent cell is in the 2022 file, and every
+  Legal Amazon cell has a 2010 row.
+- Why: not established. Most likely the 2010 grid leaves out people it
+  could not place on the map; IBGE's 2010 methodology note was not checked.
+- Implication: growth from 2010 to 2022 measured on the grid is overstated
+  by a few percent and unevenly by state; use 2022 for exposure and
+  population weights, and 2010 only for robustness, with state effects.
+
 ## 2026-11-04: IBGE's grid cells: names, projection and the two censuses (idea 0001)
 - Tried: the real 2022 1 km grid (`BR1KM_20251002.zip`), all 38 Legal
   Amazon tiles of the 2010 grid and the 2024 municipal boundaries, before
   writing their catalog entries and fixtures.
 - Result: the 2022 file has 8,860,553 cells; in the Legal Amazon box
   6,105,735, of which 533,990 (8.7%) are populated, 40,517,810 people. The
-  2010 tiles hold 9,438,126 rows, 1 km cells and 200 m cells mixed, one
+  2010 tiles hold 8,834,513 rows, 1 km cells and 200 m cells mixed, one
   schema in all 38. With IBGE's Albers (lat_0 -12, lon_0 -54, parallels -2
   and -22, false easting 5,000 km, false northing 10,000 km, GRS80) a 1 km
   name gives the cell's lower-left corner in km (`1KME4717N11118`), but a

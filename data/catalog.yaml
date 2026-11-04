@@ -284,7 +284,7 @@ datasets:
     notes: >
       Census 2010 population on IBGE's grid, the 38 tiles that meet the Legal
       Amazon box (ID_33-36, 42-46, 50-56, 60-66, 70-76, 80-85, 92, 93),
-      9,438,126 rows, 579 MB. Polygons in SIRGAS 2000 degrees. Rows are 1 km
+      8,834,513 rows, 579 MB. Polygons in SIRGAS 2000 degrees. Rows are 1 km
       cells in rural areas and 200 m cells in urban ones: ID_UNICO names the
       cell (1KME... or 200ME...), nome_1KM its 1 km parent, the same names
       as ibge_grid_2022, so aggregate to nome_1KM and join the censuses on
@@ -410,6 +410,35 @@ datasets:
           check: {type: zip, member: "BR_Municipios_2024.shp"}
         - url: https://geoftp.ibge.gov.br/organizacao_do_territorio/estrutura_territorial/amazonia_legal/2024/Limites_Amazonia_Legal_2024_shp.zip
           check: {type: zip, member: "Limites_Amazonia_Legal_2024.shp"}
+
+  - name: figure_layers
+    source: built from naturalearth_basemap, ibge_boundaries_2024 and cnfp_public_forests
+    licence: public
+    derived: data/derived/figure_layers/
+    contract: data/contracts/figure_layers.md
+    status: planned
+    notes: >
+      Simplified map layers for the paper figures, so figures-run (which reads
+      only data/derived/) can draw them: countries, ocean, lakes and rivers
+      clipped to South America, the 27 states, the Legal Amazon outline, and
+      the 2024 indigenous, settlement and undesignated-forest polygons. One
+      Parquet with WKB geometry. Draft:
+      harness/issue-drafts/17-build-figure-layers.md.
+
+  - name: grid_cells
+    source: built from ibge_grid_2022, ibge_grid_2010, ibge_boundaries_2024, cnfp_public_forests and municipalities
+    licence: public
+    derived: data/derived/grid_cells/
+    contract: data/contracts/grid_cells.md
+    status: planned
+    notes: >
+      Every 1 km IBGE grid cell whose centre lies in a Legal Amazon
+      municipality (5,029,081 cells), with its Albers and SIRGAS 2000
+      coordinates, municipality, 2010 and 2022 population and households, and
+      the share of the cell inside indigenous land, settlements and
+      undesignated forest for each election year 2008-2024. The 2010 grid
+      counts 2-7% fewer people than the 2010 census in every state. Draft:
+      harness/issue-drafts/19-build-grid-cells.md.
 
   - name: mapbiomas_deforestation
     source: MapBiomas annual collection, exported via Earth Engine
