@@ -16,6 +16,25 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-05: Figure 6's municipality: Santa Rosa do Purus, 2024 (idea 0001, issue #141)
+- Tried: the rule of task 25, applied by `figures/06_close_pair.py` in
+  figures-run 41937619933 on the exploration half only: among close pairs
+  (margin at most 0.5%, 2008-2024) where one candidate's stronghold is within
+  2 km of an indigenous land and not of a settlement and the other's the
+  reverse, take the smallest |margin|; ties to the later year, the lower
+  `cd_ibge`, the lower elected `sq_candidato`.
+- Result: 2024, Santa Rosa do Purus (AC, IBGE 1200435), margin 0.0000 at four
+  decimals: the two candidates were tied or within 0.005% of the valid votes.
+  The narrowly elected candidate's stronghold is near (inside) an indigenous
+  land, the narrowly defeated one's near a settlement on the border with
+  Peru. The figure is `paper/figures/06_close_pair.png`; candidates are not
+  named.
+- Why: the rule picks the closest race, and a near tie is as close to a coin
+  flip as the design gets.
+- Implication: the example shows the design's contrast at its cleanest. The
+  same rule reruns deterministically; changing it means changing task 25's
+  rule, and recording it here.
+
 ## 2026-11-04: cell_exposure reproduces the explored exposure exactly (idea 0001, issue #125)
 - Tried: the `cell_exposure` build (decision 0004, both halves), restricted
   afterwards to the exploration half and compared with explore run
