@@ -255,6 +255,162 @@ datasets:
       edition, created by that election). Draft:
       harness/issue-drafts/14-build-polling-place-tenure.md.
 
+  - name: ibge_grid_2022
+    source: IBGE, Grade Estatistica, Censo 2022, 1 km cells (reissued 2025-10-02)
+    licence: public
+    gcs: data/raw/ibge/grid_2022/
+    status: planned
+    notes: >
+      Census 2022 population on IBGE's 1 km grid, all of Brazil: one
+      shapefile, 8,860,553 cells, polygons in SIRGAS 2000 degrees. The cells
+      are 1 km squares in IBGE's Albers equal-area projection (central
+      meridian -54; parameters in Notas_metodologicas_grade_estatistica_2022.pdf).
+      Fields nome_1KM (for example 1KME4879N7849: Albers easting and northing
+      in km), QUADRANTE (tile, ID_04 ...), TOTAL (population), TOTAL_DOM
+      (occupied households). The 2025-10-02 reissue adds the empty cells that
+      earlier versions left out. In the Legal Amazon box (longitude -74 to
+      -43, latitude -18.5 to 5.5): 6,105,735 cells, 533,990 populated, 40.5
+      million people. See data/fixtures/ibge/README.md for the cell names.
+    acquire:
+      files:
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2022/grade_1km/BR1KM_20251002.zip
+          check: {type: zip, member: "BR1KM.shp"}
+
+  - name: ibge_grid_2010
+    source: IBGE, Grade Estatistica, Censo 2010, one zip per tile
+    licence: public
+    gcs: data/raw/ibge/grid_2010/
+    status: planned
+    notes: >
+      Census 2010 population on IBGE's grid, the 38 tiles that meet the Legal
+      Amazon box (ID_33-36, 42-46, 50-56, 60-66, 70-76, 80-85, 92, 93),
+      9,438,126 rows, 579 MB. Polygons in SIRGAS 2000 degrees. Rows are 1 km
+      cells in rural areas and 200 m cells in urban ones: ID_UNICO names the
+      cell (1KME... or 200ME...), nome_1KM its 1 km parent, the same names
+      as ibge_grid_2022, so aggregate to nome_1KM and join the censuses on
+      it. Fields MASC, FEM, POP, DOM_OCU (occupied households), QUADRANTE,
+      and parents nome_5KM ... nome_500KM. expand_urls substitutes only
+      <year> and <uf>, so every tile is listed.
+    acquire:
+      files:
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id33.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id34.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id35.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id36.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id42.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id43.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id44.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id45.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id46.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id50.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id51.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id52.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id53.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id54.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id55.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id56.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id60.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id61.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id62.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id63.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id64.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id65.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id66.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id70.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id71.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id72.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id73.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id74.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id75.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id76.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id80.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id81.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id82.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id83.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id84.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id85.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id92.zip
+          check: {type: zip, member: "*.shp"}
+        - url: https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id93.zip
+          check: {type: zip, member: "*.shp"}
+
+  - name: naturalearth_basemap
+    source: Natural Earth 10m (naturalearthdata.com); countries and ocean 5.1.1, lakes and rivers 5.0.0
+    licence: public domain
+    gcs: data/raw/naturalearth/
+    status: planned
+    notes: >
+      Basemap for the figures: countries, ocean, lakes, and rivers and lake
+      centerlines at 1:10m. Shapefiles in WGS 84 degrees, each zip with a
+      README and VERSION file.
+    acquire:
+      files:
+        - url: https://naciscdn.org/naturalearth/10m/cultural/ne_10m_admin_0_countries.zip
+          check: {type: zip, member: "ne_10m_admin_0_countries.shp"}
+        - url: https://naciscdn.org/naturalearth/10m/physical/ne_10m_ocean.zip
+          check: {type: zip, member: "ne_10m_ocean.shp"}
+        - url: https://naciscdn.org/naturalearth/10m/physical/ne_10m_lakes.zip
+          check: {type: zip, member: "ne_10m_lakes.shp"}
+        - url: https://naciscdn.org/naturalearth/10m/physical/ne_10m_rivers_lake_centerlines.zip
+          check: {type: zip, member: "ne_10m_rivers_lake_centerlines.shp"}
+
+  - name: ibge_boundaries_2024
+    source: IBGE, Malha Municipal 2024 (states and municipalities) and the Legal Amazon outline 2024
+    licence: public
+    gcs: data/raw/ibge/boundaries_2024/
+    status: planned
+    notes: >
+      Polygons of the 27 states, the municipalities and the Legal Amazon
+      outline, SIRGAS 2000 degrees, UTF-8. Used for figures and to assign
+      grid cells to municipalities (by centroid). BR_Municipios_2024 has
+      5,573 rows keyed by CD_MUN: the 5,571 municipalities plus two lagoons in
+      RS (4300001 Lagoa Mirim, 4300002 Lagoa dos Patos, "Area Operacional").
+      See data/fixtures/ibge/README.md.
+    acquire:
+      files:
+        - url: https://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/malhas_municipais/municipio_2024/Brasil/BR_UF_2024.zip
+          check: {type: zip, member: "BR_UF_2024.shp"}
+        - url: https://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/malhas_municipais/municipio_2024/Brasil/BR_Municipios_2024.zip
+          check: {type: zip, member: "BR_Municipios_2024.shp"}
+        - url: https://geoftp.ibge.gov.br/organizacao_do_territorio/estrutura_territorial/amazonia_legal/2024/Limites_Amazonia_Legal_2024_shp.zip
+          check: {type: zip, member: "Limites_Amazonia_Legal_2024.shp"}
+
   - name: mapbiomas_deforestation
     source: MapBiomas annual collection, exported via Earth Engine
     licence: check MapBiomas terms

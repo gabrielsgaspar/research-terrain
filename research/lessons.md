@@ -16,6 +16,26 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-04: IBGE's grid cells: names, projection and the two censuses (idea 0001)
+- Tried: the real 2022 1 km grid (`BR1KM_20251002.zip`), all 38 Legal
+  Amazon tiles of the 2010 grid and the 2024 municipal boundaries, before
+  writing their catalog entries and fixtures.
+- Result: the 2022 file has 8,860,553 cells; in the Legal Amazon box
+  6,105,735, of which 533,990 (8.7%) are populated, 40,517,810 people. The
+  2010 tiles hold 9,438,126 rows, 1 km cells and 200 m cells mixed, one
+  schema in all 38. With IBGE's Albers (lat_0 -12, lon_0 -54, parallels -2
+  and -22, false easting 5,000 km, false northing 10,000 km, GRS80) a 1 km
+  name gives the cell's lower-left corner in km (`1KME4717N11118`), but a
+  200 m name gives its top-left corner in hundreds of metres
+  (`200ME47210N111032`); every 200 m cell lies inside its `nome_1KM`. The
+  municipal boundaries have 5,573 rows: the 5,571 municipalities plus two
+  lagoons in RS (`4300001`, `4300002`, "Área Operacional").
+- Why: IBGE names the two cell sizes from different corners; the lagoons
+  are mapped as units without a municipality.
+- Implication: join and aggregate the censuses on `nome_1KM` only, never by
+  parsing `ID_UNICO`; Albers coordinates of a 1 km cell come from its name.
+  Drop the two lagoons when matching boundaries to municipalities.
+
 ## 2026-11-04: Kill criterion 1 for idea 0001 is not met
 - Tried: `explore/0001_kill_criterion_1.py` on the exploration half, run
   41839642406 (record in `research/explore-runs/0001/`), close pairs and

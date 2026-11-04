@@ -25,9 +25,10 @@ acquired or built (its manifest merged into `data/manifests/`).
 | 10 | Feasibility census (explore) | `polling_place_types` built and recorded |
 | 11 | Front matter for records, and a validator | — |
 | 12 | Generated `research/INDEX.md` | 11 merged |
-| 13 | Acquire ArcGIS-portal files (public-forest register) | catalog entry merged (this PR) |
-| 14 | Polling-place distances to indigenous land, settlements, undesignated forest | 13 merged; `cnfp_public_forests` acquired |
-| 15 | Kill criterion 1 for idea 0001 (explore) | 14 built and recorded |
+| 13 | Acquire ArcGIS-portal files (public-forest register) | done (#79) |
+| 14 | Polling-place distances to indigenous land, settlements, undesignated forest | done (#82) |
+| 15 | Kill criterion 1 for idea 0001 (explore) | done (#85) |
+| 16 | Acquire the census grids, basemap and 2024 boundaries | catalog entries and fixtures merged (this PR) |
 
 ## Before filing a task
 
