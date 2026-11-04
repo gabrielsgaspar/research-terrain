@@ -49,7 +49,7 @@ PAPER_YEARS = (2008, 2024)
 COLOUR_LABEL = "Polling places per hexagon"
 CMAP = "viridis"
 TENURE = (("indigenous", "#d95f02"), ("settlement", "#7570b3"), ("undesignated", "#1b9e77"))
-TENURE_WIDTH = 0.35
+TENURE_WIDTH = 0.15
 POP_CMAP = "magma_r"
 POP_LABEL = "People per km² (2022)"
 # longitude/latitude frame of the layers (data/contracts/figure_layers.md)
@@ -233,7 +233,7 @@ def save(fig: Any, out_dir: Path, name: str) -> None:
     # tight: crop to the drawn content, so outer labels are kept and margins dropped
     tight = {"bbox_inches": "tight", "pad_inches": 0.03}
     fig.savefig(out_dir / f"{name}.png", dpi=300, **tight)
-    fig.savefig(out_dir / f"{name}.pdf", metadata={"CreationDate": None}, **tight)
+    fig.savefig(out_dir / f"{name}.pdf", dpi=300, metadata={"CreationDate": None}, **tight)
     plt.close(fig)
 
 
@@ -357,9 +357,15 @@ def population(layers: Layers, cells: pl.DataFrame, out_dir: Path) -> LogNorm:
         interpolation="nearest",
         cmap=POP_CMAP,
         norm=norm,
+        zorder=1.5,  # above the background fills (1), below the outlines (2)
     )
+    before = len(ax.collections)
     for layer, colour in TENURE:
         add_outlines(ax, _geoms(layers, layer), colour, TENURE_WIDTH)
+    # thousands of tenure polygons as vectors would put the PDF over 10 MB
+    for collection in ax.collections[before:]:
+        collection.set_rasterized(True)
+        collection.set_alpha(0.7)
     add_outlines(ax, _geoms(layers, "legal_amazon"), AMAZON_EDGE, AMAZON_WIDTH)
     _setup(ax, extent)
     handles = [
