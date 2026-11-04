@@ -1,0 +1,1442 @@
+{
+  "2008": {
+    "agreement": {
+      "exp2_share vs exp2_votes": {
+        "cells": 410974,
+        "pearson": 0.1478273843735165
+      },
+      "exp2_share vs ring2_share": {
+        "cells": 37303,
+        "pearson": 0.9503101046273105
+      },
+      "exp2_share vs ring5_share": {
+        "cells": 163396,
+        "pearson": 0.9722635462164189
+      },
+      "exp2_votes vs ring2_votes": {
+        "cells": 37026,
+        "pearson": 0.8204175174494597
+      },
+      "exp2_votes vs ring5_votes": {
+        "cells": 161894,
+        "pearson": 0.8927564142187108
+      },
+      "ring2_share vs ring2_votes": {
+        "cells": 37026,
+        "pearson": 0.32868930571915345
+      },
+      "ring5_share vs ring5_votes": {
+        "cells": 161894,
+        "pearson": 0.24368662275751093
+      }
+    },
+    "cells": 2530638,
+    "close_pairs": 765,
+    "main_election": 30,
+    "municipalities_with_pair": 349,
+    "pairs_per_municipality": {
+      "max": 14,
+      "mean": 2.1919770773638967
+    },
+    "variants": {
+      "exp2_share": {
+        "exposed": 412042,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 20521,
+            "mean_abs_D": 0.09485036625275006
+          },
+          "pop_2022_positive": {
+            "cells": 103070,
+            "mean_abs_D": 0.05890381760117739
+          },
+          "pop_2022_zero": {
+            "cells": 308972,
+            "mean_abs_D": 0.07053803730673092
+          },
+          "settlement_above_0": {
+            "cells": 49619,
+            "mean_abs_D": 0.06839142791573809
+          },
+          "undesignated_above_0": {
+            "cells": 21260,
+            "mean_abs_D": 0.08018464234322267
+          }
+        },
+        "quantiles_D": {
+          "1%": -0.3824884792626728,
+          "10%": -0.0958904109589041,
+          "50%": 0.0024137575018469215,
+          "90%": 0.10833333333333334,
+          "99%": 0.3568904593639576
+        },
+        "quantiles_abs_D": {
+          "1%": 0.0004356741565477562,
+          "10%": 0.004026467154342227,
+          "50%": 0.029126213592233007,
+          "90%": 0.18585858585858586,
+          "99%": 0.45871559633027525
+        },
+        "reached": 458285,
+        "share_exposed_pop_2022_zero": 0.749855597244941
+      },
+      "exp2_votes": {
+        "exposed": 411000,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 20521,
+            "mean_abs_D": 3.4969236763568237
+          },
+          "pop_2022_positive": {
+            "cells": 102884,
+            "mean_abs_D": 15.610903649315558
+          },
+          "pop_2022_zero": {
+            "cells": 308116,
+            "mean_abs_D": 3.98451062054906
+          },
+          "settlement_above_0": {
+            "cells": 49562,
+            "mean_abs_D": 3.5712966328630285
+          },
+          "undesignated_above_0": {
+            "cells": 21082,
+            "mean_abs_D": 4.334528562040882
+          }
+        },
+        "quantiles_D": {
+          "1%": -43.0833142401215,
+          "10%": -3.925677745462857,
+          "50%": 0.043677485303198815,
+          "90%": 6.313920481262867,
+          "99%": 70.34888694479184
+        },
+        "quantiles_abs_D": {
+          "1%": 0.009148910937933451,
+          "10%": 0.055934361971905,
+          "50%": 0.8327170356712601,
+          "90%": 12.620254792564284,
+          "99%": 91.79934156993119
+        },
+        "reached": 458285,
+        "share_exposed_pop_2022_zero": 0.7496739659367396
+      },
+      "ring2_share": {
+        "exposed": 37311,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 938,
+            "mean_abs_D": 0.09696503862201747
+          },
+          "pop_2022_positive": {
+            "cells": 21486,
+            "mean_abs_D": 0.06603259998689887
+          },
+          "pop_2022_zero": {
+            "cells": 15825,
+            "mean_abs_D": 0.08333593372191093
+          },
+          "settlement_above_0": {
+            "cells": 4116,
+            "mean_abs_D": 0.07561679200174629
+          },
+          "undesignated_above_0": {
+            "cells": 1379,
+            "mean_abs_D": 0.08335839340639664
+          }
+        },
+        "quantiles_D": {
+          "1%": -0.3960189768976897,
+          "10%": -0.10222222222222221,
+          "50%": 0.0038910505836575876,
+          "90%": 0.11547344110854504,
+          "99%": 0.4122807017543859
+        },
+        "quantiles_abs_D": {
+          "1%": 0.0006958942240779402,
+          "10%": 0.00510204081632653,
+          "50%": 0.03314917127071823,
+          "90%": 0.20382165605095542,
+          "99%": 0.5026737967914439
+        },
+        "reached": 42449,
+        "share_exposed_pop_2022_zero": 0.42413765377502616
+      },
+      "ring2_votes": {
+        "exposed": 37026,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 926,
+            "mean_abs_D": 41.30777537796976
+          },
+          "pop_2022_positive": {
+            "cells": 21314,
+            "mean_abs_D": 70.42314910387539
+          },
+          "pop_2022_zero": {
+            "cells": 15712,
+            "mean_abs_D": 30.566318737270876
+          },
+          "settlement_above_0": {
+            "cells": 4090,
+            "mean_abs_D": 25.894621026894864
+          },
+          "undesignated_above_0": {
+            "cells": 1358,
+            "mean_abs_D": 32.446244477172314
+          }
+        },
+        "quantiles_D": {
+          "1%": -269.5,
+          "10%": -49.0,
+          "50%": 2.0,
+          "90%": 76.0,
+          "99%": 551.0
+        },
+        "quantiles_abs_D": {
+          "1%": 1.0,
+          "10%": 2.0,
+          "50%": 14.0,
+          "90%": 125.0,
+          "99%": 643.75
+        },
+        "reached": 42449,
+        "share_exposed_pop_2022_zero": 0.42435045643601793
+      },
+      "ring5_share": {
+        "exposed": 163446,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 5448,
+            "mean_abs_D": 0.0987218145407511
+          },
+          "pop_2022_positive": {
+            "cells": 56769,
+            "mean_abs_D": 0.06271335263024247
+          },
+          "pop_2022_zero": {
+            "cells": 106677,
+            "mean_abs_D": 0.0748269303531828
+          },
+          "settlement_above_0": {
+            "cells": 19710,
+            "mean_abs_D": 0.07222363550297303
+          },
+          "undesignated_above_0": {
+            "cells": 7153,
+            "mean_abs_D": 0.08321456165016765
+          }
+        },
+        "quantiles_D": {
+          "1%": -0.3791666666666667,
+          "10%": -0.10081777293171595,
+          "50%": 0.002932551319648094,
+          "90%": 0.11168831168831168,
+          "99%": 0.3790087463556851
+        },
+        "quantiles_abs_D": {
+          "1%": 0.0005761610263440655,
+          "10%": 0.004608294930875577,
+          "50%": 0.031914893617021274,
+          "90%": 0.19444444444444448,
+          "99%": 0.48095659875996455
+        },
+        "reached": 184838,
+        "share_exposed_pop_2022_zero": 0.6526742777431078
+      },
+      "ring5_votes": {
+        "exposed": 161894,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 5404,
+            "mean_abs_D": 43.28719467061436
+          },
+          "pop_2022_positive": {
+            "cells": 56238,
+            "mean_abs_D": 91.42553077989972
+          },
+          "pop_2022_zero": {
+            "cells": 105656,
+            "mean_abs_D": 43.28515181343227
+          },
+          "settlement_above_0": {
+            "cells": 19546,
+            "mean_abs_D": 31.799038166376754
+          },
+          "undesignated_above_0": {
+            "cells": 7047,
+            "mean_abs_D": 44.15212147012913
+          }
+        },
+        "quantiles_D": {
+          "1%": -279.0,
+          "10%": -56.0,
+          "50%": 2.0,
+          "90%": 83.0,
+          "99%": 530.0
+        },
+        "quantiles_abs_D": {
+          "1%": 1.0,
+          "10%": 2.0,
+          "50%": 15.0,
+          "90%": 136.0,
+          "99%": 619.0
+        },
+        "reached": 184838,
+        "share_exposed_pop_2022_zero": 0.6526245568087761
+      }
+    }
+  },
+  "2012": {
+    "agreement": {
+      "exp2_share vs exp2_votes": {
+        "cells": 467727,
+        "pearson": 0.11762819929878798
+      },
+      "exp2_share vs ring2_share": {
+        "cells": 43450,
+        "pearson": 0.9635204076999613
+      },
+      "exp2_share vs ring5_share": {
+        "cells": 189473,
+        "pearson": 0.9785748271802645
+      },
+      "exp2_votes vs ring2_votes": {
+        "cells": 43162,
+        "pearson": 0.8756402620866403
+      },
+      "exp2_votes vs ring5_votes": {
+        "cells": 187931,
+        "pearson": 0.9261791181044133
+      },
+      "ring2_share vs ring2_votes": {
+        "cells": 43162,
+        "pearson": 0.28679843359614937
+      },
+      "ring5_share vs ring5_votes": {
+        "cells": 187931,
+        "pearson": 0.19406366637629047
+      }
+    },
+    "cells": 2530638,
+    "close_pairs": 919,
+    "main_election": 47,
+    "municipalities_with_pair": 367,
+    "pairs_per_municipality": {
+      "max": 13,
+      "mean": 2.5040871934604905
+    },
+    "variants": {
+      "exp2_share": {
+        "exposed": 469199,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 32725,
+            "mean_abs_D": 0.09645861576862702
+          },
+          "pop_2022_positive": {
+            "cells": 114574,
+            "mean_abs_D": 0.0613871164226196
+          },
+          "pop_2022_zero": {
+            "cells": 354625,
+            "mean_abs_D": 0.07183086769255378
+          },
+          "settlement_above_0": {
+            "cells": 66767,
+            "mean_abs_D": 0.08324610489232798
+          },
+          "undesignated_above_0": {
+            "cells": 100425,
+            "mean_abs_D": 0.06981798897522347
+          }
+        },
+        "quantiles_D": {
+          "1%": -0.380327868852459,
+          "10%": -0.10699221518414856,
+          "50%": 0.003342632179443163,
+          "90%": 0.10373471597363108,
+          "99%": 0.38888888888888884
+        },
+        "quantiles_abs_D": {
+          "1%": 0.00036783927923082066,
+          "10%": 0.003907813794116083,
+          "50%": 0.030701754385964914,
+          "90%": 0.19208683751855535,
+          "99%": 0.45155709342560557
+        },
+        "reached": 505301,
+        "share_exposed_pop_2022_zero": 0.7558093687326699
+      },
+      "exp2_votes": {
+        "exposed": 467909,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 32486,
+            "mean_abs_D": 3.329689124043626
+          },
+          "pop_2022_positive": {
+            "cells": 114280,
+            "mean_abs_D": 18.97305228167351
+          },
+          "pop_2022_zero": {
+            "cells": 353629,
+            "mean_abs_D": 4.396877139421713
+          },
+          "settlement_above_0": {
+            "cells": 66692,
+            "mean_abs_D": 4.886472892638266
+          },
+          "undesignated_above_0": {
+            "cells": 99835,
+            "mean_abs_D": 5.469815080846454
+          }
+        },
+        "quantiles_D": {
+          "1%": -47.86148045435634,
+          "10%": -4.338659692016147,
+          "50%": 0.06339653792668627,
+          "90%": 7.051413972456387,
+          "99%": 75.45160032613599
+        },
+        "quantiles_abs_D": {
+          "1%": 0.008929573538576813,
+          "10%": 0.05420111174327655,
+          "50%": 0.8957579302632586,
+          "90%": 14.054648627478793,
+          "99%": 100.92118376576649
+        },
+        "reached": 505301,
+        "share_exposed_pop_2022_zero": 0.7557644755711046
+      },
+      "ring2_share": {
+        "exposed": 43470,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 1604,
+            "mean_abs_D": 0.09779126089705362
+          },
+          "pop_2022_positive": {
+            "cells": 24780,
+            "mean_abs_D": 0.06520068452160913
+          },
+          "pop_2022_zero": {
+            "cells": 18690,
+            "mean_abs_D": 0.08136494674807304
+          },
+          "settlement_above_0": {
+            "cells": 5964,
+            "mean_abs_D": 0.08760370962878593
+          },
+          "undesignated_above_0": {
+            "cells": 6936,
+            "mean_abs_D": 0.0807581914993598
+          }
+        },
+        "quantiles_D": {
+          "1%": -0.40528634361233484,
+          "10%": -0.10344827586206896,
+          "50%": 0.004524886877828056,
+          "90%": 0.11428571428571428,
+          "99%": 0.40614886731391586
+        },
+        "quantiles_abs_D": {
+          "1%": 0.0006356603757421003,
+          "10%": 0.005128205128205129,
+          "50%": 0.03333333333333333,
+          "90%": 0.1956521739130435,
+          "99%": 0.4634146341463415
+        },
+        "reached": 47507,
+        "share_exposed_pop_2022_zero": 0.42995169082125606
+      },
+      "ring2_votes": {
+        "exposed": 43162,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 1571,
+            "mean_abs_D": 38.17695735200509
+          },
+          "pop_2022_positive": {
+            "cells": 24608,
+            "mean_abs_D": 79.46334525357608
+          },
+          "pop_2022_zero": {
+            "cells": 18554,
+            "mean_abs_D": 30.587258812115987
+          },
+          "settlement_above_0": {
+            "cells": 5933,
+            "mean_abs_D": 31.191639979774145
+          },
+          "undesignated_above_0": {
+            "cells": 6869,
+            "mean_abs_D": 39.656864172368614
+          }
+        },
+        "quantiles_D": {
+          "1%": -312.78,
+          "10%": -48.0,
+          "50%": 2.0,
+          "90%": 75.0,
+          "99%": 552.3899999999994
+        },
+        "quantiles_abs_D": {
+          "1%": 1.0,
+          "10%": 2.0,
+          "50%": 14.0,
+          "90%": 132.0,
+          "99%": 700.3899999999994
+        },
+        "reached": 47507,
+        "share_exposed_pop_2022_zero": 0.42986886613224595
+      },
+      "ring5_share": {
+        "exposed": 189569,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 8863,
+            "mean_abs_D": 0.09958929787508326
+          },
+          "pop_2022_positive": {
+            "cells": 64884,
+            "mean_abs_D": 0.06361780062620022
+          },
+          "pop_2022_zero": {
+            "cells": 124685,
+            "mean_abs_D": 0.07583629943455486
+          },
+          "settlement_above_0": {
+            "cells": 28132,
+            "mean_abs_D": 0.08767048799499377
+          },
+          "undesignated_above_0": {
+            "cells": 36845,
+            "mean_abs_D": 0.07483741890700318
+          }
+        },
+        "quantiles_D": {
+          "1%": -0.3769045709703288,
+          "10%": -0.10861340408805031,
+          "50%": 0.0038910505836575876,
+          "90%": 0.11170046752187926,
+          "99%": 0.39546599496221657
+        },
+        "quantiles_abs_D": {
+          "1%": 0.0005099439061703147,
+          "10%": 0.004629629629629629,
+          "50%": 0.0326530612244898,
+          "90%": 0.19428282136847208,
+          "99%": 0.45070422535211263
+        },
+        "reached": 206290,
+        "share_exposed_pop_2022_zero": 0.6577288480711508
+      },
+      "ring5_votes": {
+        "exposed": 187931,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 8729,
+            "mean_abs_D": 40.32695612326727
+          },
+          "pop_2022_positive": {
+            "cells": 64391,
+            "mean_abs_D": 109.38174589616561
+          },
+          "pop_2022_zero": {
+            "cells": 123540,
+            "mean_abs_D": 46.96165614375911
+          },
+          "settlement_above_0": {
+            "cells": 27939,
+            "mean_abs_D": 40.320806041733775
+          },
+          "undesignated_above_0": {
+            "cells": 36351,
+            "mean_abs_D": 52.39404693130863
+          }
+        },
+        "quantiles_D": {
+          "1%": -319.0,
+          "10%": -56.0,
+          "50%": 2.0,
+          "90%": 90.0,
+          "99%": 544.0
+        },
+        "quantiles_abs_D": {
+          "1%": 1.0,
+          "10%": 2.0,
+          "50%": 16.0,
+          "90%": 147.0,
+          "99%": 674.0
+        },
+        "reached": 206290,
+        "share_exposed_pop_2022_zero": 0.6573689279576015
+      }
+    }
+  },
+  "2016": {
+    "agreement": {
+      "exp2_share vs exp2_votes": {
+        "cells": 469520,
+        "pearson": 0.11239858813797184
+      },
+      "exp2_share vs ring2_share": {
+        "cells": 44385,
+        "pearson": 0.9662555915345915
+      },
+      "exp2_share vs ring5_share": {
+        "cells": 191597,
+        "pearson": 0.979859788526439
+      },
+      "exp2_votes vs ring2_votes": {
+        "cells": 44118,
+        "pearson": 0.8603326640613445
+      },
+      "exp2_votes vs ring5_votes": {
+        "cells": 190240,
+        "pearson": 0.9165698644516097
+      },
+      "ring2_share vs ring2_votes": {
+        "cells": 44118,
+        "pearson": 0.25568008602236486
+      },
+      "ring5_share vs ring5_votes": {
+        "cells": 190240,
+        "pearson": 0.18485621404440164
+      }
+    },
+    "cells": 2530638,
+    "close_pairs": 940,
+    "main_election": 220,
+    "municipalities_with_pair": 360,
+    "pairs_per_municipality": {
+      "max": 18,
+      "mean": 2.611111111111111
+    },
+    "variants": {
+      "exp2_share": {
+        "exposed": 470732,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 32473,
+            "mean_abs_D": 0.11420084958947561
+          },
+          "pop_2022_positive": {
+            "cells": 115049,
+            "mean_abs_D": 0.06545491341350862
+          },
+          "pop_2022_zero": {
+            "cells": 355683,
+            "mean_abs_D": 0.07789382559084997
+          },
+          "settlement_above_0": {
+            "cells": 69420,
+            "mean_abs_D": 0.07742242049321818
+          },
+          "undesignated_above_0": {
+            "cells": 89583,
+            "mean_abs_D": 0.07409526182431142
+          }
+        },
+        "quantiles_D": {
+          "1%": -0.4083333333333334,
+          "10%": -0.10840235179918338,
+          "50%": 0.0043226677158145115,
+          "90%": 0.11919715784155761,
+          "99%": 0.41584158415841593
+        },
+        "quantiles_abs_D": {
+          "1%": 0.0004833324139315345,
+          "10%": 0.0043578515872669645,
+          "50%": 0.03225806451612903,
+          "90%": 0.2068493150684932,
+          "99%": 0.5233259231731522
+        },
+        "reached": 516253,
+        "share_exposed_pop_2022_zero": 0.7555955405623582
+      },
+      "exp2_votes": {
+        "exposed": 469587,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 32247,
+            "mean_abs_D": 3.4689147955236685
+          },
+          "pop_2022_positive": {
+            "cells": 114877,
+            "mean_abs_D": 21.496700656222195
+          },
+          "pop_2022_zero": {
+            "cells": 354710,
+            "mean_abs_D": 5.0477337770027395
+          },
+          "settlement_above_0": {
+            "cells": 69262,
+            "mean_abs_D": 5.28817138725253
+          },
+          "undesignated_above_0": {
+            "cells": 89552,
+            "mean_abs_D": 6.6025200562384
+          }
+        },
+        "quantiles_D": {
+          "1%": -52.443567563756375,
+          "10%": -4.730396148073111,
+          "50%": 0.0778890505680123,
+          "90%": 8.107025710131238,
+          "99%": 88.167505162454
+        },
+        "quantiles_abs_D": {
+          "1%": 0.009563554318622231,
+          "10%": 0.0614782758266971,
+          "50%": 1.0062840778879774,
+          "90%": 15.803404273670075,
+          "99%": 115.28880663066212
+        },
+        "reached": 516253,
+        "share_exposed_pop_2022_zero": 0.7553658853418004
+      },
+      "ring2_share": {
+        "exposed": 44388,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 1641,
+            "mean_abs_D": 0.11974517380497196
+          },
+          "pop_2022_positive": {
+            "cells": 25323,
+            "mean_abs_D": 0.07180235399010253
+          },
+          "pop_2022_zero": {
+            "cells": 19065,
+            "mean_abs_D": 0.08733049134065093
+          },
+          "settlement_above_0": {
+            "cells": 6432,
+            "mean_abs_D": 0.08639644132265556
+          },
+          "undesignated_above_0": {
+            "cells": 5886,
+            "mean_abs_D": 0.08013953851409705
+          }
+        },
+        "quantiles_D": {
+          "1%": -0.41379310344827586,
+          "10%": -0.12345679012345678,
+          "50%": 0.004862263896050641,
+          "90%": 0.11886345698500471,
+          "99%": 0.43243243243243246
+        },
+        "quantiles_abs_D": {
+          "1%": 0.0007158293177777948,
+          "10%": 0.005839598997493735,
+          "50%": 0.03636363636363636,
+          "90%": 0.21206225680933852,
+          "99%": 0.5099502487562189
+        },
+        "reached": 48832,
+        "share_exposed_pop_2022_zero": 0.4295079751284131
+      },
+      "ring2_votes": {
+        "exposed": 44118,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 1633,
+            "mean_abs_D": 39.0012247397428
+          },
+          "pop_2022_positive": {
+            "cells": 25188,
+            "mean_abs_D": 88.78350801969192
+          },
+          "pop_2022_zero": {
+            "cells": 18930,
+            "mean_abs_D": 34.29852086634971
+          },
+          "settlement_above_0": {
+            "cells": 6408,
+            "mean_abs_D": 32.29931335830212
+          },
+          "undesignated_above_0": {
+            "cells": 5865,
+            "mean_abs_D": 49.90383631713555
+          }
+        },
+        "quantiles_D": {
+          "1%": -320.0,
+          "10%": -53.0,
+          "50%": 2.0,
+          "90%": 87.0,
+          "99%": 633.4900000000052
+        },
+        "quantiles_abs_D": {
+          "1%": 1.0,
+          "10%": 2.0,
+          "50%": 16.0,
+          "90%": 144.0,
+          "99%": 824.6600000000035
+        },
+        "reached": 48832,
+        "share_exposed_pop_2022_zero": 0.4290765673874609
+      },
+      "ring5_share": {
+        "exposed": 191625,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 8960,
+            "mean_abs_D": 0.12063989520884336
+          },
+          "pop_2022_positive": {
+            "cells": 65478,
+            "mean_abs_D": 0.06809551629551426
+          },
+          "pop_2022_zero": {
+            "cells": 126147,
+            "mean_abs_D": 0.08213836789546826
+          },
+          "settlement_above_0": {
+            "cells": 29972,
+            "mean_abs_D": 0.08072401418840466
+          },
+          "undesignated_above_0": {
+            "cells": 32151,
+            "mean_abs_D": 0.07588100371601351
+          }
+        },
+        "quantiles_D": {
+          "1%": -0.40100250626566414,
+          "10%": -0.12,
+          "50%": 0.004449110424179338,
+          "90%": 0.12,
+          "99%": 0.4242424242424242
+        },
+        "quantiles_abs_D": {
+          "1%": 0.0006511085980603765,
+          "10%": 0.005154639175257732,
+          "50%": 0.03507820948504812,
+          "90%": 0.21132361013636808,
+          "99%": 0.5095057034220533
+        },
+        "reached": 210967,
+        "share_exposed_pop_2022_zero": 0.6583013698630137
+      },
+      "ring5_votes": {
+        "exposed": 190240,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 8909,
+            "mean_abs_D": 40.5264339432035
+          },
+          "pop_2022_positive": {
+            "cells": 65068,
+            "mean_abs_D": 122.82502920022131
+          },
+          "pop_2022_zero": {
+            "cells": 125172,
+            "mean_abs_D": 53.09171380180871
+          },
+          "settlement_above_0": {
+            "cells": 29793,
+            "mean_abs_D": 42.21219749605612
+          },
+          "undesignated_above_0": {
+            "cells": 32028,
+            "mean_abs_D": 63.57406019732734
+          }
+        },
+        "quantiles_D": {
+          "1%": -328.0,
+          "10%": -65.0,
+          "50%": 2.0,
+          "90%": 100.0,
+          "99%": 641.0
+        },
+        "quantiles_abs_D": {
+          "1%": 1.0,
+          "10%": 2.0,
+          "50%": 18.0,
+          "90%": 158.0,
+          "99%": 844.0
+        },
+        "reached": 210967,
+        "share_exposed_pop_2022_zero": 0.6579688814129521
+      }
+    }
+  },
+  "2020": {
+    "agreement": {
+      "exp2_share vs exp2_votes": {
+        "cells": 472973,
+        "pearson": 0.10815690222612619
+      },
+      "exp2_share vs ring2_share": {
+        "cells": 45031,
+        "pearson": 0.965923171149882
+      },
+      "exp2_share vs ring5_share": {
+        "cells": 193529,
+        "pearson": 0.9789596627085431
+      },
+      "exp2_votes vs ring2_votes": {
+        "cells": 44687,
+        "pearson": 0.8511734281958994
+      },
+      "exp2_votes vs ring5_votes": {
+        "cells": 192049,
+        "pearson": 0.9328917664672027
+      },
+      "ring2_share vs ring2_votes": {
+        "cells": 44687,
+        "pearson": 0.26871802293698016
+      },
+      "ring5_share vs ring5_votes": {
+        "cells": 192049,
+        "pearson": 0.18116878585961999
+      }
+    },
+    "cells": 2530638,
+    "close_pairs": 1060,
+    "main_election": 426,
+    "municipalities_with_pair": 356,
+    "pairs_per_municipality": {
+      "max": 21,
+      "mean": 2.9775280898876404
+    },
+    "variants": {
+      "exp2_share": {
+        "exposed": 473678,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 36173,
+            "mean_abs_D": 0.07053803572759224
+          },
+          "pop_2022_positive": {
+            "cells": 115245,
+            "mean_abs_D": 0.06539442017593837
+          },
+          "pop_2022_zero": {
+            "cells": 358433,
+            "mean_abs_D": 0.0744590526681023
+          },
+          "settlement_above_0": {
+            "cells": 70742,
+            "mean_abs_D": 0.08156110145832093
+          },
+          "undesignated_above_0": {
+            "cells": 85454,
+            "mean_abs_D": 0.07409555826620637
+          }
+        },
+        "quantiles_D": {
+          "1%": -0.4093198992443325,
+          "10%": -0.10057650819871981,
+          "50%": 0.0044622471354889715,
+          "90%": 0.12048192771084337,
+          "99%": 0.4244306418219462
+        },
+        "quantiles_abs_D": {
+          "1%": 0.000495193805815026,
+          "10%": 0.004359499889986419,
+          "50%": 0.033333333333333326,
+          "90%": 0.1890034364261168,
+          "99%": 0.511049723756906
+        },
+        "reached": 516933,
+        "share_exposed_pop_2022_zero": 0.7567018100903989
+      },
+      "exp2_votes": {
+        "exposed": 473135,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 36045,
+            "mean_abs_D": 2.4915996297705227
+          },
+          "pop_2022_positive": {
+            "cells": 115197,
+            "mean_abs_D": 20.496363807595493
+          },
+          "pop_2022_zero": {
+            "cells": 357938,
+            "mean_abs_D": 4.493289187507567
+          },
+          "settlement_above_0": {
+            "cells": 70729,
+            "mean_abs_D": 5.119514404662261
+          },
+          "undesignated_above_0": {
+            "cells": 85415,
+            "mean_abs_D": 6.009455913449752
+          }
+        },
+        "quantiles_D": {
+          "1%": -42.324498527368846,
+          "10%": -3.9580684343779002,
+          "50%": 0.08227938247227701,
+          "90%": 8.262761064985565,
+          "99%": 88.17882552603763
+        },
+        "quantiles_abs_D": {
+          "1%": 0.009604138528884983,
+          "10%": 0.06464350364898212,
+          "50%": 0.9780923048424468,
+          "90%": 14.52675609169255,
+          "99%": 108.00498944637515
+        },
+        "reached": 516933,
+        "share_exposed_pop_2022_zero": 0.7565240364800744
+      },
+      "ring2_share": {
+        "exposed": 45038,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 1905,
+            "mean_abs_D": 0.08022269939886988
+          },
+          "pop_2022_positive": {
+            "cells": 25543,
+            "mean_abs_D": 0.06650686095098478
+          },
+          "pop_2022_zero": {
+            "cells": 19495,
+            "mean_abs_D": 0.08040599092123457
+          },
+          "settlement_above_0": {
+            "cells": 6438,
+            "mean_abs_D": 0.0797023003476093
+          },
+          "undesignated_above_0": {
+            "cells": 5595,
+            "mean_abs_D": 0.07454899355474016
+          }
+        },
+        "quantiles_D": {
+          "1%": -0.39846743295019155,
+          "10%": -0.09489051094890512,
+          "50%": 0.005946822945090576,
+          "90%": 0.11976047904191618,
+          "99%": 0.40206185567010305
+        },
+        "quantiles_abs_D": {
+          "1%": 0.0006388647827390639,
+          "10%": 0.0053191489361702135,
+          "50%": 0.035842293906810034,
+          "90%": 0.1874237288135593,
+          "99%": 0.48363636363636364
+        },
+        "reached": 49021,
+        "share_exposed_pop_2022_zero": 0.4328566987876904
+      },
+      "ring2_votes": {
+        "exposed": 44687,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 1888,
+            "mean_abs_D": 27.771716101694917
+          },
+          "pop_2022_positive": {
+            "cells": 25381,
+            "mean_abs_D": 80.00319136361846
+          },
+          "pop_2022_zero": {
+            "cells": 19306,
+            "mean_abs_D": 30.67528229565938
+          },
+          "settlement_above_0": {
+            "cells": 6411,
+            "mean_abs_D": 31.832163469037592
+          },
+          "undesignated_above_0": {
+            "cells": 5557,
+            "mean_abs_D": 45.72611121108512
+          }
+        },
+        "quantiles_D": {
+          "1%": -283.0,
+          "10%": -44.0,
+          "50%": 2.0,
+          "90%": 87.0,
+          "99%": 598.1399999999994
+        },
+        "quantiles_abs_D": {
+          "1%": 1.0,
+          "10%": 2.0,
+          "50%": 15.0,
+          "90%": 135.0,
+          "99%": 668.1399999999994
+        },
+        "reached": 49021,
+        "share_exposed_pop_2022_zero": 0.43202721149327544
+      },
+      "ring5_share": {
+        "exposed": 193556,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 10437,
+            "mean_abs_D": 0.07848909279547332
+          },
+          "pop_2022_positive": {
+            "cells": 65543,
+            "mean_abs_D": 0.06478789316015005
+          },
+          "pop_2022_zero": {
+            "cells": 128013,
+            "mean_abs_D": 0.07734904401765115
+          },
+          "settlement_above_0": {
+            "cells": 30290,
+            "mean_abs_D": 0.08081537114816845
+          },
+          "undesignated_above_0": {
+            "cells": 30585,
+            "mean_abs_D": 0.07518732218139457
+          }
+        },
+        "quantiles_D": {
+          "1%": -0.4093198992443325,
+          "10%": -0.09977874912309104,
+          "50%": 0.005076142131979695,
+          "90%": 0.12162162162162163,
+          "99%": 0.40594059405940597
+        },
+        "quantiles_abs_D": {
+          "1%": 0.0006017939702585041,
+          "10%": 0.004861548441176399,
+          "50%": 0.03488372093023256,
+          "90%": 0.18900343642611683,
+          "99%": 0.498
+        },
+        "reached": 211436,
+        "share_exposed_pop_2022_zero": 0.6613744859368865
+      },
+      "ring5_votes": {
+        "exposed": 192049,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 10340,
+            "mean_abs_D": 28.440038684719536
+          },
+          "pop_2022_positive": {
+            "cells": 65117,
+            "mean_abs_D": 116.23508454013545
+          },
+          "pop_2022_zero": {
+            "cells": 126932,
+            "mean_abs_D": 46.9690385403208
+          },
+          "settlement_above_0": {
+            "cells": 30102,
+            "mean_abs_D": 41.541857683874824
+          },
+          "undesignated_above_0": {
+            "cells": 30375,
+            "mean_abs_D": 58.62120164609053
+          }
+        },
+        "quantiles_D": {
+          "1%": -295.0,
+          "10%": -53.0,
+          "50%": 3.0,
+          "90%": 104.0,
+          "99%": 643.0
+        },
+        "quantiles_abs_D": {
+          "1%": 1.0,
+          "10%": 2.0,
+          "50%": 17.0,
+          "90%": 150.0,
+          "99%": 721.0
+        },
+        "reached": 211436,
+        "share_exposed_pop_2022_zero": 0.6609354904217153
+      }
+    }
+  },
+  "2024": {
+    "agreement": {
+      "exp2_share vs exp2_votes": {
+        "cells": 482624,
+        "pearson": 0.1549040175409731
+      },
+      "exp2_share vs ring2_share": {
+        "cells": 46207,
+        "pearson": 0.9719062300342256
+      },
+      "exp2_share vs ring5_share": {
+        "cells": 198007,
+        "pearson": 0.9823205926545249
+      },
+      "exp2_votes vs ring2_votes": {
+        "cells": 45896,
+        "pearson": 0.8662482445034799
+      },
+      "exp2_votes vs ring5_votes": {
+        "cells": 196675,
+        "pearson": 0.9155299544476551
+      },
+      "ring2_share vs ring2_votes": {
+        "cells": 45896,
+        "pearson": 0.3430798675469335
+      },
+      "ring5_share vs ring5_votes": {
+        "cells": 196675,
+        "pearson": 0.2545206533039772
+      }
+    },
+    "cells": 2530638,
+    "close_pairs": 891,
+    "main_election": 619,
+    "municipalities_with_pair": 338,
+    "pairs_per_municipality": {
+      "max": 14,
+      "mean": 2.636094674556213
+    },
+    "variants": {
+      "exp2_share": {
+        "exposed": 483734,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 39868,
+            "mean_abs_D": 0.10643885442158275
+          },
+          "pop_2022_positive": {
+            "cells": 114782,
+            "mean_abs_D": 0.06736324259867296
+          },
+          "pop_2022_zero": {
+            "cells": 368952,
+            "mean_abs_D": 0.07778800396893186
+          },
+          "settlement_above_0": {
+            "cells": 72272,
+            "mean_abs_D": 0.08544044718737119
+          },
+          "undesignated_above_0": {
+            "cells": 78634,
+            "mean_abs_D": 0.07498088399824186
+          }
+        },
+        "quantiles_D": {
+          "1%": -0.40203390283221047,
+          "10%": -0.1,
+          "50%": 0.006097560975609758,
+          "90%": 0.13572204125950055,
+          "99%": 0.44587755167271365
+        },
+        "quantiles_abs_D": {
+          "1%": 0.0004647993594381332,
+          "10%": 0.0049250356123934046,
+          "50%": 0.03206801112140648,
+          "90%": 0.20283897199316758,
+          "99%": 0.5333333333333333
+        },
+        "reached": 539862,
+        "share_exposed_pop_2022_zero": 0.7627166996737876
+      },
+      "exp2_votes": {
+        "exposed": 482756,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 39856,
+            "mean_abs_D": 4.620271077950206
+          },
+          "pop_2022_positive": {
+            "cells": 114485,
+            "mean_abs_D": 21.896188717079433
+          },
+          "pop_2022_zero": {
+            "cells": 368271,
+            "mean_abs_D": 5.3537258981018425
+          },
+          "settlement_above_0": {
+            "cells": 71927,
+            "mean_abs_D": 6.342124993234162
+          },
+          "undesignated_above_0": {
+            "cells": 78605,
+            "mean_abs_D": 9.136285113493086
+          }
+        },
+        "quantiles_D": {
+          "1%": -55.0176538604875,
+          "10%": -4.748206225053398,
+          "50%": 0.10337325545700624,
+          "90%": 9.25365451917364,
+          "99%": 102.34644489399759
+        },
+        "quantiles_abs_D": {
+          "1%": 0.01097920632320024,
+          "10%": 0.07177319971399983,
+          "50%": 1.0857619195774355,
+          "90%": 17.40201917790673,
+          "99%": 130.3483307978237
+        },
+        "reached": 539862,
+        "share_exposed_pop_2022_zero": 0.7628512126208685
+      },
+      "ring2_share": {
+        "exposed": 46209,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 2118,
+            "mean_abs_D": 0.11085975584263753
+          },
+          "pop_2022_positive": {
+            "cells": 25964,
+            "mean_abs_D": 0.07057638206629525
+          },
+          "pop_2022_zero": {
+            "cells": 20245,
+            "mean_abs_D": 0.08610266712810324
+          },
+          "settlement_above_0": {
+            "cells": 6812,
+            "mean_abs_D": 0.09042810665602577
+          },
+          "undesignated_above_0": {
+            "cells": 6356,
+            "mean_abs_D": 0.07853686705670528
+          }
+        },
+        "quantiles_D": {
+          "1%": -0.38181818181818183,
+          "10%": -0.10495049504950496,
+          "50%": 0.00626959247648903,
+          "90%": 0.13852813852813853,
+          "99%": 0.4318820224719101
+        },
+        "quantiles_abs_D": {
+          "1%": 0.0005990743434067734,
+          "10%": 0.005761257374717254,
+          "50%": 0.036011080332409975,
+          "90%": 0.2061855670103093,
+          "99%": 0.4928571428571429
+        },
+        "reached": 52335,
+        "share_exposed_pop_2022_zero": 0.4381181155186219
+      },
+      "ring2_votes": {
+        "exposed": 45896,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 2110,
+            "mean_abs_D": 51.590521327014216
+          },
+          "pop_2022_positive": {
+            "cells": 25796,
+            "mean_abs_D": 83.55016281594045
+          },
+          "pop_2022_zero": {
+            "cells": 20100,
+            "mean_abs_D": 35.93537313432836
+          },
+          "settlement_above_0": {
+            "cells": 6770,
+            "mean_abs_D": 38.80590841949778
+          },
+          "undesignated_above_0": {
+            "cells": 6308,
+            "mean_abs_D": 62.72067216233354
+          }
+        },
+        "quantiles_D": {
+          "1%": -339.0,
+          "10%": -51.0,
+          "50%": 3.0,
+          "90%": 94.0,
+          "99%": 614.0500000000029
+        },
+        "quantiles_abs_D": {
+          "1%": 1.0,
+          "10%": 2.0,
+          "50%": 17.0,
+          "90%": 151.0,
+          "99%": 704.1000000000058
+        },
+        "reached": 52335,
+        "share_exposed_pop_2022_zero": 0.43794666201847654
+      },
+      "ring5_share": {
+        "exposed": 198042,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 11614,
+            "mean_abs_D": 0.10847596932205955
+          },
+          "pop_2022_positive": {
+            "cells": 65845,
+            "mean_abs_D": 0.06960024444714431
+          },
+          "pop_2022_zero": {
+            "cells": 132197,
+            "mean_abs_D": 0.08142975310890155
+          },
+          "settlement_above_0": {
+            "cells": 31831,
+            "mean_abs_D": 0.08944963658333296
+          },
+          "undesignated_above_0": {
+            "cells": 30702,
+            "mean_abs_D": 0.07794185802348094
+          }
+        },
+        "quantiles_D": {
+          "1%": -0.38961038961038963,
+          "10%": -0.1050420168067227,
+          "50%": 0.006446537800588852,
+          "90%": 0.14189189189189189,
+          "99%": 0.44303797468354433
+        },
+        "quantiles_abs_D": {
+          "1%": 0.0006046467002488251,
+          "10%": 0.005502237877892765,
+          "50%": 0.03491733944614158,
+          "90%": 0.20869565217391306,
+          "99%": 0.5150214592274678
+        },
+        "reached": 223298,
+        "share_exposed_pop_2022_zero": 0.6675200210056452
+      },
+      "ring5_votes": {
+        "exposed": 196675,
+        "mean_abs_D_by_group": {
+          "indigenous_above_0": {
+            "cells": 11582,
+            "mean_abs_D": 51.43679848040062
+          },
+          "pop_2022_positive": {
+            "cells": 65370,
+            "mean_abs_D": 123.25260823007496
+          },
+          "pop_2022_zero": {
+            "cells": 131305,
+            "mean_abs_D": 54.925448383534516
+          },
+          "settlement_above_0": {
+            "cells": 31482,
+            "mean_abs_D": 49.59103614763992
+          },
+          "undesignated_above_0": {
+            "cells": 30530,
+            "mean_abs_D": 81.68568621028497
+          }
+        },
+        "quantiles_D": {
+          "1%": -370.0,
+          "10%": -62.0,
+          "50%": 3.0,
+          "90%": 110.0,
+          "99%": 767.2600000000093
+        },
+        "quantiles_abs_D": {
+          "1%": 1.0,
+          "10%": 2.0,
+          "50%": 20.0,
+          "90%": 175.0,
+          "99%": 873.0
+        },
+        "reached": 223298,
+        "share_exposed_pop_2022_zero": 0.6676242532096097
+      }
+    }
+  }
+}
