@@ -1,4 +1,5 @@
-"""Logic of paper figures 1 (study area), 2 (polling-place density) and 3 (population).
+"""Logic of paper figures 1 (study area), 2 (polling-place density), 3 (population)
+and 5 (land without voters).
 
 Everything is drawn in IBGE's Albers km (`terrain.grid.to_albers_km`), which is
 equal-area, so hexagons have equal area. Layers come from `figure_layers.parquet`
@@ -22,9 +23,9 @@ import numpy as np  # noqa: E402
 import polars as pl  # noqa: E402
 import shapely  # noqa: E402
 from matplotlib.collections import LineCollection, PathCollection  # noqa: E402
-from matplotlib.colors import LogNorm  # noqa: E402
+from matplotlib.colors import BoundaryNorm, ListedColormap, LogNorm  # noqa: E402
 from matplotlib.lines import Line2D  # noqa: E402
-from matplotlib.patches import Rectangle  # noqa: E402
+from matplotlib.patches import Patch, Rectangle  # noqa: E402
 from matplotlib.path import Path as MplPath  # noqa: E402
 
 from terrain.grid import to_albers_km  # noqa: E402
@@ -54,6 +55,14 @@ POP_CMAP = "magma_r"
 POP_LABEL = "People per km² (2022)"
 # longitude/latitude frame of the layers (data/contracts/figure_layers.md)
 FRAME = (-92.0, -57.0, -26.0, 14.0)
+EMPTY_UNDESIGNATED = "#1b9e77"
+POPULATED_UNDESIGNATED = "#d95f02"
+POPULATED_OTHER = "#bdbdbd"
+TENURE_CLASSES = (
+    "Undesignated forest, no residents",
+    "Undesignated forest, residents",
+    "Other populated cells",
+)
 
 Layers = dict[str, list[tuple[Any, str | None, str | None, int | None]]]
 Extent = tuple[float, float, float, float]
@@ -376,3 +385,64 @@ def population(layers: Layers, cells: pl.DataFrame, out_dir: Path) -> LogNorm:
     fig.colorbar(image, ax=ax, shrink=0.6, pad=0.01, label=POP_LABEL)
     save(fig, out_dir, "03_population")
     return norm
+
+
+def tenure_classes(
+    x_km: Any, y_km: Any, pop: Any, share_undesignated: Any
+) -> tuple[np.ma.MaskedArray, Extent, dict[str, int]]:
+    """Class of each 1 km cell for figure 5, its extent and the cells per class.
+
+    0: undesignated, nobody lived there in 2022; 1: undesignated, populated;
+    2: populated, not undesignated. Other cells and pixels with no cell are masked.
+    """
+    x = np.asarray(x_km).astype(np.int64)
+    y = np.asarray(y_km).astype(np.int64)
+    people = np.asarray(pop).astype(float)
+    share = np.asarray(share_undesignated).astype(float)
+    if x.size == 0 or not (x.size == y.size == people.size == share.size):
+        raise ValueError("x_km, y_km, pop and share_undesignated must be non-empty and equal")
+    undesignated = share > 0
+    populated = people > 0
+    cls = np.full(x.size, -1, dtype=np.int64)
+    cls[undesignated & ~populated] = 0
+    cls[undesignated & populated] = 1
+    cls[~undesignated & populated] = 2
+    x_min, x_max = int(x.min()), int(x.max())
+    y_min, y_max = int(y.min()), int(y.max())
+    grid = np.full((y_max - y_min + 1, x_max - x_min + 1), -1, dtype=np.int64)
+    grid[y - y_min, x - x_min] = cls
+    counts = {label: int((cls == i).sum()) for i, label in enumerate(TENURE_CLASSES)}
+    return np.ma.masked_less(grid, 0), (x_min, x_max + 1, y_min, y_max + 1), counts
+
+
+def land_without_voters(layers: Layers, cells: pl.DataFrame, out_dir: Path) -> dict[str, int]:
+    """Figure 5: undesignated forest in 2024 by whether anyone lived there in 2022."""
+    extent = amazon_extent(layers)
+    fig, ax = plt.subplots(figsize=(6.5, 6))
+    _background(ax, layers, extent, full=True)
+    raster, raster_extent, counts = tenure_classes(
+        cells["x_km"].to_numpy(),
+        cells["y_km"].to_numpy(),
+        cells["pop_2022"].to_numpy(),
+        cells["share_undesignated_2024"].to_numpy(),
+    )
+    colours = [EMPTY_UNDESIGNATED, POPULATED_UNDESIGNATED, POPULATED_OTHER]
+    ax.imshow(
+        raster,
+        origin="lower",
+        extent=raster_extent,
+        interpolation="nearest",
+        cmap=ListedColormap(colours),
+        norm=BoundaryNorm([-0.5, 0.5, 1.5, 2.5], len(colours)),
+        zorder=1.5,  # above the background fills (1), below the outlines (2)
+    )
+    add_outlines(ax, _geoms(layers, "legal_amazon"), AMAZON_EDGE, AMAZON_WIDTH)
+    _setup(ax, extent)
+    handles = [
+        Patch(facecolor=colour, label=f"{label} ({counts[label]:,} cells)")
+        for label, colour in zip(TENURE_CLASSES, colours, strict=True)
+    ]
+    ax.legend(handles=handles, loc="lower left", fontsize=6, frameon=True)
+    fig.subplots_adjust(left=0.01, right=0.99, bottom=0.01, top=0.99)
+    save(fig, out_dir, "05_land_without_voters")
+    return counts

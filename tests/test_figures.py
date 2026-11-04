@@ -218,7 +218,58 @@ def test_fetch_needs_exactly_one_match(tmp_path: Path) -> None:
         figures.fetch(MemoryStore(), manifest, "c.parquet", tmp_path)
 
 
-@pytest.mark.parametrize("script", ["01_study_area.py", "02_polling_places.py", "03_population.py"])
+def test_tenure_classes_one_cell_of_each_kind() -> None:
+    classes, extent, counts = figures.tenure_classes(
+        [10, 11, 12, 13], [20, 20, 20, 21], [0, 5, 7, 0], [0.5, 0.2, 0.0, 0.0]
+    )
+    assert extent == (10, 14, 20, 22)
+    assert classes.shape == (2, 4)
+    assert [classes[0, 0], classes[0, 1], classes[0, 2]] == [0, 1, 2]
+    assert classes.mask[1, 3]  # empty cell outside undesignated forest
+    assert classes.mask[1, 0]  # pixel with no cell
+    assert int(classes.count()) == 3
+    assert list(counts.values()) == [1, 1, 1]
+    assert list(counts) == list(figures.TENURE_CLASSES)
+
+
+def test_tenure_classes_rejects_bad_input() -> None:
+    with pytest.raises(ValueError):
+        figures.tenure_classes([], [], [], [])
+    with pytest.raises(ValueError):
+        figures.tenure_classes([1, 2], [1, 2], [1, 2], [1])
+
+
+def test_land_without_voters_writes_two_files_and_is_deterministic(
+    layers: figures.Layers, tmp_path: Path
+) -> None:
+    rng = np.random.default_rng(2)
+    cells = _cells().with_columns(
+        pl.Series("share_undesignated_2024", rng.choice([0.0, 0.0, 0.4, 1.0], 300))
+    )
+    for run in ("a", "b"):
+        counts = figures.land_without_voters(layers, cells, tmp_path / run)
+    undesignated = cells["share_undesignated_2024"] > 0
+    populated = cells["pop_2022"] > 0
+    assert list(counts.values()) == [
+        int((undesignated & ~populated).sum()),
+        int((undesignated & populated).sum()),
+        int((~undesignated & populated).sum()),
+    ]
+    out = tmp_path / "a"
+    assert sorted(p.name for p in out.iterdir()) == [
+        "05_land_without_voters.pdf",
+        "05_land_without_voters.png",
+    ]
+    assert (out / "05_land_without_voters.png").read_bytes().startswith(b"\x89PNG")
+    assert (out / "05_land_without_voters.pdf").read_bytes() == (
+        tmp_path / "b" / "05_land_without_voters.pdf"
+    ).read_bytes()
+
+
+@pytest.mark.parametrize(
+    "script",
+    ["01_study_area.py", "02_polling_places.py", "03_population.py", "05_land_without_voters.py"],
+)
 def test_scripts_are_thin(script: str) -> None:
     text = (ROOT / "figures" / script).read_text(encoding="utf-8")
     assert "gs://" not in text
