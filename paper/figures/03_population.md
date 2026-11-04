@@ -1,10 +1,9 @@
 # 03_population
 
-- Script: `figures/03_population.py` at `cc8755ffad20dc8760f60067c62508bcefcd3185`
-- Run: https://github.com/gabrielsgaspar/research-terrain/actions/runs/41914433512
-- Date (UTC): 2026-11-04T21:16:32Z
+- Script: `figures/03_population.py` at `28db0b82ebe9bf4ca568b0020989d949bac24be2`
+- Run: https://github.com/gabrielsgaspar/research-terrain/actions/runs/41925839581
+- Date (UTC): 2026-11-04T22:31:19Z
 
 | File | Bytes | SHA-256 |
 | --- | --- | --- |
-| `03_population.png` | 1623659 | `d27b2739d835513d5a896e8b86f1e7323d3ef7e03b498285b88ae90de211d4fc` |
-| `03_population.pdf` | 1530595 | `1d74d7fd1b579a8b2a43d234153a060afb5949787422c4205d7c76a0962b9927` |
+| `03_population.png` | 1168169 | `6fc53d5d01a3dd68147274f02670d934fb8151911106bca816c925e4de7b2374` |
