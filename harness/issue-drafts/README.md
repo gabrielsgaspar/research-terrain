@@ -38,6 +38,7 @@ acquired or built (its manifest merged into `data/manifests/`).
 | 23 | Figure 5 (empty cells over undesignated forest) | done (#120) |
 | 24 | Cell exposure to close races (`cell_exposure`, decision 0004) | done (#125) |
 | 25 | Figure 6: one close pair's strongholds over their exposure | `cell_exposure` recorded (done) |
+| 26 | Acquire MapBiomas code shares per 1 km cell (Earth Engine, decision 0006) | `earthengine-api` and `tifffile` merged (done) |
 
 ## Before filing a task
 
