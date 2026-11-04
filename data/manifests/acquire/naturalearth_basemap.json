@@ -1,0 +1,57 @@
+{
+  "dataset": "naturalearth_basemap",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/naturalearth/2026-11-04/",
+  "created_at": "2026-11-04T15:35:44.863152+00:00",
+  "code_commit": "c34dcec63a7c07a160ce62d086ebbe56300164e3",
+  "sources": [
+    {
+      "url": "https://naciscdn.org/naturalearth/10m/cultural/ne_10m_admin_0_countries.zip",
+      "last_modified": "Fri, 13 May 2022 05:20:49 GMT",
+      "etag": "\"0bc33f3e6f9ab457917430e57f6122a9\"",
+      "bytes": 4930492
+    },
+    {
+      "url": "https://naciscdn.org/naturalearth/10m/physical/ne_10m_ocean.zip",
+      "last_modified": "Fri, 13 May 2022 05:21:26 GMT",
+      "etag": "\"c5ee907d7e0aaae198cbb74a04d8c2b0\"",
+      "bytes": 3189765
+    },
+    {
+      "url": "https://naciscdn.org/naturalearth/10m/physical/ne_10m_lakes.zip",
+      "last_modified": "Wed, 08 Dec 2021 00:46:46 GMT",
+      "etag": "\"06c430248e291f69d856f4d7f9967968\"",
+      "bytes": 2349685
+    },
+    {
+      "url": "https://naciscdn.org/naturalearth/10m/physical/ne_10m_rivers_lake_centerlines.zip",
+      "last_modified": "Wed, 08 Dec 2021 00:46:46 GMT",
+      "etag": "\"686e256cbb714e63ab7728aeda7a269d\"",
+      "bytes": 2079507
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/naturalearth/2026-11-04/ne_10m_admin_0_countries.zip",
+      "sha256": "ce1ac7036499a0edd641fbc093cd209a98f96a49d2eca8480aaacad35138a7f6",
+      "bytes": 4930492
+    },
+    {
+      "path": "data/raw/naturalearth/2026-11-04/ne_10m_ocean.zip",
+      "sha256": "db626fcd5d50b096b156c78a2cc95011b39f32a61b4e47d147e3f7a77b8b2719",
+      "bytes": 3189765
+    },
+    {
+      "path": "data/raw/naturalearth/2026-11-04/ne_10m_lakes.zip",
+      "sha256": "0803a06f9c3cb4671d89b68c48b142aad9366ba40f665245e12a913fbc61722a",
+      "bytes": 2349685
+    },
+    {
+      "path": "data/raw/naturalearth/2026-11-04/ne_10m_rivers_lake_centerlines.zip",
+      "sha256": "ded71b01870855ccfe19b51f2ec14c9bb48fae23c0e9f3c11974d426433b5c38",
+      "bytes": 2079507
+    }
+  ],
+  "notes": ""
+}
