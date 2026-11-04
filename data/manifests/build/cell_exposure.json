@@ -1,0 +1,43 @@
+{
+  "dataset": "cell_exposure",
+  "stage": "build",
+  "status": "created",
+  "gcs_prefix": "data/derived/cell_exposure/71675ccf3e1ccb38/",
+  "created_at": "2026-11-04T22:23:48.329467+00:00",
+  "code_commit": "66c22a906b8ad20e8a672953a875e5b7f4cc1ad4",
+  "sources": [],
+  "files": [
+    {
+      "path": "data/derived/cell_exposure/71675ccf3e1ccb38/cell_exposure_2008.parquet",
+      "sha256": "78055a76f8ebc84baf51ae2dff089f10a5eda654b7297a461f4d1a7242847b17",
+      "bytes": 12571270
+    },
+    {
+      "path": "data/derived/cell_exposure/71675ccf3e1ccb38/cell_exposure_2012.parquet",
+      "sha256": "114c59a7b6ef67f7755d37404cf40ebf2f0b0c036232df62c67c76212d46be20",
+      "bytes": 13939720
+    },
+    {
+      "path": "data/derived/cell_exposure/71675ccf3e1ccb38/cell_exposure_2016.parquet",
+      "sha256": "42178d74374de194d91f0006dae7588a162c86d54bd84e06f91a7a3d08e83fe5",
+      "bytes": 14167091
+    },
+    {
+      "path": "data/derived/cell_exposure/71675ccf3e1ccb38/cell_exposure_2020.parquet",
+      "sha256": "5c979139515315792e55918f337d6ec8f0aee62aae08cb61b27aebcbbdce2433",
+      "bytes": 14180323
+    },
+    {
+      "path": "data/derived/cell_exposure/71675ccf3e1ccb38/cell_exposure_2024.parquet",
+      "sha256": "2f133ac0bb5924380d413456f073061d0486c79b0fdf650d4e449f34344a73cf",
+      "bytes": 14619002
+    }
+  ],
+  "notes": "2008: municipalities_with_pair=4812, close_pairs=9847, rows=869625, cells_nonzero: d_exp2=778686, d_ring2=74760, d_ring5=317391; 2012: municipalities_with_pair=4938, close_pairs=11324, rows=955478, cells_nonzero: d_exp2=880441, d_ring2=86573, d_ring5=366272; 2016: municipalities_with_pair=4931, close_pairs=11864, rows=970944, cells_nonzero: d_exp2=889155, d_ring2=89060, d_ring5=372429; 2020: municipalities_with_pair=4848, close_pairs=13070, rows=973234, cells_nonzero: d_exp2=892378, d_ring2=90189, d_ring5=374960; 2024: municipalities_with_pair=4591, close_pairs=10613, rows=1013325, cells_nonzero: d_exp2=897496, d_ring2=91277, d_ring5=378196",
+  "inputs": [
+    "data/derived/grid_cells/2ec824f4da3d3f60/_MANIFEST.json",
+    "data/derived/polling_places/697e4a75d8bc2b89/_MANIFEST.json",
+    "data/derived/section_votes/c74725a2e911e8eb/_MANIFEST.json",
+    "data/derived/tse_results/6f2af3d28c84af90/_MANIFEST.json"
+  ]
+}
