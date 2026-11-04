@@ -16,6 +16,24 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-04: cell_exposure reproduces the explored exposure exactly (idea 0001, issue #125)
+- Tried: the `cell_exposure` build (decision 0004, both halves), restricted
+  afterwards to the exploration half and compared with explore run
+  41913964880.
+- Result: identical in every year for every count compared: cells reached
+  and exposed under exp(-d/2), reached and exposed under the 5 km ring,
+  reached under the 2 km ring, and municipalities with a close pair (2024:
+  539,862 reached, 483,734 exposed, 338 municipalities). On the whole Legal
+  Amazon 668 (2024) to 723 (2012) municipalities have a close pair, and
+  869,625 (2008) to 1,013,325 (2024) cells are reached.
+- Why: the build uses `terrain.strongholds`, a copy of the explored
+  functions tested equal to them.
+- Implication: exposure can be used as built. The manifest's
+  `municipalities_with_pair` and `close_pairs` notes count all of Brazil
+  (4,591-4,938 municipalities), because the results tables are national;
+  only Legal Amazon cells are in the output, so the values are unaffected.
+  Use the numbers above, not the notes.
+
 ## 2026-11-04: Exposure formulas compared for decision 0004 (idea 0001, issue #116)
 - Tried: `explore/0001_exposure_options.py` on the exploration half, run
   41913964880 (`research/explore-runs/0001/41913964880.md`): every 1 km cell's
