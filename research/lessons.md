@@ -16,6 +16,42 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-04: Land-tenure sources: the public-forest register replaces FUNAI and INCRA (idea 0001)
+- Tried: finding official downloads for indigenous lands (FUNAI),
+  settlements (INCRA) and undesignated public forests (CNFP).
+- Result: FUNAI's GeoServer returned 503 on every request; INCRA's download
+  server no longer resolves and its portal redirects to the home page. The
+  Forest Service's register (CNFP) is downloadable for 2008-2025 and holds all
+  three: indigenous lands (TI, 664 polygons in 2025), settlements (2025 only
+  for conventional PA: 6,135; PAE and PDS in every edition) and
+  undesignated land (TIPO B: 497 tracts in 2008, 1,742 in 2025). Every 2025
+  settlement and 883 of 1,087 indigenous-land polygons have a creation date.
+- Why: the agencies' own services are down or retired; the register compiles
+  their boundaries.
+- Implication: indigenous and undesignated land come from each election
+  year's own edition; settlements from 2025, dated back by creation date
+  (earlier editions lack conventional settlements). The 2008 edition records
+  far less undesignated land (496 tracts in the Legal Amazon box, against
+  1,624-10,548 later), so over-time comparisons of undesignated land should
+  start in 2012 or adjust for coverage. Caveats: 2025 boundaries for earlier years; settlement polygons are
+  the register's, which may be forest portions of a settlement.
+
+## 2026-11-04: Kill criterion 1 for idea 0001 looks passed (preliminary)
+- Tried: on the whole Legal Amazon (treatment-side data only, no outcomes),
+  the strongholds of close-pair candidates (margin at most 0.5%), 2008-2024
+  pooled, against CNFP 2025 indigenous lands and the settlements created by
+  each election.
+- Result: 1,334 strongholds inside or within 5 km of an indigenous land (443
+  inside) and 5,244 inside or within 5 km of a settlement (310 inside), of
+  18,060 with coordinates. The exploration half should have about half:
+  roughly 667 and 2,622, against the criterion's 200.
+- Why: preliminary, outside the explore-run pipeline; distances approximate
+  (degrees times 111 km).
+- Implication: the formal test runs as an explore task once land tenure is
+  built. The 5 km settlement band covers 29% of close-pair strongholds, which
+  may be too wide to separate constituency types; the stronghold typing task
+  should report 0, 2 and 5 km.
+
 ## 2026-11-03: Feasibility census: enough close races with strongholds outside the seat (idea 0001)
 - Tried: `explore/0001_feasibility_census.py` on the exploration half, run
   41719271978 (record in `research/explore-runs/0001/`), council elections

@@ -242,6 +242,19 @@ datasets:
       quilombola, indigenous, settlement or dispersed, with eligible voters
       (2012-2024). Draft: harness/issue-drafts/09-build-polling-place-types.md.
 
+  - name: polling_place_tenure
+    source: built from polling_places and cnfp_public_forests
+    licence: public
+    derived: data/derived/polling_place_tenure/
+    contract: data/contracts/polling_place_tenure.md
+    status: planned
+    notes: >
+      Distance in km from every Legal Amazon polling place, 2008-2024, to the
+      nearest indigenous land and undesignated public forest (from that
+      election year's register edition) and settlement (from the 2025
+      edition, created by that election). Draft:
+      harness/issue-drafts/14-build-polling-place-tenure.md.
+
   - name: mapbiomas_deforestation
     source: MapBiomas annual collection, exported via Earth Engine
     licence: check MapBiomas terms
@@ -253,16 +266,64 @@ datasets:
     licence: public
     gcs: data/raw/funai/
     status: planned
+    notes: >
+      FUNAI's GeoServer (the only official download) returned 503 on every
+      request on 2026-11-04. Indigenous lands are taken from
+      cnfp_public_forests instead (category TI, dated by anocriacao). An IBGE
+      copy (2019, 499 lands, 349 in the Legal Amazon, no legal stage) exists
+      at geoftp.ibge.gov.br as a fallback.
 
   - name: cnfp_public_forests
-    source: Servico Florestal Brasileiro, Cadastro Nacional de Florestas Publicas
+    source: Servico Florestal Brasileiro, Cadastro Nacional de Florestas Publicas (editions 2008, 2012, 2016, 2020, 2024 retificado, 2025)
     licence: public
     gcs: data/raw/cnfp/
     status: planned
-    notes: defines undesignated public forest (land without owner or voters)
+    notes: >
+      Public forests by year: designated (TIPO A: indigenous lands, settlements,
+      protected areas, military) and undesignated (TIPO B, GLEBA ARRECADADA,
+      "land without owner or voters"). Served from the Forest Service's ArcGIS
+      portal: every file URL ends in /data, so each file has an explicit name,
+      and its version and size come from the item's metadata (meta, ?f=json),
+      because downloads have no Content-Length and HEAD has no ETag. Schemas
+      differ by edition (2008: tipo_flor, long category names; 2016-2025:
+      tipo, abbreviations such as TI, PA, PAE, PDS). Only 2025 includes
+      conventional settlements (PA: 6,135); every settlement and most
+      indigenous lands carry a creation date (anocriacao, dd/mm/yyyy). Some
+      text fields are cut mid-character: decode with errors replaced.
+    acquire:
+      files:
+        - url: https://mapas.florestal.gov.br/portal/sharing/rest/content/items/889978a137f14a2f917a9c59c047cf3a/data
+          name: CNFP_2008.zip
+          meta: https://mapas.florestal.gov.br/portal/sharing/rest/content/items/889978a137f14a2f917a9c59c047cf3a?f=json
+          check: {type: zip, member: "*.shp"}
+        - url: https://mapas.florestal.gov.br/portal/sharing/rest/content/items/053719eccb1b4cc2b6a828355db79bbf/data
+          name: CNFP_2012.zip
+          meta: https://mapas.florestal.gov.br/portal/sharing/rest/content/items/053719eccb1b4cc2b6a828355db79bbf?f=json
+          check: {type: zip, member: "*.shp"}
+        - url: https://mapas.florestal.gov.br/portal/sharing/rest/content/items/608ded443f214c5a94f53b701bcdb2ce/data
+          name: CNFP_2016.zip
+          meta: https://mapas.florestal.gov.br/portal/sharing/rest/content/items/608ded443f214c5a94f53b701bcdb2ce?f=json
+          check: {type: zip, member: "*.shp"}
+        - url: https://mapas.florestal.gov.br/portal/sharing/rest/content/items/d1181085e2f240f1a8f7d13a527d1fa2/data
+          name: CNFP_2020.zip
+          meta: https://mapas.florestal.gov.br/portal/sharing/rest/content/items/d1181085e2f240f1a8f7d13a527d1fa2?f=json
+          check: {type: zip, member: "*.shp"}
+        - url: https://mapas.florestal.gov.br/portal/sharing/rest/content/items/0f0e8cecbc1e4cdd9d94f6ef1e0a5ae4/data
+          name: CNFP_2024_retificado.zip
+          meta: https://mapas.florestal.gov.br/portal/sharing/rest/content/items/0f0e8cecbc1e4cdd9d94f6ef1e0a5ae4?f=json
+          check: {type: zip, member: "*.shp"}
+        - url: https://mapas.florestal.gov.br/portal/sharing/rest/content/items/2b752dfbf9254920bf8990ce363918af/data
+          name: CNFP_2025.zip
+          meta: https://mapas.florestal.gov.br/portal/sharing/rest/content/items/2b752dfbf9254920bf8990ce363918af?f=json
+          check: {type: zip, member: "*.shp"}
 
   - name: incra_settlements
     source: INCRA agrarian reform settlements
     licence: public
     gcs: data/raw/incra/
     status: planned
+    notes: >
+      INCRA's download server (certificacao.incra.gov.br) no longer resolves
+      and the Acervo Fundiario redirects to INCRA's home page (2026-11-04).
+      Settlements are taken from cnfp_public_forests 2025 instead (PA, PAE,
+      PDS, PAF, PE and other settlement categories, dated by anocriacao).
