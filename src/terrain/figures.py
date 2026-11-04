@@ -1,11 +1,13 @@
-"""Logic of paper figures 1 (study area), 2 (polling-place density), 3 (population)
-and 5 (land without voters).
+"""Logic of the paper figures: 1 study area, 2 polling-place density, 3 population,
+4 indigenous lands and settlements, 5 land without voters.
 
 Everything is drawn in IBGE's Albers km (`terrain.grid.to_albers_km`), which is
-equal-area, so hexagons have equal area. Layers come from `figure_layers.parquet`
-(data/contracts/figure_layers.md); figure 3 also reads three columns of
-`grid_cells.parquet`. Scripts: figures/01_study_area.py, figures/02_polling_places.py
-and figures/03_population.py; contract: figures/README.md.
+equal-area, in the one style of `terrain.style` (figures/STYLE.md): PNG only,
+light-blue water, framed maps, bottom legends, plain comma-separated numbers.
+Layers come from `figure_layers.parquet` (data/contracts/figure_layers.md);
+figures 3 and 5 also read `grid_cells.parquet`. Each figure has a `*_figure`
+function that returns the matplotlib figure (for tests of its layout) and a
+function that saves it. Scripts: figures/NN_*.py; contract: figures/README.md.
 """
 
 from __future__ import annotations
@@ -13,55 +15,47 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import matplotlib
+import numpy as np
+import polars as pl
+import shapely
+from matplotlib.collections import LineCollection, PathCollection, PolyCollection
+from matplotlib.colors import BoundaryNorm, ListedColormap, LogNorm
+from matplotlib.patches import Patch, Rectangle
+from matplotlib.path import Path as MplPath
 
-matplotlib.use("Agg")
-matplotlib.rcParams["svg.hashsalt"] = "research-terrain"
+from terrain import style
+from terrain.grid import to_albers_km
+from terrain.manifest import sha256_file
+from terrain.storage import Store
 
-import matplotlib.pyplot as plt  # noqa: E402
-import numpy as np  # noqa: E402
-import polars as pl  # noqa: E402
-import shapely  # noqa: E402
-from matplotlib.collections import LineCollection, PathCollection  # noqa: E402
-from matplotlib.colors import BoundaryNorm, ListedColormap, LogNorm  # noqa: E402
-from matplotlib.lines import Line2D  # noqa: E402
-from matplotlib.patches import Patch, Rectangle  # noqa: E402
-from matplotlib.path import Path as MplPath  # noqa: E402
+plt = style.configure()
 
-from terrain.grid import to_albers_km  # noqa: E402
-from terrain.manifest import sha256_file  # noqa: E402
-from terrain.storage import Store  # noqa: E402
-
-OCEAN = "#cfe3f3"
-LAKE = "#cfe3f3"
-RIVER = "#cfe3f3"
-OTHER_COUNTRY = "#e6e6e6"
-BRAZIL = "#ffffff"
-STATE_EDGE = "#9a9a9a"
-STATE_WIDTH = 0.3
-AMAZON_EDGE = "#000000"
-AMAZON_WIDTH = 1.2
-RIVER_WIDTH = 0.4
 MAX_RIVER_SCALERANK = 6
 MARGIN_KM = 150.0
 HEX_KM = 25.0
 YEARS = (2008, 2012, 2016, 2020, 2024)
 PAPER_YEARS = (2008, 2024)
 COLOUR_LABEL = "Polling places per hexagon"
-CMAP = "viridis"
-TENURE = (("indigenous", "#d95f02"), ("settlement", "#7570b3"), ("undesignated", "#1b9e77"))
-TENURE_WIDTH = 0.15
-POP_CMAP = "magma_r"
 POP_LABEL = "People per km² (2022)"
 # longitude/latitude frame of the layers (data/contracts/figure_layers.md)
 FRAME = (-92.0, -57.0, -26.0, 14.0)
-EMPTY_UNDESIGNATED = "#1b9e77"
-POPULATED_UNDESIGNATED = "#d95f02"
-POPULATED_OTHER = "#bdbdbd"
+# Figure 1's inset: half the width and height it had before the style (25% of the figure).
+INSET_WIDTH = 0.125
+INSET_HEIGHT = 0.3  # an upper bound: the inset keeps South America's aspect
+TENURE_LAYERS = (
+    ("undesignated", "Undesignated public forest", "green"),
+    ("settlement", "Settlement", "pink"),
+    ("indigenous", "Indigenous land", "orange"),
+)
 TENURE_CLASSES = (
     "Undesignated forest, no residents",
     "Undesignated forest, residents",
     "Other populated cells",
+)
+TENURE_CLASS_COLOURS = (
+    style.CATEGORIES["green"][0],
+    style.SCALE_ENDS["purple"][1],
+    "#bcbddc",  # a light purple: populated, so on the population hue
 )
 
 Layers = dict[str, list[tuple[Any, str | None, str | None, int | None]]]
@@ -131,7 +125,13 @@ def _polygon_path(polygons: list[Any]) -> MplPath:
 
 
 def add_polygons(
-    ax: Any, geoms: list[Any], facecolor: str, edgecolor: str = "none", linewidth: float = 0.0
+    ax: Any,
+    geoms: list[Any],
+    facecolor: Any,
+    edgecolor: Any = "none",
+    linewidth: float = 0.0,
+    alpha: float | None = None,
+    zorder: float = 1,
 ) -> None:
     """Draw polygons (multi-polygons and holes included) as one `PathCollection`."""
     polygons = _polygons(geoms)
@@ -139,20 +139,28 @@ def add_polygons(
         return
     paths = [_polygon_path([p]) for p in polygons]
     ax.add_collection(
-        PathCollection(paths, facecolors=facecolor, edgecolors=edgecolor, linewidths=linewidth)
+        PathCollection(
+            paths,
+            facecolors=facecolor,
+            edgecolors=edgecolor,
+            linewidths=linewidth,
+            alpha=alpha,
+            zorder=zorder,
+        )
     )
 
 
-def add_outlines(ax: Any, geoms: list[Any], color: str, linewidth: float) -> None:
-    """Draw polygon boundaries (holes included) as lines."""
+def add_outlines(ax: Any, geoms: list[Any], line: tuple[str, float], zorder: float = 2) -> None:
+    """Draw polygon boundaries (holes included) as lines; `line` is (colour, width)."""
     lines = []
     for poly in _polygons(geoms):
         lines.extend(np.asarray(ring.coords) for ring in [poly.exterior, *poly.interiors])
     if lines:
-        ax.add_collection(LineCollection(lines, colors=color, linewidths=linewidth))
+        colour, width = line
+        ax.add_collection(LineCollection(lines, colors=colour, linewidths=width, zorder=zorder))
 
 
-def add_lines(ax: Any, geoms: list[Any], color: str, linewidth: float) -> None:
+def add_lines(ax: Any, geoms: list[Any], line: tuple[str, float], zorder: float = 1.2) -> None:
     """Draw line geometries (multi-lines included) as one `LineCollection`."""
     lines = []
     for geom in geoms:
@@ -160,7 +168,8 @@ def add_lines(ax: Any, geoms: list[Any], color: str, linewidth: float) -> None:
             if part.geom_type == "LineString" and not part.is_empty:
                 lines.append(np.asarray(part.coords))
     if lines:
-        ax.add_collection(LineCollection(lines, colors=color, linewidths=linewidth))
+        colour, width = line
+        ax.add_collection(LineCollection(lines, colors=colour, linewidths=width, zorder=zorder))
 
 
 def _geoms(layers: Layers, layer: str, keep: Any = None) -> list[Any]:
@@ -170,9 +179,7 @@ def _geoms(layers: Layers, layer: str, keep: Any = None) -> list[Any]:
 def _setup(ax: Any, extent: Extent) -> None:
     ax.set_xlim(extent[0], extent[1])
     ax.set_ylim(extent[2], extent[3])
-    ax.set_aspect("equal")
-    ax.set_xticks([])
-    ax.set_yticks([])
+    style.frame_map(ax)
 
 
 def amazon_extent(layers: Layers) -> Extent:
@@ -181,24 +188,27 @@ def amazon_extent(layers: Layers) -> Extent:
     return (xmin - MARGIN_KM, xmax + MARGIN_KM, ymin - MARGIN_KM, ymax + MARGIN_KM)
 
 
-def _background(ax: Any, layers: Layers, extent: Extent, full: bool) -> None:
-    """Ocean and neighbours (`full`) or Brazil only, then states and the Amazon outline."""
+def frame_extent() -> Extent:
+    """The Albers bounds of the layers' longitude/latitude frame (South America)."""
+    corners = to_albers_km(shapely.box(*FRAME).segmentize(1.0))
+    x0, y0, x1, y1 = corners.bounds
+    return (x0, x1, y0, y1)
+
+
+def base_map(ax: Any, layers: Layers, extent: Extent) -> None:
+    """Every map's base layers (figures/STYLE.md): water, land, borders, rivers, outline."""
     _setup(ax, extent)
-    if full:
-        ax.set_facecolor(OCEAN)
-        add_polygons(ax, _geoms(layers, "ocean"), OCEAN)
-        add_polygons(ax, _geoms(layers, "country", lambda c, r: c != "BRA"), OTHER_COUNTRY)
-    add_polygons(ax, _geoms(layers, "country", lambda c, r: c == "BRA"), BRAZIL)
-    if full:
-        add_polygons(ax, _geoms(layers, "lake"), LAKE)
-        add_lines(
-            ax,
-            _geoms(layers, "river", lambda c, r: r is not None and r <= MAX_RIVER_SCALERANK),
-            RIVER,
-            RIVER_WIDTH,
-        )
-    add_outlines(ax, _geoms(layers, "state"), STATE_EDGE, STATE_WIDTH)
-    add_outlines(ax, _geoms(layers, "legal_amazon"), AMAZON_EDGE, AMAZON_WIDTH)
+    ax.set_facecolor(style.WATER)
+    add_polygons(ax, _geoms(layers, "ocean"), style.WATER)
+    others = _geoms(layers, "country", lambda c, r: c != "BRA")
+    add_polygons(ax, others, style.LAND_OTHER)
+    add_polygons(ax, _geoms(layers, "country", lambda c, r: c == "BRA"), style.BRAZIL)
+    add_outlines(ax, others, style.COUNTRY_BORDER, zorder=1.1)
+    add_polygons(ax, _geoms(layers, "lake"), style.WATER, zorder=1.1)
+    rivers = _geoms(layers, "river", lambda c, r: r is not None and r <= MAX_RIVER_SCALERANK)
+    add_lines(ax, rivers, style.RIVER)
+    add_outlines(ax, _geoms(layers, "state"), style.STATE_BORDER)
+    add_outlines(ax, _geoms(layers, "legal_amazon"), style.AMAZON_BORDER, zorder=3)
 
 
 # --- Hexagon scale
@@ -233,158 +243,214 @@ def hex_scale(points_by_year: dict[int, np.ndarray], extent: Extent, size_km: fl
     return best
 
 
-# --- Saving
+def _colour_norm(vmax: int) -> LogNorm:
+    return LogNorm(vmin=1, vmax=max(vmax, 2))
 
 
-def save(fig: Any, out_dir: Path, name: str) -> None:
-    """Write `name.png` (300 dpi) and a deterministic `name.pdf`, then close the figure."""
-    out_dir.mkdir(parents=True, exist_ok=True)
-    # tight: crop to the drawn content, so outer labels are kept and margins dropped
-    tight = {"bbox_inches": "tight", "pad_inches": 0.03}
-    fig.savefig(out_dir / f"{name}.png", dpi=300, **tight)
-    fig.savefig(out_dir / f"{name}.pdf", dpi=300, metadata={"CreationDate": None}, **tight)
-    plt.close(fig)
+def save(fig: Any, out_dir: Path, name: str) -> Path:
+    """Save as `<out_dir>/<name>.png` through `style.save_png` (PNG only)."""
+    return style.save_png(fig, Path(out_dir) / f"{name}.png")
 
 
-# --- Figures
+# --- Figure 1
 
 
-def study_area(layers: Layers, out_dir: Path) -> None:
-    """Figure 1: South America zoomed to the Legal Amazon, with an inset of the continent."""
+def study_area_figure(layers: Layers) -> Any:
+    """South America zoomed to the Legal Amazon, with an inset of the continent."""
     extent = amazon_extent(layers)
-    fig, ax = plt.subplots(figsize=(6.5, 6))
-    _background(ax, layers, extent, full=True)
+    fig, ax = plt.subplots(figsize=style.TALL)
+    base_map(ax, layers, extent)
     fig.subplots_adjust(left=0.01, right=0.99, bottom=0.01, top=0.99)
-
-    inset = fig.add_axes((0.70, 0.03, 0.25, 0.25))
-    corners = to_albers_km(shapely.box(FRAME[0], FRAME[1], FRAME[2], FRAME[3]).segmentize(1.0))
-    fx0, fy0, fx1, fy1 = corners.bounds
-    _background(inset, layers, (fx0, fx1, fy0, fy1), full=True)
-    inset.add_patch(
+    child = style.inset(ax, INSET_WIDTH, INSET_HEIGHT)
+    base_map(child, layers, frame_extent())
+    child.add_patch(
         Rectangle(
             (extent[0], extent[2]),
             extent[1] - extent[0],
             extent[3] - extent[2],
             fill=False,
-            edgecolor="black",
-            linewidth=1.0,
+            edgecolor=style.TEXT,
+            linewidth=style.LINE_WIDTH,
+            zorder=4,
         )
     )
-    save(fig, out_dir, "01_study_area")
+    return fig
 
 
-def _colour_norm(vmax: int) -> LogNorm:
-    return LogNorm(vmin=1, vmax=max(vmax, 2))
+def study_area(layers: Layers, out_dir: Path) -> Path:
+    """Figure 1."""
+    return save(study_area_figure(layers), out_dir, "01_study_area")
 
 
-def _panel(
-    ax: Any, layers: Layers, extent: Extent, points: np.ndarray, norm: LogNorm, gridsize: int
+# --- Figure 2
+
+
+def _hex_panel(
+    ax: Any,
+    layers: Layers,
+    extent: Extent,
+    points: np.ndarray,
+    norm: LogNorm,
+    gridsize: int,
+    year: int,
 ) -> Any:
-    _background(ax, layers, extent, full=False)
-    ax.set_facecolor("#f4f4f4")
+    base_map(ax, layers, extent)
     collection = ax.hexbin(
         points[:, 0],
         points[:, 1],
         gridsize=gridsize,
         extent=extent,
         mincnt=1,
-        cmap=CMAP,
+        cmap=style.SCALES["purple"],
         norm=norm,
         linewidths=0.0,
+        edgecolors="none",
+        zorder=2.5,
     )
+    ax.set_title(str(year))
     return collection
+
+
+def polling_places_figures(
+    layers: Layers, points_by_year: dict[int, np.ndarray]
+) -> dict[str, tuple[Any, list[Any], Any]]:
+    """Figure 2 (2008 and 2024) and its appendix (five years), on one shared scale.
+
+    Returns {name: (figure, panel axes, colour bar)}.
+    `hexbin`'s `gridsize` counts hexagons along x, so "25 km across" is approximate.
+    """
+    extent = amazon_extent(layers)
+    gridsize = hex_grid(extent, HEX_KM)
+    norm = _colour_norm(hex_scale(points_by_year, extent, HEX_KM))
+    out: dict[str, tuple[Any, list[Any], Any]] = {}
+
+    fig, axes = plt.subplots(1, 2, figsize=style.WIDE)
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.95, bottom=0.17, wspace=0.03)
+    last = None
+    for ax, year in zip(axes, PAPER_YEARS, strict=True):
+        last = _hex_panel(ax, layers, extent, points_by_year[year], norm, gridsize, year)
+    bar = style.bottom_colorbar(fig, list(axes), last, COLOUR_LABEL)
+    out["02_polling_places"] = (fig, list(axes), bar)
+
+    fig, grid = plt.subplots(2, 3, figsize=style.MAP_GRID)
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.95, bottom=0.13, wspace=0.03, hspace=0.12)
+    flat = list(grid.ravel())
+    panels = flat[: len(YEARS)]
+    for ax, year in zip(panels, YEARS, strict=True):
+        last = _hex_panel(ax, layers, extent, points_by_year[year], norm, gridsize, year)
+    for spare in flat[len(YEARS) :]:
+        spare.set_axis_off()
+    bar = style.bottom_colorbar(fig, panels, last, COLOUR_LABEL)
+    out["02_polling_places_appendix"] = (fig, panels, bar)
+    return out
 
 
 def polling_places(
     layers: Layers, points_by_year: dict[int, np.ndarray], out_dir: Path
 ) -> dict[str, LogNorm]:
-    """Figure 2: hexagon density with one colour scale; the paper pair and the appendix.
-
-    `hexbin`'s `gridsize` counts hexagons along x, so "25 km across" is approximate.
-    Returns the colour norm of each output, keyed by file name stem.
-    """
-    extent = amazon_extent(layers)
-    gridsize = hex_grid(extent, HEX_KM)
-    norm = _colour_norm(hex_scale(points_by_year, extent, HEX_KM))
-    norms: dict[str, LogNorm] = {}
-
-    fig, axes = plt.subplots(1, 2, figsize=(6.5, 3.6))
-    last = None
-    for ax, year in zip(axes, PAPER_YEARS, strict=True):
-        last = _panel(ax, layers, extent, points_by_year[year], norm, gridsize)
-        ax.set_xlabel(str(year))
-    fig.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.2, wspace=0.03)
-    cax = fig.add_axes((0.25, 0.07, 0.5, 0.03))
-    fig.colorbar(last, cax=cax, orientation="horizontal", label=COLOUR_LABEL)
-    norms["02_polling_places"] = last.norm
-    save(fig, out_dir, "02_polling_places")
-
-    fig, axes = plt.subplots(2, 3, figsize=(6.5, 4.4))
-    flat = list(axes.ravel())
-    for ax, year in zip(flat, YEARS, strict=False):
-        last = _panel(ax, layers, extent, points_by_year[year], norm, gridsize)
-        ax.set_xlabel(str(year))
-    spare = flat[len(YEARS)]
-    spare.set_axis_off()
-    fig.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.05, wspace=0.03, hspace=0.12)
-    box = spare.get_position()
-    cax = fig.add_axes((box.x0 + 0.02, box.y0 + box.height * 0.45, box.width - 0.04, 0.03))
-    fig.colorbar(last, cax=cax, orientation="horizontal", label=COLOUR_LABEL)
-    norms["02_polling_places_appendix"] = last.norm
-    save(fig, out_dir, "02_polling_places_appendix")
+    """Figure 2 and its appendix; returns the colour norm of each output, by file stem."""
+    norms = {}
+    for name, (fig, _, bar) in polling_places_figures(layers, points_by_year).items():
+        norms[name] = bar.mappable.norm
+        save(fig, out_dir, name)
     return norms
 
 
-def population_raster(x_km: Any, y_km: Any, pop: Any) -> tuple[np.ma.MaskedArray, Extent]:
-    """One pixel per 1 km cell; pixels with no cell or population <= 0 are masked."""
-    x = np.asarray(x_km).astype(np.int64)
-    y = np.asarray(y_km).astype(np.int64)
-    values = np.asarray(pop).astype(float)
+# --- Figure 3
+
+
+def cell_polygons(x_km: Any, y_km: Any, pop: Any) -> tuple[np.ndarray, np.ndarray]:
+    """The 1 km squares of the populated cells (n × 4 × 2, Albers km) and their population.
+
+    Cells with population 0 or below are left out (drawn unfilled).
+    """
+    x = np.asarray(x_km, dtype=float)
+    y = np.asarray(y_km, dtype=float)
+    values = np.asarray(pop, dtype=float)
     if x.size == 0 or not (x.size == y.size == values.size):
         raise ValueError("x_km, y_km and pop must be non-empty and of the same length")
-    x_min, x_max = int(x.min()), int(x.max())
-    y_min, y_max = int(y.min()), int(y.max())
-    grid = np.zeros((y_max - y_min + 1, x_max - x_min + 1))
-    grid[y - y_min, x - x_min] = values
-    masked = np.ma.masked_less_equal(grid, 0)
-    return masked, (x_min, x_max + 1, y_min, y_max + 1)
+    keep = values > 0
+    x, y, values = x[keep], y[keep], values[keep]
+    corners = np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]])
+    squares = np.stack([x, y], axis=1)[:, None, :] + corners[None, :, :]
+    return squares, values
+
+
+def population_figure(layers: Layers, cells: pl.DataFrame) -> tuple[Any, Any, Any]:
+    """Figure 3: populated 1 km cells as filled squares coloured by 2022 population."""
+    extent = amazon_extent(layers)
+    fig, ax = plt.subplots(figsize=style.TALL)
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.1)
+    base_map(ax, layers, extent)
+    squares, values = cell_polygons(
+        cells["x_km"].to_numpy(), cells["y_km"].to_numpy(), cells["pop_2022"].to_numpy()
+    )
+    norm = _colour_norm(int(values.max()) if values.size else 1)
+    collection = PolyCollection(
+        squares,
+        array=values,
+        cmap=style.SCALES["purple"],
+        norm=norm,
+        edgecolors="none",
+        linewidths=0.0,
+        antialiaseds=False,
+        zorder=2.5,
+    )
+    collection.set_rasterized(True)  # about 534,000 squares; the PNG looks the same
+    ax.add_collection(collection)
+    bar = style.bottom_colorbar(fig, [ax], collection, POP_LABEL)
+    return fig, ax, bar
 
 
 def population(layers: Layers, cells: pl.DataFrame, out_dir: Path) -> LogNorm:
-    """Figure 3: 2022 population per 1 km cell on a log scale, with land-tenure outlines."""
-    extent = amazon_extent(layers)
-    fig, ax = plt.subplots(figsize=(6.5, 6))
-    _background(ax, layers, extent, full=True)
-    raster, raster_extent = population_raster(
-        cells["x_km"].to_numpy(), cells["y_km"].to_numpy(), cells["pop_2022"].to_numpy()
-    )
-    norm = _colour_norm(int(raster.max()) if raster.count() else 1)
-    image = ax.imshow(
-        raster,
-        origin="lower",
-        extent=raster_extent,
-        interpolation="nearest",
-        cmap=POP_CMAP,
-        norm=norm,
-        zorder=1.5,  # above the background fills (1), below the outlines (2)
-    )
-    before = len(ax.collections)
-    for layer, colour in TENURE:
-        add_outlines(ax, _geoms(layers, layer), colour, TENURE_WIDTH)
-    # thousands of tenure polygons as vectors would put the PDF over 10 MB
-    for collection in ax.collections[before:]:
-        collection.set_rasterized(True)
-        collection.set_alpha(0.7)
-    add_outlines(ax, _geoms(layers, "legal_amazon"), AMAZON_EDGE, AMAZON_WIDTH)
-    _setup(ax, extent)
-    handles = [
-        Line2D([0], [0], color=colour, linewidth=1.0, label=layer) for layer, colour in TENURE
-    ]
-    ax.legend(handles=handles, loc="lower left", fontsize=6, frameon=True)
-    fig.subplots_adjust(left=0.01, right=0.99, bottom=0.01, top=0.99)
-    fig.colorbar(image, ax=ax, shrink=0.6, pad=0.01, label=POP_LABEL)
+    """Figure 3; returns its colour norm."""
+    fig, _, bar = population_figure(layers, cells)
+    norm = bar.mappable.norm
     save(fig, out_dir, "03_population")
     return norm
+
+
+# --- Figure 4
+
+
+def tenure_figure(layers: Layers) -> tuple[Any, Any, Any]:
+    """Figure 4: indigenous lands, settlements and undesignated forest (2024), as categories."""
+    extent = amazon_extent(layers)
+    fig, ax = plt.subplots(figsize=style.TALL)
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.06)
+    base_map(ax, layers, extent)
+    handles = []
+    for i, (layer, label, hue) in enumerate(TENURE_LAYERS):
+        fill, edge = style.CATEGORIES[hue]
+        add_polygons(
+            ax,
+            _geoms(layers, layer),
+            fill,
+            edgecolor=edge,
+            linewidth=style.CATEGORY_EDGE_WIDTH,
+            alpha=style.CATEGORY_ALPHA,
+            zorder=2.2 + i / 10,
+        )
+        handles.append(
+            Patch(
+                facecolor=fill,
+                edgecolor=edge,
+                linewidth=style.CATEGORY_EDGE_WIDTH,
+                alpha=style.CATEGORY_ALPHA,
+                label=label,
+            )
+        )
+    legend = style.bottom_legend(fig, [ax], handles[::-1])
+    return fig, ax, legend
+
+
+def tenure(layers: Layers, out_dir: Path) -> Path:
+    """Figure 4."""
+    fig, _, _ = tenure_figure(layers)
+    return save(fig, out_dir, "04_tenure")
+
+
+# --- Figure 5
 
 
 def tenure_classes(
@@ -415,34 +481,40 @@ def tenure_classes(
     return np.ma.masked_less(grid, 0), (x_min, x_max + 1, y_min, y_max + 1), counts
 
 
-def land_without_voters(layers: Layers, cells: pl.DataFrame, out_dir: Path) -> dict[str, int]:
+def land_without_voters_figure(
+    layers: Layers, cells: pl.DataFrame
+) -> tuple[Any, Any, Any, dict[str, int]]:
     """Figure 5: undesignated forest in 2024 by whether anyone lived there in 2022."""
     extent = amazon_extent(layers)
-    fig, ax = plt.subplots(figsize=(6.5, 6))
-    _background(ax, layers, extent, full=True)
+    fig, ax = plt.subplots(figsize=style.TALL)
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.06)
+    base_map(ax, layers, extent)
     raster, raster_extent, counts = tenure_classes(
         cells["x_km"].to_numpy(),
         cells["y_km"].to_numpy(),
         cells["pop_2022"].to_numpy(),
         cells["share_undesignated_2024"].to_numpy(),
     )
-    colours = [EMPTY_UNDESIGNATED, POPULATED_UNDESIGNATED, POPULATED_OTHER]
     ax.imshow(
         raster,
         origin="lower",
         extent=raster_extent,
         interpolation="nearest",
-        cmap=ListedColormap(colours),
-        norm=BoundaryNorm([-0.5, 0.5, 1.5, 2.5], len(colours)),
-        zorder=1.5,  # above the background fills (1), below the outlines (2)
+        cmap=ListedColormap(TENURE_CLASS_COLOURS),
+        norm=BoundaryNorm([-0.5, 0.5, 1.5, 2.5], len(TENURE_CLASS_COLOURS)),
+        zorder=2.5,
     )
-    add_outlines(ax, _geoms(layers, "legal_amazon"), AMAZON_EDGE, AMAZON_WIDTH)
     _setup(ax, extent)
     handles = [
-        Patch(facecolor=colour, label=f"{label} ({counts[label]:,} cells)")
-        for label, colour in zip(TENURE_CLASSES, colours, strict=True)
+        Patch(facecolor=colour, label=f"{label} ({style.thousands(counts[label])} cells)")
+        for label, colour in zip(TENURE_CLASSES, TENURE_CLASS_COLOURS, strict=True)
     ]
-    ax.legend(handles=handles, loc="lower left", fontsize=6, frameon=True)
-    fig.subplots_adjust(left=0.01, right=0.99, bottom=0.01, top=0.99)
+    legend = style.bottom_legend(fig, [ax], handles)
+    return fig, ax, legend, counts
+
+
+def land_without_voters(layers: Layers, cells: pl.DataFrame, out_dir: Path) -> dict[str, int]:
+    """Figure 5; returns the cells per class."""
+    fig, _, _, counts = land_without_voters_figure(layers, cells)
     save(fig, out_dir, "05_land_without_voters")
     return counts

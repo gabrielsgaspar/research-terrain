@@ -15,7 +15,9 @@ drawing code (`terrain.figures`) and the tests import it, and only the
 - **PNG only**, 300 dpi, white background, tight bounding box: `save_png(fig,
   path)`, which refuses any other suffix. No figure calls `savefig` itself.
 - Sizes (inches): `WIDE` 8 × 4.53, `TALL` 8 × 6.8, `SQUARE` 7.2 × 7.2. Maps use
-  the same sizes as every other figure.
+  the same sizes as every other figure; a grid of two rows of three Legal
+  Amazon maps uses `MAP_GRID` 8 × 5.6, the height at which the maps fill
+  their panels.
 
 ## Typography
 
