@@ -1,0 +1,22 @@
+{
+  "dataset": "figure_layers",
+  "stage": "build",
+  "status": "created",
+  "gcs_prefix": "data/derived/figure_layers/f900ea6501370fcc/",
+  "created_at": "2026-11-04T18:09:11.543930+00:00",
+  "code_commit": "9c5bf080b2e1ef00209908714ae267f18410d04f",
+  "sources": [],
+  "files": [
+    {
+      "path": "data/derived/figure_layers/f900ea6501370fcc/figure_layers.parquet",
+      "sha256": "3a09dae57492e75f6ebd2262aa7d17199c140a9fcbc00a856dc02744b332f4ef",
+      "bytes": 17982785
+    }
+  ],
+  "notes": "country=31, ocean=1, lake=63, river=173, state=27, legal_amazon=1, indigenous=1205 (before_simplify=1205, dropped_empty=0), settlement=3663 (before_simplify=3663, dropped_empty=0), undesignated=2832 (before_simplify=2832, dropped_empty=0)",
+  "inputs": [
+    "data/raw/naturalearth/2026-11-04/_MANIFEST.json",
+    "data/raw/ibge/boundaries_2024/2026-11-04/_MANIFEST.json",
+    "data/raw/cnfp/2026-11-04/_MANIFEST.json"
+  ]
+}
