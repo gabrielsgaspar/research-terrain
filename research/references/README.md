@@ -1,8 +1,11 @@
 # References
 
-One note per key paper in this folder (`author-year.md`): what it shows, how,
-and what it means for this project. Keep `refs.bib` for the paper itself in
-Overleaf. Check every citation against the source before it enters the paper.
+One note per key paper in this folder (`<citekey>.md`, the template is in
+`harness/BUILD_PLAN.md` section 4.2): what it shows, how, and what it means
+for this project. `refs.bib` is generated here from the Zotero `terrain`
+library by `scripts/zotero_sync.py` (the `zotero-sync` workflow); never edit
+it by hand. Check every citation against the source before it enters the
+paper.
 
 ## To read and note
 

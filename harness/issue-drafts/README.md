@@ -33,6 +33,9 @@ acquired or built (its manifest merged into `data/manifests/`).
 | 18 | Figures 1 (study area) and 2 (polling places) | 17 built and recorded; 19 merged (`terrain.grid`) |
 | 19 | Legal Amazon 1 km cells with population and tenure (`grid_cells`) | catalog entry merged (this PR) |
 | 20 | Figure 3 (2022 population per cell, with tenure) | 18 merged; 19 built and recorded |
+| 21 | Exposure formulas compared for decision 0004 (explore) | 19 built and recorded |
+| 22 | Zotero sync: `refs.bib` and note stubs | this PR merged |
+| 23 | Figure 5 (empty cells over undesignated forest) | 20 merged; 19 built and recorded |
 
 ## Before filing a task
 
