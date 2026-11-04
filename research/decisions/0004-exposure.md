@@ -1,15 +1,16 @@
 ---
 id: "0004"
 title: "How a cell's exposure to a close council race is measured"
-status: proposed
+status: accepted
 date: 2026-11-04
 supersedes: null
 ---
 
 # 0004: How a cell's exposure to a close council race is measured
 
-Date: 2026-11-04. Status: proposed; Gabriel decides. The `cell_exposure`
-build (handoff task 8) and figure 4 wait for this decision.
+Date: 2026-11-04. Status: accepted by Gabriel on 2026-11-04, with every
+proposal below unchanged. The `cell_exposure` build (handoff task 8) and
+figure 4 follow from it.
 
 ## The question
 
@@ -43,9 +44,9 @@ with residents against empty cells: share 0.067 against 0.078; votes 21.9
 against 5.4. Share exposure is highest in cells touching indigenous land
 (0.106).
 
-## Options and proposal
+## Options and decision
 
-| Choice | Options | Proposal | Why |
+| Choice | Options | Decision | Why |
 | --- | --- | --- | --- |
 | Distance decay | exp(-d/2 km) cut at 10 km; 2 km ring; 5 km ring | **exp(-d/2), cut at 10 km**; the 2 and 5 km rings as robustness | Reaches 2.4 and 10 times as many cells as the rings, and ranks them the same way (correlation 0.97-0.98), so the rings are honest robustness checks rather than different measures. |
 | Vote measure | candidate's share of the place's valid votes (kernel-weighted mean); candidate's votes (kernel-weighted sum) | **Share** | Votes exposure tracks population density (four times larger in populated cells) and correlates only 0.15 with share. A stronghold is about relative strength, which share measures; density enters later as a control, not inside the treatment. |
@@ -54,16 +55,12 @@ against 5.4. Share exposure is highest in cells touching indigenous land
 | Inference | municipality-clustered standard errors; randomisation inference re-flipping each close pair | **Randomisation inference by re-flipping pairs** (independently, each with probability 1/2), with municipality clusters as the reported check | The design's randomness is the coin flip of each close race; re-flipping uses exactly that. Fixed effects: municipality by year. |
 
 Cells beyond 10 km of every polling place of their municipality have no
-exposure under the proposal (about 79% of exploration-half cells in 2024).
+exposure under this decision (about 79% of exploration-half cells in 2024).
 They are the unrepresented land of the displacement prediction.
 
-## What the build will compute (once accepted)
+## What the build computes
 
 `cell_exposure`, one row per cell, election year and kernel (`exp2`, `ring2`,
 `ring5`): `D` (share measure), the number of close pairs in the
 municipality, and Σ_p K(d) (so reach can be checked), for both halves of the
 sample (treatment-side data, decision 0003).
-
-## To accept
-
-Change the status above to `accepted` (and any choice you change), in a PR.
