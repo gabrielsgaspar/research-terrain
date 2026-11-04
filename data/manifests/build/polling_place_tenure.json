@@ -1,0 +1,41 @@
+{
+  "dataset": "polling_place_tenure",
+  "stage": "build",
+  "status": "created",
+  "gcs_prefix": "data/derived/polling_place_tenure/fb81b237c462a914/",
+  "created_at": "2026-11-04T13:26:33.244198+00:00",
+  "code_commit": "2522c365e05803b9201a50a99d288ed8c9a1c5d0",
+  "sources": [],
+  "files": [
+    {
+      "path": "data/derived/polling_place_tenure/fb81b237c462a914/polling_place_tenure_2008.parquet",
+      "sha256": "26595a73710049e5a75415c9a15504f21957eba1812f9057b3cd2c036d3fd2a2",
+      "bytes": 338861
+    },
+    {
+      "path": "data/derived/polling_place_tenure/fb81b237c462a914/polling_place_tenure_2012.parquet",
+      "sha256": "2dfe4da2ef221ea5452625d0a102093e2cddab436513fcae616b97f40428274d",
+      "bytes": 365440
+    },
+    {
+      "path": "data/derived/polling_place_tenure/fb81b237c462a914/polling_place_tenure_2016.parquet",
+      "sha256": "e1b31b17d5e7f2a0e1a900cf1ceb1614a2cb74e2c980748a8668f8e6e233c9c2",
+      "bytes": 376818
+    },
+    {
+      "path": "data/derived/polling_place_tenure/fb81b237c462a914/polling_place_tenure_2020.parquet",
+      "sha256": "a2be8f130e7468a2b1b2711e40f69c8895e2b7cd46b4fd62b207a2dd495742f8",
+      "bytes": 384080
+    },
+    {
+      "path": "data/derived/polling_place_tenure/fb81b237c462a914/polling_place_tenure_2024.parquet",
+      "sha256": "62bafca65ee92675e7cc31cf5d61690a14e555d5968f3f1d325c260386b21fd8",
+      "bytes": 392363
+    }
+  ],
+  "notes": "2008: places=14641, no_coordinates=0, indigenous_polygons=411, settlement_polygons=3218, undesignated_polygons=496, settlements_without_year=0, share_within_0/2/5km_indigenous=0.0121/0.0264/0.0475, share_within_0/2/5km_settlement=0.0164/0.1279/0.2511, share_within_0/2/5km_undesignated=0.0179/0.0551/0.0913; 2012: places=15409, no_coordinates=71, indigenous_polygons=861, settlement_polygons=3538, undesignated_polygons=10548, settlements_without_year=0, share_within_0/2/5km_indigenous=0.0183/0.0333/0.0529, share_within_0/2/5km_settlement=0.0183/0.1496/0.2810, share_within_0/2/5km_undesignated=0.0211/0.2159/0.3433; 2016: places=15744, no_coordinates=24, indigenous_polygons=588, settlement_polygons=3642, undesignated_polygons=1624, settlements_without_year=0, share_within_0/2/5km_indigenous=0.0203/0.0366/0.0576, share_within_0/2/5km_settlement=0.0191/0.1531/0.2856, share_within_0/2/5km_undesignated=0.0170/0.2131/0.3714; 2020: places=16016, no_coordinates=67, indigenous_polygons=649, settlement_polygons=3660, undesignated_polygons=1696, settlements_without_year=0, share_within_0/2/5km_indigenous=0.0219/0.0386/0.0604, share_within_0/2/5km_settlement=0.0199/0.1542/0.2864, share_within_0/2/5km_undesignated=0.0169/0.2097/0.3628; 2024: places=16312, no_coordinates=0, indigenous_polygons=1205, settlement_polygons=3663, undesignated_polygons=2832, settlements_without_year=0, share_within_0/2/5km_indigenous=0.0237/0.0405/0.0627, share_within_0/2/5km_settlement=0.0209/0.1557/0.2867, share_within_0/2/5km_undesignated=0.0189/0.2139/0.3547",
+  "inputs": [
+    "data/derived/polling_places/697e4a75d8bc2b89/_MANIFEST.json",
+    "data/raw/cnfp/2026-11-04/_MANIFEST.json"
+  ]
+}
