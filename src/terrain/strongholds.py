@@ -23,6 +23,7 @@ COUNCIL = 13
 LIST_KEY = ["cd_eleicao", "sg_ue", "cd_ibge", "sq_coligacao"]
 CAND_KEY = ["cd_eleicao", "sg_ue", "sq_candidato"]
 PLACE_KEY = ["cd_ibge", "sg_ue", "nr_zona", "nr_local_votacao"]
+MIN_PLACE_VOTES = 50
 
 # cd_sit_tot_turno: the codes changed between 2008 and 2012.
 ELECTED_CODES = {2008: {1, 5}, 2012: {2, 3}}
@@ -126,6 +127,49 @@ def place_candidate_votes(section_votes: pl.DataFrame, main: int) -> pl.DataFram
         df.with_columns(pl.col("nr_zona").cast(pl.Int64), pl.col("nr_local_votacao").cast(pl.Int64))
         .group_by([*PLACE_KEY, "cd_eleicao", "vote_type", "sq_candidato"])
         .agg(pl.col("qt_votos").sum().alias("votes"))
+    )
+
+
+def strongholds(place_votes: pl.DataFrame, min_place_votes: int = MIN_PLACE_VOTES) -> pl.DataFrame:
+    """The place with the highest location quotient among places with V_p >= the minimum.
+
+    `place_votes` comes from `place_candidate_votes`. V_p is the place's candidate
+    plus legend votes; the municipal total is the sum of V_p over all its places.
+    Ties go to the place with more of the candidate's votes, then the lower place key.
+    """
+    muni = ["cd_eleicao", "sg_ue"]
+    places = place_votes.group_by([*PLACE_KEY, "cd_eleicao"]).agg(pl.col("votes").sum().alias("vp"))
+    totals = places.group_by(muni).agg(pl.col("vp").sum().alias("muni_total"))
+    cands = place_votes.filter(pl.col("vote_type") == "candidate").filter(
+        pl.col("sq_candidato").is_not_null()
+    )
+    cand_totals = cands.group_by(CAND_KEY).agg(pl.col("votes").sum().alias("cand_total"))
+    joined = (
+        cands.join(places, on=[*PLACE_KEY, "cd_eleicao"])
+        .join(totals, on=muni)
+        .join(cand_totals, on=CAND_KEY)
+        .filter((pl.col("vp") >= min_place_votes) & (pl.col("cand_total") > 0))
+        .with_columns(
+            (
+                (pl.col("votes") / pl.col("vp")) / (pl.col("cand_total") / pl.col("muni_total"))
+            ).alias("quotient")
+        )
+    )
+    return (
+        joined.sort(
+            ["quotient", "votes", "nr_zona", "nr_local_votacao"],
+            descending=[True, True, False, False],
+        )
+        .group_by(CAND_KEY, maintain_order=True)
+        .first()
+        .select(
+            *CAND_KEY,
+            "cd_ibge",
+            "nr_zona",
+            "nr_local_votacao",
+            "quotient",
+            pl.col("votes").alias("stronghold_votes"),
+        )
     )
 
 

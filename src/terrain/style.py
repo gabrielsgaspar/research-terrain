@@ -143,6 +143,14 @@ def thousands(value: float) -> str:
 THOUSANDS = FuncFormatter(lambda value, _pos: thousands(value))
 
 
+def percent(value: float) -> str:
+    """0%, 10%, 25%, 100%: a fraction as a whole percent, no decimals."""
+    return f"{round(value * 100)}%"
+
+
+PERCENT = FuncFormatter(lambda value, _pos: percent(value))
+
+
 def log_ticks(vmin: float, vmax: float) -> list[float]:
     """Powers of ten from the first at or above `vmin` to the last at or below `vmax`."""
     if vmin <= 0 or vmax < vmin:
@@ -236,11 +244,13 @@ def bottom_colorbar(
     *,
     height: float = 0.022,
     gap: float = 0.05,
+    formatter: Any = THOUSANDS,
 ) -> Any:
     """A horizontal colour bar under `axes`, exactly as wide as all of them together.
 
     Call after the layout is fixed (`subplots_adjust`), since it reads the axes'
-    positions. Log scales tick at powers of ten; every tick uses `thousands`.
+    positions. Log scales tick at powers of ten; ticks use `formatter`, by default
+    `thousands` (`PERCENT` for colour bars of shares).
     """
     fig.canvas.draw()  # apply equal-aspect positions before reading them
     x0, y0, x1, _ = _union(axes)
@@ -249,7 +259,7 @@ def bottom_colorbar(
     norm = mappable.norm
     if isinstance(norm, LogNorm):
         bar.ax.xaxis.set_major_locator(FixedLocator(log_ticks(norm.vmin, norm.vmax)))
-    bar.ax.xaxis.set_major_formatter(THOUSANDS)
+    bar.ax.xaxis.set_major_formatter(formatter)
     bar.minorticks_off()
     bar.outline.set_visible(False)
     bar.ax.tick_params(length=0)

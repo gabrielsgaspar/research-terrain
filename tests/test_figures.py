@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import ast
 import hashlib
+import io
+import json
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -14,6 +17,7 @@ from matplotlib.collections import LineCollection, PolyCollection
 from matplotlib.colors import to_rgb
 
 from terrain import figures
+from terrain.grid import km_to_lonlat
 from terrain.storage import MemoryStore
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -363,3 +367,420 @@ def test_terrain_figures_saves_through_the_style() -> None:
     text = (ROOT / "src" / "terrain" / "figures.py").read_text(encoding="utf-8")
     assert "style.save_png" in text
     assert "from terrain import style" in text
+
+
+# --- Figure 6: one close pair
+
+X0, Y0 = 4000, 9000
+INDIGENOUS_FIRST = {"p1": (0.0, 9.0), "p2": (9.0, 1.0)}  # elected near indigenous land
+SETTLEMENT_FIRST = {"p1": (9.0, 0.0), "p2": (0.0, 9.0)}  # elected near a settlement
+BOTH_SETTLEMENTS = {"p1": (9.0, 1.0), "p2": (9.0, 1.0)}
+BOTH_LAYERS = {"p1": (0.0, 0.0), "p2": (9.0, 1.0)}  # the elected stronghold is near both
+
+
+def _spec(ibge: str, margin_votes: int, near: dict) -> dict:
+    return {"ibge": ibge, "ve": 5000 + margin_votes, "vo": 5000, **near}
+
+
+def _put(store: MemoryStore, manifests: dict, name: str, filename: str, data: bytes) -> None:
+    path = f"data/derived/{name}/h/{filename}"
+    store.create(path, data)
+    entry = {"path": path, "sha256": hashlib.sha256(data).hexdigest()}
+    manifests.setdefault(name, {"files": []})["files"].append(entry)
+
+
+def _parquet(frame: pl.DataFrame) -> bytes:
+    buffer = io.BytesIO()
+    frame.write_parquet(buffer)
+    return buffer.getvalue()
+
+
+def _frame(rows: list, schema: list[str]) -> pl.DataFrame:
+    return pl.DataFrame(rows, schema=schema, orient="row")
+
+
+def _selection_world(specs: list[dict], year: int = 2012) -> tuple[MemoryStore, dict]:
+    """2012 tables: per municipality one list with a close pair and two polling places.
+
+    The elected candidate's stronghold is place 1, the other's place 2.
+    """
+    candidates, turnout, sections, tenure = [], [], [], []
+    for s in specs:
+        ibge = s["ibge"]
+        ue = "9" + ibge[-4:]
+        elected, other = int(ibge) * 10 + 1, int(ibge) * 10 + 2
+        candidates += [
+            (13, 1, 1, ue, ibge, elected, 7, s["ve"], 2),
+            (13, 1, 1, ue, ibge, other, 7, s["vo"], 4),
+        ]
+        turnout.append((13, 1, 1, ue, ibge, 10000))
+        for local, (ve, vo) in ((1, (60, 10)), (2, (10, 60))):
+            sections += [
+                (13, 1, 1, "candidate", False, 1, local, ibge, ue, elected, ve),
+                (13, 1, 1, "candidate", False, 1, local, ibge, ue, other, vo),
+                (13, 1, 1, "legend", False, 1, local, ibge, ue, None, 30),
+            ]
+        for local, key in ((1, "p1"), (2, "p2")):
+            tenure.append((year, ibge, ue, 1, local, *s[key], 50.0))
+    store, manifests = MemoryStore(), {}
+    tables = {
+        ("tse_results", f"candidate_votes_{year}.parquet"): _frame(
+            candidates,
+            [
+                "cd_cargo",
+                "nr_turno",
+                "cd_eleicao",
+                "sg_ue",
+                "cd_ibge",
+                "sq_candidato",
+                "sq_coligacao",
+                "qt_votos_nominais",
+                "cd_sit_tot_turno",
+            ],
+        ),
+        ("tse_results", f"turnout_{year}.parquet"): _frame(
+            turnout,
+            ["cd_cargo", "nr_turno", "cd_eleicao", "sg_ue", "cd_ibge", "qt_total_votos_validos"],
+        ),
+        ("section_votes", f"section_votes_{year}_AC.parquet"): _frame(
+            sections,
+            [
+                "cd_cargo",
+                "nr_turno",
+                "cd_eleicao",
+                "vote_type",
+                "annulled_in_results",
+                "nr_zona",
+                "nr_local_votacao",
+                "cd_ibge",
+                "sg_ue",
+                "sq_candidato",
+                "qt_votos",
+            ],
+        ),
+        ("polling_place_tenure", f"polling_place_tenure_{year}.parquet"): _frame(
+            tenure,
+            [
+                "ano",
+                "cd_ibge",
+                "sg_ue",
+                "nr_zona",
+                "nr_local_votacao",
+                "dist_indigenous_km",
+                "dist_settlement_km",
+                "dist_undesignated_km",
+            ],
+        ),
+    }
+    for (name, filename), frame in tables.items():
+        _put(store, manifests, name, filename, _parquet(frame))
+    return store, manifests
+
+
+def _select(specs: list[dict], half: set[str] | None = None) -> tuple[dict, pl.DataFrame]:
+    store, manifests = _selection_world(specs)
+    codes = frozenset(half if half is not None else {s["ibge"] for s in specs})
+    with tempfile.TemporaryDirectory() as tmp:
+        return figures.select_close_pair(store, manifests, codes, Path(tmp), years=(2012,))
+
+
+A, B, C, D = "1100001", "1100002", "1100003", "1100004"
+
+
+def test_selection_returns_the_one_eligible_pair() -> None:
+    pair, place_votes = _select(
+        [
+            _spec(A, 40, INDIGENOUS_FIRST),
+            _spec(B, 10, BOTH_SETTLEMENTS),  # smaller margin, not eligible
+            _spec(C, 5, BOTH_LAYERS),  # smaller margin, not eligible
+        ]
+    )
+    assert (pair["year"], pair["cd_ibge"]) == (2012, A)
+    assert pair["margin"] == pytest.approx(0.004)
+    assert (pair["elected_near"], pair["other_near"]) == ("indigenous", "settlement")
+    assert pair["elected_sq"] == str(int(A) * 10 + 1)
+    assert place_votes["cd_ibge"].unique().to_list() == [A]
+
+
+def test_selection_takes_the_smaller_margin_either_way_round() -> None:
+    pair, _ = _select([_spec(A, 40, INDIGENOUS_FIRST), _spec(D, 20, SETTLEMENT_FIRST)])
+    assert pair["cd_ibge"] == D
+    assert (pair["elected_near"], pair["other_near"]) == ("settlement", "indigenous")
+    pair, _ = _select([_spec(A, 20, INDIGENOUS_FIRST), _spec(D, 40, SETTLEMENT_FIRST)])
+    assert pair["cd_ibge"] == A
+
+
+def test_selection_raises_when_nothing_is_eligible() -> None:
+    with pytest.raises(ValueError, match="no close pair"):
+        _select([_spec(B, 10, BOTH_SETTLEMENTS), _spec(C, 5, BOTH_LAYERS)])
+
+
+def test_selection_ignores_pairs_that_are_not_close() -> None:
+    with pytest.raises(ValueError, match="no close pair"):
+        _select([_spec(A, 80, INDIGENOUS_FIRST)])  # a margin of 0.8%
+
+
+def test_selection_never_picks_a_municipality_outside_the_half() -> None:
+    specs = [_spec(A, 1, INDIGENOUS_FIRST), _spec(D, 40, SETTLEMENT_FIRST)]
+    pair, place_votes = _select(specs, half={D})
+    assert pair["cd_ibge"] == D
+    assert place_votes["cd_ibge"].unique().to_list() == [D]
+    with pytest.raises(ValueError, match="no close pair"):
+        _select(specs, half={B})
+
+
+def _eligible(rows: list[tuple]) -> pl.DataFrame:
+    return _frame(
+        [
+            (ibge, "10", 1, sq, "99", margin, "indigenous", "settlement")
+            for ibge, sq, margin in rows
+        ],
+        [
+            "cd_ibge",
+            "sg_ue",
+            "cd_eleicao",
+            "elected_sq",
+            "other_sq",
+            "margin",
+            "elected_near",
+            "other_near",
+        ],
+    )
+
+
+def test_choose_pair_smaller_margin_beats_later_year() -> None:
+    got = figures.choose_pair(
+        {2012: _eligible([(A, "5", 0.001)]), 2020: _eligible([(A, "5", -0.002)])}
+    )
+    assert got["year"] == 2012
+
+
+def test_choose_pair_ties_go_to_the_later_year_then_ibge_then_candidate() -> None:
+    tie = 0.002
+    got = figures.choose_pair({2012: _eligible([(A, "5", tie)]), 2020: _eligible([(B, "5", tie)])})
+    assert (got["year"], got["cd_ibge"]) == (2020, B)
+    got = figures.choose_pair({2020: _eligible([(B, "5", tie), (A, "5", tie)])})
+    assert got["cd_ibge"] == A
+    got = figures.choose_pair({2020: _eligible([(A, "10", tie), (A, "9", tie)])})
+    assert got["elected_sq"] == "9"  # a number, not text order
+    assert set(got) >= {"year", "cd_ibge", "margin", "elected_near"}
+    assert not any(key.startswith("_") for key in got)
+
+
+def test_choose_pair_raises_without_pairs() -> None:
+    with pytest.raises(ValueError, match="no close pair"):
+        figures.choose_pair({2012: _eligible([]), 2016: _eligible([])})
+
+
+def test_near_layers_uses_two_km_and_nothing_for_missing_tenure() -> None:
+    key = {"cd_eleicao": [1] * 4, "sg_ue": ["10"] * 4, "cd_ibge": [A] * 4}
+    strong = pl.DataFrame(
+        {
+            **key,
+            "sq_candidato": [1, 2, 3, 4],
+            "nr_zona": [1, 1, 1, 1],
+            "nr_local_votacao": [1, 2, 3, 4],
+        }
+    )
+    tenure = pl.DataFrame(
+        {
+            "cd_ibge": [A] * 3,
+            "sg_ue": ["10"] * 3,
+            "nr_zona": [1, 1, 1],
+            "nr_local_votacao": [1, 2, 3],
+            "dist_indigenous_km": [0.0, 2.0, 2.5],
+            "dist_settlement_km": [2.0000001, None, 0.0],
+        }
+    )
+    got = figures.near_layers(strong, tenure).sort("sq_candidato")
+    assert got["near_indigenous"].to_list() == [True, True, False, False]
+    assert got["near_settlement"].to_list() == [False, False, True, False]
+
+
+def test_candidate_exposure_is_the_kernel_weighted_share() -> None:
+    cx, cy = X0 + 0.5, Y0 + 0.5  # the cell's centre
+    lon, lat = km_to_lonlat([cx + 1, cx - 3], [cy, cy])  # places 1 km and 3 km away
+    places = pl.DataFrame(
+        {
+            "cd_ibge": [A, A],
+            "sg_ue": ["10", "10"],
+            "nr_zona": [1, 1],
+            "nr_local_votacao": [1, 2],
+            "lat": lat,
+            "long": lon,
+        }
+    )
+    rows = [
+        (1, 1, "candidate", 7, 30),
+        (1, 1, "legend", None, 70),
+        (1, 2, "candidate", 7, 20),
+        (1, 2, "legend", None, 80),
+        (1, 2, "candidate", 8, 50),  # another candidate; V_p is 150
+    ]
+    place_votes = _frame(
+        [(A, "10", 1, local, 1, kind, sq, v) for _, local, kind, sq, v in rows],
+        [
+            "cd_ibge",
+            "sg_ue",
+            "nr_zona",
+            "nr_local_votacao",
+            "cd_eleicao",
+            "vote_type",
+            "sq_candidato",
+            "votes",
+        ],
+    )
+    cells = pl.DataFrame({"cd_ibge": [A], "x_km": [X0], "y_km": [Y0]})
+    pair = {"cd_ibge": A, "sg_ue": "10", "cd_eleicao": 1}
+    got = figures.candidate_exposure(place_votes, places, cells, pair, "7")
+    s1, s2 = 30 / 100, 20 / 150
+    k1, k2 = np.exp(-0.5), np.exp(-1.5)
+    assert got.columns == ["x_km", "y_km", "e"]
+    assert got["e"].to_list() == pytest.approx([(k1 * s1 + k2 * s2) / (k1 + k2)], rel=1e-6)
+    # the other candidate has no votes at place 1: zero there
+    other = figures.candidate_exposure(place_votes, places, cells, pair, "8")
+    assert other["e"].to_list() == pytest.approx([k2 * (50 / 150) / (k1 + k2)], rel=1e-6)
+
+
+def _panels() -> tuple[list[str], list[pl.DataFrame], list[pl.DataFrame]]:
+    left = pl.DataFrame({"x_km": [X0, X0 + 1, X0 + 2], "y_km": [Y0] * 3, "e": [0.0, 0.1, 0.3]})
+    right = pl.DataFrame({"x_km": [X0, X0 + 1, X0 + 2], "y_km": [Y0] * 3, "e": [0.2, 0.0, 0.05]})
+    circles = pl.DataFrame(
+        {
+            "x_km": [X0, X0 + 2],
+            "y_km": [Y0, Y0],
+            "share": [0.5, 0.2],
+            "stronghold": [True, False],
+        }
+    )
+    titles = [
+        figures._panel_title("Narrowly elected", "indigenous"),
+        figures._panel_title("Narrowly defeated", "settlement"),
+    ]
+    return titles, [left, right], [circles, circles]
+
+
+def test_close_pair_figure_shares_one_norm_and_one_bar(layers: figures.Layers) -> None:
+    titles, exposures, circles = _panels()
+    fig, axes, bar, legend = figures.close_pair_figure(layers, titles, exposures, circles)
+    norm = bar.mappable.norm
+    assert (norm.vmin, norm.vmax) == (0.0, 0.3)  # the larger of the two maxima
+    for ax, exposure in zip(axes, exposures, strict=True):
+        polys = [c for c in ax.collections if isinstance(c, PolyCollection)]
+        assert len(polys) == 1
+        assert polys[0].norm is norm
+        assert len(polys[0].get_paths()) == int((exposure["e"] > 0).sum())  # zeros unfilled
+        assert ax.get_xlim() == axes[0].get_xlim()
+        assert ax.get_ylim() == axes[0].get_ylim()
+    fig.canvas.draw()
+    xs = [bar.ax.get_position().x0, bar.ax.get_position().x1]
+    assert xs == pytest.approx([axes[0].get_position().x0, axes[1].get_position().x1])
+    ticks = [t.get_text() for t in bar.ax.get_xticklabels() if t.get_text()]
+    assert ticks
+    assert all(text.endswith("%") for text in ticks)
+    assert bar.ax.get_xlabel() == "Exposure: kernel-weighted vote share"
+    assert legend._ncols == 6
+    assert legend.get_window_extent().y1 <= bar.ax.get_tightbbox().y0 + 1
+    figures.plt.close(fig)
+
+
+def test_close_pair_extent_is_the_reached_cells_plus_ten_km() -> None:
+    _, exposures, _ = _panels()
+    assert figures.close_pair_extent(exposures) == (X0 - 10, X0 + 3 + 10, Y0 - 10, Y0 + 1 + 10)
+    with pytest.raises(ValueError):
+        figures.close_pair_extent([exposures[0].clear()])
+
+
+def test_close_pair_titles_name_the_layer_and_no_candidate(layers: figures.Layers) -> None:
+    titles, exposures, circles = _panels()
+    fig, axes, _, _ = figures.close_pair_figure(layers, titles, exposures, circles)
+    shown = [ax.get_title() for ax in axes]
+    assert shown[0].startswith("Narrowly elected")
+    assert "stronghold near an indigenous land" in shown[0]
+    assert shown[1].startswith("Narrowly defeated")
+    assert "stronghold near a settlement" in shown[1]
+    assert not any(ch.isdigit() for title in shown for ch in title)
+    figures.plt.close(fig)
+
+
+def test_candidate_places_marks_the_stronghold() -> None:
+    lon, lat = km_to_lonlat([X0 + 1.5, X0 + 6.5], [Y0 + 1.5, Y0 + 1.5])
+    places = pl.DataFrame(
+        {
+            "cd_ibge": [A, A],
+            "sg_ue": ["10", "10"],
+            "nr_zona": [1, 1],
+            "nr_local_votacao": [1, 2],
+            "lat": lat,
+            "long": lon,
+        }
+    )
+    rows = [(1, "candidate", 7, 60), (1, "legend", None, 40), (2, "candidate", 7, 5)]
+    rows += [(2, "legend", None, 95)]
+    place_votes = _frame(
+        [(A, "10", 1, local, 1, kind, sq, v) for local, kind, sq, v in rows],
+        [
+            "cd_ibge",
+            "sg_ue",
+            "nr_zona",
+            "nr_local_votacao",
+            "cd_eleicao",
+            "vote_type",
+            "sq_candidato",
+            "votes",
+        ],
+    )
+    got = figures.candidate_places(place_votes, places, "7")
+    assert got["share"].to_list() == pytest.approx([0.6, 0.05])
+    assert got["stronghold"].to_list() == [True, False]  # place 2 has V_p of 100, quotient lower
+
+
+def test_close_pair_writes_one_png_and_the_record(layers: figures.Layers, tmp_path: Path) -> None:
+    specs = [
+        _spec(A, 40, INDIGENOUS_FIRST),
+        _spec(B, 10, BOTH_SETTLEMENTS),
+        _spec(D, 20, SETTLEMENT_FIRST),
+        _spec("1100005", 3, INDIGENOUS_FIRST),  # the smallest margin, outside the half
+    ]
+    store, manifests = _selection_world(specs)
+    lon, lat = km_to_lonlat([X0 + 3.5, X0 + 8.5], [Y0 + 3.5, Y0 + 3.5])
+    codes = [s["ibge"] for s in specs]
+    places = [
+        (2012, s["ibge"], "9" + s["ibge"][-4:], 1, n + 1, lat[n], lon[n])
+        for s in specs
+        for n in (0, 1)
+    ]
+    place_schema = ["ano", "cd_ibge", "sg_ue", "nr_zona", "nr_local_votacao", "lat", "long"]
+    cells = [(ibge, X0 + dx, Y0 + dy) for ibge in codes for dx in range(12) for dy in range(8)]
+    names = [(ibge, f"Town {i}") for i, ibge in enumerate(codes)]
+    layers_file = _layers_file(tmp_path / "figure_layers.parquet")
+    for name, filename, data in (
+        ("polling_places", "polling_places_2012.parquet", _parquet(_frame(places, place_schema))),
+        ("grid_cells", "grid_cells.parquet", _parquet(_frame(cells, ["cd_ibge", "x_km", "y_km"]))),
+        (
+            "municipalities",
+            "municipalities.parquet",
+            _parquet(_frame(names, ["cd_ibge", "name_ibge"])),
+        ),
+        ("figure_layers", "figure_layers.parquet", layers_file.read_bytes()),
+    ):
+        _put(store, manifests, name, filename, data)
+    split = "code_ibge\n" + "\n".join(codes[:3]) + "\n"
+    store.create("data/derived/split/explore_municipalities.csv", split.encode("utf-8"))
+
+    record = figures.close_pair(store, manifests, tmp_path / "out", years=(2012,))
+    assert record == {
+        "year": 2012,
+        "cd_ibge": D,
+        "name_ibge": "Town 2",
+        "margin": 0.002,
+        "near": {"elected": "settlement", "not_elected": "indigenous"},
+    }
+    assert _pngs(tmp_path / "out") == ["06_close_pair.png"]
+    assert json.loads(json.dumps(record)) == record
+
+
+def test_close_pair_script_prints_one_json_line() -> None:
+    text = (ROOT / "figures" / "06_close_pair.py").read_text(encoding="utf-8")
+    assert "print(json.dumps(record))" in text
+    assert "close_pair" in text
