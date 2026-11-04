@@ -3,23 +3,19 @@
 import argparse
 from pathlib import Path
 
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
+from terrain import style
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out-dir", required=True, type=Path)
     out = parser.parse_args().out_dir
-    out.mkdir(parents=True, exist_ok=True)
+    plt = style.configure()
     fig, ax = plt.subplots(figsize=(3, 2))
-    ax.plot([0, 1, 2], [0, 1, 0])
+    ax.plot([0, 1, 2], [0, 1000, 0])
+    ax.yaxis.set_major_formatter(style.THOUSANDS)
     ax.set_title("figures-run smoke test")
-    fig.savefig(out / "00_smoke.png", dpi=100)
-    fig.savefig(out / "00_smoke.pdf", metadata={"CreationDate": None})
-    plt.close(fig)
+    style.save_png(fig, out / "00_smoke.png")
 
 
 if __name__ == "__main__":

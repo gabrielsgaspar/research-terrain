@@ -21,6 +21,22 @@ plan review. They fall into five groups:
 Expect the rate to fall: each first use of a capability (first build, first
 deletion, first big task) has now happened once.
 
+## 2026-11-04: Figures now go through one style module (handoff 2)
+- Tried: the first five paper figures, each drawn with its own colours,
+  sizes, legend placement and PDF settings in `terrain.figures`.
+- Result: they disagreed (water missing in figure 2, a log colour bar in
+  `10^n`, a viridis scale next to magma, an inset over the map), PDFs ran
+  over the workflow's size limit, and the runner had no Latin Modern, so
+  fonts differed between Windows and CI without any message.
+- Why: each figure task restated the style in its own draft, and nothing
+  shared or checked it.
+- Implication: `src/terrain/style.py` holds the whole style (fonts with a
+  warned fallback, sizes, base map layers, one-hue scales, comma numbers,
+  bottom legends, insets, PNG-only `save_png`), `figures/STYLE.md` documents
+  it, and tests check every script imports it and none writes a PDF or calls
+  `savefig`. `figures-run` installs `fonts-lmodern` and accepts PNG only.
+  New figures change the style module first, never a figure alone.
+
 ## 2026-11-04: Explore-run records failed CI on the index test (PR #87)
 - Tried: the record PR of the kill-criterion-1 run.
 - Result: CI failed: the PR added a run record, but `research/INDEX.md`

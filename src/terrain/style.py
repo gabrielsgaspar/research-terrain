@@ -42,6 +42,7 @@ DPI = 300
 WIDE = (8.0, 4.53)
 TALL = (8.0, 6.8)
 SQUARE = (7.2, 7.2)
+MAP_GRID = (8.0, 5.6)  # two rows of three Legal Amazon maps, without blank bands
 LINE_WIDTH = 0.7  # axes frames
 
 RCPARAMS: dict[str, Any] = {
