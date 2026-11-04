@@ -114,8 +114,11 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
 
 ### Code
 
-- Logic lives in `src/terrain/` with tests; scripts in `pipeline/` and
-  `explore/` stay thin.
+- Logic lives in `src/terrain/` with tests; scripts in `pipeline/`,
+  `explore/` and `figures/` stay thin.
+- Every figure imports the shared style in `src/terrain/style.py`
+  (`terrain.style`), follows `figures/STYLE.md`, and is saved as PNG through
+  its `save_png`.
 - `.gitignore` directory patterns are anchored to the root (`/build/`, not
   `build/`); a test lists paths that must stay committable.
 - Agents cannot add dependencies: the builder installs packages offline from
