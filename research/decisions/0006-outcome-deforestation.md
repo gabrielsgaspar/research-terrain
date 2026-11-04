@@ -1,15 +1,15 @@
 ---
 id: "0006"
 title: "The outcome: MapBiomas loss of primary vegetation per 1 km cell"
-status: proposed
+status: accepted
 date: 2026-11-04
 supersedes: null
 ---
 
 # 0006: The outcome: MapBiomas loss of primary vegetation per 1 km cell
 
-Date: 2026-11-04. Status: proposed; Gabriel decides. The MapBiomas
-acquisition and the outcome build follow from it; decision 0003 fixes where
+Date: 2026-11-04. Status: accepted by Gabriel on 2026-11-04, every proposal
+unchanged. The MapBiomas acquisition and the outcome build follow from it; decision 0003 fixes where
 the rows go (confirmation half only in `sealed/outcomes/`).
 
 ## The question
@@ -40,7 +40,7 @@ Which product measures clearing, at what unit, and over which years?
 
 ## Options
 
-| Choice | Options | Proposal | Why |
+| Choice | Options | Decision | Why |
 | --- | --- | --- | --- |
 | Product | the deforestation and secondary-vegetation map; transitions in the land-cover collection | **Deforestation and secondary vegetation, Collection 10** | MapBiomas already applies the persistence rules that separate clearing from classification noise; land-cover transitions would rebuild them, worse. |
 | Main outcome | loss of primary vegetation (code 4); any loss (4 or 6) | **Share of the cell with code 4 in the year** | Primary-forest clearing is what the hypotheses and the policy debate are about; secondary-vegetation loss (6) is a secondary outcome. |
@@ -49,7 +49,7 @@ Which product measures clearing, at what unit, and over which years?
 | Years | 1985-2024 | **2004-2024** | The four years before the first election (2008), for the placebo (kill criterion 2), through the latest year. Terms after the 2024 election (2025-2028) are not out yet; 2024 is provisional (above). |
 | Outcome window | per year; the four term years summed | **Each of the four years after an election, and their sum** | The prediction is about the term; years keep event-study plots possible. |
 
-## What follows (once accepted)
+## What follows
 
 1. Acquire: an Earth Engine batch export per year of the seven code shares
    on the `grid_cells` grid to `data/raw/mapbiomas/<date>/` as the acquire
@@ -58,7 +58,3 @@ Which product measures clearing, at what unit, and over which years?
 2. Build: `cell_outcomes`, exploration-half rows to `data/derived/`,
    confirmation-half rows to `sealed/outcomes/` (decision 0003).
 3. Then kill criterion 2 (the placebo) on the exploration half.
-
-## To accept
-
-Change the status above to `accepted` (and any choice you change), in a PR.
