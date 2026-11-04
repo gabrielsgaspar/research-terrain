@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "earthengine-api>=1.7.51",
     "google-cloud-storage>=3.17.1",
     "matplotlib>=3.11.2",
     "polars>=2.1.0",
