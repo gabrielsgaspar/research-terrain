@@ -16,6 +16,32 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-04: Exposure formulas compared for decision 0004 (idea 0001, issue #116)
+- Tried: `explore/0001_exposure_options.py` on the exploration half, run
+  41913964880 (`research/explore-runs/0001/41913964880.md`): every 1 km cell's
+  exposure to the close pairs (margin at most 0.5%) of its municipality,
+  winner minus loser, for three kernels (exp(-d/2) to 10 km, 2 km and 5 km
+  rings) and two measures (kernel-weighted mean vote share, kernel-weighted
+  votes), 2008-2024.
+- Result: of 2,530,638 exploration-half cells, exp(-d/2) reaches 458,285
+  (2008) to 539,862 (2024) and exposes 412,042 to 483,734; the 5 km ring
+  exposes about 40% as many, the 2 km ring about 10%. 76% of cells exposed
+  under exp(-d/2) have no one living in them (42-44% under the 2 km ring).
+  With the share measure the kernels agree (2024 correlation of D with the
+  2 km ring 0.97, with the 5 km ring 0.98), but share and votes do not (0.15
+  under exp(-d/2)): votes exposure is four times larger in populated cells
+  than in empty ones (mean |D| 21.9 against 5.4), share exposure is similar
+  (0.067 against 0.078) and highest in indigenous-land cells (0.106). Median
+  |D| under exp(-d/2) and share is 0.029-0.033 in every year.
+- Why: votes scale with how many people vote at nearby places, so votes
+  exposure mostly measures population density; the share measure is the
+  candidate's relative strength, which is what a stronghold is. The kernels
+  differ in reach, not in ranking.
+- Implication: decision 0004 is proposed with exp(-d/2) to 10 km and the
+  share measure as the main exposure, the rings as robustness, and
+  winner-minus-loser recentred as D / 2; Gabriel decides. Most exposed land
+  is empty, so the displacement prediction has room.
+
 ## 2026-11-04: The 2010 grid undercounts the census; the 2022 grid does not (idea 0001)
 - Tried: assigning every 2022 1 km cell to the Legal Amazon municipality
   that contains its centre (`BR_Municipios_2024`, the 773 municipalities of

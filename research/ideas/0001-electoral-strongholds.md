@@ -84,6 +84,9 @@ Elections with usable geography: 2008, 2012, 2016, 2020 and 2024 (see
 - 2026-11-04: still exploring. Kill criterion 1 is not met: 711
   close-pair strongholds are within 5 km of an indigenous land and 2,590 of a
   settlement on the exploration half (minimum 200 each).
+- 2026-11-04: still exploring. Exposure options compared on the exploration
+  half (run 41913964880): exp(-d/2) to 10 km exposes about 480,000 cells per
+  election, 76% of them empty; decision 0004 proposed.
 
 ## Log
 
@@ -92,4 +95,7 @@ Elections with usable geography: 2008, 2012, 2016, 2020 and 2024 (see
   the same date.
 - 2026-11-04: kill criterion 1: issue #85, PR #86, run 41839642406
   (`research/explore-runs/0001/41839642406.md`), record PR #87;
+  `research/lessons.md` entry of the same date.
+- 2026-11-04: exposure options: issue #116, PR #118, run 41913964880
+  (`research/explore-runs/0001/41913964880.md`), record PR #119;
   `research/lessons.md` entry of the same date.
