@@ -1,0 +1,79 @@
+{
+  "dataset": "cnfp_public_forests",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/cnfp/2026-11-04/",
+  "created_at": "2026-11-04T12:47:30.839024+00:00",
+  "code_commit": "ac3cdcb8469ef42003cfb99270594979ed8f27c0",
+  "sources": [
+    {
+      "url": "https://mapas.florestal.gov.br/portal/sharing/rest/content/items/889978a137f14a2f917a9c59c047cf3a/data",
+      "last_modified": "1764156495478",
+      "etag": "",
+      "bytes": 24066750
+    },
+    {
+      "url": "https://mapas.florestal.gov.br/portal/sharing/rest/content/items/053719eccb1b4cc2b6a828355db79bbf/data",
+      "last_modified": "1783360841339",
+      "etag": "",
+      "bytes": 265025401
+    },
+    {
+      "url": "https://mapas.florestal.gov.br/portal/sharing/rest/content/items/608ded443f214c5a94f53b701bcdb2ce/data",
+      "last_modified": "1783361197623",
+      "etag": "",
+      "bytes": 153369046
+    },
+    {
+      "url": "https://mapas.florestal.gov.br/portal/sharing/rest/content/items/d1181085e2f240f1a8f7d13a527d1fa2/data",
+      "last_modified": "1783361337996",
+      "etag": "",
+      "bytes": 144718615
+    },
+    {
+      "url": "https://mapas.florestal.gov.br/portal/sharing/rest/content/items/0f0e8cecbc1e4cdd9d94f6ef1e0a5ae4/data",
+      "last_modified": "1783969283119",
+      "etag": "",
+      "bytes": 259771931
+    },
+    {
+      "url": "https://mapas.florestal.gov.br/portal/sharing/rest/content/items/2b752dfbf9254920bf8990ce363918af/data",
+      "last_modified": "1784816957135",
+      "etag": "",
+      "bytes": 229469123
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/cnfp/2026-11-04/CNFP_2008.zip",
+      "sha256": "3bf319d9a1382481d4803340a6475a20181b847759c3d91d96ed0a77654c1f5e",
+      "bytes": 24066750
+    },
+    {
+      "path": "data/raw/cnfp/2026-11-04/CNFP_2012.zip",
+      "sha256": "e55a5e115468b94a1944523517d59e6c38031eb407d8caef9583a6c85413a337",
+      "bytes": 265025401
+    },
+    {
+      "path": "data/raw/cnfp/2026-11-04/CNFP_2016.zip",
+      "sha256": "49690278016550177d3bc0fc73d1fe4fbf51f68dae350c1ebe6248517de944b8",
+      "bytes": 153369046
+    },
+    {
+      "path": "data/raw/cnfp/2026-11-04/CNFP_2020.zip",
+      "sha256": "8abef4d3cee247fbcec4e31bbadff6b1dd2603fe3d9c5552096651a5068331d0",
+      "bytes": 144718615
+    },
+    {
+      "path": "data/raw/cnfp/2026-11-04/CNFP_2024_retificado.zip",
+      "sha256": "e14173c8ce4f63ef4e2ef9a696f50a82cff353a11ee0455119f109c351881674",
+      "bytes": 259771931
+    },
+    {
+      "path": "data/raw/cnfp/2026-11-04/CNFP_2025.zip",
+      "sha256": "8faebe055b0e87bc011d0f2e4c41bcbb840bad3dc721685692ef026a467f792b",
+      "bytes": 229469123
+    }
+  ],
+  "notes": ""
+}
