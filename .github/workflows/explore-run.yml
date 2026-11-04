@@ -12,8 +12,10 @@ name: Explore run
 #   - The run job is terrain-analysis: it reads data/derived/ and
 #     data/explore/, writes only data/explore/, and cannot read sealed/. It
 #     holds no GitHub write token.
-#   - The record job holds the App token and runs no repository code. The
-#     summary and results are size-limited and scanned for credentials
+#   - The record job writes the run record and regenerates research/INDEX.md
+#     with scripts/build_index.py (merged code that reads only research/),
+#     before it asks for the App token; nothing it runs ever sees the token.
+#     The summary and results are size-limited and scanned for credentials
 #     before they leave the run job.
 on:
   workflow_dispatch:
@@ -152,6 +154,20 @@ jobs:
           } > "${dir}/${GITHUB_RUN_ID}.md"
           cp "${RUNNER_TEMP}/in/results.json" "${dir}/${GITHUB_RUN_ID}.json"
 
+      # The index lists every explore run, and a test fails CI when the
+      # committed index is out of date (PR #87). Regenerate it here, so the
+      # record PR passes CI with no manual step.
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: false
+
+      - name: Regenerate research/INDEX.md
+        run: |
+          set -euo pipefail
+          uv sync --locked
+          uv run python scripts/build_index.py
+          git diff --stat -- research/INDEX.md
+
       - name: Get a GitHub App token
         id: app-token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
@@ -176,7 +192,7 @@ jobs:
           branch="explore/${SCRIPT}-${GITHUB_RUN_ID}"
           bot_id="$(gh api "users/${APP_SLUG}%5Bbot%5D" --jq .id)"
           git -c core.hooksPath=/dev/null switch -c "${branch}"
-          git add -- "research/explore-runs/${idea}/${GITHUB_RUN_ID}.md" "research/explore-runs/${idea}/${GITHUB_RUN_ID}.json"
+          git add -- "research/explore-runs/${idea}/${GITHUB_RUN_ID}.md" "research/explore-runs/${idea}/${GITHUB_RUN_ID}.json" research/INDEX.md
           git -c core.hooksPath=/dev/null \
             -c user.name="${APP_SLUG}[bot]" \
             -c user.email="${bot_id}+${APP_SLUG}[bot]@users.noreply.github.com" \
@@ -186,7 +202,7 @@ jobs:
             push "https://github.com/${REPO}.git" "refs/heads/${branch}:refs/heads/${branch}"
           {
             printf 'Records an `explore-run` of `explore/%s.py` (%s).\n\n' "${SCRIPT}" "${RUN_URL}"
-            printf 'Before merging: add a dated entry to `research/lessons.md` and update the idea file in `research/ideas/`, whatever the result. Exploration half only; nothing here is a finding.\n\n---\n\n'
+            printf 'Before merging: add a dated entry to `research/lessons.md` and update the idea file in `research/ideas/`, whatever the result, then run `uv run python scripts/build_index.py` and commit `research/INDEX.md` too. Exploration half only; nothing here is a finding.\n\n---\n\n'
             head -c 6000 "research/explore-runs/${idea}/${GITHUB_RUN_ID}.md"
           } > "${RUNNER_TEMP}/body.md"
           gh pr create --repo "${REPO}" --base "${BASE_BRANCH}" --head "${branch}" \
