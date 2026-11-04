@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import json
 import urllib.request
 from collections.abc import Iterator
 from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass
-from typing import BinaryIO, Protocol
+from typing import Any, BinaryIO, Protocol
 
 TIMEOUT = 120
 
@@ -23,6 +24,16 @@ class Fetcher(Protocol):
 
     def get(self, url: str) -> AbstractContextManager[tuple[Headers, BinaryIO]]: ...
 
+    def json(self, url: str) -> Any:
+        """GET `url` and return the parsed JSON body."""
+        ...
+
+    def get_from(
+        self, url: str, offset: int
+    ) -> AbstractContextManager[tuple[int, str, Headers, BinaryIO]]:
+        """GET with `Range: bytes=<offset>-`; yields (status, Content-Range, headers, stream)."""
+        ...
+
 
 def _headers(resp: urllib.response.addinfourl) -> Headers:
     length = resp.headers.get("Content-Length")
@@ -33,9 +44,10 @@ def _headers(resp: urllib.response.addinfourl) -> Headers:
     )
 
 
-def _request(url: str, method: str) -> urllib.request.Request:
+def _request(url: str, method: str, **extra: str) -> urllib.request.Request:
     # identity: a compressed body would make Content-Length meaningless
-    return urllib.request.Request(url, method=method, headers={"Accept-Encoding": "identity"})
+    headers = {"Accept-Encoding": "identity", **extra}
+    return urllib.request.Request(url, method=method, headers=headers)
 
 
 class UrllibFetcher:
@@ -47,3 +59,13 @@ class UrllibFetcher:
     def get(self, url: str) -> Iterator[tuple[Headers, BinaryIO]]:
         with urllib.request.urlopen(_request(url, "GET"), timeout=TIMEOUT) as resp:
             yield _headers(resp), resp
+
+    def json(self, url: str) -> Any:
+        with urllib.request.urlopen(_request(url, "GET"), timeout=TIMEOUT) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+
+    @contextmanager
+    def get_from(self, url: str, offset: int) -> Iterator[tuple[int, str, Headers, BinaryIO]]:
+        request = _request(url, "GET", Range=f"bytes={offset}-")
+        with urllib.request.urlopen(request, timeout=TIMEOUT) as resp:
+            yield resp.status, resp.headers.get("Content-Range", ""), _headers(resp), resp
