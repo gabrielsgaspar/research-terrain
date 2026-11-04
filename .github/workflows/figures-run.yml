@@ -1,0 +1,216 @@
+name: Figures run
+
+# Manual only. Runs one merged script, figures/<figure>.py, which draws a
+# paper figure from treatment-side data (decision 0003: no outcomes, so the
+# whole Legal Amazon is allowed), then opens a pull request adding the PNG
+# and PDF files under paper/figures/, with a record of how they were made.
+# The contract a figure script follows is in figures/README.md.
+#
+# Safety:
+#   - Runs only from main, in the analysis environment (main-only), so the
+#     code that gets GCP credentials has been reviewed and merged.
+#   - The figure name is checked against a strict pattern before use.
+#   - The run job is terrain-analysis: it reads data/derived/ and
+#     data/explore/, and cannot read sealed/. It holds no GitHub write token.
+#   - The outputs are checked before they leave the run job: only
+#     <figure>[_part].png and .pdf, in pairs, real PNG and PDF files, size-
+#     limited, and scanned for credentials.
+#   - The record job runs no repository code: it copies the checked files,
+#     writes the record with printf and sha256sum, and only then asks for the
+#     App token.
+on:
+  workflow_dispatch:
+    inputs:
+      figure:
+        description: "Script in figures/ without .py, e.g. 01_study_area"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: figures-run-${{ inputs.figure }}
+  cancel-in-progress: false
+
+env:
+  FIGURE: ${{ inputs.figure }}
+
+jobs:
+  run:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 120
+    environment: analysis
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      TERRAIN_BUCKET: research-terrain
+    steps:
+      - name: Check the input
+        run: |
+          set -euo pipefail
+          [[ "${FIGURE}" =~ ^[0-9]{2}_[a-z0-9_]{1,60}$ ]] \
+            || { echo "::error::figure must look like 01_some_name"; exit 1; }
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check the script exists
+        run: |
+          test -f "figures/${FIGURE}.py" \
+            || { echo "::error::figures/${FIGURE}.py does not exist on main"; exit 1; }
+
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: false
+
+      - run: uv sync --locked
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: terrain-analysis@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+
+      - name: Run figures/${{ inputs.figure }}.py
+        env:
+          CODE_COMMIT: ${{ github.sha }}
+          FIGURES_RUN_ID: ${{ github.run_id }}
+          MPLBACKEND: Agg
+        run: |
+          set -euo pipefail
+          uv run python "figures/${FIGURE}.py" --out-dir "${RUNNER_TEMP}/out"
+
+      - name: Check the outputs
+        env:
+          OUT: ${{ runner.temp }}/out
+        run: |
+          set -euo pipefail
+          python3 -I - <<'PY'
+          import os, re, sys
+
+          out, figure = os.environ["OUT"], os.environ["FIGURE"]
+          name_re = re.compile(re.escape(figure) + r"(_[a-z0-9]+)*\.(png|pdf)")
+          magic = {".png": b"\x89PNG\r\n\x1a\n", ".pdf": b"%PDF-"}
+          limit = {".png": 5_000_000, ".pdf": 10_000_000}
+          secret = re.compile(rb"sk-ant-|gh[pousr]_|github_pat_|-----BEGIN|ya29\.|olp_|\"type\"\s*:\s*\"service_account\"")
+          problems = []
+          names = sorted(os.listdir(out)) if os.path.isdir(out) else []
+          if not names:
+              problems.append(f"no files in the output folder; the script must write {figure}.png and {figure}.pdf")
+          for name in names:
+              path = os.path.join(out, name)
+              stem, ext = os.path.splitext(name)
+              if not os.path.isfile(path) or not name_re.fullmatch(name):
+                  problems.append(f"{name}: only {figure}[_part].png and .pdf files are allowed")
+                  continue
+              data = open(path, "rb").read()
+              if not data.startswith(magic[ext]):
+                  problems.append(f"{name}: not a {ext[1:].upper()} file")
+              if len(data) > limit[ext]:
+                  problems.append(f"{name}: over {limit[ext]} bytes")
+              if secret.search(data):
+                  problems.append(f"{name}: contains something that looks like a credential")
+              other = stem + (".pdf" if ext == ".png" else ".png")
+              if other not in names:
+                  problems.append(f"{name}: no matching {other}")
+          if names and f"{figure}.png" not in names:
+              problems.append(f"missing {figure}.png")
+          if problems:
+              print("\n".join(f"::error::{p}" for p in problems))
+              sys.exit(1)
+          print("Outputs OK:", ", ".join(names))
+          PY
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: figures-out
+          path: ${{ runner.temp }}/out/
+          retention-days: 3
+
+  record:
+    needs: run
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: figures-out
+          path: ${{ runner.temp }}/in
+
+      - name: Write the figures and their record into the tree
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          CODE_COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          dir=paper/figures
+          mkdir -p "${dir}"
+          shopt -s nullglob
+          files=("${RUNNER_TEMP}/in/${FIGURE}".png "${RUNNER_TEMP}/in/${FIGURE}".pdf "${RUNNER_TEMP}/in/${FIGURE}"_*.png "${RUNNER_TEMP}/in/${FIGURE}"_*.pdf)
+          [ "${#files[@]}" -gt 0 ] || { echo "::error::no figure files in the artifact"; exit 1; }
+          cp -- "${files[@]}" "${dir}/"
+          {
+            printf '# %s\n\n' "${FIGURE}"
+            printf -- '- Script: `figures/%s.py` at `%s`\n' "${FIGURE}" "${CODE_COMMIT}"
+            printf -- '- Run: %s\n' "${RUN_URL}"
+            printf -- '- Date (UTC): %s\n\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            printf '| File | Bytes | SHA-256 |\n| --- | --- | --- |\n'
+            for f in "${files[@]}"; do
+              printf '| `%s` | %s | `%s` |\n' "$(basename "$f")" "$(stat -c %s "$f")" "$(sha256sum "$f" | cut -d' ' -f1)"
+            done
+          } > "${dir}/${FIGURE}.md"
+          cat "${dir}/${FIGURE}.md"
+
+      - name: Get a GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.AGENT_APP_CLIENT_ID }}
+          private-key: ${{ secrets.AGENT_APP_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Push a branch and open the pull request
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PUSH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          REPO: ${{ github.repository }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          branch="figures/${FIGURE}-${GITHUB_RUN_ID}"
+          bot_id="$(gh api "users/${APP_SLUG}%5Bbot%5D" --jq .id)"
+          git -c core.hooksPath=/dev/null switch -c "${branch}"
+          git add -- paper/figures
+          git -c core.hooksPath=/dev/null \
+            -c user.name="${APP_SLUG}[bot]" \
+            -c user.email="${bot_id}+${APP_SLUG}[bot]@users.noreply.github.com" \
+            commit -m "Figures: ${FIGURE} from run ${GITHUB_RUN_ID}" -m "From ${RUN_URL}"
+          helper='!f() { echo username=x-access-token; echo "password=${PUSH_TOKEN}"; }; f'
+          git -c core.hooksPath=/dev/null -c credential.helper= -c "credential.helper=${helper}" \
+            push "https://github.com/${REPO}.git" "refs/heads/${branch}:refs/heads/${branch}"
+          {
+            printf 'Adds the output of a `figures-run` of `figures/%s.py` (%s) under `paper/figures/`.\n\n' "${FIGURE}" "${RUN_URL}"
+            printf 'Before merging: look at every image below. Treatment-side data only (decision 0003).\n\n'
+            for f in paper/figures/"${FIGURE}".png paper/figures/"${FIGURE}"_*.png; do
+              if [ -f "$f" ]; then
+                printf '![%s](https://github.com/%s/blob/%s/%s?raw=true)\n\n' "$(basename "$f")" "${REPO}" "${branch}" "$f"
+              fi
+            done
+            printf -- '---\n\n'
+            cat "paper/figures/${FIGURE}.md"
+          } > "${RUNNER_TEMP}/body.md"
+          gh pr create --repo "${REPO}" --base "${BASE_BRANCH}" --head "${branch}" \
+            --title "Figures: ${FIGURE} (run ${GITHUB_RUN_ID})" --body-file "${RUNNER_TEMP}/body.md"

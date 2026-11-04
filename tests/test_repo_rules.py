@@ -130,6 +130,10 @@ NOT_IGNORED = [
     "data/fixtures/tse/x.csv",
     "confirm/ledger/x.jsonl",
     "explore/x.py",
+    "figures/x.py",
+    "paper/figures/x.png",
+    "paper/figures/x.pdf",
+    "paper/figures/x.md",
     "harness/x.md",
 ]
 IGNORED = ["data/x.parquet", "x.csv", "gha-creds-1.json", ".env", "key.pem", "build/x"]
@@ -162,7 +166,7 @@ def test_text_files_are_read_and_written_with_an_explicit_encoding():
     import ast
 
     problems = []
-    for root in ("src", "tests", "pipeline", "explore", "scripts"):
+    for root in ("src", "tests", "pipeline", "explore", "figures", "scripts"):
         for path in sorted((REPO / root).rglob("*.py")):
             tree = ast.parse(path.read_text(encoding="utf-8"))
             for node in ast.walk(tree):
