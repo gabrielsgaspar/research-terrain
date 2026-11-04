@@ -91,7 +91,9 @@ step "4. Prefix-scoped access"
 grant acquire  roles/storage.objectViewer  acquire-read   data/raw/
 grant acquire  roles/storage.objectCreator acquire-create data/raw/
 grant build    roles/storage.objectViewer  build-read     data/raw/ data/derived/
-grant build    roles/storage.objectCreator build-create   data/derived/
+# sealed/outcomes/: confirmation-half outcome rows (decision 0003), create-only;
+# terrain-analysis gets nothing there, terrain-unblind reads it through sealed/.
+grant build    roles/storage.objectCreator build-create   data/derived/ sealed/outcomes/
 grant analysis roles/storage.objectViewer  analysis-read  data/derived/ data/explore/
 grant analysis roles/storage.objectAdmin   analysis-write data/explore/
 grant unblind  roles/storage.objectViewer  unblind-read   data/derived/ sealed/

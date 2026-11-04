@@ -14,6 +14,8 @@ data/
   explore/<idea>/                exploration outputs; deleted after 90 days
 sealed/split/                    the full split; readable only by the unblind
                                  account
+sealed/outcomes/<dataset>/<hash>/ confirmation-half outcome rows (decision
+                                 0003); written by builds, read only by unblind
 ```
 
 Who can do what (IAM conditions, set by `scripts/gcp/setup_gcs.sh`):
@@ -21,7 +23,7 @@ Who can do what (IAM conditions, set by `scripts/gcp/setup_gcs.sh`):
 | Account | Reads | Writes |
 | --- | --- | --- |
 | terrain-acquire | data/raw/ | create in data/raw/ |
-| terrain-build | data/raw/, data/derived/ | create in data/derived/ |
+| terrain-build | data/raw/, data/derived/ | create in data/derived/ and sealed/outcomes/ |
 | terrain-analysis | data/derived/, data/explore/ | data/explore/ |
 | terrain-unblind | data/derived/, sealed/ | nothing |
 
