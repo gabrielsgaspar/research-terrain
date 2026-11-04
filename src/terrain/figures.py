@@ -224,8 +224,10 @@ def hex_scale(points_by_year: dict[int, np.ndarray], extent: Extent, size_km: fl
 def save(fig: Any, out_dir: Path, name: str) -> None:
     """Write `name.png` (300 dpi) and a deterministic `name.pdf`, then close the figure."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_dir / f"{name}.png", dpi=300)
-    fig.savefig(out_dir / f"{name}.pdf", metadata={"CreationDate": None})
+    # tight: crop to the drawn content, so outer labels are kept and margins dropped
+    tight = {"bbox_inches": "tight", "pad_inches": 0.03}
+    fig.savefig(out_dir / f"{name}.png", dpi=300, **tight)
+    fig.savefig(out_dir / f"{name}.pdf", metadata={"CreationDate": None}, **tight)
     plt.close(fig)
 
 
@@ -302,7 +304,7 @@ def polling_places(
     norms["02_polling_places"] = last.norm
     save(fig, out_dir, "02_polling_places")
 
-    fig, axes = plt.subplots(2, 3, figsize=(6.5, 6))
+    fig, axes = plt.subplots(2, 3, figsize=(6.5, 4.4))
     flat = list(axes.ravel())
     for ax, year in zip(flat, YEARS, strict=False):
         last = _panel(ax, layers, extent, points_by_year[year], norm, gridsize)
