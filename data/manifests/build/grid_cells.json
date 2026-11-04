@@ -1,0 +1,24 @@
+{
+  "dataset": "grid_cells",
+  "stage": "build",
+  "status": "created",
+  "gcs_prefix": "data/derived/grid_cells/2ec824f4da3d3f60/",
+  "created_at": "2026-11-04T19:54:27.877549+00:00",
+  "code_commit": "e73ee14b3771f0254f286c273bc26bdf788b1331",
+  "sources": [],
+  "files": [
+    {
+      "path": "data/derived/grid_cells/2ec824f4da3d3f60/grid_cells.parquet",
+      "sha256": "800f0da6c39879b772e2614ad6a98e2d39ed638d045fb6160352f5588868fba9",
+      "bytes": 108373412
+    }
+  ],
+  "notes": "state 11: cells=237756, pop_2010=1500577, pop_2022=1580610, share_empty_2022=0.8534; state 12: cells=164086, pop_2010=690124, pop_2022=825289, share_empty_2022=0.8870; state 13: cells=1558668, pop_2010=3375373, pop_2022=3928762, share_empty_2022=0.9790; state 14: cells=223507, pop_2010=417908, pop_2022=633872, share_empty_2022=0.9582; state 15: cells=1245864, pop_2010=7295449, pop_2022=8116522, share_empty_2022=0.9098; state 16: cells=142246, pop_2010=644041, pop_2022=728982, share_empty_2022=0.9675; state 17: cells=277395, pop_2010=1350990, pop_2022=1510986, share_empty_2022=0.8553; state 21: cells=276376, pop_2010=5259540, pop_2022=5619760, share_empty_2022=0.8061; state 51: cells=903183, pop_2010=2957570, pop_2022=3657590, share_empty_2022=0.9271; indigenous 2008: cells_with_share=1054587, sum_km2=1021658.2, union_km2=1023810.4; settlement 2008: cells_with_share=263483, sum_km2=157821.2, union_km2=172839.1; undesignated 2008: cells_with_share=301782, sum_km2=253566.3, union_km2=253594.7; indigenous 2012: cells_with_share=1127005, sum_km2=1093907.8, union_km2=1097362.5; settlement 2012: cells_with_share=287287, sum_km2=176147.1, union_km2=192286.3; undesignated 2012: cells_with_share=1001243, sum_km2=762326.9, union_km2=762709.3; indigenous 2016: cells_with_share=1184624, sum_km2=1148626.2, union_km2=1152077.9; settlement 2016: cells_with_share=289609, sum_km2=177472.3, union_km2=194177.9; undesignated 2016: cells_with_share=938948, sum_km2=694535.3, union_km2=697295.5; indigenous 2020: cells_with_share=1184716, sum_km2=1148433.5, union_km2=1150506.6; settlement 2020: cells_with_share=290325, sum_km2=177915.4, union_km2=194707.3; undesignated 2020: cells_with_share=876545, sum_km2=629670.4, union_km2=631982.7; indigenous 2024: cells_with_share=1191059, sum_km2=1153975.8, union_km2=1156180.7; settlement 2024: cells_with_share=290469, sum_km2=178003.5, union_km2=194795.4; undesignated 2024: cells_with_share=762027, sum_km2=522848.2, union_km2=523419.1",
+  "inputs": [
+    "data/raw/ibge/grid_2022/2026-11-04/_MANIFEST.json",
+    "data/raw/ibge/grid_2010/2026-11-04/_MANIFEST.json",
+    "data/raw/ibge/boundaries_2024/2026-11-04/_MANIFEST.json",
+    "data/raw/cnfp/2026-11-04/_MANIFEST.json",
+    "data/derived/municipalities/03690186b97be705/_MANIFEST.json"
+  ]
+}
