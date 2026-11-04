@@ -78,6 +78,7 @@ jobs:
       issue: ${{ steps.context.outputs.issue }}
       fix_round: ${{ steps.context.outputs.fix_round }}
       dispatched: ${{ steps.context.outputs.dispatched }}
+      task_type: ${{ steps.context.outputs.task_type }}
     steps:
       # 0. Context. Which issue, who asked, and (for a fix round) the review.
       #    Reads only, through the API; the guard below still decides.
@@ -115,6 +116,13 @@ jobs:
           jq -r .title "${RUNNER_TEMP}/issue.json" > "${RUNNER_TEMP}/agent-out/issue-title.txt"
           jq -r '.body // ""' "${RUNNER_TEMP}/issue.json" > "${RUNNER_TEMP}/agent-out/issue-body.md"
           echo "author=$(jq -r .user.login "${RUNNER_TEMP}/issue.json")" >> "${GITHUB_OUTPUT}"
+          # Typed tasks: an issue labelled `explore` may change only explore/
+          # and tests/test_explore*; verify enforces it (AGENTS.md).
+          if [ "$(jq -r '[.labels[].name] | index("explore") != null' "${RUNNER_TEMP}/issue.json")" = true ]; then
+            echo "task_type=explore" >> "${GITHUB_OUTPUT}"
+          else
+            echo "task_type=build" >> "${GITHUB_OUTPUT}"
+          fi
           if [ "${EVENT}" != workflow_dispatch ]; then
             echo "fix_round=" >> "${GITHUB_OUTPUT}"
             exit 0
@@ -401,6 +409,7 @@ jobs:
         env:
           FIX_ROUND: ${{ steps.context.outputs.fix_round }}
           PR_HEAD: ${{ steps.context.outputs.pr_head }}
+          TASK_TYPE: ${{ steps.context.outputs.task_type }}
         run: |
           set -euo pipefail
           fail() { printf 'reason=%s\n' "$1" >> "${GITHUB_OUTPUT}"; echo "::error::$1"; exit 1; }
@@ -431,6 +440,7 @@ jobs:
             cat "${RUNNER_TEMP}/agent-out/issue-body.md"
           } > .agent-build/issue.md
           cp "${RUNNER_TEMP}/agent-out/plan.md" .agent-build/plan.md
+          printf 'Task type: %s\n' "${TASK_TYPE}" > .agent-build/task.md
           if [ -n "${FIX_ROUND}" ]; then
             cp "${RUNNER_TEMP}/agent-out/review.md" .agent-build/review.md
           fi
@@ -546,6 +556,9 @@ jobs:
                rewriting work the review did not mention; add new commits on
                top (never amend). If an item would need a file outside the
                plan, or contradicts the plan, return `blocked` and say which.
+            10. If `.agent-build/task.md` says `Task type: explore`, change only
+               files under `explore/` and tests named `tests/test_explore*`,
+               whatever the plan lists; verify rejects anything else.
 
             Return the structured result and nothing else:
             - `done`: all work is committed and ruff and pytest pass. In
@@ -846,10 +859,13 @@ jobs:
         env:
           BASE_SHA: ${{ needs.build.outputs.base_sha }}
           PLAN: ${{ runner.temp }}/agent-in/plan.md
+          TASK_TYPE: ${{ needs.build.outputs.task_type }}
         run: |
           set -euo pipefail
           python3 -I - <<'EOF'
           import json, os, re, subprocess, sys
+
+          EXPLORE_ALLOWED = ("explore/", "tests/test_explore")  # what an `explore` issue may change
 
           HEADER = re.compile(r"^(?:\*\*(.+?)\*\*:?|#{1,6}\s+(.+?))\s*$")
           ENTRY = re.compile(r"^\s*[-*+]\s+`([^`]+)`")
@@ -967,6 +983,8 @@ jobs:
                       problems.append(f"{where} is protected and its exact path is not named in the plan")
               elif not named(path, entries):
                   problems.append(f"{where} is not listed in the plan")
+              if os.environ.get("TASK_TYPE") == "explore" and not path.startswith(EXPLORE_ALLOWED):
+                  problems.append(f"{where} is outside what an explore task may change (explore/, tests/test_explore*)")
           for path, short in gitlinks.items():
               problems.append(f"{json.dumps(path)} (commit {short}) is a gitlink (submodule), which is not allowed")
           for path, short in binary.items():

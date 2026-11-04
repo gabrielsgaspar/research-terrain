@@ -165,11 +165,13 @@ jobs:
         env:
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
+          LABELS: ${{ join(github.event.issue.labels.*.name, ', ') }}
         run: |
           set -euo pipefail
           mkdir -p .agent-plan
           {
             printf '# %s\n\n' "${ISSUE_TITLE}"
+            printf 'Labels: %s\n\n' "${LABELS}"
             printf '%s\n' "${ISSUE_BODY}"
           } > .agent-plan/issue.md
 
@@ -226,8 +228,12 @@ jobs:
             2. You never change files, labels, issues, settings or secrets. You only
                read. Your only output is the structured result described below.
             3. Never read, print or ask about `.env` or any secret.
-            4. Read `AGENTS.md` first; it is the standing rule set. Use
-               `research/questions.md`, `research/ideas/`, `research/lessons.md`,
+            4. Read `AGENTS.md` first; it is the standing rule set. Then read
+               `research/INDEX.md` (ideas, decisions, newest lessons) and, in the
+               plan's Risks or Summary, cite by path the records it relies on.
+               If the issue's Labels include `explore`, every file in `files`
+               must be under `explore/` or a test named `tests/test_explore*`.
+               Use `research/questions.md`, `research/ideas/`, `research/lessons.md`,
                `data/catalog.yaml` and `data/manifests/` (what has actually been
                acquired or built) for context, and `git log` (for changes,
                `git log -p`) for history.
@@ -287,6 +293,7 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           STRUCTURED: ${{ steps.claude.outputs.structured_output }}
+          LABELS_JSON: ${{ toJSON(github.event.issue.labels.*.name) }}
         run: |
           set -euo pipefail
           # Compose the comment. Any problem (no usable result, a bad file
@@ -328,6 +335,7 @@ jobs:
           if status not in titles or not comment:
               withheld("The planner returned no usable result.")
           body = comment[:60000]
+          explore = "explore" in json.loads(os.environ.get("LABELS_JSON") or "[]")
           if status == "plan":
               files = data.get("files")
               if not isinstance(files, list) or not files:
@@ -348,6 +356,14 @@ jobs:
                   elif path not in seen:
                       seen.add(path)
                       clean.append({"path": path, "change": change, "why": why})
+              if explore and not problems:
+                  outside = [f["path"] for f in clean if not f["path"].startswith(("explore/", "tests/test_explore"))]
+                  if outside:
+                      shown = ", ".join(f"`{p}`" for p in outside[:20])
+                      withheld(
+                          f"This is an `explore` issue, which may change only `explore/` and `tests/test_explore*`, "
+                          f"but the plan lists {shown}. Move that work to a separate build task."
+                      )
               if problems:
                   shown = ", ".join(f"`{p}`" for p in problems[:20])
                   withheld(
