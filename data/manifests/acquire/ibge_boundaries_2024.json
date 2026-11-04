@@ -1,0 +1,46 @@
+{
+  "dataset": "ibge_boundaries_2024",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/ibge/boundaries_2024/2026-11-04/",
+  "created_at": "2026-11-04T15:36:00.618314+00:00",
+  "code_commit": "c34dcec63a7c07a160ce62d086ebbe56300164e3",
+  "sources": [
+    {
+      "url": "https://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/malhas_municipais/municipio_2024/Brasil/BR_UF_2024.zip",
+      "last_modified": "Tue, 29 Apr 2025 13:01:12 GMT",
+      "etag": "\"dfe858-633ea6522a023\"",
+      "bytes": 14674008
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/malhas_municipais/municipio_2024/Brasil/BR_Municipios_2024.zip",
+      "last_modified": "Tue, 29 Apr 2025 13:01:13 GMT",
+      "etag": "\"c682a8f-633ea65323853\"",
+      "bytes": 208153231
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/organizacao_do_territorio/estrutura_territorial/amazonia_legal/2024/Limites_Amazonia_Legal_2024_shp.zip",
+      "last_modified": "Tue, 24 Jun 2025 12:04:44 GMT",
+      "etag": "\"3cc334-6385022495dbc\"",
+      "bytes": 3982132
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/ibge/boundaries_2024/2026-11-04/BR_UF_2024.zip",
+      "sha256": "be61a1e11bf86b265098b5a0b02eb836237421ad73354b1f0892fb6be4598866",
+      "bytes": 14674008
+    },
+    {
+      "path": "data/raw/ibge/boundaries_2024/2026-11-04/BR_Municipios_2024.zip",
+      "sha256": "bb78a8dc60a8320231f6eda79a8c89f68f0e22f0d81608dc051ee505fc72a1e5",
+      "bytes": 208153231
+    },
+    {
+      "path": "data/raw/ibge/boundaries_2024/2026-11-04/Limites_Amazonia_Legal_2024_shp.zip",
+      "sha256": "76bb6e19016997f6dbda8b4dda49eb9f1c8f9eb7e6fdb353be0daa7156156e54",
+      "bytes": 3982132
+    }
+  ],
+  "notes": ""
+}
