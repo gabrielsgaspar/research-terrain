@@ -43,6 +43,9 @@ def _layers_file(path: Path) -> Path:
         ("state", "AM", "Amazonas", None, box(-74, -10, -56, 2)),
         ("state", "PA", "Para", None, box(-56, -10, -44, 3)),
         ("legal_amazon", None, "Legal", None, box(-73, -12, -44, 4)),
+        ("indigenous", None, "I", None, box(-68, -8, -64, -4)),
+        ("settlement", None, "S", None, box(-60, -6, -57, -3)),
+        ("undesignated", None, "U", None, box(-55, -4, -50, 0)),
     ]
     pl.DataFrame(
         rows,
@@ -78,7 +81,17 @@ def _years(layers: figures.Layers) -> dict[int, np.ndarray]:
 
 
 def test_read_layers_projects_to_albers_km(layers: figures.Layers) -> None:
-    assert set(layers) == {"country", "ocean", "lake", "river", "state", "legal_amazon"}
+    assert set(layers) == {
+        "country",
+        "ocean",
+        "lake",
+        "river",
+        "state",
+        "legal_amazon",
+        "indigenous",
+        "settlement",
+        "undesignated",
+    }
     geom, code, name, _ = layers["country"][0]
     assert (code, name) == ("BRA", "Brazil")
     assert abs(geom.bounds[0]) < 10000  # km, not degrees
@@ -135,6 +148,50 @@ def test_same_inputs_give_identical_pdfs(layers: figures.Layers, tmp_path: Path)
         assert (tmp_path / "a" / name).read_bytes() == (tmp_path / "b" / name).read_bytes()
 
 
+def test_population_raster_masks_empty_and_zero_cells() -> None:
+    raster, extent = figures.population_raster([10, 11, 13], [20, 20, 22], [5, 0, 40])
+    assert raster.shape == (3, 4)
+    assert extent == (10, 14, 20, 23)
+    assert raster[0, 0] == 5
+    assert raster[2, 3] == 40
+    assert int(raster.count()) == 2
+    assert raster.mask[0, 1]  # the zero-population cell
+
+
+def test_population_raster_rejects_bad_input() -> None:
+    with pytest.raises(ValueError):
+        figures.population_raster([], [], [])
+    with pytest.raises(ValueError):
+        figures.population_raster([1, 2], [1], [1, 2])
+
+
+def _cells() -> pl.DataFrame:
+    rng = np.random.default_rng(1)
+    return pl.DataFrame(
+        {
+            "x_km": rng.integers(-1500, -500, 300),
+            "y_km": rng.integers(-1000, 0, 300),
+            "pop_2022": rng.integers(0, 500, 300),
+        }
+    )
+
+
+def test_population_writes_two_files_and_is_deterministic(
+    layers: figures.Layers, tmp_path: Path
+) -> None:
+    cells = _cells()
+    for run in ("a", "b"):
+        norm = figures.population(layers, cells, tmp_path / run)
+        assert norm.vmin == 1
+        assert norm.vmax == int(cells["pop_2022"].max())
+    out = tmp_path / "a"
+    assert sorted(p.name for p in out.iterdir()) == ["03_population.pdf", "03_population.png"]
+    assert (out / "03_population.png").read_bytes().startswith(b"\x89PNG")
+    assert (out / "03_population.pdf").read_bytes() == (
+        tmp_path / "b" / "03_population.pdf"
+    ).read_bytes()
+
+
 def _manifest(path: str, data: bytes) -> dict:
     return {"files": [{"path": path, "sha256": hashlib.sha256(data).hexdigest()}]}
 
@@ -161,7 +218,7 @@ def test_fetch_needs_exactly_one_match(tmp_path: Path) -> None:
         figures.fetch(MemoryStore(), manifest, "c.parquet", tmp_path)
 
 
-@pytest.mark.parametrize("script", ["01_study_area.py", "02_polling_places.py"])
+@pytest.mark.parametrize("script", ["01_study_area.py", "02_polling_places.py", "03_population.py"])
 def test_scripts_are_thin(script: str) -> None:
     text = (ROOT / "figures" / script).read_text(encoding="utf-8")
     assert "gs://" not in text

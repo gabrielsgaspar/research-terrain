@@ -1,9 +1,10 @@
-"""Logic of paper figures 1 (study area) and 2 (polling-place density).
+"""Logic of paper figures 1 (study area), 2 (polling-place density) and 3 (population).
 
 Everything is drawn in IBGE's Albers km (`terrain.grid.to_albers_km`), which is
 equal-area, so hexagons have equal area. Layers come from `figure_layers.parquet`
-(data/contracts/figure_layers.md). Scripts: figures/01_study_area.py and
-figures/02_polling_places.py; contract: figures/README.md.
+(data/contracts/figure_layers.md); figure 3 also reads three columns of
+`grid_cells.parquet`. Scripts: figures/01_study_area.py, figures/02_polling_places.py
+and figures/03_population.py; contract: figures/README.md.
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ import polars as pl  # noqa: E402
 import shapely  # noqa: E402
 from matplotlib.collections import LineCollection, PathCollection  # noqa: E402
 from matplotlib.colors import LogNorm  # noqa: E402
+from matplotlib.lines import Line2D  # noqa: E402
 from matplotlib.patches import Rectangle  # noqa: E402
 from matplotlib.path import Path as MplPath  # noqa: E402
 
@@ -46,6 +48,10 @@ YEARS = (2008, 2012, 2016, 2020, 2024)
 PAPER_YEARS = (2008, 2024)
 COLOUR_LABEL = "Polling places per hexagon"
 CMAP = "viridis"
+TENURE = (("indigenous", "#d95f02"), ("settlement", "#7570b3"), ("undesignated", "#1b9e77"))
+TENURE_WIDTH = 0.15
+POP_CMAP = "magma_r"
+POP_LABEL = "People per km² (2022)"
 # longitude/latitude frame of the layers (data/contracts/figure_layers.md)
 FRAME = (-92.0, -57.0, -26.0, 14.0)
 
@@ -227,7 +233,7 @@ def save(fig: Any, out_dir: Path, name: str) -> None:
     # tight: crop to the drawn content, so outer labels are kept and margins dropped
     tight = {"bbox_inches": "tight", "pad_inches": 0.03}
     fig.savefig(out_dir / f"{name}.png", dpi=300, **tight)
-    fig.savefig(out_dir / f"{name}.pdf", metadata={"CreationDate": None}, **tight)
+    fig.savefig(out_dir / f"{name}.pdf", dpi=300, metadata={"CreationDate": None}, **tight)
     plt.close(fig)
 
 
@@ -318,3 +324,55 @@ def polling_places(
     norms["02_polling_places_appendix"] = last.norm
     save(fig, out_dir, "02_polling_places_appendix")
     return norms
+
+
+def population_raster(x_km: Any, y_km: Any, pop: Any) -> tuple[np.ma.MaskedArray, Extent]:
+    """One pixel per 1 km cell; pixels with no cell or population <= 0 are masked."""
+    x = np.asarray(x_km).astype(np.int64)
+    y = np.asarray(y_km).astype(np.int64)
+    values = np.asarray(pop).astype(float)
+    if x.size == 0 or not (x.size == y.size == values.size):
+        raise ValueError("x_km, y_km and pop must be non-empty and of the same length")
+    x_min, x_max = int(x.min()), int(x.max())
+    y_min, y_max = int(y.min()), int(y.max())
+    grid = np.zeros((y_max - y_min + 1, x_max - x_min + 1))
+    grid[y - y_min, x - x_min] = values
+    masked = np.ma.masked_less_equal(grid, 0)
+    return masked, (x_min, x_max + 1, y_min, y_max + 1)
+
+
+def population(layers: Layers, cells: pl.DataFrame, out_dir: Path) -> LogNorm:
+    """Figure 3: 2022 population per 1 km cell on a log scale, with land-tenure outlines."""
+    extent = amazon_extent(layers)
+    fig, ax = plt.subplots(figsize=(6.5, 6))
+    _background(ax, layers, extent, full=True)
+    raster, raster_extent = population_raster(
+        cells["x_km"].to_numpy(), cells["y_km"].to_numpy(), cells["pop_2022"].to_numpy()
+    )
+    norm = _colour_norm(int(raster.max()) if raster.count() else 1)
+    image = ax.imshow(
+        raster,
+        origin="lower",
+        extent=raster_extent,
+        interpolation="nearest",
+        cmap=POP_CMAP,
+        norm=norm,
+        zorder=1.5,  # above the background fills (1), below the outlines (2)
+    )
+    before = len(ax.collections)
+    for layer, colour in TENURE:
+        add_outlines(ax, _geoms(layers, layer), colour, TENURE_WIDTH)
+    # thousands of tenure polygons as vectors would put the PDF over 10 MB
+    for collection in ax.collections[before:]:
+        collection.set_rasterized(True)
+        collection.set_alpha(0.7)
+    add_outlines(ax, _geoms(layers, "legal_amazon"), AMAZON_EDGE, AMAZON_WIDTH)
+    _setup(ax, extent)
+    handles = [
+        Line2D([0], [0], color=colour, linewidth=1.0, label=layer) for layer, colour in TENURE
+    ]
+    ax.legend(handles=handles, loc="lower left", fontsize=6, frameon=True)
+    fig.subplots_adjust(left=0.01, right=0.99, bottom=0.01, top=0.99)
+    fig.colorbar(image, ax=ax, shrink=0.6, pad=0.01, label=POP_LABEL)
+    save(fig, out_dir, "03_population")
+    return norm
