@@ -1,0 +1,431 @@
+{
+  "dataset": "ibge_grid_2010",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/ibge/grid_2010/2026-11-04/",
+  "created_at": "2026-11-04T15:38:00.646018+00:00",
+  "code_commit": "c34dcec63a7c07a160ce62d086ebbe56300164e3",
+  "sources": [
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id33.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:03 GMT",
+      "etag": "\"7f792f-53e330f35f1a3\"",
+      "bytes": 8354095
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id34.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:04 GMT",
+      "etag": "\"148f5f8-53e330f4534c4\"",
+      "bytes": 21558776
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id35.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:05 GMT",
+      "etag": "\"1f93a6e-53e330f547f9b\"",
+      "bytes": 33110638
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id36.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:06 GMT",
+      "etag": "\"24cf89d-53e330f63c3b7\"",
+      "bytes": 38598813
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id42.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:06 GMT",
+      "etag": "\"98159-53e330f63c446\"",
+      "bytes": 622937
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id43.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:07 GMT",
+      "etag": "\"1077b7f-53e330f730012\"",
+      "bytes": 17267583
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id44.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:07 GMT",
+      "etag": "\"13f8117-53e330f7305f9\"",
+      "bytes": 20939031
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id45.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:09 GMT",
+      "etag": "\"19ee5cc-53e330f918530\"",
+      "bytes": 27190732
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id46.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:08 GMT",
+      "etag": "\"14aca8f-53e330f8243a6\"",
+      "bytes": 21678735
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id50.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:09 GMT",
+      "etag": "\"549649-53e330f918f4b\"",
+      "bytes": 5543497
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id51.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:10 GMT",
+      "etag": "\"8eb180-53e330fa0c248\"",
+      "bytes": 9351552
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id52.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:10 GMT",
+      "etag": "\"117510d-53e330fa0c82d\"",
+      "bytes": 18305293
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id53.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:12 GMT",
+      "etag": "\"145f268-53e330fbf43b8\"",
+      "bytes": 21361256
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id54.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:12 GMT",
+      "etag": "\"1380443-53e330fbf43ba\"",
+      "bytes": 20448323
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id55.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:13 GMT",
+      "etag": "\"1343fc0-53e330fce90d7\"",
+      "bytes": 20201408
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id56.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:13 GMT",
+      "etag": "\"124d351-53e330fce9086\"",
+      "bytes": 19190609
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id60.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:15 GMT",
+      "etag": "\"d52d78-53e330fed191c\"",
+      "bytes": 13970808
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id61.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:16 GMT",
+      "etag": "\"1062fc9-53e330ffc585f\"",
+      "bytes": 17182665
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id62.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:16 GMT",
+      "etag": "\"10758b6-53e330ffc53f6\"",
+      "bytes": 17258678
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id63.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:18 GMT",
+      "etag": "\"106e82d-53e33101ad42a\"",
+      "bytes": 17229869
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id64.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:18 GMT",
+      "etag": "\"104a30d-53e33101ad5aa\"",
+      "bytes": 17081101
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id65.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:19 GMT",
+      "etag": "\"133775f-53e33102a1c1a\"",
+      "bytes": 20150111
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id66.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:19 GMT",
+      "etag": "\"143272e-53e33102a1d72\"",
+      "bytes": 21178158
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id70.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:21 GMT",
+      "etag": "\"22566f-53e331048a60c\"",
+      "bytes": 2250351
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id71.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:22 GMT",
+      "etag": "\"10a468e-53e331057df99\"",
+      "bytes": 17450638
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id72.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:22 GMT",
+      "etag": "\"10c8b31-53e331057e52e\"",
+      "bytes": 17599281
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id73.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:23 GMT",
+      "etag": "\"124fcff-53e3310672a8d\"",
+      "bytes": 19201279
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id74.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:23 GMT",
+      "etag": "\"10fa320-53e331067243f\"",
+      "bytes": 17802016
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id75.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:24 GMT",
+      "etag": "\"131616d-53e3310766b98\"",
+      "bytes": 20013421
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id76.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:24 GMT",
+      "etag": "\"cd68bf-53e3310766671\"",
+      "bytes": 13461695
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id80.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:25 GMT",
+      "etag": "\"d9d4a-53e3310859ffc\"",
+      "bytes": 892234
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id81.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:25 GMT",
+      "etag": "\"3f808a-53e331085a20c\"",
+      "bytes": 4161674
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id82.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:26 GMT",
+      "etag": "\"f38d15-53e331094edb5\"",
+      "bytes": 15961365
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id83.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:26 GMT",
+      "etag": "\"74ff01-53e331094e59b\"",
+      "bytes": 7667457
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id84.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:26 GMT",
+      "etag": "\"9fa0cb-53e331094f4c3\"",
+      "bytes": 10461387
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id85.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:26 GMT",
+      "etag": "\"36a074-53e331094f4cc\"",
+      "bytes": 3580020
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id92.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:26 GMT",
+      "etag": "\"4c4b7-53e331094f516\"",
+      "bytes": 312503
+    },
+    {
+      "url": "https://geoftp.ibge.gov.br/recortes_para_fins_estatisticos/grade_estatistica/censo_2010/grade_id93.zip",
+      "last_modified": "Thu, 06 Oct 2016 14:25:26 GMT",
+      "etag": "\"1d75d-53e331094f4e7\"",
+      "bytes": 120669
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id33.zip",
+      "sha256": "6c107eecfd853f9679849a33100e177280155b7a0b97ff97552df46d014dc1f9",
+      "bytes": 8354095
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id34.zip",
+      "sha256": "48dcdfc031e1e922969a65f2cf540076fc5000e6e8d667ee29fdd4571afe4283",
+      "bytes": 21558776
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id35.zip",
+      "sha256": "bb111cf1f3427d36b6e8823a616a5c83a556e387c7407272fd4cb9c6fd3e137f",
+      "bytes": 33110638
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id36.zip",
+      "sha256": "54276310b4cd7b8552f947c111ef73d8c4530cb55f0350a00c75898821ee9733",
+      "bytes": 38598813
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id42.zip",
+      "sha256": "de43787b65d3e2800d7254909b76831014f0677ba5af9e27b6d4cfa30e23ec5e",
+      "bytes": 622937
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id43.zip",
+      "sha256": "cbd27919cf95499ae94b6b0d7d58469a17e1749c9ace19533e081bea5fa27748",
+      "bytes": 17267583
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id44.zip",
+      "sha256": "3dc92f85245c1180cfd6866c145faea2818786e204dfac8db8f8d8ffd3934004",
+      "bytes": 20939031
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id45.zip",
+      "sha256": "bdf633aa9a18dbd937b0627c782da613a870b538afddd5350b1c8a37fd8c129d",
+      "bytes": 27190732
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id46.zip",
+      "sha256": "38e71a94bb5325df096e52cc98d391c66e0982d618896adfeac6527821fcf2a5",
+      "bytes": 21678735
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id50.zip",
+      "sha256": "7faf292d3e4b4b0bbb130f92bd09ed546db5d815b4e277ed618a32e593a96bb3",
+      "bytes": 5543497
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id51.zip",
+      "sha256": "55adb4d0fd60abaf7b969658631c36759c56626519d19017e03b1290001e5e97",
+      "bytes": 9351552
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id52.zip",
+      "sha256": "1f1ed9c10b298316fc61d1a4d9e805dd89e11e3583ebb1006ee7bbacf0a49381",
+      "bytes": 18305293
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id53.zip",
+      "sha256": "0cd02093d740697c55665f33ba803e575f9f93125a201fd97adda16c3d591d3a",
+      "bytes": 21361256
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id54.zip",
+      "sha256": "da2e3223f2bc622e9fac882e179d29d91d26ac8d1faeb1cd6508f27c565c47ce",
+      "bytes": 20448323
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id55.zip",
+      "sha256": "f02d0e778322d8eca3e4e9d1875e94527411f1bf1dfe7e2947866c1887bf9fd5",
+      "bytes": 20201408
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id56.zip",
+      "sha256": "58aca6b95e2a68fa7676375585cab3402fb39008738dd6c5fdae591481bf4335",
+      "bytes": 19190609
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id60.zip",
+      "sha256": "c52a1931aa4ca2b0e889b37856cea837c4082414b6c34579439a43b33eaa4a52",
+      "bytes": 13970808
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id61.zip",
+      "sha256": "a6dabdd86fc503d186b71ff6c07430d11474d115c785c98dd515765b06ab57a3",
+      "bytes": 17182665
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id62.zip",
+      "sha256": "ca8584f656cf55b216de2692fb415bbaa941069becfa0653375e0d2431e8fedc",
+      "bytes": 17258678
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id63.zip",
+      "sha256": "c0e702fa6f67032f0fdd3b6fc7cd04a082c61d71e9c8b6d56372b297fd42a3bb",
+      "bytes": 17229869
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id64.zip",
+      "sha256": "daa8b11baebecc96e0456e28bc0b2614d2bdf1e51b0e4513b083efa808dacc7b",
+      "bytes": 17081101
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id65.zip",
+      "sha256": "d4ce7aaeb8b4feff5615b12d0103b2d26648425a3e7620df4cf578ab6165742b",
+      "bytes": 20150111
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id66.zip",
+      "sha256": "de25476a28ec1c53559347a0a556133024202f8417e381a93f5bc01f4704523e",
+      "bytes": 21178158
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id70.zip",
+      "sha256": "ebf17570d24c5cb7f0e6d245275b59fbb73cfa29b09ec578b41009ce66114712",
+      "bytes": 2250351
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id71.zip",
+      "sha256": "20556ed5dd860fd1fa8d613642f041918765306cfb74277fa7fcfaa0ceb8439a",
+      "bytes": 17450638
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id72.zip",
+      "sha256": "14e104f1f423741e1fa00977b45227122e8d42685ffe3fadbacbde05c875ff5e",
+      "bytes": 17599281
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id73.zip",
+      "sha256": "806187c944a1961438b97a56c88dda2c517c805f4eb7fd37895c0e61f3087a01",
+      "bytes": 19201279
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id74.zip",
+      "sha256": "16064c749acd3565a7252a3bbbbe8c49bb7ddf27080ae514b71191808e699e7f",
+      "bytes": 17802016
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id75.zip",
+      "sha256": "614ad3a2bb2b64738ba12275f722e13a26b771f09027af9abd852b3a2a436e6c",
+      "bytes": 20013421
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id76.zip",
+      "sha256": "b29e3463c6b0cf2d6c791485b7437dec5cf22e9bd5c6b3989138d6cfed6b6174",
+      "bytes": 13461695
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id80.zip",
+      "sha256": "5f56047a40434a9ae5dea678e3139ac76eba9605013cb29571ddb156bbb2c132",
+      "bytes": 892234
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id81.zip",
+      "sha256": "83a856df5321c2954427854fe8ef93e6812ca9b7a9a96607fd54a90fcfcd3751",
+      "bytes": 4161674
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id82.zip",
+      "sha256": "59bde5ac6f0ebd865a17ee8d126d0954a956845af86c36191e156a8c77966143",
+      "bytes": 15961365
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id83.zip",
+      "sha256": "8b36180ee8725035961868e995e6721da9af688eb258553aacd1180e7d3585de",
+      "bytes": 7667457
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id84.zip",
+      "sha256": "bb69c0b227c8845b59e8368ef9b8f31a7e0961534b05e14d301f2e193ebba8cc",
+      "bytes": 10461387
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id85.zip",
+      "sha256": "55f4b6abf2a217a6e9d6f937ab8bfc653ea569f635cd37ce6024ecdb47200f60",
+      "bytes": 3580020
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id92.zip",
+      "sha256": "fb653181e946568a2bc18b64baddec98827d1e6753602e7938c2f3e3aad93b94",
+      "bytes": 312503
+    },
+    {
+      "path": "data/raw/ibge/grid_2010/2026-11-04/grade_id93.zip",
+      "sha256": "12ece6aea7eb02f3518acca09979609d442191b1ad274b1b72a9f669d9529c75",
+      "bytes": 120669
+    }
+  ],
+  "notes": ""
+}
