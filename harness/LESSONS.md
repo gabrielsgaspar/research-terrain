@@ -21,6 +21,18 @@ plan review. They fall into five groups:
 Expect the rate to fall: each first use of a capability (first build, first
 deletion, first big task) has now happened once.
 
+## 2026-11-03: The `explore` label now does something (typed tasks and referee)
+- Tried: labelling the census issue `explore`.
+- Result: the label was only a marker; no workflow read it. The census was
+  protected by the explore-run path and its test, not by the label.
+- Why: typed tasks and the referee (build plan 3.4, 3.5) were not built.
+- Implication: on an `explore` issue the planner withholds a plan with files
+  outside `explore/` and `tests/test_explore*`, verify and the reviewer
+  reject such changes, the builder is told so, and the review adds R1-R7
+  referee checks whose problems become must-fix items for the fix loop.
+  Planners and reviewers also read `research/INDEX.md` and cite records.
+  Tested on every inline script, in both directions, before merging.
+
 ## 2026-11-02: Two builds store the same key with different types
 - Tried: joining section votes to polling-place types for the census.
 - Result: the join failed: `nr_zona` is text in `section_votes` and an

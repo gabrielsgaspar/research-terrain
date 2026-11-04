@@ -45,6 +45,10 @@ acquired or built (its manifest merged into `data/manifests/`).
 
 ## Before building a plan
 
+- **Explore issues** (label `explore`): files only under `explore/` and
+  `tests/test_explore*`; any build or helper the analysis needs is its own
+  task first.
+
 - **Files to change:** one full path per bullet, deletions included, no
   braces or globs.
 - Nothing under protected paths, `pyproject.toml` or `uv.lock`.

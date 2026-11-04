@@ -96,7 +96,10 @@ flowchart TD
 **Run an agent task.** Open an issue with the **Agent task** template (ready
 drafts are in `harness/issue-drafts/`), add `agent-plan`, read the plan,
 swap to `agent-build`, then review and merge the PR. If the reviewer asks for
-changes, the PR goes back to the builder by itself, up to three fix rounds;
+changes, the PR goes back to the builder by itself, up to three fix rounds.
+An issue labelled `explore` may change only `explore/` and its tests, and its
+review adds a referee checklist (exploration half only, no outcomes,
+definitions, inference level, magnitudes, claims, forking paths);
 after that, or if anything fails, it gets `needs-human` and the reason. The
 full log is in the Actions tab.
 

@@ -94,6 +94,17 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
   exploration half only: every `explore/` script calls
   `terrain.explore.exploration_municipalities` and `restrict` (a test checks),
   and runs only through the `explore-run` workflow.
+- Typed tasks: an issue labelled `explore` may change only files under
+  `explore/` and tests named `tests/test_explore*`. The planner withholds a
+  plan that lists anything else, and verify and the reviewer reject it. Work
+  an exploration needs elsewhere (a build, a helper in `src/terrain/`) is a
+  separate build task first.
+- Explore PRs also get a referee section in the review (R1-R7: exploration
+  half only, no outcome data, definitions as stated, level and inference,
+  plausible magnitudes, claims, forking paths). A referee problem is a
+  must-fix item, so it goes back to the builder like any other.
+- Planners and reviewers read `research/INDEX.md` after this file, and cite
+  by path the records (ideas, decisions, lessons) a plan or finding rests on.
   Touching the confirmation half outside the `confirm-run` workflow is a
   serious error.
 - Every exploration task updates its idea file in `research/ideas/` and adds a
