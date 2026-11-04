@@ -61,7 +61,9 @@ effect at all with adequate power.
   robustness.
 - Fixed effects: municipality by year, which absorb the mayor, the budget and
   enforcement.
-- Outcome: MapBiomas annual deforestation over the four term years.
+- Outcome (decision 0006): MapBiomas Collection 10 loss of primary
+  vegetation, as the share of each 1 km cell, in each of the four term years
+  and their sum; loss of secondary vegetation as a secondary outcome.
 - Displacement: a second exposure for unrepresented cells near newly
   represented strongholds.
 
