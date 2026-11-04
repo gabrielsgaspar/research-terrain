@@ -3,8 +3,9 @@ name: Figures run
 # Manual only. Runs one merged script, figures/<figure>.py, which draws a
 # paper figure from treatment-side data (decision 0003: no outcomes, so the
 # whole Legal Amazon is allowed), then opens a pull request adding the PNG
-# and PDF files under paper/figures/, with a record of how they were made.
-# The contract a figure script follows is in figures/README.md.
+# files under paper/figures/, with a record of how they were made. The
+# contract a figure script follows is in figures/README.md, its style in
+# figures/STYLE.md.
 #
 # Safety:
 #   - Runs only from main, in the analysis environment (main-only), so the
@@ -13,8 +14,8 @@ name: Figures run
 #   - The run job is terrain-analysis: it reads data/derived/ and
 #     data/explore/, and cannot read sealed/. It holds no GitHub write token.
 #   - The outputs are checked before they leave the run job: only
-#     <figure>[_part].png and .pdf, in pairs, real PNG and PDF files, size-
-#     limited, and scanned for credentials.
+#     <figure>[_part].png, real PNG files, size-limited, and scanned for
+#     credentials. Figures are PNG only (figures/STYLE.md).
 #   - The record job runs no repository code: it copies the checked files,
 #     writes the record with printf and sha256sum, and only then asks for the
 #     App token.
@@ -69,6 +70,15 @@ jobs:
 
       - run: uv sync --locked
 
+      # Latin Modern, which terrain.style finds in /usr/share/texmf/fonts/
+      # opentype/public/lm/; without it figures fall back to STIX with a warning.
+      - name: Install the paper font
+        run: |
+          set -euo pipefail
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends fonts-lmodern
+          test -f /usr/share/texmf/fonts/opentype/public/lm/lmroman10-regular.otf
+
       - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
@@ -92,30 +102,26 @@ jobs:
           import os, re, sys
 
           out, figure = os.environ["OUT"], os.environ["FIGURE"]
-          name_re = re.compile(re.escape(figure) + r"(_[a-z0-9]+)*\.(png|pdf)")
-          magic = {".png": b"\x89PNG\r\n\x1a\n", ".pdf": b"%PDF-"}
-          limit = {".png": 5_000_000, ".pdf": 10_000_000}
+          name_re = re.compile(re.escape(figure) + r"(_[a-z0-9]+)*\.png")
+          magic = b"\x89PNG\r\n\x1a\n"
+          limit = 10_000_000
           secret = re.compile(rb"sk-ant-|gh[pousr]_|github_pat_|-----BEGIN|ya29\.|olp_|\"type\"\s*:\s*\"service_account\"")
           problems = []
           names = sorted(os.listdir(out)) if os.path.isdir(out) else []
           if not names:
-              problems.append(f"no files in the output folder; the script must write {figure}.png and {figure}.pdf")
+              problems.append(f"no files in the output folder; the script must write {figure}.png")
           for name in names:
               path = os.path.join(out, name)
-              stem, ext = os.path.splitext(name)
               if not os.path.isfile(path) or not name_re.fullmatch(name):
-                  problems.append(f"{name}: only {figure}[_part].png and .pdf files are allowed")
+                  problems.append(f"{name}: only {figure}[_part].png files are allowed (PNG only)")
                   continue
               data = open(path, "rb").read()
-              if not data.startswith(magic[ext]):
-                  problems.append(f"{name}: not a {ext[1:].upper()} file")
-              if len(data) > limit[ext]:
-                  problems.append(f"{name}: over {limit[ext]} bytes")
+              if not data.startswith(magic):
+                  problems.append(f"{name}: not a PNG file")
+              if len(data) > limit:
+                  problems.append(f"{name}: over {limit} bytes")
               if secret.search(data):
                   problems.append(f"{name}: contains something that looks like a credential")
-              other = stem + (".pdf" if ext == ".png" else ".png")
-              if other not in names:
-                  problems.append(f"{name}: no matching {other}")
           if names and f"{figure}.png" not in names:
               problems.append(f"missing {figure}.png")
           if problems:
@@ -155,7 +161,7 @@ jobs:
           dir=paper/figures
           mkdir -p "${dir}"
           shopt -s nullglob
-          files=("${RUNNER_TEMP}/in/${FIGURE}".png "${RUNNER_TEMP}/in/${FIGURE}".pdf "${RUNNER_TEMP}/in/${FIGURE}"_*.png "${RUNNER_TEMP}/in/${FIGURE}"_*.pdf)
+          files=("${RUNNER_TEMP}/in/${FIGURE}".png "${RUNNER_TEMP}/in/${FIGURE}"_*.png)
           [ "${#files[@]}" -gt 0 ] || { echo "::error::no figure files in the artifact"; exit 1; }
           cp -- "${files[@]}" "${dir}/"
           {
