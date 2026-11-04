@@ -161,6 +161,7 @@ def test_constants_match():
         "PLACE_KEY",
         "ELECTED_CODES",
         "NOT_ELECTED_CODES",
+        "MIN_PLACE_VOTES",
     ):
         assert getattr(lib, name) == getattr(census, name), name
     for name in ("CELL", "MAX_KM", "TOLERANCE", "KERNELS", "MEASURES"):
@@ -212,6 +213,24 @@ def test_place_candidate_votes_matches():
     mine = lib.place_candidate_votes(sv, 1)
     assert mine.height > 0
     assert_frame_equal(mine, census.place_candidate_votes(sv, 1), check_row_order=False)
+
+
+@pytest.mark.parametrize("minimum", [None, 5, 100])
+def test_strongholds_matches(minimum):
+    place_votes = lib.place_candidate_votes(section_votes(), 1)
+    args = {} if minimum is None else {"min_place_votes": minimum}
+    mine = lib.strongholds(place_votes, **args)
+    theirs = census.strongholds(census.place_candidate_votes(section_votes(), 1), **args)
+    assert_frame_equal(mine, theirs, check_row_order=False)
+    if minimum != 100:
+        assert mine.height > 0
+
+
+def test_strongholds_minimum_changes_the_result():
+    place_votes = lib.place_candidate_votes(section_votes(), 1)
+    assert lib.MIN_PLACE_VOTES == 50
+    loose = lib.strongholds(place_votes, min_place_votes=5)
+    assert loose.height > lib.strongholds(place_votes).height
 
 
 # --- Exposure functions

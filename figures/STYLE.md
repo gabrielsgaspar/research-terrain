@@ -34,6 +34,9 @@ drawing code (`terrain.figures`) and the tests import it, and only the
 - One formatter, `thousands`: whole numbers with a comma between thousands
   (1, 100, 1,000, 10,000, 1,234,567). Never `10^n`, scientific notation or
   `k`/`M` abbreviations, in ticks, labels, annotations or notes.
+- Shares use `percent`: a fraction as a whole percent, no decimals (0%, 10%,
+  25%, 100%). Colour bars of shares pass `formatter=PERCENT` to
+  `bottom_colorbar`; every other colour bar keeps `thousands`.
 - Log scales tick at powers of ten only (`log_ticks`), without minor ticks.
 
 ## Maps
@@ -79,5 +82,5 @@ drawing code (`terrain.figures`) and the tests import it, and only the
   together (`bottom_colorbar`, `bottom_legend`, built from the panels'
   combined position, after the layout is fixed).
 - Colour bars are horizontal, without an outline, with tick length 0 and
-  `thousands` labels.
+  `thousands` labels (`percent` for shares).
 - Category legends are one row, frameless.
