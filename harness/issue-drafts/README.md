@@ -29,13 +29,14 @@ acquired or built (its manifest merged into `data/manifests/`).
 | 14 | Polling-place distances to indigenous land, settlements, undesignated forest | done (#82) |
 | 15 | Kill criterion 1 for idea 0001 (explore) | done (#85) |
 | 16 | Acquire the census grids, basemap and 2024 boundaries | done (#91) |
-| 17 | Simplified map layers for the figures (`figure_layers`) | catalog entry merged (this PR) |
-| 18 | Figures 1 (study area) and 2 (polling places) | 17 built and recorded; 19 merged (`terrain.grid`) |
-| 19 | Legal Amazon 1 km cells with population and tenure (`grid_cells`) | catalog entry merged (this PR) |
-| 20 | Figure 3 (2022 population per cell, with tenure) | 18 merged; 19 built and recorded |
-| 21 | Exposure formulas compared for decision 0004 (explore) | 19 built and recorded |
-| 22 | Zotero sync: `refs.bib` and note stubs | this PR merged |
+| 17 | Simplified map layers for the figures (`figure_layers`) | done (#100) |
+| 18 | Figures 1 (study area) and 2 (polling places) | done (#105) |
+| 19 | Legal Amazon 1 km cells with population and tenure (`grid_cells`) | done (#101) |
+| 20 | Figure 3 (2022 population per cell, with tenure) | done (#115) |
+| 21 | Exposure formulas compared for decision 0004 (explore) | done (#116) |
+| 22 | Zotero sync: `refs.bib` and note stubs | done (#110) |
 | 23 | Figure 5 (empty cells over undesignated forest) | 20 merged; 19 built and recorded |
+| 24 | Cell exposure to close races (`cell_exposure`, decision 0004) | decision 0004 accepted (this PR) |
 
 ## Before filing a task
 

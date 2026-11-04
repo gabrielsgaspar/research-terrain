@@ -53,9 +53,12 @@ effect at all with adequate power.
   polling-station catchments.
 - Treatment: within-list close races (from 2020, lists are parties; before,
   coalitions). The counterfactual for each close pair swaps winner and loser.
-- Exposure: each cell's vote-weighted exposure to the pair, recentred by its
-  expectation over swaps (Borusyak and Hull 2023), with randomisation
-  inference by re-flipping pairs.
+- Exposure (decision 0004): each cell's exposure to the pair, the
+  exp(-d/2 km)-weighted mean of the candidate's vote share at the polling
+  places of its municipality within 10 km, winner minus loser, recentred by
+  its expectation over swaps (Borusyak and Hull 2023), which is D / 2;
+  randomisation inference by re-flipping pairs; 2 and 5 km rings as
+  robustness.
 - Fixed effects: municipality by year, which absorb the mayor, the budget and
   enforcement.
 - Outcome: MapBiomas annual deforestation over the four term years.
@@ -87,6 +90,9 @@ Elections with usable geography: 2008, 2012, 2016, 2020 and 2024 (see
 - 2026-11-04: still exploring. Exposure options compared on the exploration
   half (run 41913964880): exp(-d/2) to 10 km exposes about 480,000 cells per
   election, 76% of them empty; decision 0004 proposed.
+- 2026-11-04: still exploring. Decision 0004 accepted: exposure is
+  exp(-d/2) to 10 km on vote shares, winner minus loser over close pairs,
+  recentred as D / 2, with randomisation inference by re-flipping pairs.
 
 ## Log
 

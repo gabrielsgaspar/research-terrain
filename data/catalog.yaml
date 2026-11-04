@@ -440,6 +440,20 @@ datasets:
       counts 2-7% fewer people than the 2010 census in every state. Draft:
       harness/issue-drafts/19-build-grid-cells.md.
 
+  - name: cell_exposure
+    source: built from grid_cells, polling_places, section_votes and tse_results
+    licence: public
+    derived: data/derived/cell_exposure/
+    contract: data/contracts/cell_exposure.md
+    status: planned
+    notes: >
+      Decision 0004: each Legal Amazon 1 km cell's exposure to the close
+      council races (margin at most 0.5%) of its municipality, winner minus
+      loser of the exp(-d/2 km)-weighted mean vote share at the polling places
+      within 10 km, with the 2 and 5 km rings; both halves (treatment-side
+      data, decision 0003). One Parquet per election year 2008-2024. Draft:
+      harness/issue-drafts/24-build-cell-exposure.md.
+
   - name: mapbiomas_deforestation
     source: MapBiomas annual collection, exported via Earth Engine
     licence: check MapBiomas terms
