@@ -25,6 +25,9 @@ acquired or built (its manifest merged into `data/manifests/`).
 | 10 | Feasibility census (explore) | `polling_place_types` built and recorded |
 | 11 | Front matter for records, and a validator | — |
 | 12 | Generated `research/INDEX.md` | 11 merged |
+| 13 | Acquire ArcGIS-portal files (public-forest register) | catalog entry merged (this PR) |
+| 14 | Polling-place distances to indigenous land, settlements, undesignated forest | 13 merged; `cnfp_public_forests` acquired |
+| 15 | Kill criterion 1 for idea 0001 (explore) | 14 built and recorded |
 
 ## Before filing a task
 
@@ -44,10 +47,6 @@ acquired or built (its manifest merged into `data/manifests/`).
    ...`) before adding `agent-plan`.
 
 ## Before building a plan
-
-- **Explore issues** (label `explore`): files only under `explore/` and
-  `tests/test_explore*`; any build or helper the analysis needs is its own
-  task first.
 
 - **Files to change:** one full path per bullet, deletions included, no
   braces or globs.
