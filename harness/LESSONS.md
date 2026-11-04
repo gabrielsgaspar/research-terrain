@@ -21,6 +21,16 @@ plan review. They fall into five groups:
 Expect the rate to fall: each first use of a capability (first build, first
 deletion, first big task) has now happened once.
 
+## 2026-11-04: Explore-run records failed CI on the index test (PR #87)
+- Tried: the record PR of the kill-criterion-1 run.
+- Result: CI failed: the PR added a run record, but `research/INDEX.md`
+  (which lists runs) was not regenerated.
+- Why: the index generator (task 12) came after the explore-run workflow, and
+  nothing tied them together.
+- Implication: the record job now regenerates the index before it asks for
+  the App token, so record PRs pass CI. Adding the lessons entry and idea
+  status still needs a rerun of `build_index.py`, as the PR body says.
+
 ## 2026-11-03: The `explore` label now does something (typed tasks and referee)
 - Tried: labelling the census issue `explore`.
 - Result: the label was only a marker; no workflow read it. The census was
