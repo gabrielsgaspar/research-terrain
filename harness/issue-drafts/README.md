@@ -35,8 +35,9 @@ acquired or built (its manifest merged into `data/manifests/`).
 | 20 | Figure 3 (2022 population per cell, with tenure) | done (#115) |
 | 21 | Exposure formulas compared for decision 0004 (explore) | done (#116) |
 | 22 | Zotero sync: `refs.bib` and note stubs | done (#110) |
-| 23 | Figure 5 (empty cells over undesignated forest) | 20 merged; 19 built and recorded |
-| 24 | Cell exposure to close races (`cell_exposure`, decision 0004) | decision 0004 accepted (this PR) |
+| 23 | Figure 5 (empty cells over undesignated forest) | done (#120) |
+| 24 | Cell exposure to close races (`cell_exposure`, decision 0004) | done (#125) |
+| 25 | Figure 6: one close pair's strongholds over their exposure | `cell_exposure` recorded (done) |
 
 ## Before filing a task
 
