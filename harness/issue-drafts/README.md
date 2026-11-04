@@ -28,7 +28,11 @@ acquired or built (its manifest merged into `data/manifests/`).
 | 13 | Acquire ArcGIS-portal files (public-forest register) | done (#79) |
 | 14 | Polling-place distances to indigenous land, settlements, undesignated forest | done (#82) |
 | 15 | Kill criterion 1 for idea 0001 (explore) | done (#85) |
-| 16 | Acquire the census grids, basemap and 2024 boundaries | catalog entries and fixtures merged (this PR) |
+| 16 | Acquire the census grids, basemap and 2024 boundaries | done (#91) |
+| 17 | Simplified map layers for the figures (`figure_layers`) | catalog entry merged (this PR) |
+| 18 | Figures 1 (study area) and 2 (polling places) | 17 built and recorded; 19 merged (`terrain.grid`) |
+| 19 | Legal Amazon 1 km cells with population and tenure (`grid_cells`) | catalog entry merged (this PR) |
+| 20 | Figure 3 (2022 population per cell, with tenure) | 18 merged; 19 built and recorded |
 
 ## Before filing a task
 
