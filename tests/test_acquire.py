@@ -152,10 +152,32 @@ def test_expansion_of_the_synthetic_entry():
         ("tse_votes_by_section", 63),
         ("tse_polling_places", 4),
         ("cnfp_public_forests", 6),
+        ("ibge_grid_2022", 1),
+        ("ibge_grid_2010", 38),
+        ("naturalearth_basemap", 4),
+        ("ibge_boundaries_2024", 3),
     ],
 )
 def test_real_catalog_url_counts(name, count):
     assert len(expand_urls(dataset(name))) == count
+
+
+def test_ibge_grid_2010_stored_names():
+    tiles = [
+        *range(33, 37),
+        *range(42, 47),
+        *range(50, 57),
+        *range(60, 67),
+        *range(70, 77),
+        *range(80, 86),
+        92,
+        93,
+    ]
+    expected = [f"grade_id{n}.zip" for n in tiles]
+    files = expand_urls(dataset("ibge_grid_2010"))
+    assert len(expected) == 38
+    assert [f.name for f in files] == expected
+    assert all(f.meta is None for f in files)
 
 
 def test_cnfp_files_have_stored_names_and_records():
