@@ -12,6 +12,7 @@
 #      versioning) and adds lifecycle rules;
 #   3. creates four service accounts (acquire, build, analysis, unblind);
 #   4. grants each one access to specific prefixes only (table in data/README.md);
+#   4b. lets terrain-acquire run Earth Engine exports (MapBiomas);
 #   5. creates a Workload Identity pool and provider that trust only this
 #      repository's GitHub Actions, and lets each GitHub environment act as
 #      one service account;
@@ -97,6 +98,15 @@ grant build    roles/storage.objectCreator build-create   data/derived/ sealed/o
 grant analysis roles/storage.objectViewer  analysis-read  data/derived/ data/explore/
 grant analysis roles/storage.objectAdmin   analysis-write data/explore/
 grant unblind  roles/storage.objectViewer  unblind-read   data/derived/ sealed/
+
+step "4b. Earth Engine (MapBiomas outcomes, decision 0006)"
+# terrain-acquire starts Earth Engine batch exports into data/raw/mapbiomas/.
+# writer includes earthengine.exports.create (viewer alone cannot export).
+gcloud services enable earthengine.googleapis.com
+for role in roles/earthengine.writer roles/serviceusage.serviceUsageConsumer; do
+  gcloud projects add-iam-policy-binding "$PROJECT_ID"     --member="serviceAccount:$(sa_email acquire)" --role="$role" --condition=None >/dev/null
+  echo "  terrain-acquire: ${role#roles/}"
+done
 
 step "5. Workload Identity Federation"
 if gcloud iam workload-identity-pools describe "$POOL" --location=global >/dev/null 2>&1; then
