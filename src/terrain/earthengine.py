@@ -41,7 +41,10 @@ from terrain.storage import GCSStore, Store
 # literal scheme out of code (data URLs belong in the catalog).
 _SCOPE_BASE = "https" + "://www.googleapis.com/auth/"
 SCOPES = (_SCOPE_BASE + "earthengine", _SCOPE_BASE + "cloud-platform")
-FILE_DIMENSIONS = [3584, 2816]  # multiples of the 256 shard size: one file per year
+# Earth Engine computes each shard of SHARD_SIZE 1 km cells from 30 m input: 256 needs
+# about 9,000 input pixels a side, over its reprojection limit (run 41991239477); 128 fits.
+SHARD_SIZE = 128
+FILE_DIMENSIONS = [3584, 2816]  # multiples of SHARD_SIZE: one file per year
 MIN_SHARE_WITH_DATA = 0.5
 DONE = "COMPLETED"
 STOPPED = ("FAILED", "CANCELLED")
@@ -78,6 +81,7 @@ def export_params(entry: dict[str, Any]) -> dict[str, Any]:
         "crs_transform": [1000, 0, x0 * 1000, 0, -1000, y1 * 1000],
         "dimensions": f"{x1 - x0}x{y1 - y0}",
         "file_dimensions": list(FILE_DIMENSIONS),
+        "shard_size": SHARD_SIZE,
         "years": years,
         "codes": codes,
         "scale": int(block["scale"]),
@@ -242,6 +246,7 @@ class RealEarthEngine:
             maxPixels=1e10,
             fileFormat="GeoTIFF",
             fileDimensions=params["file_dimensions"],
+            shardSize=params["shard_size"],
         )
         task.start()
         return str(task.id)

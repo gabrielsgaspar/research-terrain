@@ -95,6 +95,8 @@ def test_export_params_from_real_catalog_entry():
     assert p["crs_transform"] == [1000, 0, 2823000, 0, -1000, 11902000]
     assert p["dimensions"] == "3350x2580"
     assert p["file_dimensions"] == [3584, 2816]
+    assert p["shard_size"] == 128
+    assert all(d % p["shard_size"] == 0 for d in p["file_dimensions"])
     assert p["years"] == list(range(2004, 2025))
     assert p["codes"] == [1, 2, 3, 4, 5, 6, 7]
     assert p["scale"] == 10000
