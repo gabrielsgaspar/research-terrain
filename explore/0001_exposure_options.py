@@ -7,7 +7,9 @@ spread by population and land tenure, and how much the variants agree. No
 outcome data; no effects.
 
 Close pairs and place votes come from `0001_feasibility_census.py`, loaded below
-and not copied. The issue that ordered this script holds the full definitions.
+and not copied. The close-pair and exposure functions are imported from
+`terrain.strongholds`, which holds the one definition. The issue that ordered this
+script holds the full definitions.
 """
 
 from __future__ import annotations
@@ -20,14 +22,24 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import polars as pl
-import shapely
-from shapely import STRtree
 
 from terrain.explore import exploration_municipalities, restrict, write_results
-from terrain.grid import to_albers_km
 from terrain.storage import GCSStore
+from terrain.strongholds import (  # noqa: F401  (re-exported: tests and figures read these names)
+    CELL,
+    KERNELS,
+    MAX_KM,
+    MEASURES,
+    TOLERANCE,
+    cell_place_distances,
+    close_pairs,
+    exposure,
+    kernel,
+    locate_places,
+    place_shares,
+    place_totals,
+)
 
 _REPO = Path(__file__).resolve().parents[1]
 _SPEC = importlib.util.spec_from_file_location(
@@ -39,193 +51,11 @@ _SPEC.loader.exec_module(census)
 YEARS = census.YEARS
 PLACE_KEY = census.PLACE_KEY
 HEADLINE = census.HEADLINE
-CELL = ["cd_ibge", "x_km", "y_km"]
 PLACE = ["cd_ibge", "sg_ue", "nr_zona", "nr_local_votacao"]
-MAX_KM = 10.0
-TOLERANCE = 1e-9
-KERNELS = ("exp2", "ring2", "ring5")
-MEASURES = ("share", "votes")
 VARIANTS = tuple(f"{k}_{m}" for k in KERNELS for m in MEASURES)
 QUANTILES = (0.01, 0.10, 0.50, 0.90, 0.99)
 LAYERS = ("indigenous", "settlement", "undesignated")
 GRID_COLUMNS = ["cd_ibge", "x_km", "y_km", "pop_2022"]
-
-
-def _text_keys() -> list[pl.Expr]:
-    return [pl.col("cd_ibge").cast(pl.Utf8), pl.col("sg_ue").cast(pl.Utf8)]
-
-
-def close_pairs(paired: pl.DataFrame, threshold: float = HEADLINE) -> pl.DataFrame:
-    """Non-inverted pairs within `threshold`: `w` is the elected candidate, `l` the other."""
-    close = paired.filter(~pl.col("inverted") & (pl.col("margin").abs() <= threshold + 1e-12))
-    return close.select(
-        *_text_keys(),
-        "cd_eleicao",
-        pl.col("elected_sq").cast(pl.Utf8).alias("w"),
-        pl.col("other_sq").cast(pl.Utf8).alias("l"),
-    )
-
-
-def place_totals(place_votes: pl.DataFrame) -> pl.DataFrame:
-    """`vp`, the candidate plus legend votes of each place; places with `vp` = 0 are dropped."""
-    keys = [*PLACE_KEY, "cd_eleicao"]
-    totals = (
-        place_votes.with_columns(*_text_keys())
-        .group_by(keys)
-        .agg(pl.col("votes").sum().alias("vp"))
-    )
-    return totals.filter(pl.col("vp") > 0)
-
-
-def place_shares(place_votes: pl.DataFrame) -> pl.DataFrame:
-    """Per place and candidate: `v_cp` (votes) and `s_cp` (votes / V_p). Places with V_p = 0 go."""
-    keys = [*PLACE_KEY, "cd_eleicao"]
-    totals = place_totals(place_votes)
-    cands = (
-        place_votes.with_columns(*_text_keys())
-        .filter((pl.col("vote_type") == "candidate") & pl.col("sq_candidato").is_not_null())
-        .with_columns(pl.col("sq_candidato").cast(pl.Utf8))
-        .group_by([*keys, "sq_candidato"])
-        .agg(pl.col("votes").sum().alias("v_cp"))
-    )
-    return cands.join(totals, on=keys, how="inner").select(
-        *keys, "sq_candidato", "v_cp", (pl.col("v_cp") / pl.col("vp")).alias("s_cp")
-    )
-
-
-def locate_places(places: pl.DataFrame) -> pl.DataFrame:
-    """Places with coordinates, keyed as `PLACE_KEY`, with `x_km` and `y_km` in Albers km."""
-    located = (
-        places.filter(pl.col("lat").is_not_null() & pl.col("long").is_not_null())
-        .with_columns(
-            *_text_keys(),
-            pl.col("nr_zona").cast(pl.Int64),
-            pl.col("nr_local_votacao").cast(pl.Int64),
-        )
-        .unique(PLACE_KEY, keep="first", maintain_order=True)
-    )
-    points = to_albers_km(
-        shapely.points(
-            located["long"].to_numpy().astype(float), located["lat"].to_numpy().astype(float)
-        )
-    )
-    return located.select(
-        *PLACE_KEY,
-        pl.Series("x_km", shapely.get_x(points), dtype=pl.Float64),
-        pl.Series("y_km", shapely.get_y(points), dtype=pl.Float64),
-    )
-
-
-def cell_place_distances(
-    cells: pl.DataFrame, places: pl.DataFrame, max_km: float = MAX_KM
-) -> pl.DataFrame:
-    """(cell, place, `d`) for places within `max_km` of the cell centre, same municipality only.
-
-    `cells` has `cd_ibge`, `x_km`, `y_km` (lower-left corner); `places` comes from
-    `locate_places`. One `STRtree` per municipality holds only that municipality's places.
-    """
-    by_muni = {
-        part["cd_ibge"][0]: part
-        for part in places.with_columns(*_text_keys()).partition_by("cd_ibge")
-    }
-    pieces = []
-    for part in cells.with_columns(pl.col("cd_ibge").cast(pl.Utf8)).partition_by("cd_ibge"):
-        found = by_muni.get(part["cd_ibge"][0])
-        if found is None:
-            continue
-        cx = part["x_km"].to_numpy().astype(float) + 0.5
-        cy = part["y_km"].to_numpy().astype(float) + 0.5
-        px = found["x_km"].to_numpy()
-        py = found["y_km"].to_numpy()
-        tree = STRtree(shapely.points(px, py))
-        hit = tree.query(shapely.points(cx, cy), predicate="dwithin", distance=max_km)
-        if hit.shape[1] == 0:
-            continue
-        cell_i, place_i = hit[0], hit[1]
-        d = np.hypot(cx[cell_i] - px[place_i], cy[cell_i] - py[place_i])
-        pieces.append(
-            pl.concat(
-                [
-                    part.select(CELL)[cell_i.tolist()],
-                    found.select("sg_ue", "nr_zona", "nr_local_votacao")[place_i.tolist()],
-                    pl.DataFrame({"d": d}),
-                ],
-                how="horizontal",
-            )
-        )
-    if not pieces:
-        return pl.DataFrame(
-            schema={
-                "cd_ibge": pl.Utf8,
-                "x_km": pl.Int64,
-                "y_km": pl.Int64,
-                "sg_ue": pl.Utf8,
-                "nr_zona": pl.Int64,
-                "nr_local_votacao": pl.Int64,
-                "d": pl.Float64,
-            }
-        )
-    return pl.concat(pieces)
-
-
-def kernel(name: str, d: pl.Expr) -> pl.Expr:
-    """K(d): `exp2` = exp(-d/2) up to 10 km, `ring2` and `ring5` = 1 up to 2 and 5 km, else 0."""
-    if name == "exp2":
-        return pl.when(d <= MAX_KM + TOLERANCE).then((-d / 2).exp()).otherwise(0.0)
-    if name in ("ring2", "ring5"):
-        radius = float(name[4:])
-        return pl.when(d <= radius + TOLERANCE).then(1.0).otherwise(0.0)
-    raise ValueError(f"unknown kernel {name!r}")
-
-
-def exposure(
-    dist: pl.DataFrame,
-    totals: pl.DataFrame,
-    shares: pl.DataFrame,
-    pairs: pl.DataFrame,
-    kernel_name: str,
-    measure: str,
-) -> pl.DataFrame:
-    """Reached cells with `D_i` and `exposed` for one kernel and one measure.
-
-    A cell is reached when the kernel weights of the municipality's places (those with
-    votes) add up to more than 0; cells that are not reached are not returned. `D_i` is
-    the sum over the municipality's pairs of E_iw - E_il: with `share`, E is the
-    kernel-weighted mean of the candidate's place share (0 where the candidate has no
-    votes at a reached place); with `votes`, the kernel-weighted sum of votes.
-    """
-    if measure not in MEASURES:
-        raise ValueError(f"unknown measure {measure!r}")
-    column = "s_cp" if measure == "share" else "v_cp"
-    near = (
-        dist.join(totals.select(PLACE_KEY).unique(), on=PLACE_KEY, how="semi")
-        .with_columns(kernel(kernel_name, pl.col("d")).alias("k"))
-        .filter(pl.col("k") > 0)
-    )
-    reached = near.group_by(CELL).agg(pl.col("k").sum().alias("sum_k"))
-    pair_rows = pairs.with_row_index("pair_id")
-    rows = near.join(
-        pair_rows.select("pair_id", "cd_ibge", "sg_ue", "cd_eleicao", "w", "l"),
-        on=["cd_ibge", "sg_ue"],
-    )
-    lookup = shares.select(*PLACE_KEY, "cd_eleicao", "sq_candidato", pl.col(column).alias("a"))
-    keys = [*PLACE_KEY, "cd_eleicao"]
-    for side in ("w", "l"):
-        side_lookup = lookup.rename({"sq_candidato": side, "a": f"a_{side}"})
-        rows = rows.join(side_lookup, on=[*keys, side], how="left")
-    contrast = (
-        rows.with_columns(
-            (pl.col("k") * (pl.col("a_w").fill_null(0.0) - pl.col("a_l").fill_null(0.0))).alias(
-                "term"
-            )
-        )
-        .group_by(CELL)
-        .agg(pl.col("term").sum().alias("D_i"))
-    )
-    out = reached.join(contrast, on=CELL, how="left").with_columns(pl.col("D_i").fill_null(0.0))
-    if measure == "share":
-        out = out.with_columns(pl.col("D_i") / pl.col("sum_k"))
-    return out.select(*CELL, "D_i", (pl.col("D_i").abs() > 0).alias("exposed")).sort(CELL)
 
 
 def _num(value: Any) -> float | None:
