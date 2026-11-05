@@ -96,7 +96,7 @@ Elections with usable geography: 2008, 2012, 2016, 2020 and 2024 (see
   exp(-d/2) to 10 km on vote shares, winner minus loser over close pairs,
   recentred as D / 2, with randomisation inference by re-flipping pairs.
 - 2026-11-05: still exploring. Displacement-exposure options compared on the
-  exploration half (run 41949908031); decision 0005 proposed.
+  exploration half (run 41949908031); decision 0005 accepted (2026-11-05).
 
 ## Log
 

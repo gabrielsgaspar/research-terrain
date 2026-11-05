@@ -1,14 +1,15 @@
 ---
 id: "0005"
 title: "How unrepresented land's exposure to a close council race is measured (displacement)"
-status: proposed
+status: accepted
 date: 2026-11-05
 supersedes: null
 ---
 
 # 0005: How unrepresented land's exposure to a close council race is measured
 
-Date: 2026-11-05. Status: proposed; Gabriel decides. A `cell_displacement`
+Date: 2026-11-05. Status: accepted by Gabriel on 2026-11-05, every proposal
+unchanged. A `cell_displacement`
 build (like `cell_exposure`) follows from it.
 
 ## The question
@@ -54,6 +55,6 @@ and carry no contrast.
 both halves (treatment-side data, decision 0003): `g_exp10`, `g_ring10_20`,
 `g_ring20_50`, and the number of close pairs in the municipality.
 
-## To accept
+## Accepted
 
-Change the status above to `accepted` (and any choice you change), in a PR.
+By Gabriel on 2026-11-05, unchanged.
