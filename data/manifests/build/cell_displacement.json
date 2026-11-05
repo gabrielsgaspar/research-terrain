@@ -1,0 +1,44 @@
+{
+  "dataset": "cell_displacement",
+  "stage": "build",
+  "status": "created",
+  "gcs_prefix": "data/derived/cell_displacement/fc9117033c8c228b/",
+  "created_at": "2026-11-05T08:32:22.138641+00:00",
+  "code_commit": "9ccf7e99662b7878f7183603b0c55ba352bf4166",
+  "sources": [],
+  "files": [
+    {
+      "path": "data/derived/cell_displacement/fc9117033c8c228b/cell_displacement_2008.parquet",
+      "sha256": "c06d894a2bbc5f58252a58a7d0d3d7e72402797779b7b3f21b641842dfab80e7",
+      "bytes": 15595547
+    },
+    {
+      "path": "data/derived/cell_displacement/fc9117033c8c228b/cell_displacement_2012.parquet",
+      "sha256": "adae18e2c52fb79c35d72c71cf2e3c363644fd527d03bd3a8a24fac540b11f14",
+      "bytes": 16244857
+    },
+    {
+      "path": "data/derived/cell_displacement/fc9117033c8c228b/cell_displacement_2016.parquet",
+      "sha256": "5940d46aea5c49cbed4481a8fef091249d303be7d77ac3c6ace7a5d35eee6410",
+      "bytes": 17118590
+    },
+    {
+      "path": "data/derived/cell_displacement/fc9117033c8c228b/cell_displacement_2020.parquet",
+      "sha256": "1cee4b7c9da115a62db73767580ca66a392306c1513cd75913568bd8cfa5f9f5",
+      "bytes": 16840494
+    },
+    {
+      "path": "data/derived/cell_displacement/fc9117033c8c228b/cell_displacement_2024.parquet",
+      "sha256": "e6da5d6f96c6bb27851557ebcd22a7cba623462abe877af73568173459bfd344",
+      "bytes": 16079564
+    }
+  ],
+  "notes": "2008: municipalities_with_pair=698, close_pairs=1536, pairs_located=1308, dropped_same_place=219, dropped_no_coordinates=9, rows=3828002, cells_nonzero: g_exp10=1246166, g_ring10_20=239218, g_ring20_50=684387; 2012: municipalities_with_pair=723, close_pairs=1799, pairs_located=1535, dropped_same_place=243, dropped_no_coordinates=21, rows=3813732, cells_nonzero: g_exp10=1330197, g_ring10_20=288689, g_ring20_50=827043; 2016: municipalities_with_pair=721, close_pairs=1880, pairs_located=1634, dropped_same_place=232, dropped_no_coordinates=14, rows=3825587, cells_nonzero: g_exp10=1441545, g_ring10_20=307819, g_ring20_50=900441; 2020: municipalities_with_pair=714, close_pairs=2129, pairs_located=1871, dropped_same_place=237, dropped_no_coordinates=21, rows=3746970, cells_nonzero: g_exp10=1414992, g_ring10_20=311652, g_ring20_50=924075; 2024: municipalities_with_pair=668, close_pairs=1740, pairs_located=1511, dropped_same_place=189, dropped_no_coordinates=40, rows=3631651, cells_nonzero: g_exp10=1346559, g_ring10_20=278640, g_ring20_50=840833",
+  "inputs": [
+    "data/derived/grid_cells/2ec824f4da3d3f60/_MANIFEST.json",
+    "data/derived/cell_exposure/b91e933b0915df05/_MANIFEST.json",
+    "data/derived/polling_places/697e4a75d8bc2b89/_MANIFEST.json",
+    "data/derived/section_votes/c74725a2e911e8eb/_MANIFEST.json",
+    "data/derived/tse_results/6f2af3d28c84af90/_MANIFEST.json"
+  ]
+}
