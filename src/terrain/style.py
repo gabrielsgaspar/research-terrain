@@ -179,7 +179,7 @@ RIVER = ("#a9cbe6", 0.3)
 # Sequential scales, one hue, light to dark. Settlements are pink, not blue,
 # so they never fade into the water (Gabriel, 2026-11-04).
 SCALE_ENDS = {
-    "purple": ("#f2f0f7", "#54278f"),  # default, including polling places and population
+    "purple": ("#c3b4d8", "#54278f"),  # default; starts mid-light so 1-10 per km² shows
     "orange": ("#fff5eb", "#7f2704"),  # indigenous lands
     "green": ("#f7fcf5", "#00441b"),  # forest, including undesignated public forest
     "pink": ("#fde0ef", "#8e0152"),  # settlements

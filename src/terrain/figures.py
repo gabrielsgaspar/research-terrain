@@ -52,6 +52,10 @@ FRAME = (-92.0, -57.0, -26.0, 14.0)
 # Figure 1's inset: half the width and height it had before the style (25% of the figure).
 INSET_WIDTH = 0.125
 INSET_HEIGHT = 0.3  # an upper bound: the inset keeps South America's aspect
+# Figure 3 zooms to eastern Pará and Maranhão (Albers km), where cells are densest
+POPULATION_ZOOM = (5400, 5900, 10700, 11150)
+POPULATION_INSET = 0.38
+POPULATION_INSET_CORNER = "lower right"
 TENURE_LAYERS = (
     ("undesignated", "Undesignated public forest", "green"),
     ("settlement", "Settlement", "pink"),
@@ -386,16 +390,10 @@ def cell_polygons(x_km: Any, y_km: Any, pop: Any) -> tuple[np.ndarray, np.ndarra
     return squares, values
 
 
-def population_figure(layers: Layers, cells: pl.DataFrame) -> tuple[Any, Any, Any]:
-    """Figure 3: populated 1 km cells as filled squares coloured by 2022 population."""
-    extent = amazon_extent(layers)
-    fig, ax = plt.subplots(figsize=style.TALL)
-    fig.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.1)
-    base_map(ax, layers, extent)
+def _population_cells(ax: Any, cells: pl.DataFrame, norm: LogNorm) -> PolyCollection:
     squares, values = cell_polygons(
         cells["x_km"].to_numpy(), cells["y_km"].to_numpy(), cells["pop_2022"].to_numpy()
     )
-    norm = _colour_norm(int(values.max()) if values.size else 1)
     collection = PolyCollection(
         squares,
         array=values,
@@ -408,6 +406,33 @@ def population_figure(layers: Layers, cells: pl.DataFrame) -> tuple[Any, Any, An
     )
     collection.set_rasterized(True)  # about 534,000 squares; the PNG looks the same
     ax.add_collection(collection)
+    return collection
+
+
+def population_figure(layers: Layers, cells: pl.DataFrame) -> tuple[Any, Any, Any]:
+    """Figure 3: populated 1 km cells coloured by 2022 population, zoomed to eastern
+    Pará and Maranhão, with an inset of the Legal Amazon boxing the zoom."""
+    fig, ax = plt.subplots(figsize=style.SQUARE)
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.1)
+    base_map(ax, layers, POPULATION_ZOOM)
+    pop = cells["pop_2022"]
+    norm = _colour_norm(int(pop.max()) if (pop > 0).any() else 1)
+    collection = _population_cells(ax, cells, norm)
+    child = style.inset(ax, POPULATION_INSET, POPULATION_INSET, corner=POPULATION_INSET_CORNER)
+    base_map(child, layers, amazon_extent(layers))
+    _population_cells(child, cells, norm)
+    x0, x1, y0, y1 = POPULATION_ZOOM
+    child.add_patch(
+        Rectangle(
+            (x0, y0),
+            x1 - x0,
+            y1 - y0,
+            fill=False,
+            edgecolor=style.TEXT,
+            linewidth=style.LINE_WIDTH,
+            zorder=4,
+        )
+    )
     bar = style.bottom_colorbar(fig, [ax], collection, POP_LABEL)
     return fig, ax, bar
 
