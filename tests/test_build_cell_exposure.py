@@ -409,3 +409,12 @@ def test_the_pipeline_script_reads_the_four_manifests():
     for name in ("grid_cells", "polling_places", "section_votes", "tse_results"):
         assert f'_load("{name}")' in text
         assert (root / "data" / "manifests" / "build" / f"{name}.json").exists()
+
+
+def test_notes_count_only_legal_amazon_pairs():
+    pairs = pl.DataFrame({"cd_ibge": ["1100001", "3550308", "3550308"]})
+    cells = pl.DataFrame({"cd_ibge": ["1100001", "1100002"]})
+    table = pl.DataFrame({f"d_{k}": [0.1, 0.0] for k in ce.KERNELS})
+    note = ce._note(YEAR, pairs, table, cells)
+    assert "municipalities_with_pair=1," in note
+    assert "close_pairs=1," in note
