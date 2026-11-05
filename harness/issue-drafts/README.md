@@ -39,7 +39,8 @@ acquired or built (its manifest merged into `data/manifests/`).
 | 24 | Cell exposure to close races (`cell_exposure`, decision 0004) | done (#125) |
 | 25 | Figure 6: one close pair's strongholds over their exposure | `cell_exposure` recorded (done) |
 | 26 | Acquire MapBiomas code shares per 1 km cell (Earth Engine, decision 0006) | `earthengine-api` and `tifffile` merged (done) |
-| 28 | Explore scripts import `terrain.strongholds` (explore) | — |
+| 28 | Explore scripts import `terrain.strongholds` (explore) | done (#159) |
+| 29 | Displacement-exposure formulas compared for decision 0005 (explore) | `cell_exposure` recorded (done) |
 
 ## Before filing a task
 
