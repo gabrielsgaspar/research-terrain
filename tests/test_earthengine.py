@@ -2,6 +2,7 @@
 
 import copy
 import io
+import json
 from datetime import date
 from pathlib import Path
 
@@ -162,9 +163,73 @@ def test_stopped_task_raises(tmp_path, state):
 def test_timeout_raises(tmp_path):
     store = MemoryStore()
     ee = FakeEE(store, states={2004: [("RUNNING", "")]})
-    with pytest.raises(EarthEngineError, match="not finished"):
+    with pytest.raises(EarthEngineError, match="not finished after 160 minutes"):
         run(store, ee, small_entry(), tmp_path)
     assert not any(p.endswith("_MANIFEST.json") for p in store.list(""))
+
+
+PREFIX = "data/raw/mapbiomas/2026-11-05/"
+
+
+def has_manifest(store):
+    return any(p.endswith("_MANIFEST.json") for p in store.list(""))
+
+
+def test_timeout_then_resume(tmp_path):
+    store = MemoryStore()
+    entry = small_entry()
+    first = FakeEE(store, states={2004: [("RUNNING", "")]})
+    msg = (
+        r"exports not finished after 160 minutes \(1 of 2 completed\); "
+        r"run again to resume " + PREFIX
+    )
+    with pytest.raises(EarthEngineError, match=msg):
+        run(store, first, entry, tmp_path)
+    rec = json.loads(store.read_bytes(PREFIX + "exports.json"))
+    assert rec["tasks"] == {"2004": "2004", "2005": "2005"}
+    assert rec["sources"][0]["last_modified"] == "2025-08-09T18:24:56Z"
+    assert not has_manifest(store)
+
+    second = FakeEE(store)
+    m = run(store, second, entry, tmp_path)
+    assert second.started == []
+    assert m["status"] == "created" and m["gcs_prefix"] == PREFIX
+    assert [f["path"] for f in m["files"]] == [
+        PREFIX + "mapbiomas_shares_2004.tif",
+        PREFIX + "mapbiomas_shares_2005.tif",
+    ]
+
+
+def test_new_version_does_not_resume(tmp_path):
+    store = MemoryStore()
+    entry = small_entry()
+    with pytest.raises(EarthEngineError):
+        run(store, FakeEE(store, states={2004: [("RUNNING", "")]}), entry, tmp_path)
+    newer = FakeEE(store, update_time="2026-01-01T00:00:00Z")
+    m = run(store, newer, entry, tmp_path)
+    assert m["gcs_prefix"] == "data/raw/mapbiomas/2026-11-05-2/"
+    assert [y for y, _ in newer.started] == [2004, 2005]
+
+
+def test_failed_pending_folder_not_resumed(tmp_path):
+    store = MemoryStore()
+    entry = small_entry()
+    with pytest.raises(EarthEngineError, match="quota"):
+        run(store, FakeEE(store, states={2005: [("FAILED", "quota exceeded")]}), entry, tmp_path)
+    again = FakeEE(store, states={2005: [("FAILED", "quota exceeded")]})
+    with pytest.raises(EarthEngineError, match="quota"):
+        run(store, again, entry, tmp_path)
+    assert [p for _, p in again.started] == [PREFIX.replace("05/", "05-2/")] * 2
+
+
+def test_folder_with_manifest_not_resumed(tmp_path):
+    store = MemoryStore()
+    entry = small_entry()
+    write_manifest(run(store, FakeEE(store), entry, tmp_path), store, tmp_path / "m.json")
+    assert store.exists(PREFIX + "exports.json")
+    again = FakeEE(store)
+    m = run(store, again, entry, tmp_path)
+    assert m["status"] == "unchanged" and again.started == []
 
 
 def test_missing_file_raises(tmp_path):
@@ -173,7 +238,7 @@ def test_missing_file_raises(tmp_path):
     ee.write_files = False
     with pytest.raises(EarthEngineError, match="missing"):
         run(store, ee, small_entry(), tmp_path)
-    assert store.list("") == []
+    assert store.list("") == ["data/raw/mapbiomas/2026-11-05/exports.json"]
 
 
 def bad_arrays():
