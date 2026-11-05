@@ -201,11 +201,18 @@ def _count(table: pl.DataFrame, column: str) -> int:
     return int(table.filter(pl.col(column).is_not_null() & (pl.col(column) != 0)).height)
 
 
-def _note(year: int, pairs: pl.DataFrame, table: pl.DataFrame) -> str:
+def _note(year: int, pairs: pl.DataFrame, table: pl.DataFrame, cells: pl.DataFrame) -> str:
+    """Counts for the notes; pairs only in Legal Amazon municipalities (those of `cells`).
+
+    The results tables cover all of Brazil, so the unrestricted pairs would count
+    every municipality in the country.
+    """
+    legal = cells["cd_ibge"].unique().implode()
+    local = pairs.filter(pl.col("cd_ibge").cast(pl.Utf8).is_in(legal))
     nonzero = ", ".join(f"d_{k}={_count(table, f'd_{k}')}" for k in KERNELS)
     return (
-        f"{year}: municipalities_with_pair={pairs['cd_ibge'].n_unique()}, "
-        f"close_pairs={pairs.height}, rows={table.height}, cells_nonzero: {nonzero}"
+        f"{year}: municipalities_with_pair={local['cd_ibge'].n_unique()}, "
+        f"close_pairs={local.height}, rows={table.height}, cells_nonzero: {nonzero}"
     )
 
 
@@ -276,7 +283,7 @@ def build(
         path = tmp_dir / output_name(y)
         table.write_parquet(path)
         written.append(path)
-        notes.append(_note(y, pairs, table))
+        notes.append(_note(y, pairs, table, cells))
         del table
 
     files = []
