@@ -1,0 +1,637 @@
+{
+  "2008": {
+    "agreement": {
+      "exp10 vs nearest": {
+        "cells": 595926,
+        "pearson": 0.6046990808558638
+      },
+      "exp10 vs ring10_20": {
+        "cells": 137826,
+        "pearson": 0.9139081812464246
+      },
+      "exp10 vs ring20_50": {
+        "cells": 382458,
+        "pearson": -0.06902806521617662
+      }
+    },
+    "cells_in_municipalities": 2432168,
+    "close_pairs": 765,
+    "dropped_no_coordinates": 6,
+    "dropped_same_place": 112,
+    "main_election": 30,
+    "municipalities_with_pair": 349,
+    "pairs_used": 647,
+    "unrepresented_cells": 1916244,
+    "unrepresented_share_of_cells": 0.7878748507504416,
+    "variants": {
+      "exp10": {
+        "cells_nonzero": 683263,
+        "median_abs_G": 0.03070513202934072,
+        "quantiles_G": {
+          "1%": -0.3288037047721676,
+          "10%": -0.12501698496006527,
+          "50%": -0.0006654305161042954,
+          "90%": 0.11848475342507245,
+          "99%": 0.34501360807452
+        },
+        "tenure": {
+          "indigenous": {
+            "cells": 106423,
+            "share": 0.15575700718464194
+          },
+          "settlement": {
+            "cells": 37346,
+            "share": 0.054658308733240346
+          },
+          "undesignated": {
+            "cells": 42310,
+            "share": 0.061923446754763536
+          }
+        }
+      },
+      "nearest": {
+        "cells_nonzero": 595926,
+        "median_abs_G": 1.0,
+        "quantiles_G": {
+          "1%": -3.0,
+          "10%": -1.0,
+          "50%": -1.0,
+          "90%": 2.0,
+          "99%": 3.0
+        },
+        "tenure": {
+          "indigenous": {
+            "cells": 92504,
+            "share": 0.155227326882868
+          },
+          "settlement": {
+            "cells": 31250,
+            "share": 0.05243939683786242
+          },
+          "undesignated": {
+            "cells": 36497,
+            "share": 0.06124418132452687
+          }
+        }
+      },
+      "ring10_20": {
+        "cells_nonzero": 137826,
+        "median_abs_G": 1.0,
+        "quantiles_G": {
+          "1%": -2.0,
+          "10%": -1.0,
+          "50%": -1.0,
+          "90%": 1.0,
+          "99%": 2.0
+        },
+        "tenure": {
+          "indigenous": {
+            "cells": 16787,
+            "share": 0.12179849955741297
+          },
+          "settlement": {
+            "cells": 9562,
+            "share": 0.06937733083743271
+          },
+          "undesignated": {
+            "cells": 8408,
+            "share": 0.06100445489240056
+          }
+        }
+      },
+      "ring20_50": {
+        "cells_nonzero": 382458,
+        "median_abs_G": 1.0,
+        "quantiles_G": {
+          "1%": -2.0,
+          "10%": -1.0,
+          "50%": -1.0,
+          "90%": 1.0,
+          "99%": 2.0
+        },
+        "tenure": {
+          "indigenous": {
+            "cells": 76280,
+            "share": 0.1994467366351338
+          },
+          "settlement": {
+            "cells": 20796,
+            "share": 0.05437459799507397
+          },
+          "undesignated": {
+            "cells": 28411,
+            "share": 0.07428528099817497
+          }
+        }
+      }
+    }
+  },
+  "2012": {
+    "agreement": {
+      "exp10 vs nearest": {
+        "cells": 594968,
+        "pearson": 0.6316135402537538
+      },
+      "exp10 vs ring10_20": {
+        "cells": 148986,
+        "pearson": 0.9170145503191308
+      },
+      "exp10 vs ring20_50": {
+        "cells": 426491,
+        "pearson": 0.002168379229586499
+      }
+    },
+    "cells_in_municipalities": 2503253,
+    "close_pairs": 919,
+    "dropped_no_coordinates": 11,
+    "dropped_same_place": 116,
+    "main_election": 47,
+    "municipalities_with_pair": 367,
+    "pairs_used": 792,
+    "unrepresented_cells": 1935750,
+    "unrepresented_share_of_cells": 0.7732937901202954,
+    "variants": {
+      "exp10": {
+        "cells_nonzero": 695859,
+        "median_abs_G": 0.03627004924126544,
+        "quantiles_G": {
+          "1%": -0.3712751481244132,
+          "10%": -0.1378185052236922,
+          "50%": -0.00014041060390656418,
+          "90%": 0.13197814572500288,
+          "99%": 0.3596360128510317
+        },
+        "tenure": {
+          "indigenous": {
+            "cells": 141946,
+            "share": 0.20398672719617048
+          },
+          "settlement": {
+            "cells": 40947,
+            "share": 0.05884381749751027
+          },
+          "undesignated": {
+            "cells": 149218,
+            "share": 0.21443712016371133
+          }
+        }
+      },
+      "nearest": {
+        "cells_nonzero": 594968,
+        "median_abs_G": 1.0,
+        "quantiles_G": {
+          "1%": -4.0,
+          "10%": -2.0,
+          "50%": -1.0,
+          "90%": 2.0,
+          "99%": 3.0
+        },
+        "tenure": {
+          "indigenous": {
+            "cells": 126806,
+            "share": 0.21313079022737358
+          },
+          "settlement": {
+            "cells": 32116,
+            "share": 0.05397937368060131
+          },
+          "undesignated": {
+            "cells": 121386,
+            "share": 0.20402105659464037
+          }
+        }
+      },
+      "ring10_20": {
+        "cells_nonzero": 148986,
+        "median_abs_G": 1.0,
+        "quantiles_G": {
+          "1%": -2.0,
+          "10%": -1.0,
+          "50%": -1.0,
+          "90%": 1.0,
+          "99%": 2.0
+        },
+        "tenure": {
+          "indigenous": {
+            "cells": 23715,
+            "share": 0.15917602996254682
+          },
+          "settlement": {
+            "cells": 11457,
+            "share": 0.07689984293826266
+          },
+          "undesignated": {
+            "cells": 33589,
+            "share": 0.2254507134898581
+          }
+        }
+      },
+      "ring20_50": {
+        "cells_nonzero": 426491,
+        "median_abs_G": 1.0,
+        "quantiles_G": {
+          "1%": -3.0,
+          "10%": -2.0,
+          "50%": -1.0,
+          "90%": 1.0,
+          "99%": 2.0
+        },
+        "tenure": {
+          "indigenous": {
+            "cells": 101226,
+            "share": 0.2373461573632269
+          },
+          "settlement": {
+            "cells": 26306,
+            "share": 0.061680082346403556
+          },
+          "undesignated": {
+            "cells": 94891,
+            "share": 0.22249238553685774
+          }
+        }
+      }
+    }
+  },
+  "2016": {
+    "agreement": {
+      "exp10 vs nearest": {
+        "cells": 637209,
+        "pearson": 0.6253675698624129
+      },
+      "exp10 vs ring10_20": {
+        "cells": 159610,
+        "pearson": 0.9178341751912243
+      },
+      "exp10 vs ring20_50": {
+        "cells": 456637,
+        "pearson": -0.010912963080120712
+      }
+    },
+    "cells_in_municipalities": 2436457,
+    "close_pairs": 940,
+    "dropped_no_coordinates": 11,
+    "dropped_same_place": 111,
+    "main_election": 220,
+    "municipalities_with_pair": 360,
+    "pairs_used": 818,
+    "unrepresented_cells": 1875138,
+    "unrepresented_share_of_cells": 0.7696167016286354,
+    "variants": {
+      "exp10": {
+        "cells_nonzero": 733859,
+        "median_abs_G": 0.03655673099134116,
+        "quantiles_G": {
+          "1%": -0.3633415685695644,
+          "10%": -0.137564906516828,
+          "50%": -0.0009120492363293223,
+          "90%": 0.13251813231715365,
+          "99%": 0.3487781715775636
+        },
+        "tenure": {
+          "indigenous": {
+            "cells": 145976,
+            "share": 0.19891559550267832
+          },
+          "settlement": {
+            "cells": 41910,
+            "share": 0.05710906318516227
+          },
+          "undesignated": {
+            "cells": 142524,
+            "share": 0.19421169461708584
+          }
+        }
+      },
+      "nearest": {
+        "cells_nonzero": 637216,
+        "median_abs_G": 1.0,
+        "quantiles_G": {
+          "1%": -3.0,
+          "10%": -2.0,
+          "50%": -1.0,
+          "90%": 2.0,
+          "99%": 3.0
+        },
+        "tenure": {
+          "indigenous": {
+            "cells": 129159,
+            "share": 0.20269265052980465
+          },
+          "settlement": {
+            "cells": 35984,
+            "share": 0.05647064731582383
+          },
+          "undesignated": {
+            "cells": 120396,
+            "share": 0.18894064179179432
+          }
+        }
+      },
+      "ring10_20": {
+        "cells_nonzero": 159610,
+        "median_abs_G": 1.0,
+        "quantiles_G": {
+          "1%": -2.0,
+          "10%": -1.0,
+          "50%": -1.0,
+          "90%": 1.0,
+          "99%": 2.0
+        },
+        "tenure": {
+          "indigenous": {
+            "cells": 23496,
+            "share": 0.14720882150241213
+          },
+          "settlement": {
+            "cells": 12703,
+            "share": 0.07958774512875133
+          },
+          "undesignated": {
+            "cells": 33220,
+            "share": 0.20813232253618194
+          }
+        }
+      },
+      "ring20_50": {
+        "cells_nonzero": 456637,
+        "median_abs_G": 1.0,
+        "quantiles_G": {
+          "1%": -3.0,
+          "10%": -1.0,
+          "50%": -1.0,
+          "90%": 1.0,
+          "99%": 2.0
+        },
+        "tenure": {
+          "indigenous": {
+            "cells": 104153,
+            "share": 0.22808708010958376
+          },
+          "settlement": {
+            "cells": 28035,
+            "share": 0.06139449935068775
+          },
+          "undesignated": {
+            "cells": 87461,
+            "share": 0.19153288060319246
+          }
+        }
+      }
+    }
+  },
+  "2020": {
+    "agreement": {
+      "exp10 vs nearest": {
+        "cells": 610060,
+        "pearson": 0.6318305575956409
+      },
+      "exp10 vs ring10_20": {
+        "cells": 164336,
+        "pearson": 0.9122091525621039
+      },
+      "exp10 vs ring20_50": {
+        "cells": 461884,
+        "pearson": -0.00011835770666071271
+      }
+    },
+    "cells_in_municipalities": 2397186,
+    "close_pairs": 1060,
+    "dropped_no_coordinates": 9,
+    "dropped_same_place": 114,
+    "main_election": 426,
+    "municipalities_with_pair": 356,
+    "pairs_used": 937,
+    "unrepresented_cells": 1830228,
+    "unrepresented_share_of_cells": 0.7634901922504136,
+    "variants": {
+      "exp10": {
+        "cells_nonzero": 713504,
+        "median_abs_G": 0.04045020422460899,
+        "quantiles_G": {
+          "1%": -0.3707959835595215,
+          "10%": -0.14443568753584746,
+          "50%": 0.0004033508464526877,
+          "90%": 0.13988449370913333,
+          "99%": 0.370236706299089
+        },
+        "tenure": {
+          "indigenous": {
+            "cells": 139217,
+            "share": 0.19511733641297035
+          },
+          "settlement": {
+            "cells": 40468,
+            "share": 0.056717271381800244
+          },
+          "undesignated": {
+            "cells": 136977,
+            "share": 0.19197790061443243
+          }
+        }
+      },
+      "nearest": {
+        "cells_nonzero": 610060,
+        "median_abs_G": 1.0,
+        "quantiles_G": {
+          "1%": -3.0,
+          "10%": -2.0,
+          "50%": 1.0,
+          "90%": 2.0,
+          "99%": 3.0
+        },
+        "tenure": {
+          "indigenous": {
+            "cells": 119961,
+            "share": 0.19663803560305543
+          },
+          "settlement": {
+            "cells": 33190,
+            "share": 0.0544044848047733
+          },
+          "undesignated": {
+            "cells": 112418,
+            "share": 0.18427367799888536
+          }
+        }
+      },
+      "ring10_20": {
+        "cells_nonzero": 164336,
+        "median_abs_G": 1.0,
+        "quantiles_G": {
+          "1%": -3.0,
+          "10%": -1.0,
+          "50%": -1.0,
+          "90%": 1.0,
+          "99%": 2.0
+        },
+        "tenure": {
+          "indigenous": {
+            "cells": 21556,
+            "share": 0.13117028526920455
+          },
+          "settlement": {
+            "cells": 13525,
+            "share": 0.08230089572583
+          },
+          "undesignated": {
+            "cells": 36044,
+            "share": 0.21933112647259273
+          }
+        }
+      },
+      "ring20_50": {
+        "cells_nonzero": 461884,
+        "median_abs_G": 1.0,
+        "quantiles_G": {
+          "1%": -3.0,
+          "10%": -1.0,
+          "50%": 1.0,
+          "90%": 2.0,
+          "99%": 3.0
+        },
+        "tenure": {
+          "indigenous": {
+            "cells": 103980,
+            "share": 0.2251214590676447
+          },
+          "settlement": {
+            "cells": 26012,
+            "share": 0.05631717054498532
+          },
+          "undesignated": {
+            "cells": 88442,
+            "share": 0.19148097790787297
+          }
+        }
+      }
+    }
+  },
+  "2024": {
+    "agreement": {
+      "exp10 vs nearest": {
+        "cells": 635783,
+        "pearson": 0.6394445957671164
+      },
+      "exp10 vs ring10_20": {
+        "cells": 149753,
+        "pearson": 0.9149104992348769
+      },
+      "exp10 vs ring20_50": {
+        "cells": 447539,
+        "pearson": 0.033841127074652484
+      }
+    },
+    "cells_in_municipalities": 2343586,
+    "close_pairs": 891,
+    "dropped_no_coordinates": 19,
+    "dropped_same_place": 100,
+    "main_election": 619,
+    "municipalities_with_pair": 338,
+    "pairs_used": 772,
+    "unrepresented_cells": 1774572,
+    "unrepresented_share_of_cells": 0.757203704067186,
+    "variants": {
+      "exp10": {
+        "cells_nonzero": 710297,
+        "median_abs_G": 0.03632762354229575,
+        "quantiles_G": {
+          "1%": -0.35865803785520234,
+          "10%": -0.13072000343366968,
+          "50%": 0.00012519088202100903,
+          "90%": 0.1348756682980035,
+          "99%": 0.37222228920248235
+        },
+        "tenure": {
+          "indigenous": {
+            "cells": 166942,
+            "share": 0.23503126157086401
+          },
+          "settlement": {
+            "cells": 37372,
+            "share": 0.05261461050799877
+          },
+          "undesignated": {
+            "cells": 98766,
+            "share": 0.13904887673747743
+          }
+        }
+      },
+      "nearest": {
+        "cells_nonzero": 635783,
+        "median_abs_G": 1.0,
+        "quantiles_G": {
+          "1%": -3.0,
+          "10%": -2.0,
+          "50%": 1.0,
+          "90%": 2.0,
+          "99%": 4.0
+        },
+        "tenure": {
+          "indigenous": {
+            "cells": 150252,
+            "share": 0.23632591623242521
+          },
+          "settlement": {
+            "cells": 31936,
+            "share": 0.05023097503393453
+          },
+          "undesignated": {
+            "cells": 88838,
+            "share": 0.1397300651322857
+          }
+        }
+      },
+      "ring10_20": {
+        "cells_nonzero": 149753,
+        "median_abs_G": 1.0,
+        "quantiles_G": {
+          "1%": -3.0,
+          "10%": -1.0,
+          "50%": 1.0,
+          "90%": 1.0,
+          "99%": 3.0
+        },
+        "tenure": {
+          "indigenous": {
+            "cells": 25144,
+            "share": 0.1679031471823603
+          },
+          "settlement": {
+            "cells": 10661,
+            "share": 0.07119056045621791
+          },
+          "undesignated": {
+            "cells": 23277,
+            "share": 0.15543595119964207
+          }
+        }
+      },
+      "ring20_50": {
+        "cells_nonzero": 447539,
+        "median_abs_G": 1.0,
+        "quantiles_G": {
+          "1%": -3.0,
+          "10%": -1.0,
+          "50%": -1.0,
+          "90%": 1.0,
+          "99%": 3.0
+        },
+        "tenure": {
+          "indigenous": {
+            "cells": 120927,
+            "share": 0.27020438442236316
+          },
+          "settlement": {
+            "cells": 24876,
+            "share": 0.055583982624977935
+          },
+          "undesignated": {
+            "cells": 61776,
+            "share": 0.13803489751731135
+          }
+        }
+      }
+    }
+  }
+}
