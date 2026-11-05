@@ -1,13 +1,17 @@
 """Close council races and the exposure of 1 km cells to them (idea 0001, decision 0004).
 
 These are the definitions of `explore/0001_feasibility_census.py` and
-`explore/0001_exposure_options.py`, copied without a change in behaviour so that a
-build can use them (builds never import `explore/`). `tests/test_strongholds.py`
-checks each function against its original on the same tables. Change a function here
-only together with a new exploration run that says so.
+`explore/0001_exposure_options.py`, and, in the last section, of
+`explore/0001_displacement_options.py` (decision 0005; three kernels, no `nearest`),
+copied without a change in behaviour so that a build can use them (builds never import
+`explore/`). `tests/test_strongholds.py` checks each function against its original on
+the same tables. Change a function here only together with a new exploration run that
+says so.
 """
 
 from __future__ import annotations
+
+from collections.abc import Collection
 
 import numpy as np
 import polars as pl
@@ -357,3 +361,142 @@ def exposure(
     if measure == "share":
         out = out.with_columns(pl.col("D_i") / pl.col("sum_k"))
     return out.select(*CELL, "D_i", (pl.col("D_i").abs() > 0).alias("exposed")).sort(CELL)
+
+
+# --- From the displacement options
+
+OUTER_KM = 50.0
+DISPLACEMENT_KERNELS = ("exp10", "ring10_20", "ring20_50")
+
+
+def stronghold_pairs(
+    pairs: pl.DataFrame, strong: pl.DataFrame, located: pl.DataFrame
+) -> tuple[pl.DataFrame, int, int]:
+    """Attach `xw`, `yw`, `xl`, `yl` (Albers km) of each pair's strongholds.
+
+    Returns (pairs used, `dropped_same_place`, `dropped_no_coordinates`). A pair whose
+    two candidates share a stronghold place is dropped as same place. Any other pair
+    where a candidate has no stronghold (no place with enough votes) or a stronghold
+    without coordinates is dropped as no coordinates.
+    """
+    cand = strong.select(
+        "cd_eleicao",
+        pl.col("sg_ue").cast(pl.Utf8),
+        pl.col("sq_candidato").cast(pl.Utf8).alias("cand"),
+        pl.col("cd_ibge").cast(pl.Utf8).alias("cd_place"),
+        pl.col("nr_zona").cast(pl.Int64).alias("zona"),
+        pl.col("nr_local_votacao").cast(pl.Int64).alias("local"),
+    )
+    where = located.select(
+        pl.col("cd_ibge").alias("cd_place"),
+        pl.col("sg_ue"),
+        pl.col("nr_zona").alias("zona"),
+        pl.col("nr_local_votacao").alias("local"),
+        "x_km",
+        "y_km",
+    )
+    out = pairs
+    for side in ("w", "l"):
+        side_place = cand.select(
+            "cd_eleicao",
+            "sg_ue",
+            pl.col("cand").alias(side),
+            *(pl.col(c).alias(f"{c}_{side}") for c in ("cd_place", "zona", "local")),
+        )
+        side_where = where.select(
+            "sg_ue",
+            *(pl.col(c).alias(f"{c}_{side}") for c in ("cd_place", "zona", "local")),
+            pl.col("x_km").alias(f"x{side}"),
+            pl.col("y_km").alias(f"y{side}"),
+        )
+        out = out.join(side_place, on=["cd_eleicao", "sg_ue", side], how="left").join(
+            side_where,
+            on=["sg_ue", f"cd_place_{side}", f"zona_{side}", f"local_{side}"],
+            how="left",
+        )
+    both = pl.col("local_w").is_not_null() & pl.col("local_l").is_not_null()
+    same = (
+        both
+        & (pl.col("cd_place_w") == pl.col("cd_place_l"))
+        & (pl.col("zona_w") == pl.col("zona_l"))
+        & (pl.col("local_w") == pl.col("local_l"))
+    ).fill_null(False)
+    located_both = pl.col("xw").is_not_null() & pl.col("xl").is_not_null()
+    used = out.filter(~same & located_both).select(
+        "cd_ibge", "sg_ue", "cd_eleicao", "w", "l", "xw", "yw", "xl", "yl"
+    )
+    return used, out.filter(same).height, out.filter(~same & ~located_both).height
+
+
+def unrepresented(
+    cells: pl.DataFrame, exposure_year: pl.DataFrame, muni_with_pair: Collection[str]
+) -> pl.DataFrame:
+    """Cells with `pop_2022` = 0 that `exposure_year` does not reach, where a pair exists."""
+    reached = exposure_year.select(
+        pl.col("cd_ibge").cast(pl.Utf8),
+        pl.col("x_km").cast(pl.Int64),
+        pl.col("y_km").cast(pl.Int64),
+    ).unique()
+    return (
+        cells.with_columns(
+            pl.col("cd_ibge").cast(pl.Utf8),
+            pl.col("x_km").cast(pl.Int64),
+            pl.col("y_km").cast(pl.Int64),
+        )
+        .filter((pl.col("pop_2022") == 0) & pl.col("cd_ibge").is_in(list(muni_with_pair)))
+        .join(reached, on=CELL, how="anti")
+    )
+
+
+def kernel_g(name: str, d_w: np.ndarray, d_l: np.ndarray) -> np.ndarray:
+    """One pair's term of `G_i` for each cell, from distances (km) to `p_w` and `p_l`.
+
+    `ring10_20`: 1 for 10 < d <= 20 km; `ring20_50`: 1 for 20 < d <= 50; `exp10`:
+    exp(-d / 10) for d <= 50. Each is K(d_w) - K(d_l). Boundaries use `TOLERANCE`: a
+    distance of 10 + 1e-12 counts as 10.
+    """
+    d_w = np.asarray(d_w, dtype=float)
+    d_l = np.asarray(d_l, dtype=float)
+
+    def ring(d: np.ndarray, low: float, high: float) -> np.ndarray:
+        return ((d > low + TOLERANCE) & (d <= high + TOLERANCE)).astype(float)
+
+    def expo(d: np.ndarray) -> np.ndarray:
+        return np.where(d <= OUTER_KM + TOLERANCE, np.exp(-d / 10.0), 0.0)
+
+    if name == "ring10_20":
+        return ring(d_w, 10.0, 20.0) - ring(d_l, 10.0, 20.0)
+    if name == "ring20_50":
+        return ring(d_w, 20.0, 50.0) - ring(d_l, 20.0, 50.0)
+    if name == "exp10":
+        return expo(d_w) - expo(d_l)
+    raise ValueError(f"unknown variant {name}")
+
+
+def displacement(cells: pl.DataFrame, used_pairs: pl.DataFrame) -> pl.DataFrame:
+    """`G_<kernel>` for each cell: CELL columns plus one column per displacement kernel.
+
+    Distances run from the cell centre (corner + 0.5 km) to the strongholds of pairs
+    of the cell's own municipality. A municipality without a used pair gets 0.
+    """
+    cells = cells.select(
+        pl.col("cd_ibge").cast(pl.Utf8),
+        pl.col("x_km").cast(pl.Int64),
+        pl.col("y_km").cast(pl.Int64),
+    )
+    cx = cells["x_km"].to_numpy().astype(float) + 0.5
+    cy = cells["y_km"].to_numpy().astype(float) + 0.5
+    muni = cells["cd_ibge"].to_numpy()
+    totals = {v: np.zeros(cells.height) for v in DISPLACEMENT_KERNELS}
+    pair_muni = used_pairs["cd_ibge"].cast(pl.Utf8).to_numpy()
+    rows = used_pairs.select("xw", "yw", "xl", "yl").to_numpy()
+    for code in np.unique(pair_muni):
+        index = np.flatnonzero(muni == code)
+        if index.size == 0:
+            continue
+        for xw, yw, xl, yl in rows[pair_muni == code]:
+            d_w = np.hypot(cx[index] - xw, cy[index] - yw)
+            d_l = np.hypot(cx[index] - xl, cy[index] - yl)
+            for v in DISPLACEMENT_KERNELS:
+                totals[v][index] += kernel_g(v, d_w, d_l)
+    return cells.with_columns(*(pl.Series(f"G_{v}", totals[v]) for v in DISPLACEMENT_KERNELS))
