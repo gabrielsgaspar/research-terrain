@@ -459,7 +459,7 @@ datasets:
     licence: public
     derived: data/derived/cell_displacement/
     contract: data/contracts/cell_displacement.md
-    status: planned
+    status: available
     notes: >
       Decision 0005: each empty Legal Amazon 1 km cell not reached by
       cell_exposure, in a municipality with a close council race, and its
