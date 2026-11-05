@@ -41,6 +41,7 @@ acquired or built (its manifest merged into `data/manifests/`).
 | 26 | Acquire MapBiomas code shares per 1 km cell (Earth Engine, decision 0006) | `earthengine-api` and `tifffile` merged (done) |
 | 28 | Explore scripts import `terrain.strongholds` (explore) | done (#159) |
 | 29 | Displacement-exposure formulas compared for decision 0005 (explore) | `cell_exposure` recorded (done) |
+| 30 | Unrepresented cells' exposure (`cell_displacement`, decision 0005) | decision 0005 accepted (done) |
 
 ## Before filing a task
 
