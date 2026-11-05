@@ -51,7 +51,8 @@ Format:
   `municipalities_with_pair` and `close_pairs` notes count all of Brazil
   (4,591-4,938 municipalities), because the results tables are national;
   only Legal Amazon cells are in the output, so the values are unaffected.
-  Use the numbers above, not the notes.
+  Fixed on 2026-11-05 (PR #156): the rebuild gave byte-identical files, and
+  its notes count Legal Amazon pairs only (698 to 723 municipalities).
 
 ## 2026-11-04: Exposure formulas compared for decision 0004 (idea 0001, issue #116)
 - Tried: `explore/0001_exposure_options.py` on the exploration half, run
