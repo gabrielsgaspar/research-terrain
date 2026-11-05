@@ -272,6 +272,14 @@ def test_check_file_accepts_rounding_and_half_empty(tmp_path):
     assert check_file(path, SHAPE, 10000) == ROWS * COLS - ROWS * COLS // 2
 
 
+@pytest.mark.parametrize("compression", ["lzw", "deflate"])
+def test_check_file_reads_compressed_exports(tmp_path, compression):
+    # Earth Engine batch exports were LZW (run 42116556978); test tiles were Deflate
+    path = tmp_path / "a.tif"
+    tifffile.imwrite(path, good_array(), compression=compression)
+    assert check_file(path, SHAPE, 10000) == ROWS * COLS
+
+
 def test_check_file_rejects_unreadable(tmp_path):
     path = tmp_path / "a.tif"
     path.write_bytes(b"not a tiff")
