@@ -15,6 +15,7 @@ import pytest
 import shapely
 from matplotlib.collections import LineCollection, PolyCollection
 from matplotlib.colors import to_rgb
+from matplotlib.patches import Rectangle
 
 from terrain import figures
 from terrain.grid import km_to_lonlat
@@ -229,6 +230,17 @@ def test_population_draws_filled_cells_without_outlines(
     assert all(c.get_zorder() != 2.2 for c in outlines)  # no tenure layer on this map
     assert bar.ax.get_position().x0 == pytest.approx(ax.get_position().x0)
     assert bar.ax.get_position().x1 == pytest.approx(ax.get_position().x1)
+    x0, x1, y0, y1 = figures.POPULATION_ZOOM
+    assert ax.get_xlim() == (x0, x1) and ax.get_ylim() == (y0, y1)
+    (child,) = ax.child_axes  # the Legal Amazon, boxing the zoom
+    assert child.get_xlim() == figures.amazon_extent(layers)[:2]
+    (box,) = [p for p in child.patches if isinstance(p, Rectangle)]
+    assert (box.get_x(), box.get_y(), box.get_width(), box.get_height()) == (
+        x0,
+        y0,
+        x1 - x0,
+        y1 - y0,
+    )
     figures.plt.close(fig)
     for run in ("a", "b"):
         norm = figures.population(layers, cells, tmp_path / run)

@@ -62,7 +62,7 @@ drawing code (`terrain.figures`) and the tests import it, and only the
 
 | Name | For | Light | Dark |
 | --- | --- | --- | --- |
-| `purple` (default) | anything without its own hue: polling-place density, population | `#f2f0f7` | `#54278f` |
+| `purple` (default) | anything without its own hue: polling-place density, population (starts mid-light so sparse cells show; Gabriel, 2026-11-05) | `#c3b4d8` | `#54278f` |
 | `orange` | indigenous lands | `#fff5eb` | `#7f2704` |
 | `green` | forest, including undesignated public forest | `#f7fcf5` | `#00441b` |
 | `pink` | settlements | `#fde0ef` | `#8e0152` |
