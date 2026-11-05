@@ -454,6 +454,20 @@ datasets:
       data, decision 0003). One Parquet per election year 2008-2024. Draft:
       harness/issue-drafts/24-build-cell-exposure.md.
 
+  - name: cell_displacement
+    source: built from grid_cells, cell_exposure, polling_places, section_votes and tse_results
+    licence: public
+    derived: data/derived/cell_displacement/
+    contract: data/contracts/cell_displacement.md
+    status: planned
+    notes: >
+      Decision 0005: each empty Legal Amazon 1 km cell not reached by
+      cell_exposure, in a municipality with a close council race, and its
+      exposure to the winner's rather than the loser's stronghold,
+      exp(-d/10 km) to 50 km, with the 10-20 and 20-50 km rings; both halves
+      (treatment-side data, decision 0003). One Parquet per election year
+      2008-2024. Draft: harness/issue-drafts/30-build-cell-displacement.md.
+
   - name: mapbiomas_deforestation
     source: MapBiomas Brasil Collection 10, deforestation and secondary vegetation (Earth Engine asset below)
     licence: CC-BY-SA 4.0; cite MapBiomas
