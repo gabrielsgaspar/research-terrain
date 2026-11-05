@@ -3,7 +3,10 @@
 Earth Engine sits behind the small `EarthEngine` protocol, so tests use a fake.
 Earth Engine writes each year straight into the dated raw folder; this module
 then checks every file and returns the manifest, which `run_script` writes
-last. A failed run leaves files without a manifest, and the next run uses a new
+last. Right after starting its exports a run writes `exports.json` (the source and
+a year-to-task map) beside them. A run that times out leaves it, and the next run
+with the same source resumes that folder's tasks instead of starting new ones. A
+folder with a failed or cancelled task is not resumed: the next run uses a new
 dated folder. Nothing here computes a statistic of any code: the files hold
 outcome data for both halves.
 """
@@ -13,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import tempfile
 import time
 import warnings
@@ -29,6 +33,7 @@ from terrain.acquire import _free_prefix, _unchanged
 from terrain.catalog import dataset
 from terrain.grid import ALBERS
 from terrain.manifest import (
+    MANIFEST_NAME,
     build_manifest,
     content_hash,
     latest_manifest,
@@ -48,6 +53,8 @@ FILE_DIMENSIONS = [3584, 2816]  # multiples of SHARD_SIZE: one file per year
 MIN_SHARE_WITH_DATA = 0.5
 DONE = "COMPLETED"
 STOPPED = ("FAILED", "CANCELLED")
+EXPORTS_NAME = "exports.json"
+_FOLDER = re.compile(r"(\d{4}-\d{2}-\d{2})(?:-(\d+))?")
 
 
 class EarthEngineError(RuntimeError):
@@ -127,8 +134,48 @@ def check_file(path: Path, shape: tuple[int, ...], scale: int) -> int:
     return n
 
 
+def _write_pending(
+    store: Store, prefix: str, current: dict[str, Any], tasks: dict[int, str]
+) -> None:
+    record = {"sources": [current], "tasks": {str(y): t for y, t in tasks.items()}}
+    store.create(prefix + EXPORTS_NAME, json.dumps(record, sort_keys=True).encode("utf-8"))
+
+
+def _folder_order(folder: str) -> tuple[str, int]:
+    match = _FOLDER.fullmatch(folder)
+    assert match is not None
+    return match.group(1), int(match.group(2) or 1)
+
+
+def _pending(
+    store: Store, ee: EarthEngine, root: str, current: dict[str, Any]
+) -> tuple[str, dict[int, str]] | None:
+    """The newest resumable folder under `root`, or None.
+
+    A folder qualifies if it has `exports.json`, no manifest, no failed or
+    cancelled task, and the same source as `current`.
+    """
+    names: dict[str, set[str]] = {}
+    for path in store.list(root):
+        folder, _, name = path.removeprefix(root).partition("/")
+        if name and _FOLDER.fullmatch(folder):
+            names.setdefault(folder, set()).add(name)
+    open_folders = [f for f, n in names.items() if EXPORTS_NAME in n and MANIFEST_NAME not in n]
+    for folder in sorted(open_folders, key=_folder_order, reverse=True):
+        prefix = f"{root}{folder}/"
+        rec = json.loads(store.read_bytes(prefix + EXPORTS_NAME).decode("utf-8"))
+        tasks = {int(y): str(t) for y, t in rec["tasks"].items()}
+        if any(ee.task_state(t)[0] in STOPPED for t in tasks.values()):
+            continue
+        if _unchanged({"sources": rec["sources"]}, [current]):
+            return prefix, tasks
+        return None
+    return None
+
+
 def _wait(
     ee: EarthEngine,
+    prefix: str,
     tasks: dict[int, str],
     sleep: Callable[[float], None],
     clock: Callable[[], float],
@@ -146,7 +193,10 @@ def _wait(
         if done == len(tasks):
             return
         if clock() - start >= limit_s:
-            raise EarthEngineError(f"exports not finished after {limit_s / 60:.0f} minutes")
+            raise EarthEngineError(
+                f"exports not finished after {limit_s / 60:.0f} minutes "
+                f"({done} of {len(tasks)} completed); run again to resume {prefix}"
+            )
         sleep(poll_s)
 
 
@@ -180,9 +230,14 @@ def acquire_mapbiomas(
             code_commit=code_commit,
         )
 
-    prefix = _free_prefix(store, root, today)
-    tasks = {y: ee.start_export(y, params, prefix) for y in params["years"]}
-    _wait(ee, tasks, sleep, clock, poll_s, limit_s)
+    resumed = _pending(store, ee, root, current)
+    if resumed is not None:
+        prefix, tasks = resumed
+    else:
+        prefix = _free_prefix(store, root, today)
+        tasks = {y: ee.start_export(y, params, prefix) for y in params["years"]}
+        _write_pending(store, prefix, current, tasks)
+    _wait(ee, prefix, tasks, sleep, clock, poll_s, limit_s)
 
     tmp_dir.mkdir(parents=True, exist_ok=True)
     files: list[dict[str, Any]] = []
