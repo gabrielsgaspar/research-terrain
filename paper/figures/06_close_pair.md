@@ -1,9 +1,9 @@
 # 06_close_pair
 
-- Script: `figures/06_close_pair.py` at `0a32d3553f5b42ba9142c6fd3a70c9f2c68c5733`
-- Run: https://github.com/gabrielsgaspar/research-terrain/actions/runs/41937619933
-- Date (UTC): 2026-11-04T23:57:40Z
+- Script: `figures/06_close_pair.py` at `75f61dc7650e3f0b81de512147a0e468945d5195`
+- Run: https://github.com/gabrielsgaspar/research-terrain/actions/runs/41992051202
+- Date (UTC): 2026-11-05T08:08:08Z
 
 | File | Bytes | SHA-256 |
 | --- | --- | --- |
-| `06_close_pair.png` | 218896 | `ec8ffbb21d3a6bc20d6b25f6e84fdfca75302e172e0a5b3c7c8f83ea602984ee` |
+| `06_close_pair.png` | 214221 | `e03fb7a576e07241fc78625b689eff90ea0c849370a372106751e136a819866c` |
