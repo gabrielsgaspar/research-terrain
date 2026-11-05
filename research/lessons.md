@@ -16,6 +16,32 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-05: Displacement-exposure formulas compared for decision 0005 (idea 0001, issue #161)
+- Tried: `explore/0001_displacement_options.py` on the exploration half, run
+  41949908031 (`research/explore-runs/0001/41949908031.md`): for empty cells
+  beyond decision 0004's 10 km reach ("unrepresented"), the sum over close
+  pairs of a kernel at the elected candidate's stronghold minus the same at
+  the other's, for a 10-20 km ring, a 20-50 km ring, exp(-d/10) to 50 km and
+  "nearest stronghold within 50 km", 2008-2024.
+- Result: 76-79% of the cells of municipalities with a close pair are
+  unrepresented (1.77 to 1.94 million cells a year). exp(-d/10) gives a
+  non-zero exposure to 683,263 (2008) to 733,859 (2016) of them, the
+  20-50 km ring to 382,458-461,884, the 10-20 km ring to 137,826-164,336. In
+  2024, 14% of the cells exposed under exp(-d/10) are in undesignated forest,
+  24% touch an indigenous land and 5% a settlement (2008: 6% in undesignated
+  forest, the register's thinner first edition). exp(-d/10) agrees with the
+  10-20 km ring (2024 correlation 0.91) and the nearest-stronghold rule (0.64)
+  but not with the 20-50 km ring (0.03): the decay is carried by the cells
+  closest to the strongholds. 100-116 pairs a year (about 12%) have both
+  strongholds at the same polling place and carry no displacement contrast.
+- Why: the strongholds of a pair are usually a few kilometres apart, so far
+  from both the two kernels nearly cancel, and only the near band
+  distinguishes the winner's side from the loser's.
+- Implication: decision 0005 is proposed with exp(-d/10) to 50 km as the
+  displacement exposure, the 10-20 and 20-50 km rings as robustness, and
+  recentring as G / 2; Gabriel decides. The far ring measures something else
+  (nearly unrelated), so it is a separate check, not a substitute.
+
 ## 2026-11-05: Figure 6's municipality: Santa Rosa do Purus, 2024 (idea 0001, issue #141)
 - Tried: the rule of task 25, applied by `figures/06_close_pair.py` in
   figures-run 41937619933 on the exploration half only: among close pairs
