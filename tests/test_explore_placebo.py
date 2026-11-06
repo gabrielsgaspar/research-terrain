@@ -107,8 +107,11 @@ def test_check_terms_stops_on_a_mismatch():
         pb.check_terms(terms.head(len(terms) - 1), exposed, "exp2")
 
 
-def synthetic_design(y_of_d, n_munis=60, seed=3):
-    """One pair per municipality, four cells each; Y = y_of_d(D, noise) with D = sum(t) / 2."""
+def synthetic_design(y_of_d, n_munis=60, seed=3, by_muni=False):
+    """One pair per municipality, four cells each; Y = y_of_d(D, noise) with D = sum(t) / 2.
+
+    With `by_muni`, every cell of a municipality gets y_of_d(mean D of the municipality, m).
+    """
     rng = np.random.default_rng(seed)
     cells, terms = [], []
     for m in range(n_munis):
@@ -116,7 +119,8 @@ def synthetic_design(y_of_d, n_munis=60, seed=3):
         t = rng.normal(0, 0.5, size=4)
         noise = rng.normal(0, 1, size=4)
         for i in range(4):
-            cells.append((code, 4000 + i, 9000 + m, y_of_d(t[i] / 2, noise[i])))
+            y = y_of_d(t.mean() / 2, m) if by_muni else y_of_d(t[i] / 2, noise[i])
+            cells.append((code, 4000 + i, 9000 + m, y))
             terms.append((code, 4000 + i, 9000 + m, m, t[i]))
     sample = pl.DataFrame(cells, schema=["cd_ibge", "x_km", "y_km", "Y"], orient="row")
     term_frame = pl.DataFrame(
@@ -142,9 +146,17 @@ def test_flipping_every_pair_negates_exposure_and_beta():
 
 
 def test_beta_is_zero_when_y_is_constant_within_the_municipality():
-    design = synthetic_design(lambda d, e: 0.0)  # Y = 0 everywhere, so it is constant
-    assert pb.beta(pb.demeaned_exposure(design, np.ones(design.n_pairs)), design.y_tilde) == 0.0
-    assert pb.ri(design, (2008,), draws=20)["pooled"]["beta"] == 0.0
+    # Y is constant within each municipality but tracks its mean exposure across them, so
+    # only the fixed effects make beta 0.
+    design = synthetic_design(lambda d, m: 5.0 * d, by_muni=True)
+    ones = np.ones(design.n_pairs)
+    raw = pb.exposure_for(design, ones)
+    y_raw = np.repeat(5.0 * np.bincount(design.group, weights=raw) / 4, 4)
+    assert abs(pb.beta(raw - raw.mean(), y_raw - y_raw.mean())) > 1
+    assert np.allclose(design.y_tilde, 0.0, atol=1e-9)
+    b = pb.beta(pb.demeaned_exposure(design, ones), design.y_tilde)
+    assert b == pytest.approx(0.0, abs=1e-9)
+    assert pb.ri(design, (2008,), draws=20)["pooled"]["beta"] == pytest.approx(0.0, abs=1e-9)
 
 
 def test_ri_detects_a_real_effect_and_not_noise():

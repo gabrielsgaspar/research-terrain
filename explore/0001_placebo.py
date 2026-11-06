@@ -326,7 +326,8 @@ def ri(
             continue
         col = sims[:, j]
         finite = col[~np.isnan(col)]
-        extreme = int(np.sum(np.abs(finite) >= abs(b)))
+        # A draw where D has no variance counts as extreme, so p stays conservative.
+        extreme = int(np.sum(np.abs(finite) >= abs(b))) + col.size - finite.size
         out[label] = {
             "beta": float(b),
             "p": (1 + extreme) / (1 + draws),
