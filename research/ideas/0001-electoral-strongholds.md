@@ -100,6 +100,10 @@ Elections with usable geography: 2008, 2012, 2016, 2020 and 2024 (see
 - 2026-11-06: still exploring. Kill criterion 2 is not met: the pre-election
   placebo on the exploration half gives pooled `exp2` RI p 0.34 (run
   42193625417).
+- 2026-11-06: still exploring. Minimum detectable effects measured on
+  pre-election clearing (run 42265146230) for decision 0007; 455
+  indigenous-side and 1,987 settlement-side close-pair candidates at 5 km
+  (2008-2020).
 
 ## Log
 
@@ -118,3 +122,6 @@ Elections with usable geography: 2008, 2012, 2016, 2020 and 2024 (see
 - 2026-11-06: placebo (kill criterion 2): issue #189, PR #191, run 42193625417
   (`research/explore-runs/0001/42193625417.md`), record PR #192;
   `research/lessons.md` entry of the same date.
+- 2026-11-06: minimum detectable effects (for decision 0007): issue #194, PR
+  #196, run 42265146230 (`research/explore-runs/0001/42265146230.md`), record
+  PR #197; `research/lessons.md` entry of the same date.

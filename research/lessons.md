@@ -16,6 +16,33 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-06: The design's minimum detectable effects, for decision 0007 (idea 0001, issue #194)
+- Tried: `explore/0001_power.py` on the exploration half, run 42265146230
+  (`research/explore-runs/0001/42265146230.md`): the spread over 2,000
+  re-flips of the close pairs (the placebo's design, elections 2008-2020) of
+  the direct slope (`exp2`), the displacement slope (`g_exp10`) and the
+  constituency split (indigenous-side, settlement-side, both, neither,
+  untyped strongholds at 5 km, and 2 km as robustness), on pre-election
+  clearing only (E-4..E-1 and E-2..E-1).
+- Result: candidates per type at 5 km, pooled: 455 indigenous-side, 1,987
+  settlement-side, 96 both, 4,791 neither, 39 untyped (2 km: 337 and
+  1,211). Minimum detectable effect at 80% power (two-sided 5%, four-year
+  window), as a percentage of baseline clearing for a cell at the mean
+  exposure: direct 6.3%, displacement 8.0%; the split's difference
+  (one-sided 5%) 13.1% at 5 km and 17.7% at 2 km. At the median exposure
+  the same numbers are 2.8%, 3.7% and 5.1%; at the 90th percentile 17%,
+  22% and 34%. `2.8 x sd_ri` and the re-flip quantiles agree within a few
+  percent, so the re-flip distribution is close to normal.
+- Why: about 1.9 million exposed cell-elections give a precise pooled
+  slope, but the split rests on 455 indigenous-side candidates and the
+  exposure is skewed (mean |D| 0.071, median 0.032).
+- Implication: decision 0007 must state the exposure point at which the
+  effect size is read, because it moves the detectable effect about
+  sixfold between the median and the 90th percentile. Context, not a test:
+  the pre-election displacement slope has RI p 0.06 (four-year window); kill
+  criterion 2 covers the direct exposure only, so the pre-analysis plan
+  should report the displacement placebo too.
+
 ## 2026-11-06: Kill criterion 2, the pre-election placebo, is not met (idea 0001, issue #189)
 - Tried: `explore/0001_placebo.py` on the exploration half, run 42193625417
   (`research/explore-runs/0001/42193625417.md`): the sum of loss of primary
