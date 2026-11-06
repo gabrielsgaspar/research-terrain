@@ -475,7 +475,7 @@ datasets:
     source: MapBiomas Brasil Collection 10, deforestation and secondary vegetation (Earth Engine asset below)
     licence: CC-BY-SA 4.0; cite MapBiomas
     gcs: data/raw/mapbiomas/
-    status: planned
+    status: available
     notes: >
       Decision 0006. Codes 1 anthropic, 2 primary vegetation, 3 secondary
       vegetation, 4 loss of primary vegetation, 5 recovery to secondary
@@ -502,7 +502,7 @@ datasets:
     derived: data/derived/cell_outcomes/
     sealed: sealed/outcomes/cell_outcomes/
     contract: data/contracts/cell_outcomes.md
-    status: planned
+    status: available
     notes: >
       Decisions 0003 and 0006: each Legal Amazon 1 km cell's MapBiomas code
       shares (x 10,000) per year 2004-2024; exploration-half rows in derived,
