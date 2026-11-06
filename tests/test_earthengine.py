@@ -120,7 +120,9 @@ def test_created_run(tmp_path):
     src = m["sources"][0]
     assert src["last_modified"] == "2025-08-09T18:24:56Z" and src["bytes"] == 123
     assert validate_manifest(m, stage="acquire", dataset=NAME) == []
-    assert m["notes"] == "cells with data per year: 2004=12, 2005=12"
+    assert m["notes"] == "cells with data per year: " + ", ".join(
+        f"{y}=12 (0 partly unclassified)" for y in (2004, 2005)
+    )
     write_manifest(m, store, tmp_path / "out.json")
 
 
@@ -245,7 +247,7 @@ def bad_arrays():
     wrong_shape = np.zeros((ROWS + 1, COLS, CODES), dtype=np.uint16)
     wrong_shape[:] = good_array()[0, 0]
     bad_sum = good_array()
-    bad_sum[0, 0] = [1285, 1285, 1285, 1285, 1285, 1285, 1290]  # sums to 9000
+    bad_sum[0, 0] = [1571, 1571, 1571, 1571, 1571, 1571, 1574]  # sums to 11000
     sparse = good_array(empty_cells=ROWS * COLS // 2 + 1)
     return {
         "dtype": good_array().astype(np.uint8),
@@ -269,7 +271,15 @@ def test_check_file_accepts_rounding_and_half_empty(tmp_path):
     arr[ROWS - 1, COLS - 1, 0] += 7
     path = tmp_path / "a.tif"
     path.write_bytes(tif_bytes(arr))
-    assert check_file(path, SHAPE, 10000) == ROWS * COLS - ROWS * COLS // 2
+    assert check_file(path, SHAPE, 10000) == (ROWS * COLS - ROWS * COLS // 2, 0)
+
+
+def test_check_file_counts_partly_unclassified_cells(tmp_path):
+    arr = good_array()
+    arr[0, 0] = [1285, 1285, 1285, 1285, 1285, 1285, 1290]  # 10% without a code
+    path = tmp_path / "a.tif"
+    tifffile.imwrite(path, arr)
+    assert check_file(path, SHAPE, 10000) == (ROWS * COLS, 1)
 
 
 @pytest.mark.parametrize("compression", ["lzw", "deflate"])
@@ -277,7 +287,7 @@ def test_check_file_reads_compressed_exports(tmp_path, compression):
     # Earth Engine batch exports were LZW (run 42116556978); test tiles were Deflate
     path = tmp_path / "a.tif"
     tifffile.imwrite(path, good_array(), compression=compression)
-    assert check_file(path, SHAPE, 10000) == ROWS * COLS
+    assert check_file(path, SHAPE, 10000) == (ROWS * COLS, 0)
 
 
 def test_check_file_rejects_unreadable(tmp_path):
