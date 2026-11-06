@@ -16,6 +16,24 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-06: Kill criterion 2, the pre-election placebo, is not met (idea 0001, issue #189)
+- Tried: `explore/0001_placebo.py` on the exploration half, run 42193625417
+  (`research/explore-runs/0001/42193625417.md`): the sum of loss of primary
+  vegetation (MapBiomas code 4) over the four years before each election
+  2008-2024, on decision 0004's recentred exposure D/2, municipality-by-election
+  fixed effects, randomisation inference over 2,000 re-flips of the close
+  pairs; reached cells of municipalities with a close pair.
+- Result: pooled `exp2` beta -0.0075 (RI p 0.34; clustered SE 0.0070;
+  2,423,814 cell-elections, 4,575 pairs; mean Y 0.027). The rings agree
+  (`ring2` p 0.33, `ring5` p 0.54). One of the 15 per-election estimates is
+  below 0.05 (`exp2` 2008, beta -0.032, p 0.029), about what 15 tests give
+  by chance.
+- Why: close-race outcomes are as good as random relative to clearing before
+  the election, as the design assumes.
+- Implication: the idea survives kill criterion 2. The 2008 term starts from
+  the highest clearing (mean Y 0.040); per-election placebos go in the
+  pre-analysis plan as a reported check, not a test.
+
 ## 2026-11-05: Displacement-exposure formulas compared for decision 0005 (idea 0001, issue #161)
 - Tried: `explore/0001_displacement_options.py` on the exploration half, run
   41949908031 (`research/explore-runs/0001/41949908031.md`): for empty cells

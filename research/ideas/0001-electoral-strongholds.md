@@ -3,7 +3,7 @@ id: "0001"
 title: "Electoral strongholds and the geography of deforestation"
 status: exploring
 created: 2026-11-01
-updated: 2026-11-04
+updated: 2026-11-06
 datasets:
   - tse_votes_by_section
   - tse_polling_places
@@ -97,6 +97,9 @@ Elections with usable geography: 2008, 2012, 2016, 2020 and 2024 (see
   recentred as D / 2, with randomisation inference by re-flipping pairs.
 - 2026-11-05: still exploring. Displacement-exposure options compared on the
   exploration half (run 41949908031); decision 0005 accepted (2026-11-05).
+- 2026-11-06: still exploring. Kill criterion 2 is not met: the pre-election
+  placebo on the exploration half gives pooled `exp2` RI p 0.34 (run
+  42193625417).
 
 ## Log
 
@@ -111,4 +114,7 @@ Elections with usable geography: 2008, 2012, 2016, 2020 and 2024 (see
   `research/lessons.md` entry of the same date.
 - 2026-11-05: displacement options: issue #161, PR #163, run 41949908031
   (`research/explore-runs/0001/41949908031.md`), record PR #164;
+  `research/lessons.md` entry of the same date.
+- 2026-11-06: placebo (kill criterion 2): issue #189, PR #191, run 42193625417
+  (`research/explore-runs/0001/42193625417.md`), record PR #192;
   `research/lessons.md` entry of the same date.
