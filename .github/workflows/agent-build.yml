@@ -486,6 +486,11 @@ jobs:
       #      In agent mode the action runs no git after Claude exits (checked
       #      in src/entrypoints/run.ts at this pin: the git cleanup is tag mode
       #      only).
+      #    - allowed_bots: the action refuses bot actors, and a fix round is
+      #      dispatched by agent-review with its job token, so its actor is
+      #      github-actions[bot]. Only that bot, never `*`; a job token can
+      #      start no other event here (GitHub does not trigger workflows from
+      #      its `labeled` events).
       - name: Build
         id: claude
         uses: anthropics/claude-code-action@d535f5172dec02b204866b393d6b20b9b2aaf98d # v1.0.266
@@ -496,6 +501,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          allowed_bots: github-actions[bot]
           classify_inline_comments: "false"
           settings: >-
             {"permissions":{"blockReadsOutsideWorkingDirectories":true},
