@@ -1,0 +1,228 @@
+{
+  "dataset": "cell_outcomes",
+  "stage": "build",
+  "status": "created",
+  "gcs_prefix": "data/derived/cell_outcomes/3e678c659d9ad99c/",
+  "created_at": "2026-11-06T02:31:46.327248+00:00",
+  "code_commit": "44af38f7af7552a815dfbae5f39d3142164ede06",
+  "sources": [],
+  "files": [
+    {
+      "path": "data/derived/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2004.parquet",
+      "sha256": "cc32cb70500c72623ba1b248335d2c9182b9ff0dbf0d49fd72c9e2dd43ae1130",
+      "bytes": 10399388
+    },
+    {
+      "path": "data/derived/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2005.parquet",
+      "sha256": "18182b937dcdb63ea0843269aa8609c08678c2f6b185c77fdfa262b43c39240e",
+      "bytes": 10479123
+    },
+    {
+      "path": "data/derived/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2006.parquet",
+      "sha256": "6d48a45e456506ecb490775e123db15e4c04d511de5ee9d06d61cbc39bd596f3",
+      "bytes": 10509753
+    },
+    {
+      "path": "data/derived/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2007.parquet",
+      "sha256": "9ae01c36886a38c3fc60885c83a0f5af284eabdd1ac07caa00a9b346ceda4ab5",
+      "bytes": 10586152
+    },
+    {
+      "path": "data/derived/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2008.parquet",
+      "sha256": "e73838331dcc653163843c7ad384919ef5f9285605966de79fe690f22ac04880",
+      "bytes": 10637682
+    },
+    {
+      "path": "data/derived/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2009.parquet",
+      "sha256": "b719a0a417a21d933f03270a3824a9ff34ae3ca3acc8c6a3a980043e70b3d2e8",
+      "bytes": 10580361
+    },
+    {
+      "path": "data/derived/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2010.parquet",
+      "sha256": "75bb94336b7e0ca403f86f82e3e7474ba54dcfb2382176ca94903bacbb4333b9",
+      "bytes": 10678077
+    },
+    {
+      "path": "data/derived/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2011.parquet",
+      "sha256": "76e96b21816978724ce5c8798eeaa89806b5729df7674ffb5e8e3a4624583901",
+      "bytes": 10758925
+    },
+    {
+      "path": "data/derived/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2012.parquet",
+      "sha256": "a2b382dc26d71e31f575aeb0c51f74f8144713265061088270ca230416778514",
+      "bytes": 10881248
+    },
+    {
+      "path": "data/derived/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2013.parquet",
+      "sha256": "cc8c8ac1988badf51cb3cda238a53c6f480e41a3443327be5a97a61422da4009",
+      "bytes": 10971058
+    },
+    {
+      "path": "data/derived/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2014.parquet",
+      "sha256": "ad18d9302bf2cda757723d907e4395e08f94930393531b4789ecd27576e03a13",
+      "bytes": 11001430
+    },
+    {
+      "path": "data/derived/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2015.parquet",
+      "sha256": "bf2892ca33a141f7c46e9049766fed80abc7944481535121f5c857f14b4845c7",
+      "bytes": 11077180
+    },
+    {
+      "path": "data/derived/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2016.parquet",
+      "sha256": "45d7151a7d2111e987a69d83f8998b88db89fa49abd1d0066d0079afd9a35b34",
+      "bytes": 11134558
+    },
+    {
+      "path": "data/derived/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2017.parquet",
+      "sha256": "68e73b5a27407c34b8dbac545cfc7728752c5e3bbefc1375b604fd274de11dbc",
+      "bytes": 11127155
+    },
+    {
+      "path": "data/derived/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2018.parquet",
+      "sha256": "313177627e0271a73da1b4137162764012df1c4fe3108073b9ed0ad48f66012f",
+      "bytes": 11172588
+    },
+    {
+      "path": "data/derived/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2019.parquet",
+      "sha256": "36c68d0a1c3f2eae9f90c135d7206cb3d0ad16ddda5a38df17fcbad3fe6ac493",
+      "bytes": 11338860
+    },
+    {
+      "path": "data/derived/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2020.parquet",
+      "sha256": "807d12343552a6e52945860acf62b8b2461fbef8814a285493dbee349231db2c",
+      "bytes": 11332451
+    },
+    {
+      "path": "data/derived/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2021.parquet",
+      "sha256": "a0dcd2aa121786f4f816723135c2821ab6a5f1a7f04d060c7f1a812a656a4621",
+      "bytes": 11406379
+    },
+    {
+      "path": "data/derived/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2022.parquet",
+      "sha256": "d32700a5caf27ada32b7260884afbb5c5f72fad70e75f7da8362f01b5daa2f50",
+      "bytes": 11555209
+    },
+    {
+      "path": "data/derived/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2023.parquet",
+      "sha256": "1593c11f2cba33108a0e7f998af11e76e6e9ef2afb2df5d8b1fc8a466174598e",
+      "bytes": 11353875
+    },
+    {
+      "path": "data/derived/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2024.parquet",
+      "sha256": "e4bfe15cad76fc8e4ad61c046ccbecfb5c7ffc4fa06e1c129ba7c72dd999c0a4",
+      "bytes": 10836793
+    }
+  ],
+  "notes": "2004: cells_exploration=2530638, cells_confirmation=2498443, cells_without_data=357, cells_partly_unclassified=19958; 2005: cells_exploration=2530638, cells_confirmation=2498443, cells_without_data=357, cells_partly_unclassified=19421; 2006: cells_exploration=2530638, cells_confirmation=2498443, cells_without_data=357, cells_partly_unclassified=19412; 2007: cells_exploration=2530638, cells_confirmation=2498443, cells_without_data=357, cells_partly_unclassified=19310; 2008: cells_exploration=2530638, cells_confirmation=2498443, cells_without_data=357, cells_partly_unclassified=19004; 2009: cells_exploration=2530638, cells_confirmation=2498443, cells_without_data=357, cells_partly_unclassified=19347; 2010: cells_exploration=2530638, cells_confirmation=2498443, cells_without_data=357, cells_partly_unclassified=19631; 2011: cells_exploration=2530638, cells_confirmation=2498443, cells_without_data=357, cells_partly_unclassified=19684; 2012: cells_exploration=2530638, cells_confirmation=2498443, cells_without_data=357, cells_partly_unclassified=19719; 2013: cells_exploration=2530638, cells_confirmation=2498443, cells_without_data=357, cells_partly_unclassified=19481; 2014: cells_exploration=2530638, cells_confirmation=2498443, cells_without_data=357, cells_partly_unclassified=19652; 2015: cells_exploration=2530638, cells_confirmation=2498443, cells_without_data=357, cells_partly_unclassified=19702; 2016: cells_exploration=2530638, cells_confirmation=2498443, cells_without_data=357, cells_partly_unclassified=20514; 2017: cells_exploration=2530638, cells_confirmation=2498443, cells_without_data=357, cells_partly_unclassified=20447; 2018: cells_exploration=2530638, cells_confirmation=2498443, cells_without_data=357, cells_partly_unclassified=20266; 2019: cells_exploration=2530638, cells_confirmation=2498443, cells_without_data=357, cells_partly_unclassified=20128; 2020: cells_exploration=2530638, cells_confirmation=2498443, cells_without_data=357, cells_partly_unclassified=20215; 2021: cells_exploration=2530638, cells_confirmation=2498443, cells_without_data=358, cells_partly_unclassified=21640; 2022: cells_exploration=2530638, cells_confirmation=2498443, cells_without_data=357, cells_partly_unclassified=21530; 2023: cells_exploration=2530638, cells_confirmation=2498443, cells_without_data=357, cells_partly_unclassified=20412; 2024: cells_exploration=2530638, cells_confirmation=2498443, cells_without_data=357, cells_partly_unclassified=19975",
+  "inputs": [
+    "data/raw/mapbiomas/2026-11-05-2/_MANIFEST.json",
+    "data/derived/grid_cells/2ec824f4da3d3f60/_MANIFEST.json"
+  ],
+  "sealed_files": [
+    {
+      "path": "sealed/outcomes/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2004.parquet",
+      "sha256": "b585f86f33a7dd7006ac1f85bc655fa7c8f464607336dffeaee8337e10da03f4",
+      "bytes": 9866760
+    },
+    {
+      "path": "sealed/outcomes/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2005.parquet",
+      "sha256": "b2537569723a1b51fc8050fdd826906cf398bb13cf41d6c0a1c8b435a50efa7c",
+      "bytes": 9960039
+    },
+    {
+      "path": "sealed/outcomes/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2006.parquet",
+      "sha256": "40adc36f60d4c42d1b9c180d37db32b1a24858a99d37f96ece21ff7685006c21",
+      "bytes": 9955564
+    },
+    {
+      "path": "sealed/outcomes/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2007.parquet",
+      "sha256": "dd58001131039e88d4161bf6b814c13defc7d3313e1561ce72d91f6974f05329",
+      "bytes": 10060034
+    },
+    {
+      "path": "sealed/outcomes/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2008.parquet",
+      "sha256": "5ad9a2c1fc86e3bf65bbc297ded228a188575bb13233168f747be6b275a9d2c4",
+      "bytes": 10083235
+    },
+    {
+      "path": "sealed/outcomes/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2009.parquet",
+      "sha256": "32bde190ed6b2a7231659e27c7bb6b634495faafa4b356fbb926b6f1dcc3477f",
+      "bytes": 10013953
+    },
+    {
+      "path": "sealed/outcomes/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2010.parquet",
+      "sha256": "be6ae0108792c210c493dd1a9a66a9993df884d953dfcb725e1e03a340a71dc8",
+      "bytes": 10117086
+    },
+    {
+      "path": "sealed/outcomes/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2011.parquet",
+      "sha256": "d8e37b05db17a51431c03ad6dcf2139b6de6e64e668fdd90f9945c57b0070c1b",
+      "bytes": 10192286
+    },
+    {
+      "path": "sealed/outcomes/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2012.parquet",
+      "sha256": "ac8cbe65d38f70564b90f0ca4d05bd05cbb410cf4fd60ffbbd87682c33ea962b",
+      "bytes": 10273421
+    },
+    {
+      "path": "sealed/outcomes/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2013.parquet",
+      "sha256": "988559e717600af63275c46b7baca169f64d070fe48a364debe28b0772013812",
+      "bytes": 10368194
+    },
+    {
+      "path": "sealed/outcomes/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2014.parquet",
+      "sha256": "383b01ad838bf6bc012ee19e102542a7eecc38395e3d8bc55e612e24348fdb99",
+      "bytes": 10390425
+    },
+    {
+      "path": "sealed/outcomes/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2015.parquet",
+      "sha256": "f48df9b1b0051325d9492b4218ce086dc3c9458fc8a99c756fb9ce4983833070",
+      "bytes": 10481958
+    },
+    {
+      "path": "sealed/outcomes/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2016.parquet",
+      "sha256": "dd22f5c8b52440be426aa69b42eabac8c141107073729150ba6d848466c181ca",
+      "bytes": 10510904
+    },
+    {
+      "path": "sealed/outcomes/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2017.parquet",
+      "sha256": "d0a25acd5c094eae5be5844f98296af0a62363f0ee57e084500c4dd416e67ba7",
+      "bytes": 10502860
+    },
+    {
+      "path": "sealed/outcomes/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2018.parquet",
+      "sha256": "ad55840925272f7a491ab5939b4d4c45f19ebff1de963bca4e835a82a6d47491",
+      "bytes": 10561353
+    },
+    {
+      "path": "sealed/outcomes/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2019.parquet",
+      "sha256": "f5bc9ee9c69d8dba97100418a6716c1110e84cd1ba38a1ff2a777eecb63c0c51",
+      "bytes": 10700081
+    },
+    {
+      "path": "sealed/outcomes/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2020.parquet",
+      "sha256": "0e1b3cf46b0d9c801ca5d1155f5c9fcd5ca6247917ae8a21af54ceb52dfb387d",
+      "bytes": 10678516
+    },
+    {
+      "path": "sealed/outcomes/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2021.parquet",
+      "sha256": "c22ac4716507c20c0adbc4eae5ec6b111e0738d0c7de15b7de746b2686dda35b",
+      "bytes": 10754569
+    },
+    {
+      "path": "sealed/outcomes/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2022.parquet",
+      "sha256": "9bd1c7acc6f5aa8bfc884604919f3f0d4fb042016b832fe8800678003b6066b2",
+      "bytes": 10935061
+    },
+    {
+      "path": "sealed/outcomes/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2023.parquet",
+      "sha256": "a2d3e7903a7f585b801156ddbd755c0556e589f230059a0955a4673e012e902f",
+      "bytes": 10745961
+    },
+    {
+      "path": "sealed/outcomes/cell_outcomes/3e678c659d9ad99c/cell_outcomes_2024.parquet",
+      "sha256": "ec0b558ec887bcde1580b7d3eecfb56f243b97c3055d60d54ae3ca5e4ea267c4",
+      "bytes": 10248874
+    }
+  ]
+}
