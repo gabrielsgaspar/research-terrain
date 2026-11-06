@@ -109,10 +109,12 @@ def source(entry: dict[str, Any], info: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def check_file(path: Path, shape: tuple[int, ...], scale: int) -> int:
+def check_file(path: Path, shape: tuple[int, ...], scale: int) -> tuple[int, int]:
     """Raise `EarthEngineError` unless `path` is a valid share file.
 
-    Returns the number of cells with data (any share not zero).
+    Returns (cells with data, of them cells whose shares sum to less than `scale`).
+    Some 30 m pixels carry no code 1-7, so a cell's shares may sum to less than
+    `scale` (the rest is unclassified; 0.4% of cells in 2004), never to more.
     """
     try:
         with warnings.catch_warnings():
@@ -126,12 +128,12 @@ def check_file(path: Path, shape: tuple[int, ...], scale: int) -> int:
         raise EarthEngineError(f"{path.name}: shape {arr.shape}, expected {tuple(shape)}")
     has = arr.any(axis=2)
     sums = arr.sum(axis=2, dtype=np.int64)[has]
-    if sums.size and bool((np.abs(sums - scale) > shape[2]).any()):
-        raise EarthEngineError(f"{path.name}: shares of some cell do not sum to {scale}")
+    if sums.size and bool((sums > scale + shape[2]).any()):
+        raise EarthEngineError(f"{path.name}: shares of some cell sum to more than {scale}")
     n = int(has.sum())
     if n < MIN_SHARE_WITH_DATA * has.size:
         raise EarthEngineError(f"{path.name}: only {n} of {has.size} cells have data")
-    return n
+    return n, int((sums < scale - shape[2]).sum())
 
 
 def _write_pending(
@@ -248,9 +250,9 @@ def acquire_mapbiomas(
             raise EarthEngineError(f"{remote}: export finished but the file is missing")
         local = tmp_dir / params["files"][year]
         store.download(remote, local)
-        n = check_file(local, params["shape"], params["scale"])
+        n, short = check_file(local, params["shape"], params["scale"])
         files.append({"path": remote, "sha256": sha256_file(local), "bytes": local.stat().st_size})
-        cells.append(f"{year}={n}")
+        cells.append(f"{year}={n} ({short} partly unclassified)")
     return build_manifest(
         dataset=entry["name"],
         stage="acquire",
