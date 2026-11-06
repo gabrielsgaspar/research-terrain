@@ -115,8 +115,8 @@ def _pair_term(comps, pair):
     return out
 
 
-def test_five_types_and_the_band_boundary():
-    b = 5
+@pytest.mark.parametrize("b", [5, 2])
+def test_five_types_and_the_band_boundary(b):
     near, far = b - 1.0, b + 1.0
     table = cand_distances(
         [
@@ -143,10 +143,6 @@ def test_five_types_and_the_band_boundary():
         "settlement",
         "both",
     ]
-    two = table.head(2).with_columns(
-        pw.candidate_type(pl.col("dist_indigenous_km"), pl.col("dist_settlement_km"), 2).alias("t")
-    )
-    assert two["t"].to_list() == ["neither", "neither"]
 
 
 def test_type_counts_split_winners_and_losers():
