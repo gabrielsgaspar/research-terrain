@@ -43,7 +43,8 @@ acquired or built (its manifest merged into `data/manifests/`).
 | 29 | Displacement-exposure formulas compared for decision 0005 (explore) | `cell_exposure` recorded (done) |
 | 30 | Unrepresented cells' exposure (`cell_displacement`, decision 0005) | done (#174) |
 | 31 | MapBiomas acquisition resumes earlier exports | task 26 merged (done) |
-| 32 | Pre-election placebo, kill criterion 2 (explore) | cell_outcomes available (done) |
+| 32 | Pre-election placebo, kill criterion 2 (explore) | cell_outcomes available (done; #189) |
+| 33 | Minimum detectable effects for decision 0007 (explore) | placebo recorded (done) |
 
 ## Before filing a task
 
