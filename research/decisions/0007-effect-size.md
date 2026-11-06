@@ -129,9 +129,16 @@ of pre-election slopes as the sampling distribution under the alternative.
 - **Kill criterion 4**, the parallel rule. The displacement effect is under
   80% power (0.797), so the branch "both effects indistinguishable from zero,
   so the idea dies" is reported as **"cannot be applied at 80% power on this
-  half"**. If either effect is clearly non-zero (RI p below 0.05), kill
-  criterion 4 is **not met, whatever the power**. The 80% bar is applied as
-  written: no rerun or change of design to tighten 0.797.
+  half"**. If either effect is clearly non-zero, kill criterion 4 is **not
+  met, whatever the power**. The 80% bar is applied as written: no rerun or
+  change of design to tighten 0.797.
+- **"Clearly non-zero"** (kill criterion 4) means the two-sided
+  randomisation-inference p, with a Holm correction across the two effects
+  (direct and displacement) at 5% overall: order the two p-values; the
+  smaller must be below 0.025 for that effect to be non-zero, and only then
+  is the other non-zero if its p is below 0.05. Kill criterion 4 is not met
+  if at least one effect is non-zero under this rule (that is, if the smaller
+  p is below 0.025).
 
 ### Secondary displacement outcome (fixed before task B runs)
 
@@ -167,4 +174,5 @@ election, and a change outcome nets out a cell's own pre-election level.
 
 By Gabriel on 2026-11-06: 8% at the mean exposure, the gap reading of kill
 criterion 3, the parallel rule for kill criterion 4, no change to idea 0001's
-kill-criteria text, and the secondary displacement outcome ΔY.
+kill-criteria text, the secondary displacement outcome ΔY, and (same day)
+the Holm rule for "clearly non-zero" in kill criterion 4.
