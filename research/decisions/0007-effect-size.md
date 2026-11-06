@@ -1,16 +1,16 @@
 ---
 id: "0007"
 title: "The effect size for kill criteria 3 and 4, and the design's power at it"
-status: proposed
+status: accepted
 date: 2026-11-06
 supersedes: null
 ---
 
 # 0007: The effect size for kill criteria 3 and 4, and the design's power at it
 
-Date: 2026-11-06. Status: proposed; the effect size is Gabriel's decision.
-The main exploration (kill criteria 3 and 4, `explore/0001_effects.py`) waits
-for it.
+Date: 2026-11-06. Status: accepted by Gabriel on 2026-11-06, with the
+changes recorded under "Decision" below. The main exploration (kill criteria
+3 and 4, `explore/0001_effects.py`) follows from it.
 
 ## The question
 
@@ -88,66 +88,83 @@ and baseline (0.021).
 
 The political-economy effects closest to ours (who holds local office, at the
 time of an election) are therefore 8-10% of baseline deforestation. Both are
-averages over the treated units.
+averages over the treated units. **The Burgess anchor is a province-level
+effect of a district split**, a different unit and treatment from a 1 km
+cell's exposure to one close council race, so it sets the order of magnitude
+of the effect size, not an exact equivalent.
 
-## Proposal
+## Decision
 
-| Choice | Options | Proposal | Why |
+| Choice | Options | Decision | Why |
 | --- | --- | --- | --- |
-| Effect size | 5%; 8%; 10%; 15% of baseline clearing | **8% of baseline four-year clearing** | The lower end of the anchors (Burgess 8.2%, three-year cumulative, the closest match to a four-year window; Pailler 8-10%). The lower end is the conservative choice for power. |
-| Exposure point at which it is read | median; mean; 90th percentile of \|D\| (\|G\|) among exposed cells | **The mean** | Under a linear effect, the mean effect over exposed cells is slope × mean \|D\| / baseline, which matches the literature's figures (averages over treated units). The median makes power look easy; the 90th percentile asks a cell at the edge of the distribution to carry the literature's average. |
-| Effect size for kill criterion 3 (the split) | (A) the difference β^indigenous − β^settlement equals the effect size, on the indigenous-side cells; (B) each type moves by the effect size in its predicted direction, so the difference is twice as large | **(A)** | The weakest version of the claim (only one side moves) still predicts a gap of one effect size; (B) assumes both predictions hold at full size. |
-| Window | as decided | four-year primary, two-year secondary | Power is reported for both; the verdicts use the four-year window. |
+| Effect size | 5%; 8%; 10%; 15% of baseline clearing | **8% of baseline four-year clearing** | The lower end of the anchors (Burgess 8.2%, three-year cumulative, the closest match to a four-year window; Pailler 8-10%), the conservative choice for power. The anchors set the order of magnitude, not an exact equivalent (above). |
+| Exposure point at which it is read | median; mean; 90th percentile of \|D\| (\|G\|) among exposed cells | **The mean; the median and 90th-percentile readings are reported alongside** | Under a linear effect, the mean effect over exposed cells is slope × mean \|D\| / baseline, which matches the literature's figures (averages over treated units). |
+| Effect size for kill criterion 3 (the split) | (A) the gap β^indigenous − β^settlement equals one effect size, on the indigenous-side cells; (B) each type moves by the effect size in its predicted direction | **(A), a gap of one effect size** | The weakest version of the claim (only one side moves) still predicts a gap of one effect size. |
+| Window | as decided on 2026-11-06 | four-year primary, two-year secondary | Power is reported for both; the verdicts use the four-year window. |
+| Idea 0001's kill-criteria text | change; keep | **Unchanged** | The decision fixes the effect size the text refers to; the text itself needs no change. |
 
-**Power at the proposal** (8% at mean exposure; 10% for comparison),
-four-year window (two-year in brackets):
+**Power at 8%**, four-year window (two-year in brackets). Effect read at the
+mean exposure (decisive), with the median and 90th-percentile readings
+alongside:
 
-| Estimate | Test | Power at 8% | Power at 10% | 80% reached at 8%? |
-| --- | --- | --- | --- | --- |
-| 1. Direct | two-sided 5% | 0.94 (0.92) | 0.99 (0.99) | yes |
-| 2. Displacement | two-sided 5% | **0.797** (0.72) | 0.94 (0.89) | **no, by 0.3 points** |
-| 3. Split 5 km, difference, reading (A) | one-sided 5% | 0.45 (0.43) | 0.60 (0.57) | no |
-| 3. Split 5 km, difference, reading (B) | one-sided 5% | 0.99 (0.98) | 1.00 (1.00) | yes |
-| 3. Split 2 km, difference, reading (A) | one-sided 5% | 0.30 (0.29) | 0.41 (0.40) | no |
+| Estimate | Test | At the mean (decisive) | At the median | At the 90th percentile | 80% reached? |
+| --- | --- | --- | --- | --- | --- |
+| 1. Direct | two-sided 5% | 0.94 (0.92) | 1.00 (1.00) | 0.26 (0.23) | yes |
+| 2. Displacement | two-sided 5% | **0.797** (0.72) | 1.00 (1.00) | 0.17 (0.15) | **no** |
+| 3. Split 5 km, gap of one effect size | one-sided 5% | **0.45** (0.43) | 0.99 (0.98) | 0.14 (0.14) | **no** |
+| 3. Split 2 km (robustness), same | one-sided 5% | 0.30 (0.29) | 0.90 (0.89) | 0.11 (0.11) | no |
 
-Power is computed as Φ(τ / SD_RI − z), with τ the slope that gives the effect
-size at the mean exposure. It treats the re-flip distribution of
-pre-election slopes as the sampling distribution under the alternative.
+For comparison, at 10% (mean exposure): direct 0.99, displacement 0.94,
+split 5 km 0.60. Power is Φ(τ / SD_RI − z), with τ the slope that gives the
+effect size at the chosen exposure point. It treats the re-flip distribution
+of pre-election slopes as the sampling distribution under the alternative.
 
-What follows at the proposal:
+### How kill criteria 3 and 4 are applied on this half
 
-- **Kill criterion 3** (reading A) cannot be applied at 80% power on this
-  half: by Gabriel's decision of 2026-11-06, it stays as written and the
-  result is reported as "cannot be applied at 80% power on this half".
-- **Kill criterion 4** needs both effects to be powered. At 8% the direct
-  effect is (0.94); the displacement effect is just short (0.797). Strictly,
-  kill criterion 4 cannot be applied at 8% either. Moving to 10% would clear
-  it, but choosing the size because it clears the bar is the forking path
-  this decision exists to close, so that is not proposed.
+- **Kill criterion 3** is read as a gap of one effect size between
+  indigenous-side and settlement-side strongholds. Its power is 0.45, so on
+  this half it **cannot be applied at 80% power**. The criterion is unchanged
+  (Gabriel's decision of 2026-11-06); the test is still run, one-sided at 5%
+  with the two-sided p alongside, and reported with that label.
+- **Kill criterion 4**, the parallel rule. The displacement effect is under
+  80% power (0.797), so the branch "both effects indistinguishable from zero,
+  so the idea dies" is reported as **"cannot be applied at 80% power on this
+  half"**. If either effect is clearly non-zero (RI p below 0.05), kill
+  criterion 4 is **not met, whatever the power**. The 80% bar is applied as
+  written: no rerun or change of design to tighten 0.797.
 
-## For Gabriel to decide
+### Secondary displacement outcome (fixed before task B runs)
 
-1. The effect size: 8% as proposed, or another figure (10% is the top of the
-   anchored range).
-2. The exposure point: the mean as proposed, or the median or 90th
-   percentile.
-3. Kill criterion 3's reading: (A) as proposed, or (B).
-4. **New, not covered on 2026-11-06:** what to report if kill criterion 4 is
-   underpowered for one of its two effects (as the displacement effect is at
-   8%). The natural parallel to kill criterion 3 is "cannot be applied at 80%
-   power on this half", with the criterion unchanged.
-5. Whether idea 0001's kill-criteria text changes. Nothing here requires it.
-   If accepted, the effect size goes into the pre-analysis plan as fixed
-   here.
+The change in clearing on the unrepresented cells:
+
+ΔY_it = Y4_it − Ypre_it,
+
+with Y4 the sum of loss of primary vegetation (code 4 / 10,000) over the four
+years after the election (t+1 to t+4) and Ypre the same sum over the four
+years before (t−4 to t−1); the election year t is in neither. Same cells as
+the displacement effect (decision 0005's unrepresented cells), the same G / 2
+regression, municipality-by-election fixed effects and 2,000 re-flips of the
+close pairs. **It has no kill-criterion role**: kill criteria 3 and 4 use Y4
+only.
+
+Why: the displacement placebo (G / 2 on pre-election clearing) has RI p 0.06
+(four-year window, run 42265146230). Kill criterion 2 covers the direct
+exposure only, so this does not fail it. But it means unrepresented cells
+with more exposure to the winner's stronghold may already differ before the
+election, and a change outcome nets out a cell's own pre-election level.
 
 ## Caveats
 
 - Spread is measured on pre-election clearing; post-election clearing may
   vary more or less. The 2020 term's last year (2024) is provisional in
   MapBiomas Collection 10.
-- Context, not a test: the pre-election displacement slope has RI p 0.06
-  (four-year window; run 42265146230). Kill criterion 2 covers the direct
-  exposure only; the pre-analysis plan should report the displacement
-  placebo.
+- The displacement placebo (RI p 0.06) is reported next to the displacement
+  results in the main exploration.
 - The 2 km split rests on 337 indigenous-side candidates and is robustness
   only.
+
+## Accepted
+
+By Gabriel on 2026-11-06: 8% at the mean exposure, the gap reading of kill
+criterion 3, the parallel rule for kill criterion 4, no change to idea 0001's
+kill-criteria text, and the secondary displacement outcome ΔY.
