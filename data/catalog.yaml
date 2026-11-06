@@ -493,6 +493,20 @@ datasets:
       grid_km: {x0: 2823, x1: 6173, y0: 9322, y1: 11902}
       file: mapbiomas_shares_<year>.tif
 
+  - name: cell_outcomes
+    source: built from mapbiomas_deforestation and grid_cells, split by half
+    licence: CC-BY-SA 4.0 (MapBiomas)
+    derived: data/derived/cell_outcomes/
+    sealed: sealed/outcomes/cell_outcomes/
+    contract: data/contracts/cell_outcomes.md
+    status: planned
+    notes: >
+      Decisions 0003 and 0006: each Legal Amazon 1 km cell's MapBiomas code
+      shares (x 10,000) per year 2004-2024; exploration-half rows in derived,
+      confirmation-half rows only in sealed (readable by the unblind account).
+      Main outcome code 4 (loss of primary vegetation). Draft:
+      harness/issue-drafts/27-build-cell-outcomes.md.
+
   - name: funai_indigenous_lands
     source: FUNAI indigenous land boundaries
     licence: public
