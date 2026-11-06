@@ -43,7 +43,9 @@ side terms, candidate types, components, displacement terms and checks,
   - `Y2` (secondary): E+1 to E+2.
   - `Y3` (sensitivity, **2020 election only**, labelled as such): 2021-2023.
     2024 is provisional in MapBiomas Collection 10. Report it as a separate
-    estimate on the 2020 cells only.
+    estimate on the 2020 cells only. The 2020-only Y3 sensitivity keeps the
+    pooled numbering of pairs, so each of its draws uses the 2020 part of the
+    same sign vector as every other estimate.
   - `Ypre`: E-4 to E-1 (the placebo window).
   - `dY` = `Y4` − `Ypre` (secondary displacement outcome, decision 0007).
 - **Samples.** A cell enters election E if `has_data` is true in all of
@@ -168,6 +170,12 @@ lessons entry (written by a person when the run is recorded).
    "not met".
 6. With a synthetic `Y` = 0.1 × D̃ plus noise over many pairs, the direct
    slope is near 0.1 with RI p below 0.01.
-7. Every table read is restricted to the exploration half (the existing
+7. For each outcome, the years read are exactly: `Y4` = t+1 to t+4, `Y2` =
+   t+1 to t+2, `Y3` (2020) = 2021 to 2023, `Ypre` = t-4 to t-1; and the
+   election year t is never read.
+8. All estimates (direct, displacement, split, rings, `Y2`, `dY`, `Y3`) use
+   the same 2,000 sign vectors from the same seed, and a pair has the same
+   index in every estimate.
+9. Every table read is restricted to the exploration half (the existing
    explore test passes); `uv run ruff check .`, `uv run ruff format --check .`
    and `uv run pytest` pass.
