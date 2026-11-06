@@ -6,7 +6,7 @@ import numpy as np
 import polars as pl
 import pytest
 
-from terrain.strongholds import displacement, exposure
+from terrain.strongholds import displacement, exposure, kernel_g
 
 REPO = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location("effects", REPO / "explore" / "0001_effects.py")
@@ -343,6 +343,94 @@ def test_empty_parts_keep_pair_numbering_and_every_estimate_shares_the_draws():
         assert sims[("full", "Y4", "beta")][r] == pytest.approx(
             pw.estimates(full, signs)[("Y4", "beta")]
         )
+
+
+def synthetic_displacement(n_munis=30, seed=11):
+    """Twelve cells and two located pairs per municipality; Y4 = 0.05 * G / 2 + noise."""
+    rng = np.random.default_rng(seed)
+    cells, used = [], []
+    for m in range(n_munis):
+        code = f"{1200000 + m}"
+        north = 9000 + 200 * m
+        for i in range(12):
+            cells.append((code, 5000 + 7 * (i % 4), north + 9 * (i // 4)))
+        for p in range(2):
+            xw, yw, xl, yl = rng.uniform(-60, 80, size=4)
+            used.append((code, 2 * m + p, 5000 + xw, north + yw, 5000 + xl, north + yl))
+    cells = pl.DataFrame(cells, schema=["cd_ibge", "x_km", "y_km"], orient="row")
+    used = pl.DataFrame(used, schema=["cd_ibge", "pair_id", "xw", "yw", "xl", "yl"], orient="row")
+    g = displacement(cells, used)
+    y4 = 0.05 * g["G_exp10"].to_numpy() / 2 + rng.normal(0, 0.1, g.height)
+    sample = g.select(*pb.CELL, pl.col("G_exp10").alias("D")).with_columns(
+        Y4=pl.Series(y4), Y2=pl.Series(y4 / 2)
+    )
+    return cells, used, g, sample, 2 * n_munis
+
+
+def test_exp10_is_decay_10_km_cut_at_50_km():
+    far = np.full(5, 1e6)  # the loser's stronghold is far away and contributes nothing
+    d = np.array([0.0, 10.0, 50.0, 50.0 + 1e-12, 50.1])
+    got = kernel_g("exp10", d, far)
+    assert np.array_equal(got[:4], np.exp(-d[:4] / 10.0))  # 50 + 1e-12 counts as 50
+    assert got[1] == pytest.approx(np.exp(-1.0))
+    assert got[4] == 0.0
+
+
+def test_displacement_helper_with_exp10_gives_exactly_the_power_estimate():
+    cells, used, g, sample, n_pairs = synthetic_displacement()
+    helper = ef.displacement_terms_for(cells, used, "exp10")
+    power = pw.displacement_terms(cells, used)
+    assert helper.equals(power)
+    # Some (cell, pair) terms are zero because both strongholds lie beyond 50 km.
+    assert 0 < helper.height < 2 * cells.height
+    pw.check_displacement(helper, g.select(*pb.CELL, pl.col("G_exp10").alias("g_exp10")))
+    specs = {
+        name: pw.assemble(name, [pw.make_part(sample, {"beta": terms}, n_pairs, 2008)])
+        for name, terms in (("helper", helper), ("power", power))
+    }
+    observed, sims = pw.run_ri(specs, draws=50, seed=4)
+    for w in pw.WINDOWS:
+        assert not np.isnan(observed[("power", w, "beta")])
+        assert observed[("helper", w, "beta")] == observed[("power", w, "beta")]
+        assert np.array_equal(sims[("helper", w, "beta")], sims[("power", w, "beta")])
+    # A ring kernel gives another estimate on the same input, so the comparison can fail.
+    ring = ef.displacement_terms_for(cells, used, "ring10_20")
+    other = pw.assemble("ring", [pw.make_part(sample, {"beta": ring}, n_pairs, 2008)])
+    assert (
+        pw.estimates(other, np.ones(n_pairs))[("Y4", "beta")] != observed[("power", "Y4", "beta")]
+    )
+
+
+def test_y3_with_empty_2008_2016_parts_equals_2020_alone():
+    sample, terms, n_2020 = synthetic_direct(n_munis=40, seed=8)
+    earlier = {2008: (3, 7), 2012: (5, 11), 2016: (6, 13)}  # (municipalities, pairs)
+    offset = sum(n for _, n in earlier.values())
+    real = pw.make_part(sample, {"beta": terms}, n_2020, 2020)
+    y3 = pw.assemble("y3", [*(ef.empty_part(n, e) for e, (_, n) in earlier.items()), real])
+    alone = pw.assemble("alone", [real])
+    assert y3.designs["beta"].n_pairs == offset + n_2020
+    assert np.array_equal(y3.designs["beta"].cols, alone.designs["beta"].cols + offset)
+    # Another estimate in the same run has cells in every election, as the main ones do.
+    full_parts = []
+    for e, (munis, n) in earlier.items():
+        s, t, _ = synthetic_direct(n_munis=munis, seed=e)
+        full_parts.append(pw.make_part(s, {"beta": t}, n, e))
+    s, t, _ = synthetic_direct(n_munis=40, seed=9)
+    full = pw.assemble("full", [*full_parts, pw.make_part(s, {"beta": t}, n_2020, 2020)])
+    draws = 20
+    observed, sims = pw.run_ri({"full": full, "y3": y3}, draws=draws, seed=12)
+    alone_obs, _ = pw.run_ri({"alone": alone}, draws=1, seed=12)
+    rng = np.random.default_rng(12)
+    for w in pw.WINDOWS:
+        assert not np.isnan(observed[("y3", w, "beta")])
+        assert observed[("y3", w, "beta")] == alone_obs[("alone", w, "beta")]
+    for r in range(draws):
+        signs = rng.integers(0, 2, size=offset + n_2020).astype(float) * 2.0 - 1.0
+        got = pw.estimates(alone, signs[offset:])
+        full_got = pw.estimates(full, signs)
+        for w in pw.WINDOWS:
+            assert sims[("y3", w, "beta")][r] == got[(w, "beta")]
+            assert sims[("full", w, "beta")][r] == full_got[(w, "beta")]
 
 
 def test_slots_fill_the_two_windows_from_the_named_outcomes():
