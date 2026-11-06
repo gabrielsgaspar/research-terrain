@@ -10,6 +10,9 @@
 #   status:   planned or available; what has reached GCS is in data/manifests/
 #   derived:  (optional) folder under gs://research-terrain/ where the build
 #             writes <hash>/ folders; code reads it from here
+#   sealed:   (optional) folder under sealed/outcomes/ where an outcome build
+#             writes the confirmation half's <hash>/ folders (decision 0003);
+#             code reads it from here and only creates objects there
 #   contract: schema file in data/contracts/, once built
 #   notes:    caveats
 #   acquire:  (optional) what the generic acquirer downloads for this
