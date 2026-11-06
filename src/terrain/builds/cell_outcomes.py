@@ -24,6 +24,7 @@ import polars as pl
 import tifffile
 
 from terrain import grid
+from terrain.builds import polling_place_tenure as tenure
 from terrain.builds.polling_place_tenure import BuildError, _fetch, _file
 from terrain.explore import EXPLORE_LIST
 from terrain.manifest import MANIFEST_NAME, build_manifest, content_hash, sha256_file
@@ -38,8 +39,9 @@ MIN_SHARE_WITH_DATA = 0.99
 UNCLASSIFIED_NOTE_ABOVE = 7
 
 # Every module whose code decides what this build writes. Its source is part of the
-# output path: this file and the grid helpers.
-CODE_MODULES = (Path(__file__), Path(grid.__file__))
+# output path: this file, the grid helpers, and polling_place_tenure (for `_file`, which
+# picks the inputs, and `_fetch`, which checks their SHA-256).
+CODE_MODULES = (Path(__file__), Path(grid.__file__), Path(tenure.__file__))
 
 
 def output_name(year: int) -> str:

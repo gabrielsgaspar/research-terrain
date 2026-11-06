@@ -13,7 +13,12 @@ Paths come from the catalog entry `cell_outcomes`:
 
 `<hash>` is the same for both: `content_hash` of the sorted input SHA-256s (the GeoTIFFs
 and the `grid_cells` Parquet), the SHA-256 of the split list, the years, and the source
-of `terrain/builds/cell_outcomes.py` and `terrain/grid.py`.
+of `terrain/builds/cell_outcomes.py`, `terrain/grid.py` and
+`terrain/builds/polling_place_tenure.py` (its `_file` and `_fetch` pick and check the inputs).
+
+If a sealed object already exists for a later year, the build stops after the sealed
+files of earlier years are uploaded (create-only); a rerun with the same inputs needs a
+new hash, so change an input or the code, or ask the owner to remove the partial folder.
 
 ## Sources
 

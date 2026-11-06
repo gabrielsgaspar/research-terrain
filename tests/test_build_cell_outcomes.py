@@ -287,4 +287,8 @@ def test_no_code_statistic_in_notes_log_or_output(tmp_path, capsys, caplog):
 
 
 def test_module_names_its_code_modules():
-    assert {p.name for p in co.CODE_MODULES} == {"cell_outcomes.py", "grid.py"}
+    assert {p.name for p in co.CODE_MODULES} == {
+        "cell_outcomes.py",
+        "grid.py",
+        "polling_place_tenure.py",
+    }
