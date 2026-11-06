@@ -3,6 +3,7 @@
 import importlib.util
 from pathlib import Path
 
+import numpy as np
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
@@ -161,6 +162,7 @@ def test_constants_match():
         "PLACE_KEY",
         "ELECTED_CODES",
         "NOT_ELECTED_CODES",
+        "MIN_PLACE_VOTES",
     ):
         assert getattr(lib, name) == getattr(census, name), name
     for name in ("CELL", "MAX_KM", "TOLERANCE", "KERNELS", "MEASURES"):
@@ -212,6 +214,24 @@ def test_place_candidate_votes_matches():
     mine = lib.place_candidate_votes(sv, 1)
     assert mine.height > 0
     assert_frame_equal(mine, census.place_candidate_votes(sv, 1), check_row_order=False)
+
+
+@pytest.mark.parametrize("minimum", [None, 5, 100])
+def test_strongholds_matches(minimum):
+    place_votes = lib.place_candidate_votes(section_votes(), 1)
+    args = {} if minimum is None else {"min_place_votes": minimum}
+    mine = lib.strongholds(place_votes, **args)
+    theirs = census.strongholds(census.place_candidate_votes(section_votes(), 1), **args)
+    assert_frame_equal(mine, theirs, check_row_order=False)
+    if minimum != 100:
+        assert mine.height > 0
+
+
+def test_strongholds_minimum_changes_the_result():
+    place_votes = lib.place_candidate_votes(section_votes(), 1)
+    assert lib.MIN_PLACE_VOTES == 50
+    loose = lib.strongholds(place_votes, min_place_votes=5)
+    assert loose.height > lib.strongholds(place_votes).height
 
 
 # --- Exposure functions
@@ -296,3 +316,88 @@ def test_exposure_rejects_an_unknown_measure():
     empty = pl.DataFrame()
     with pytest.raises(ValueError):
         lib.exposure(empty, empty, empty, empty, "exp2", "mean")
+
+
+# --- Displacement functions (decision 0005)
+
+displacement_options = load("displacement_options", "0001_displacement_options.py")
+
+
+def displacement_world():
+    paired, place_votes = world()
+    pairs = lib.close_pairs(paired, threshold=0.05)
+    strong = lib.strongholds(place_votes, min_place_votes=5)
+    return pairs, strong, lib.locate_places(places())
+
+
+def test_displacement_constants_match():
+    assert lib.OUTER_KM == displacement_options.OUTER_KM
+    assert set(lib.DISPLACEMENT_KERNELS) == set(displacement_options.VARIANTS) - {"nearest"}
+
+
+def test_stronghold_pairs_matches():
+    pairs, strong, located = displacement_world()
+    mine = lib.stronghold_pairs(pairs, strong, located)
+    theirs = displacement_options.stronghold_pairs(pairs, strong, located)
+    assert mine[0].height > 0
+    assert_frame_equal(mine[0], theirs[0])
+    assert mine[1:] == theirs[1:]
+
+
+def test_stronghold_pairs_without_coordinates_matches():
+    pairs, strong, located = displacement_world()
+    nowhere = located.head(0)
+    used, same, no_coordinates = lib.stronghold_pairs(pairs, strong, nowhere)
+    assert used.height == 0
+    assert same + no_coordinates == pairs.height > 0
+    theirs = displacement_options.stronghold_pairs(pairs, strong, nowhere)
+    assert_frame_equal(used, theirs[0])
+    assert (same, no_coordinates) == theirs[1:]
+
+
+@pytest.mark.parametrize("munis", [{"1100001"}, {"1100001", "1100002"}, set()])
+def test_unrepresented_matches(munis):
+    grid = cells().with_columns(
+        pl.when(pl.col("x_km") == X0).then(5).otherwise(0).alias("pop_2022")
+    )
+    reached = pl.DataFrame({"cd_ibge": ["1100001"], "x_km": [X0 + 4], "y_km": [Y0]})
+    mine = lib.unrepresented(grid, reached, munis)
+    assert_frame_equal(mine, displacement_options.unrepresented(grid, reached, munis))
+    if munis:
+        assert mine.height > 0
+        assert mine.filter(pl.col("pop_2022") != 0).height == 0
+        assert mine.join(reached, on=lib.CELL, how="semi").height == 0
+
+
+@pytest.mark.parametrize("name", ["exp10", "ring10_20", "ring20_50"])
+def test_kernel_g_matches(name):
+    d = [0.0, 5.0, 10.0, 10.0 + 1e-10, 10.5, 20.0, 20.0 + 1e-10, 35.0, 50.0, 50.0 + 1e-10, 60.0]
+    d_w = pl.Series(d).to_numpy()
+    d_l = np.roll(d_w, 2)
+    mine = lib.kernel_g(name, d_w, d_l)
+    assert (mine != 0).any()
+    assert (mine == displacement_options.kernel_g(name, d_w, d_l)).all()
+    assert (lib.kernel_g(name, d_l, d_w) == -mine).all()
+
+
+def test_kernel_g_rejects_nearest_and_unknown_names():
+    d = pl.Series([1.0, 2.0]).to_numpy()
+    for name in ("nearest", "ring2"):
+        with pytest.raises(ValueError):
+            lib.kernel_g(name, d, d)
+
+
+def test_displacement_matches():
+    pairs, strong, located = displacement_world()
+    used, _, _ = lib.stronghold_pairs(pairs, strong, located)
+    grid = cells()
+    mine = lib.displacement(grid, used)
+    theirs = displacement_options.displacement(grid, used)
+    assert mine.columns == [
+        "cd_ibge",
+        "x_km",
+        "y_km",
+        *(f"G_{k}" for k in lib.DISPLACEMENT_KERNELS),
+    ]
+    assert (mine["G_exp10"] != 0).any()
+    assert_frame_equal(mine, theirs.select(mine.columns))

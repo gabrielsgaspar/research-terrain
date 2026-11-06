@@ -1,10 +1,10 @@
 # 02_polling_places
 
-- Script: `figures/02_polling_places.py` at `28db0b82ebe9bf4ca568b0020989d949bac24be2`
-- Run: https://github.com/gabrielsgaspar/research-terrain/actions/runs/41925829772
-- Date (UTC): 2026-11-04T22:30:59Z
+- Script: `figures/02_polling_places.py` at `75f61dc7650e3f0b81de512147a0e468945d5195`
+- Run: https://github.com/gabrielsgaspar/research-terrain/actions/runs/41992040050
+- Date (UTC): 2026-11-05T08:07:55Z
 
 | File | Bytes | SHA-256 |
 | --- | --- | --- |
-| `02_polling_places.png` | 728572 | `b888295262e1882d8e7da7cad46ee9afabd5c561969c4d9f78588e0ab00459de` |
-| `02_polling_places_appendix.png` | 1160983 | `3ca4b0e219de5863f8c0458935f64d3d1b6bd5cafad937f69d9d6558c6cc4002` |
+| `02_polling_places.png` | 790066 | `f74c54182bdfd39c18770c2c060385eec5cce37a746f5d3772ac0f56b85e6300` |
+| `02_polling_places_appendix.png` | 1237040 | `7d568f0a3076dbd2dee1b904f0d7ffadb6dd16a4a5b070634faaa4410e1cafd7` |

@@ -4,7 +4,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
-from matplotlib.colors import LogNorm
+from matplotlib.colors import LogNorm, Normalize
 from matplotlib.lines import Line2D
 
 from terrain import style
@@ -17,6 +17,14 @@ from terrain import style
 def test_thousands(value, text):
     assert style.thousands(value) == text
     assert style.THOUSANDS(value, 0) == text
+
+
+@pytest.mark.parametrize(
+    ("value", "text"), [(0, "0%"), (0.1, "10%"), (0.25, "25%"), (1, "100%"), (0.504, "50%")]
+)
+def test_percent(value, text):
+    assert style.percent(value) == text
+    assert style.PERCENT(value, 0) == text
 
 
 def test_log_ticks_are_powers_of_ten_inside_the_range():
@@ -90,6 +98,18 @@ def test_colorbar_spans_exactly_the_panels():
         "1,000",
         "10,000",
     ]
+    plt.close(fig)
+
+
+def test_colorbar_formatter_gives_percent_ticks():
+    fig, axes = _two_maps()
+    image = axes[0].imshow(np.array([[0.0, 0.3]]), norm=Normalize(0, 0.3))
+    bar = style.bottom_colorbar(fig, axes, image, "Share", formatter=style.PERCENT)
+    fig.canvas.draw()
+    labels = [t.get_text() for t in bar.ax.get_xticklabels() if t.get_text()]
+    assert labels
+    assert all(text.endswith("%") for text in labels)
+    assert labels[0] == "0%"
     plt.close(fig)
 
 

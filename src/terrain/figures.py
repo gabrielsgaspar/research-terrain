@@ -1,5 +1,5 @@
 """Logic of the paper figures: 1 study area, 2 polling-place density, 3 population,
-4 indigenous lands and settlements, 5 land without voters.
+4 indigenous lands and settlements, 5 land without voters, 6 one close pair.
 
 Everything is drawn in IBGE's Albers km (`terrain.grid.to_albers_km`), which is
 equal-area, in the one style of `terrain.style` (figures/STYLE.md): PNG only,
@@ -8,22 +8,32 @@ Layers come from `figure_layers.parquet` (data/contracts/figure_layers.md);
 figures 3 and 5 also read `grid_cells.parquet`. Each figure has a `*_figure`
 function that returns the matplotlib figure (for tests of its layout) and a
 function that saves it. Scripts: figures/NN_*.py; contract: figures/README.md.
+
+Figure 6 picks its municipality from the exploration half only: it reads the split list
+and restricts every table with `cd_ibge` (`terrain.explore`) before using it.
 """
 
 from __future__ import annotations
 
+import re
+import tempfile
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import polars as pl
 import shapely
+from matplotlib.cm import ScalarMappable
 from matplotlib.collections import LineCollection, PathCollection, PolyCollection
-from matplotlib.colors import BoundaryNorm, ListedColormap, LogNorm
+from matplotlib.colors import BoundaryNorm, ListedColormap, LogNorm, Normalize
+from matplotlib.lines import Line2D
 from matplotlib.patches import Patch, Rectangle
 from matplotlib.path import Path as MplPath
 
+from terrain import strongholds as sh
 from terrain import style
+from terrain.explore import exploration_municipalities, restrict
 from terrain.grid import to_albers_km
 from terrain.manifest import sha256_file
 from terrain.storage import Store
@@ -42,6 +52,10 @@ FRAME = (-92.0, -57.0, -26.0, 14.0)
 # Figure 1's inset: half the width and height it had before the style (25% of the figure).
 INSET_WIDTH = 0.125
 INSET_HEIGHT = 0.3  # an upper bound: the inset keeps South America's aspect
+# Figure 3 zooms to eastern Pará and Maranhão (Albers km), where cells are densest
+POPULATION_ZOOM = (5400, 5900, 10700, 11150)
+POPULATION_INSET = 0.38
+POPULATION_INSET_CORNER = "lower right"
 TENURE_LAYERS = (
     ("undesignated", "Undesignated public forest", "green"),
     ("settlement", "Settlement", "pink"),
@@ -376,16 +390,10 @@ def cell_polygons(x_km: Any, y_km: Any, pop: Any) -> tuple[np.ndarray, np.ndarra
     return squares, values
 
 
-def population_figure(layers: Layers, cells: pl.DataFrame) -> tuple[Any, Any, Any]:
-    """Figure 3: populated 1 km cells as filled squares coloured by 2022 population."""
-    extent = amazon_extent(layers)
-    fig, ax = plt.subplots(figsize=style.TALL)
-    fig.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.1)
-    base_map(ax, layers, extent)
+def _population_cells(ax: Any, cells: pl.DataFrame, norm: LogNorm) -> PolyCollection:
     squares, values = cell_polygons(
         cells["x_km"].to_numpy(), cells["y_km"].to_numpy(), cells["pop_2022"].to_numpy()
     )
-    norm = _colour_norm(int(values.max()) if values.size else 1)
     collection = PolyCollection(
         squares,
         array=values,
@@ -398,6 +406,33 @@ def population_figure(layers: Layers, cells: pl.DataFrame) -> tuple[Any, Any, An
     )
     collection.set_rasterized(True)  # about 534,000 squares; the PNG looks the same
     ax.add_collection(collection)
+    return collection
+
+
+def population_figure(layers: Layers, cells: pl.DataFrame) -> tuple[Any, Any, Any]:
+    """Figure 3: populated 1 km cells coloured by 2022 population, zoomed to eastern
+    Pará and Maranhão, with an inset of the Legal Amazon boxing the zoom."""
+    fig, ax = plt.subplots(figsize=style.SQUARE)
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.1)
+    base_map(ax, layers, POPULATION_ZOOM)
+    pop = cells["pop_2022"]
+    norm = _colour_norm(int(pop.max()) if (pop > 0).any() else 1)
+    collection = _population_cells(ax, cells, norm)
+    child = style.inset(ax, POPULATION_INSET, POPULATION_INSET, corner=POPULATION_INSET_CORNER)
+    base_map(child, layers, amazon_extent(layers))
+    _population_cells(child, cells, norm)
+    x0, x1, y0, y1 = POPULATION_ZOOM
+    child.add_patch(
+        Rectangle(
+            (x0, y0),
+            x1 - x0,
+            y1 - y0,
+            fill=False,
+            edgecolor=style.TEXT,
+            linewidth=style.LINE_WIDTH,
+            zorder=4,
+        )
+    )
     bar = style.bottom_colorbar(fig, [ax], collection, POP_LABEL)
     return fig, ax, bar
 
@@ -518,3 +553,424 @@ def land_without_voters(layers: Layers, cells: pl.DataFrame, out_dir: Path) -> d
     fig, _, _, counts = land_without_voters_figure(layers, cells)
     save(fig, out_dir, "05_land_without_voters")
     return counts
+
+
+# --- Figure 6
+
+NEAR_KM = 2.0
+CLOSE_YEARS = YEARS
+LAYER_COLUMNS = {"indigenous": "dist_indigenous_km", "settlement": "dist_settlement_km"}
+PANEL_TITLES = ("Narrowly elected", "Narrowly defeated")
+NEAR_TEXT = {
+    "indigenous": "(stronghold near an indigenous land)",
+    "settlement": "(stronghold near a settlement)",
+}
+EXPOSURE_LABEL = "Exposure: kernel-weighted vote share"
+EXTENT_MARGIN_KM = 10.0
+CIRCLE_AREA = 90.0  # marker area in pt² for a vote share of 100%
+LEGEND_SHARES = (0.10, 0.25, 0.50)
+STRONGHOLD_WIDTH = 1.0
+CIRCLE_WIDTH = 0.4
+CELL_NAMES = ["x_km", "y_km"]
+
+
+def near_layers(strong: pl.DataFrame, tenure: pl.DataFrame) -> pl.DataFrame:
+    """Each stronghold with `near_indigenous` and `near_settlement` (within 2 km, 0 = inside).
+
+    The join is that of `explore/0001_kill_criterion_1.py`: zone and place cast to Int64.
+    A stronghold with no tenure row, or no distance, is near nothing.
+    """
+    casts = [
+        pl.col("cd_ibge").cast(pl.Utf8),
+        pl.col("sg_ue").cast(pl.Utf8),
+        pl.col("nr_zona").cast(pl.Int64),
+        pl.col("nr_local_votacao").cast(pl.Int64),
+    ]
+    left = strong.with_columns(casts)
+    right = (
+        tenure.select(*sh.PLACE_KEY, *LAYER_COLUMNS.values())
+        .with_columns(casts)
+        .unique(sh.PLACE_KEY, keep="first", maintain_order=True)
+    )
+    joined = left.join(right, on=sh.PLACE_KEY, how="left")
+    near = [
+        (pl.col(column) <= NEAR_KM + sh.TOLERANCE).fill_null(False).alias(f"near_{layer}")
+        for layer, column in LAYER_COLUMNS.items()
+    ]
+    return joined.select(
+        "cd_eleicao", "sg_ue", pl.col("sq_candidato").cast(pl.Utf8), "cd_ibge", *near
+    )
+
+
+def eligible_pairs(paired: pl.DataFrame, near: pl.DataFrame) -> pl.DataFrame:
+    """The close pairs (0.5%, not inverted) of one year with one stronghold near each layer.
+
+    Eligible: one candidate's stronghold is near an indigenous land and not near a
+    settlement, and the other's is near a settlement and not near an indigenous land.
+    `paired` comes from `margins`; `near` from `near_layers`. Candidate numbers are text.
+    """
+    close = sh.close_pairs(paired)
+    margins = paired.select(
+        pl.col("cd_ibge").cast(pl.Utf8),
+        pl.col("sg_ue").cast(pl.Utf8),
+        "cd_eleicao",
+        pl.col("elected_sq").cast(pl.Utf8).alias("w"),
+        pl.col("other_sq").cast(pl.Utf8).alias("l"),
+        "margin",
+    )
+    out = close.join(margins, on=["cd_ibge", "sg_ue", "cd_eleicao", "w", "l"], how="left")
+    for side, column in (("elected", "w"), ("other", "l")):
+        found = near.select(
+            "cd_eleicao",
+            "sg_ue",
+            pl.col("sq_candidato").alias(column),
+            pl.col("near_indigenous").alias(f"{side}_ind"),
+            pl.col("near_settlement").alias(f"{side}_set"),
+        )
+        out = out.join(found, on=["cd_eleicao", "sg_ue", column], how="inner")
+    indigenous_first = (
+        pl.col("elected_ind") & ~pl.col("elected_set") & pl.col("other_set") & ~pl.col("other_ind")
+    )
+    settlement_first = (
+        pl.col("elected_set") & ~pl.col("elected_ind") & pl.col("other_ind") & ~pl.col("other_set")
+    )
+    kept = out.filter(indigenous_first | settlement_first)
+    return kept.select(
+        "cd_ibge",
+        "sg_ue",
+        "cd_eleicao",
+        pl.col("w").alias("elected_sq"),
+        pl.col("l").alias("other_sq"),
+        "margin",
+        pl.when(indigenous_first)
+        .then(pl.lit("indigenous"))
+        .otherwise(pl.lit("settlement"))
+        .alias("elected_near"),
+        pl.when(indigenous_first)
+        .then(pl.lit("settlement"))
+        .otherwise(pl.lit("indigenous"))
+        .alias("other_near"),
+    ).sort("cd_ibge", "elected_sq")
+
+
+def choose_pair(by_year: dict[int, pl.DataFrame]) -> dict[str, Any]:
+    """The eligible pair with the smallest |margin|.
+
+    Ties go to the later year, then the lower IBGE code, then the lower elected candidate
+    number. `by_year` maps a year to its `eligible_pairs`. Raises `ValueError` if none is left.
+    """
+    frames = [f.with_columns(pl.lit(year).alias("year")) for year, f in by_year.items() if f.height]
+    if not frames:
+        raise ValueError(
+            "no close pair in the exploration half has one stronghold near an indigenous "
+            "land and the other near a settlement"
+        )
+    ranked = (
+        pl.concat(frames)
+        .with_columns(
+            pl.col("margin").abs().round(12).alias("_abs_margin"),
+            pl.col("elected_sq").cast(pl.Int64, strict=False).alias("_sq_number"),
+        )
+        .sort(
+            ["_abs_margin", "year", "cd_ibge", "_sq_number", "elected_sq"],
+            descending=[False, True, False, False, False],
+            nulls_last=True,
+        )
+    )
+    row = ranked.row(0, named=True)
+    return {k: v for k, v in row.items() if not k.startswith("_")}
+
+
+def _read(
+    store: Store,
+    manifest: dict[str, Any],
+    suffix: str,
+    tmp_dir: Path,
+    half: frozenset[str] | None = None,
+    columns: list[str] | None = None,
+) -> pl.DataFrame:
+    """One parquet of a build manifest, checked, read, deleted; restricted to `half` if given."""
+    path = fetch(store, manifest, suffix, tmp_dir)
+    try:
+        frame = pl.read_parquet(path, columns=columns)
+    finally:
+        path.unlink()
+    return frame if half is None else restrict(frame, half)
+
+
+def _section_files(manifest: dict[str, Any], year: int) -> list[str]:
+    names = (f["path"].rsplit("/", 1)[-1] for f in manifest["files"])
+    return sorted(n for n in names if re.fullmatch(rf"section_votes_{year}_[A-Z]{{2}}\.parquet", n))
+
+
+def _year_eligible(
+    store: Store,
+    manifests: dict[str, dict[str, Any]],
+    half: frozenset[str],
+    year: int,
+    tmp_dir: Path,
+) -> tuple[pl.DataFrame, pl.DataFrame]:
+    """A year's eligible pairs and the place votes of the municipalities that hold them."""
+    results = manifests["tse_results"]
+    votes = _read(store, results, f"candidate_votes_{year}.parquet", tmp_dir, half)
+    turnout = _read(store, results, f"turnout_{year}.parquet", tmp_dir, half)
+    tenure_name = f"polling_place_tenure_{year}.parquet"
+    tenure = _read(store, manifests["polling_place_tenure"], tenure_name, tmp_dir, half)
+    if "ano" in tenure.columns:
+        tenure = tenure.filter(pl.col("ano") == year)
+    if votes.height == 0:  # no council candidates in the half this year
+        return pl.DataFrame(), pl.DataFrame()
+    main = sh.main_election(votes)
+    cands = sh.candidacy_votes(votes, year, main)
+    paired = sh.margins(sh.within_list_pairs(cands), sh.valid_votes(turnout, main))
+    files = _section_files(manifests["section_votes"], year)
+    if not files:
+        raise ValueError(f"the section_votes manifest has no files for {year}")
+    pieces = [
+        sh.place_candidate_votes(_read(store, manifests["section_votes"], f, tmp_dir, half), main)
+        for f in files
+    ]
+    place_votes = pl.concat(pieces)
+    near = near_layers(sh.strongholds(place_votes), tenure)
+    eligible = eligible_pairs(paired, near)
+    keep = eligible["cd_ibge"].to_list()
+    kept_votes = place_votes.filter(pl.col("cd_ibge").cast(pl.Utf8).is_in(keep))
+    return eligible, kept_votes
+
+
+def select_close_pair(
+    store: Store,
+    manifests: dict[str, dict[str, Any]],
+    half: frozenset[str],
+    tmp_dir: Path,
+    years: Sequence[int] = CLOSE_YEARS,
+) -> tuple[dict[str, Any], pl.DataFrame]:
+    """The close pair of figure 6 and the place votes of its municipality and year.
+
+    Every table with `cd_ibge` is restricted to the exploration half `half` before use.
+    The pair is a dict: `year`, `cd_ibge`, `sg_ue`, `cd_eleicao`, `elected_sq`,
+    `other_sq`, `margin`, `elected_near`, `other_near`.
+    """
+    eligible: dict[int, pl.DataFrame] = {}
+    votes: dict[int, pl.DataFrame] = {}
+    for year in years:
+        eligible[year], votes[year] = _year_eligible(store, manifests, half, year, tmp_dir)
+    pair = choose_pair(eligible)
+    muni_votes = votes[pair["year"]].filter(
+        (pl.col("cd_ibge").cast(pl.Utf8) == pair["cd_ibge"])
+        & (pl.col("sg_ue").cast(pl.Utf8) == pair["sg_ue"])
+    )
+    return pair, muni_votes
+
+
+def candidate_exposure(
+    place_votes: pl.DataFrame,
+    places: pl.DataFrame,
+    cells: pl.DataFrame,
+    pair: dict[str, Any],
+    sq: str,
+) -> pl.DataFrame:
+    """`E_ic` of candidate `sq` for the reached cells: columns `x_km`, `y_km`, `e`.
+
+    The `exp2` kernel and the share measure of decision 0004, from
+    `strongholds.exposure` with a one-row pairs table: the candidate as `w` and a null
+    `l`, so `D_i` is `E_ic` itself.
+    """
+    pairs = pl.DataFrame(
+        {
+            "cd_ibge": [pair["cd_ibge"]],
+            "sg_ue": [pair["sg_ue"]],
+            "cd_eleicao": [pair["cd_eleicao"]],
+            "w": [str(sq)],
+            "l": pl.Series([None], dtype=pl.Utf8),
+        }
+    )
+    dist = sh.cell_place_distances(cells, sh.locate_places(places))
+    out = sh.exposure(
+        dist, sh.place_totals(place_votes), sh.place_shares(place_votes), pairs, "exp2", "share"
+    )
+    return out.select(*CELL_NAMES, pl.col("D_i").alias("e"))
+
+
+def candidate_places(place_votes: pl.DataFrame, places: pl.DataFrame, sq: str) -> pl.DataFrame:
+    """Polling places where candidate `sq` has votes: `x_km`, `y_km`, `share`, `stronghold`."""
+    shares = sh.place_shares(place_votes).filter(
+        (pl.col("sq_candidato") == str(sq)) & (pl.col("s_cp") > 0)
+    )
+    top = (
+        sh.strongholds(place_votes)
+        .filter(pl.col("sq_candidato").cast(pl.Utf8) == str(sq))
+        .select(
+            pl.col("cd_ibge").cast(pl.Utf8),
+            pl.col("sg_ue").cast(pl.Utf8),
+            pl.col("nr_zona").cast(pl.Int64),
+            pl.col("nr_local_votacao").cast(pl.Int64),
+            pl.lit(True).alias("stronghold"),
+        )
+    )
+    return (
+        shares.join(sh.locate_places(places), on=sh.PLACE_KEY, how="inner")
+        .join(top, on=sh.PLACE_KEY, how="left")
+        .with_columns(pl.col("stronghold").fill_null(False))
+        .select(*CELL_NAMES, pl.col("s_cp").alias("share"), "stronghold")
+        .sort(CELL_NAMES)
+    )
+
+
+def close_pair_extent(exposures: Sequence[pl.DataFrame]) -> Extent:
+    """The Albers bounds of the reached cells plus 10 km on each side (cells are 1 km squares)."""
+    cells = pl.concat([e.select(CELL_NAMES) for e in exposures])
+    if cells.height == 0:
+        raise ValueError("the municipality has no reached cells to draw")
+    m = EXTENT_MARGIN_KM
+    return (
+        float(cells["x_km"].min()) - m,
+        float(cells["x_km"].max()) + 1 + m,
+        float(cells["y_km"].min()) - m,
+        float(cells["y_km"].max()) + 1 + m,
+    )
+
+
+def _close_pair_handles() -> list[Any]:
+    handles: list[Any] = []
+    for hue, label in (("orange", "Indigenous land"), ("pink", "Settlement")):
+        fill, edge = style.CATEGORIES[hue]
+        handles.append(
+            Patch(
+                facecolor=fill,
+                edgecolor=edge,
+                linewidth=style.CATEGORY_EDGE_WIDTH,
+                alpha=style.CATEGORY_ALPHA,
+                label=label,
+            )
+        )
+
+    def circle(share: float, width: float, label: str) -> Line2D:
+        return Line2D(
+            [0],
+            [0],
+            marker="o",
+            linestyle="none",
+            markerfacecolor="white",
+            markeredgecolor="black",
+            markeredgewidth=width,
+            markersize=float(np.sqrt(share * CIRCLE_AREA)),
+            label=label,
+        )
+
+    for i, share in enumerate(LEGEND_SHARES):
+        text = style.percent(share)
+        handles.append(circle(share, CIRCLE_WIDTH, f"Polling place: {text}" if i == 0 else text))
+    handles.append(circle(LEGEND_SHARES[1], STRONGHOLD_WIDTH, "Stronghold"))
+    return handles
+
+
+def close_pair_figure(
+    layers: Layers,
+    titles: Sequence[str],
+    exposures: Sequence[pl.DataFrame],
+    places: Sequence[pl.DataFrame],
+) -> tuple[Any, list[Any], Any, Any]:
+    """Figure 6: two panels, one extent and one exposure scale; returns fig, axes, bar, legend."""
+    extent = close_pair_extent(exposures)
+    vmax = max(float(e["e"].max() or 0.0) for e in exposures)
+    norm = Normalize(0.0, vmax if vmax > 0 else 1.0)
+    fig, grid = plt.subplots(1, 2, figsize=style.WIDE)
+    axes = list(grid)
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.86, bottom=0.30, wspace=0.03)
+    for ax, title, exposure, circles in zip(axes, titles, exposures, places, strict=True):
+        base_map(ax, layers, extent)
+        for i, (layer, hue) in enumerate((("indigenous", "orange"), ("settlement", "pink"))):
+            fill, edge = style.CATEGORIES[hue]
+            add_polygons(
+                ax,
+                _geoms(layers, layer),
+                fill,
+                edgecolor=edge,
+                linewidth=style.CATEGORY_EDGE_WIDTH,
+                alpha=style.CATEGORY_ALPHA,
+                zorder=2.2 + i / 10,
+            )
+        filled = exposure.filter(pl.col("e") > 0)
+        if filled.height:
+            squares, values = cell_polygons(
+                filled["x_km"].to_numpy(), filled["y_km"].to_numpy(), filled["e"].to_numpy()
+            )
+            ax.add_collection(
+                PolyCollection(
+                    squares,
+                    array=values,
+                    cmap=style.SCALES[style.DEFAULT_SCALE],
+                    norm=norm,
+                    edgecolors="none",
+                    linewidths=0.0,
+                    antialiaseds=False,
+                    zorder=2.5,
+                )
+            )
+        for strong, width, z in ((False, CIRCLE_WIDTH, 4.0), (True, STRONGHOLD_WIDTH, 4.5)):
+            part = circles.filter(pl.col("stronghold") == strong)
+            if part.height:
+                ax.scatter(
+                    part["x_km"].to_numpy(),
+                    part["y_km"].to_numpy(),
+                    s=part["share"].to_numpy() * CIRCLE_AREA,
+                    facecolors="white",
+                    edgecolors="black",
+                    linewidths=width,
+                    zorder=z,
+                )
+        ax.set_title(title)
+    mappable = ScalarMappable(norm=norm, cmap=style.SCALES[style.DEFAULT_SCALE])
+    mappable.set_array([])
+    bar = style.bottom_colorbar(fig, axes, mappable, EXPOSURE_LABEL, formatter=style.PERCENT)
+    legend = style.bottom_legend(fig, axes, _close_pair_handles(), gap=0.17)
+    return fig, axes, bar, legend
+
+
+def _panel_title(heading: str, near: str) -> str:
+    return f"{heading}\n{NEAR_TEXT[near]}"
+
+
+def close_pair(
+    store: Store,
+    manifests: dict[str, dict[str, Any]],
+    out_dir: Path,
+    years: Sequence[int] = CLOSE_YEARS,
+) -> dict[str, Any]:
+    """Figure 6: saves `06_close_pair.png` and returns the record the script prints."""
+    half = exploration_municipalities(store)
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_dir = Path(tmp)
+        pair, place_votes = select_close_pair(store, manifests, half, tmp_dir, years)
+        year, ibge = pair["year"], pair["cd_ibge"]
+
+        def one_muni(frame: pl.DataFrame) -> pl.DataFrame:
+            return frame.filter(pl.col("cd_ibge").cast(pl.Utf8) == ibge)
+
+        def read(name: str, suffix: str, columns: list[str] | None = None) -> pl.DataFrame:
+            return one_muni(_read(store, manifests[name], suffix, tmp_dir, half, columns))
+
+        places = read("polling_places", f"polling_places_{year}.parquet")
+        if "ano" in places.columns:
+            places = places.filter(pl.col("ano") == year)
+        cells = read("grid_cells", "grid_cells.parquet", ["cd_ibge", "x_km", "y_km"])
+        munis = read("municipalities", "municipalities.parquet", ["cd_ibge", "name_ibge"])
+        if munis.height != 1:
+            raise ValueError(f"expected one row for {ibge} in municipalities, got {munis.height}")
+        layers_file = fetch(store, manifests["figure_layers"], "figure_layers.parquet", tmp_dir)
+        layers = read_layers(layers_file)
+        candidates = (pair["elected_sq"], pair["other_sq"])
+        exposures = [candidate_exposure(place_votes, places, cells, pair, sq) for sq in candidates]
+        circles = [candidate_places(place_votes, places, sq) for sq in candidates]
+        near = (pair["elected_near"], pair["other_near"])
+        titles = [_panel_title(h, n) for h, n in zip(PANEL_TITLES, near, strict=True)]
+        fig, _, _, _ = close_pair_figure(layers, titles, exposures, circles)
+        save(fig, out_dir, "06_close_pair")
+    return {
+        "year": int(year),
+        "cd_ibge": ibge,
+        "name_ibge": munis["name_ibge"][0],
+        "margin": round(float(pair["margin"]), 4),
+        "near": {"elected": near[0], "not_elected": near[1]},
+    }

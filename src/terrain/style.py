@@ -143,6 +143,14 @@ def thousands(value: float) -> str:
 THOUSANDS = FuncFormatter(lambda value, _pos: thousands(value))
 
 
+def percent(value: float) -> str:
+    """0%, 10%, 25%, 100%: a fraction as a whole percent, no decimals."""
+    return f"{round(value * 100)}%"
+
+
+PERCENT = FuncFormatter(lambda value, _pos: percent(value))
+
+
 def log_ticks(vmin: float, vmax: float) -> list[float]:
     """Powers of ten from the first at or above `vmin` to the last at or below `vmax`."""
     if vmin <= 0 or vmax < vmin:
@@ -171,7 +179,7 @@ RIVER = ("#a9cbe6", 0.3)
 # Sequential scales, one hue, light to dark. Settlements are pink, not blue,
 # so they never fade into the water (Gabriel, 2026-11-04).
 SCALE_ENDS = {
-    "purple": ("#f2f0f7", "#54278f"),  # default, including polling places and population
+    "purple": ("#c3b4d8", "#54278f"),  # default; starts mid-light so 1-10 per km² shows
     "orange": ("#fff5eb", "#7f2704"),  # indigenous lands
     "green": ("#f7fcf5", "#00441b"),  # forest, including undesignated public forest
     "pink": ("#fde0ef", "#8e0152"),  # settlements
@@ -236,11 +244,13 @@ def bottom_colorbar(
     *,
     height: float = 0.022,
     gap: float = 0.05,
+    formatter: Any = THOUSANDS,
 ) -> Any:
     """A horizontal colour bar under `axes`, exactly as wide as all of them together.
 
     Call after the layout is fixed (`subplots_adjust`), since it reads the axes'
-    positions. Log scales tick at powers of ten; every tick uses `thousands`.
+    positions. Log scales tick at powers of ten; ticks use `formatter`, by default
+    `thousands` (`PERCENT` for colour bars of shares).
     """
     fig.canvas.draw()  # apply equal-aspect positions before reading them
     x0, y0, x1, _ = _union(axes)
@@ -249,7 +259,7 @@ def bottom_colorbar(
     norm = mappable.norm
     if isinstance(norm, LogNorm):
         bar.ax.xaxis.set_major_locator(FixedLocator(log_ticks(norm.vmin, norm.vmax)))
-    bar.ax.xaxis.set_major_formatter(THOUSANDS)
+    bar.ax.xaxis.set_major_formatter(formatter)
     bar.minorticks_off()
     bar.outline.set_visible(False)
     bar.ax.tick_params(length=0)
