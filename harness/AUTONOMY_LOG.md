@@ -31,6 +31,31 @@ the pre-election clearing share as drafted.
   itself is unchanged.
 - 2026-11-07: coordination with a second session running handoff 5: it takes
   T2-T7; this session keeps T1 (task 35, issue #206).
+- 2026-11-07: PR #207 (the fixed draft) merged after CI passed; issue #206
+  updated to match and re-planned. The plan followed the issue (two files,
+  Done when as written, pre-election years only), so `agent-plan` was
+  swapped for `agent-build`.
+- 2026-11-07: PR #212 (agent build for #206) merged. CI `test` passed;
+  reviewer Approve on 865c48d, no must-fix. Referee R1-R4, R6, R7 OK; R5
+  "Not applicable" (no numbers before the run), read as no referee problem,
+  as on #203. The reviewer's nice-to-haves (restrict the crosswalk too; run
+  the term checks at 0.50%; conflicting codes in the incumbency test) were
+  not acted on: none changes the result, and pushing to the agent branch
+  would trip the review guard.
+- 2026-11-07: explore run 42366460941 started on main (3b0500a).
+- 2026-11-07: record PR #219 checked. Pairs per window match the census (run
+  41719271978) in every election at 0.25%, 0.50%, 1% and 2%; 0.10% passes
+  (omnibus p 0.191), so no stop. The 0.50% power row reproduces decision
+  0007 (0.944, 0.797, 0.448). Incumbency counts are about half of the Legal
+  Amazon counts profiled before the issue; no candidate lacks a municipality
+  match (the record prints an empty list after "per year:"). Years read are
+  at most E-1. No 11- or 12-digit run in the record or its JSON except the
+  run ID. Rebased onto main (index conflict resolved by regenerating).
+- 2026-11-07: lessons entry, idea 0001 status and log lines, and decision
+  0008 (0.25%, accepted by rule; Gabriel to review) written on the record
+  branch, index regenerated; PR #219 merged on CI. 0.50% is not balanced
+  (omnibus p 0.119, incumbency), so task B's result carries that caveat in
+  the lessons entry, the idea status and decision 0008.
 
 ## Handoff 5: the autonomous run (Claude Code session projects-4c, 2026-11-07)
 

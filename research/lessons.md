@@ -16,6 +16,35 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-07: The balance rule picks a 0.25% window; 0.50% is unbalanced on incumbency (idea 0001, issue #206)
+- Tried: `explore/0001_window.py` on the exploration half, run 42366460941
+  (`research/explore-runs/0001/42366460941.md`): seven close-race windows
+  (0.10% to 2.00%), elections 2008-2024 pooled, ten pre-election covariates
+  (incumbency rebuilt from the previous election's elected councillors), one
+  set of 2,000 re-flips, omnibus p from the re-flip distribution of the
+  minimum p, and the rule of issue #206 (the widest window with omnibus p at
+  least 0.15, every smaller window also). No post-election outcome was read.
+  Pairs per window match the feasibility census to the unit.
+- Result: omnibus p 0.191 (0.10%), 0.548 (0.25%), 0.119 (0.50%), 0.0005 from
+  0.75% up. The rule picks 0.25% (decision 0008, accepted by rule). The
+  imbalance is incumbency: winners held the seat before more often than
+  losers, by 1.1, 2.0 and 2.3 percentage points at 0.10%, 0.25% and 0.50%
+  (RI p 0.53, 0.084, 0.014), rising to 6.4 points at 2.00%. Power at 8% falls
+  at 0.25% to 0.868 (direct), 0.622 (displacement) and 0.307 (split), from
+  0.944, 0.797 and 0.448 at 0.50%.
+- Why: incumbents are more likely to win close races, and the wider the
+  window, the more a "close" race is one that incumbents tend to win. The gap
+  at 0.25% is almost the gap at 0.50%; 0.25% passes mainly because it has
+  fewer pairs, so the test has less power to see the gap.
+- Implication: task B's 0.50% result (2026-11-06 entry) stands as
+  pre-specified but is reported with a caveat: at 0.50% narrow winners and
+  losers are not balanced on incumbency, so the contrast partly mixes winning
+  with having held the seat. Its nulls are not overturned by this. The
+  pre-analysis plan uses 0.25%, which costs power: on a confirmation half of
+  this size, kill criteria 3 and 4 would be further below 80% than at 0.50%.
+  The plan should report incumbency balance in the chosen window and say
+  whether incumbency enters as a control. Gabriel to review decision 0008.
+
 ## 2026-11-07: Close mayoral races cannot detect an 8% effect (idea 0003, issue #214)
 - Tried: `explore/0003_mayor_power.py` on the exploration half, run 42367009833
   (`research/explore-runs/0003/42367009833.md`): close mayoral races
