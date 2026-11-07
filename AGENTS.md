@@ -143,6 +143,20 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
   in jobs bound to an environment (`data-write`, `analysis`, `unblind`), and
   only for code already merged to main.
 
+### Personal identifiers
+
+- CPF numbers, voter ID numbers (`nr_titulo_eleitoral`) and names tied to
+  either never go into Git: not in code, tests, fixtures, records, plans,
+  comments or commit messages. They never appear in logs, results,
+  `summary.md`, `results.json` or exception messages either.
+- Code may use them only in memory, for example to link a candidate across
+  elections. A build that must keep a link stores only a salted hash, with
+  the salt read from the GitHub secret `ID_SALT` through an environment
+  variable. If that secret does not exist, the task that needs it stops and
+  says so; it never falls back to unsalted values.
+- Tests build synthetic identifiers inside the test. Fixtures already
+  replace them with zero-padded row numbers (`data/fixtures/tse/README.md`).
+
 ### Agents
 
 - Allowlists are enforced: every agent runs with the sandbox's
