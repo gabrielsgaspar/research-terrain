@@ -47,6 +47,7 @@ acquired or built (its manifest merged into `data/manifests/`).
 | 33 | Minimum detectable effects for decision 0007 (explore) | placebo recorded (done; #194) |
 | 34 | Main exploration, kill criteria 3 and 4 (explore) | decision 0007 accepted (done) |
 | 35 | Close-race window by covariate balance (explore) | task B recorded (done; #204) |
+| 36 | Close mayoral races: power at the municipality level (explore, idea 0003) | idea 0003 merged (done; #209) |
 
 ## Before filing a task
 

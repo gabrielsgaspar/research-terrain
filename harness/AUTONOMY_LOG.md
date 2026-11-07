@@ -61,3 +61,7 @@ session to keep T1.
   (first, duplicated "no kill criterion is met on this half" removed, no
   other word changed); `README.md`'s "What exists" refreshed in plain
   words. Own PR, merged on CI.
+- 2026-11-07 (T4): draft 36 (municipality-level power of close mayoral
+  races, idea 0003; pre-election outcome years only), own PR, merged on CI.
+  Run-off ids, vote columns and the `ELEITO` check come from session
+  projects-3e's profiling of the raw TSE files.
