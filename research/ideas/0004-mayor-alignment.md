@@ -89,8 +89,24 @@ proposal.
 - 2026-11-07: proposed. Alignment with the elected mayor is the only
   moderator, fixed before any outcome is read. No task yet; the first step
   would count aligned, unaligned and mixed close pairs (kill criterion 1).
+- 2026-11-07: still proposed. Close pairs at 0.25% (decision 0008) on the
+  exploration half, pooled 2008-2024 (run 42384829937): **1,414 aligned,
+  1,446 unaligned, 4 mixed** (5 left out for an unmatched side or mayor, all
+  in 2008), so drafted kill criterion 1 (fewer than 200 of either) is not
+  met. In 2008-2020 there are 1,100 aligned and 1,219 unaligned. **Implied
+  power** for an aligned-minus-unaligned gap of one effect size (8%),
+  two-sided 5%, is about **0.34** (0.337 for an even split, the best case),
+  a rough scaling of decision 0008's direct power (0.868 on 2,328 pairs),
+  not a computation on outcomes. Drafted kill criterion 3 needs 80% power,
+  so on a half of this size it would read "cannot be applied". Kill
+  criteria are still drafts until Gabriel confirms them.
 
 ## Log
 
 - 2026-11-07: idea file written (Claude Code, autonomous run; Gabriel to
   review). Kill criteria are drafts until Gabriel confirms them.
+- 2026-11-07: aligned and unaligned pair counts at 0.25%: issue #223, PR
+  #226, fix issue #229 and PR #231 (the first run's verdict was inverted;
+  record #227 not merged), run 42384829937
+  (`research/explore-runs/0004/42384829937.md`), record PR #232;
+  `research/lessons.md` entry of the same date.

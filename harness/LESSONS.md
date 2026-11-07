@@ -21,6 +21,24 @@ plan review. They fall into five groups:
 Expect the rate to fall: each first use of a capability (first build, first
 deletion, first big task) has now happened once.
 
+## 2026-11-07: A verdict and its test were inverted together, and the review passed them (PR #226)
+- Tried: issue #223 asked the script to report "whether drafted kill
+  criterion 1 (200 each) is met". Its Done when had no item on the
+  verdict's direction.
+- Result: the builder set `met` to true when both counts reached 200, and
+  wrote a test asserting the same, so CI and the reviewer (Approve, R3 OK)
+  passed it. The record said "met" for 1,414 and 1,446, the opposite of the
+  criterion. It was caught when the record PR was read against the idea
+  file, before merging.
+- Why: "(200 each) is met" reads as "the 200 bar is met". A kill criterion
+  is met when the idea fails. The reviewer checks the code against the plan
+  and the tests, so a mistake made the same way in both passes.
+- Implication: an issue that reports a kill-criterion verdict states the
+  condition as written in the idea ("met if fewer than 200 ...") and has a
+  Done-when item with one case each way. A record's verdict is read against
+  the idea's text before its PR is merged. Fixed by #229 / #231; the bad
+  record (#227) was closed, not edited.
+
 ## 2026-11-07: Tests asked for after `agent-build` need a human push the reviewer never sees (PR #203)
 - Tried: on PR #203 (issue #201), two more tests (the exp10 helper, the
   2020-only Y3) and a report-order fix were asked for after the build. They

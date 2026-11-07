@@ -209,3 +209,24 @@ next step run without waiting. Each step below is one he named.
   Gabriel to confirm. Nothing under `confirm/` or `sealed/` read.
 - 2026-11-07: idea 0001 status line (still `exploring`) and log line;
   lessons entry for run 42384056410. Own PR, merged on CI.
+- 2026-11-07: plan on #229 read: two files, the verdict flipped, one test
+  assertion corrected, boundary tests added, no count or power change;
+  `agent-plan` swapped for `agent-build`.
+- 2026-11-07: PR #230 (decision 0009, plan draft, idea 0001 status,
+  lessons) merged on CI; only its six listed files.
+- 2026-11-07: PR #231 (agent fix for #229) merged. CI `test` passed on
+  head a759f384; reviewer Approve on that commit, no must-fix; only the two
+  planned files; the diff changes only the verdict, its sentence and tests.
+  Referee R1-R3, R6, R7 OK; R4 and R5 "Not applicable" (counts only), read
+  as no referee problem. Explore run 42384829937 started on main (bb59caa).
+- 2026-11-07: record PR #232 (run 42384829937, alignment counts) merged on
+  CI. Counts match what issue #223 said to expect (478 / 578 / 596 / 676 /
+  541 pairs; every election sums; left out 5 of 478 in 2008, none after),
+  and its JSON equals run 42384059012's apart from the corrected verdict
+  ("not met"). Only the record, its JSON and the index. Task 37 needed one
+  fix round.
+- 2026-11-07: idea 0004 status line (still `proposed`, kill criteria still
+  drafts) and log line with the counts and implied power of run
+  42384829937; lessons entry; harness lesson on the inverted verdict (my
+  draft's wording "(200 each) is met" was ambiguous, and its Done when had
+  no direction test). Own PR, merged on CI.
