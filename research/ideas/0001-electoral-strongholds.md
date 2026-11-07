@@ -3,7 +3,7 @@ id: "0001"
 title: "Electoral strongholds and the geography of deforestation"
 status: exploring
 created: 2026-11-01
-updated: 2026-11-06
+updated: 2026-11-07
 datasets:
   - tse_votes_by_section
   - tse_polling_places
@@ -45,6 +45,10 @@ Fixed in the pre-analysis plan before outcomes are merged. Working version:
 
 Against the idea: wrong signs by constituency type, a non-flat placebo, or no
 effect at all with adequate power.
+
+The null on the direct effect is read under a core-voter model; under a
+swing-voter model, winners may also protect areas where they lost, which the
+winner-minus-loser contrast cannot detect. Unresolved.
 
 ## Design
 
