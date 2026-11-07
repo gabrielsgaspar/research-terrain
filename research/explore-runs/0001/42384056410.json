@@ -1,0 +1,202 @@
+{
+  "0.25%": {
+    "2008": {
+      "candidates": 956,
+      "indigenous": {
+        "0km": 14,
+        "2km": 35,
+        "5km": 57
+      },
+      "settlement": {
+        "0km": 11,
+        "2km": 132,
+        "5km": 252
+      },
+      "with_coordinates": 953,
+      "with_stronghold": 956
+    },
+    "2012": {
+      "candidates": 1156,
+      "indigenous": {
+        "0km": 28,
+        "2km": 54,
+        "5km": 85
+      },
+      "settlement": {
+        "0km": 13,
+        "2km": 207,
+        "5km": 315
+      },
+      "with_coordinates": 1151,
+      "with_stronghold": 1156
+    },
+    "2016": {
+      "candidates": 1192,
+      "indigenous": {
+        "0km": 39,
+        "2km": 67,
+        "5km": 105
+      },
+      "settlement": {
+        "0km": 23,
+        "2km": 214,
+        "5km": 343
+      },
+      "with_coordinates": 1187,
+      "with_stronghold": 1192
+    },
+    "2020": {
+      "candidates": 1352,
+      "indigenous": {
+        "0km": 41,
+        "2km": 65,
+        "5km": 93
+      },
+      "settlement": {
+        "0km": 25,
+        "2km": 231,
+        "5km": 407
+      },
+      "with_coordinates": 1345,
+      "with_stronghold": 1352
+    },
+    "2024": {
+      "candidates": 1082,
+      "indigenous": {
+        "0km": 40,
+        "2km": 62,
+        "5km": 94
+      },
+      "settlement": {
+        "0km": 28,
+        "2km": 190,
+        "5km": 308
+      },
+      "with_coordinates": 1069,
+      "with_stronghold": 1082
+    },
+    "pooled": {
+      "candidates": 5738,
+      "indigenous": {
+        "0km": 162,
+        "2km": 283,
+        "5km": 434
+      },
+      "settlement": {
+        "0km": 100,
+        "2km": 974,
+        "5km": 1625
+      },
+      "with_coordinates": 5705,
+      "with_stronghold": 5738
+    },
+    "verdict": {
+      "5km": {
+        "indigenous": 434,
+        "settlement": 1625
+      },
+      "kill_criterion_1": "not met",
+      "minimum": 200
+    }
+  },
+  "0.50%": {
+    "2008": {
+      "candidates": 1530,
+      "indigenous": {
+        "0km": 25,
+        "2km": 55,
+        "5km": 92
+      },
+      "settlement": {
+        "0km": 21,
+        "2km": 199,
+        "5km": 382
+      },
+      "with_coordinates": 1522,
+      "with_stronghold": 1530
+    },
+    "2012": {
+      "candidates": 1838,
+      "indigenous": {
+        "0km": 54,
+        "2km": 88,
+        "5km": 141
+      },
+      "settlement": {
+        "0km": 26,
+        "2km": 324,
+        "5km": 512
+      },
+      "with_coordinates": 1827,
+      "with_stronghold": 1838
+    },
+    "2016": {
+      "candidates": 1880,
+      "indigenous": {
+        "0km": 56,
+        "2km": 100,
+        "5km": 164
+      },
+      "settlement": {
+        "0km": 37,
+        "2km": 334,
+        "5km": 552
+      },
+      "with_coordinates": 1869,
+      "with_stronghold": 1880
+    },
+    "2020": {
+      "candidates": 2120,
+      "indigenous": {
+        "0km": 62,
+        "2km": 106,
+        "5km": 154
+      },
+      "settlement": {
+        "0km": 51,
+        "2km": 366,
+        "5km": 637
+      },
+      "with_coordinates": 2111,
+      "with_stronghold": 2120
+    },
+    "2024": {
+      "candidates": 1782,
+      "indigenous": {
+        "0km": 64,
+        "2km": 106,
+        "5km": 160
+      },
+      "settlement": {
+        "0km": 45,
+        "2km": 311,
+        "5km": 507
+      },
+      "with_coordinates": 1761,
+      "with_stronghold": 1782
+    },
+    "pooled": {
+      "candidates": 9150,
+      "indigenous": {
+        "0km": 261,
+        "2km": 455,
+        "5km": 711
+      },
+      "settlement": {
+        "0km": 180,
+        "2km": 1534,
+        "5km": 2590
+      },
+      "with_coordinates": 9090,
+      "with_stronghold": 9150
+    },
+    "verdict": {
+      "5km": {
+        "indigenous": 711,
+        "settlement": 2590
+      },
+      "kill_criterion_1": "not met",
+      "minimum": 200
+    }
+  }
+}
