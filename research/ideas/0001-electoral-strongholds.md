@@ -104,6 +104,13 @@ Elections with usable geography: 2008, 2012, 2016, 2020 and 2024 (see
   pre-election clearing (run 42265146230) for decision 0007; 455
   indigenous-side and 1,987 settlement-side close-pair candidates at 5 km
   (2008-2020).
+- 2026-11-06: still exploring. Kill criteria 3 and 4 cannot be applied at
+  80% power on the exploration half (run 42298466207, decision 0007): the
+  direct slope is -1.0% of baseline (RI p 0.59) and the displacement slope
+  -4.4% (RI p 0.086), neither non-zero under Holm; the split difference is
+  +3.4% (one-sided p1 0.81, power 0.45). The confirmation half stays sealed.
+  The exploration does not support the predictions; see the lessons entry
+  of the same date.
 
 ## Log
 
@@ -125,3 +132,6 @@ Elections with usable geography: 2008, 2012, 2016, 2020 and 2024 (see
 - 2026-11-06: minimum detectable effects (for decision 0007): issue #194, PR
   #196, run 42265146230 (`research/explore-runs/0001/42265146230.md`), record
   PR #197; `research/lessons.md` entry of the same date.
+- 2026-11-06: main exploration (kill criteria 3 and 4): issue #201, PR #203,
+  run 42298466207 (`research/explore-runs/0001/42298466207.md`), record PR
+  #204; `research/lessons.md` entry of the same date.
