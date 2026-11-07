@@ -122,14 +122,38 @@ in their own PR: `uv add <package>`.
 
 ## What exists
 
+State on 2026-11-07, in plain words.
+
+**The research.** The lead idea (0001, electoral strongholds) is being
+explored on the exploration half of the municipalities only; the
+confirmation half is sealed and nobody has looked at it. Three of its four
+kill criteria have been checked there. There are enough close races with
+strongholds near indigenous lands and settlements (criterion 1), and the
+pre-election placebo is flat (criterion 2). Criteria 3 and 4 cannot be
+applied at 80% power on this half. No criterion is met, but the results do
+not support the predictions either. The direct effect is about zero and
+rules out effects as large as the chosen effect size (8% of baseline
+clearing, decision 0007). The displacement estimate is as large before the
+election as after it. The comparison between constituency types points the
+wrong way, and with power of only 0.45. A test of which close-race window
+is balanced is under way (task 35, decision 0008 to follow). Two new ideas
+are written down but not started: mayoral close races (0003) and alignment
+with the mayor (0004). The newest results are in `research/lessons.md`, and
+`research/INDEX.md` lists every record.
+
 | Area | State |
 | --- | --- |
-| Agent chain (plan, build, verify, publish, review) | Working |
+| Agent chain (plan, build, verify, publish, review, referee for explore tasks) | Working |
 | Data pipeline, GCS, Workload Identity | Working |
-| TSE candidates 2000-2024 (raw) | Acquired: `data/manifests/acquire/tse_candidates.json` |
-| Candidates table, municipalities and crosswalk, results, sections | Task drafts 03-07 |
-| Sample split | Not yet sealed (needs the IBGE municipality list) |
-| Ideation, literature agents, confirm-run, unblind | Planned: `harness/BUILD_PLAN.md` |
+| Raw data: TSE candidates, results, section votes and polling places; IBGE municipalities, localities, urbanised areas, grids and boundaries; geocoded polling stations; public-forest register; MapBiomas; base map | Acquired (`data/manifests/acquire/`) |
+| Built tables: candidates, results, parties, municipalities, polling places and their types and tenure, section votes, grid cells, cell exposure and displacement, cell outcomes (split by half) | Built (`data/manifests/build/`) |
+| Sample split | Drawn and sealed; outcomes are written split by half (decisions 0001, 0003) |
+| Explorations of idea 0001 | Seven runs recorded in `research/explore-runs/0001/` |
+| Decisions | 0001-0007 accepted (`research/decisions/`) |
+| Paper figures 1-6 | Drawn (`paper/figures/`) |
+| Literature notes | Six core papers, with Gabriel's sections still to write |
+| Pre-analysis plan, confirm-run, unblind | Not started; the confirmation half stays sealed until a plan is registered |
+| Ideation and literature agents | Planned: `harness/BUILD_PLAN.md` |
 
 ## Layout
 
