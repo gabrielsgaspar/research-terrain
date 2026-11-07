@@ -17,7 +17,7 @@ report".
 | Task 37 | Aligned and unaligned pairs at 0.25% for idea 0004; counts and implied power in the idea file | draft #222; issue #223, build #226, fix #229 / #231, run [42384829937](https://github.com/gabrielsgaspar/research-terrain/actions/runs/42384829937), record #232, idea and lessons #233 | merged (one fix round) |
 | Label PR #213 | Label "unverified; drafted from memory; do not merge"; PR left open | #213 | labelled, open |
 | Task 35's row | `harness/issue-drafts/README.md` row 35 now "done (#212; record #219, decision 0008)" | #222 | merged |
-| — | This report | {{REPORT_PR}} | |
+| — | This report | #234 | merged on CI |
 
 ## 2. Results
 
