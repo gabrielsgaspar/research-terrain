@@ -54,7 +54,10 @@ them and do not change any existing explore script. Also read
   seed 20261106) is shared by every covariate and every window.
 - **Covariates**, each a value per close-pair candidate, all fixed before
   election E. Rows of `tse_candidates` match a pair side on (`ano_eleicao`,
-  `cd_eleicao`, `sg_ue`, `sq_candidato`).
+  `cd_eleicao`, `sg_ue`, `sq_candidato`). `tse_candidates` has no
+  `cd_ibge`: add it by joining `municipalities` (`cd_tse` = `sg_ue`), then
+  `restrict`; rows without a match are counted per year and dropped. Read
+  only the columns named here, and only the years 2004-2024.
   1. `female`: `cd_genero` = 4. Null when `cd_genero` is null.
   2. `age`: (`dt_eleicao` − `dt_nascimento`) in days / 365.25. Null when
      `dt_nascimento` is null. (The 2020 election was on 15 November.)
@@ -71,14 +74,21 @@ them and do not change any existing explore script. Also read
      `cd_eleicao` with the most candidate rows. Null when the voter ID is
      null. The file's `st_reeleicao` is **not** used (see "Covariates
      checked"); report its count of `S` per year next to this one.
+     **Voter IDs and CPFs are used only in memory to build `incumbent`;
+     they never appear in `summary.md`, `results.json`, any log line or
+     exception message, or any test fixture written to the repository**
+     (tests build synthetic IDs in the test).
   5. `seat_km`: the stronghold's `seat_km` (`polling_place_types`, year E).
   6. `place_seat`, `place_town`: the stronghold's `place_type` is `seat`,
      respectively `town` (every other type is the omitted group).
   7. `dist_indigenous_km`, `dist_settlement_km`: the stronghold's distances
      in `polling_place_tenure` of year E.
-  8. `pop22_5km`: the sum of `grid_cells.pop_2022` over cells whose centre
+  8. `pop22_5km` (**descriptive only, not in the balance rule**: it is
+     measured in 2022, after the 2008-2020 elections, so it could reflect
+     them): the sum of `grid_cells.pop_2022` over cells whose centre
      (corner + 0.5 km) is within 5 km (+1e-9) of the stronghold (Albers km,
-     as `locate_places`).
+     as `locate_places`). Its difference and p are reported per window; it
+     never enters the omnibus.
   9. `clearing_pre`: over the same cells, restricted to those present in the
      exploration-half `cell_outcomes` with `has_data` true in all of E-4 to
      E-1: Σ over those years of `code_4` divided by (`code_2` + `code_4`) of
@@ -91,7 +101,10 @@ them and do not change any existing explore script. Also read
   counted and left out of that covariate only.
 - **RI.** For draw r, flip each pair's difference by its sign; m_{r,k}. The
   two-sided p_k = (1 + #{r: |m_{r,k}| ≥ |m_k|}) / (1 + 2,000).
-- **Omnibus per window:** the observed minimum p over covariates, compared
+- **Balance covariates** (those in the omnibus): `female`, `age`,
+  `schooling`, `incumbent`, `seat_km`, `place_seat`, `place_town`,
+  `dist_indigenous_km`, `dist_settlement_km`, `clearing_pre` (ten).
+- **Omnibus per window:** the observed minimum p over the balance covariates, compared
   with the re-flip distribution of the minimum: for each draw, p_{r,k} =
   #{s: |m_{s,k}| ≥ |m_{r,k}|} / 2,000 over the same 2,000 draws, and min_k
   p_{r,k}; omnibus p = (1 + #{r: min_k p_{r,k} ≤ min_k p_k}) / (1 + 2,000).
@@ -119,9 +132,10 @@ them and do not change any existing explore script. Also read
    passes; Gabriel decides".
 2. Pairs per window, per election and pooled; constituency-type counts at
    5 km per window (pooled, the power run's five types).
-3. The balance table: rows = covariates, columns = windows, each cell the
-   difference and its p; then the omnibus p row; and per covariate the pairs
-   left out for nulls.
+3. The balance table: rows = the ten balance covariates, columns = windows,
+   each cell the difference and its p; then the omnibus p row; and per
+   covariate the pairs left out for nulls. Below it, labelled "descriptive,
+   not in the rule", the `pop22_5km` row.
 4. The power table: rows = windows, columns = direct, displacement, split.
    The 0.50% row is labelled "decision 0007: 0.94, 0.797, 0.45" for
    comparison.
@@ -158,7 +172,8 @@ PL, DEM and PSL to UNIÃO, ...) that does not exist. Race is not used.
 ## In scope
 
 `explore/0001_window.py` (calls `exploration_municipalities` and `restrict`
-on every table it reads, including `tse_candidates`, `polling_place_types`,
+on every table it reads, including `tse_candidates` (after adding
+`cd_ibge` from `municipalities`), `polling_place_types`,
 `polling_place_tenure`, `grid_cells` and `cell_outcomes`) and
 `tests/test_explore_window.py`.
 
@@ -168,7 +183,8 @@ Expected files (two): `explore/0001_window.py`,
 ## Out of scope
 
 Any outcome year E or later; outcome-based bandwidth selectors; covariates
-not listed (race, coalition, `st_reeleicao` in the rule); choosing by power;
+not listed (race, coalition membership, `st_reeleicao` in the rule,
+`pop22_5km` in the rule); choosing by power; writing any voter ID or CPF;
 per-election balance tests; changes to other explore scripts; the idea file,
 lessons entry and decision 0008 (written by a person from the record);
 `sealed/`.
@@ -198,6 +214,11 @@ lessons entry and decision 0008 (written by a person from the record);
 7. `clearing_pre` and `pop22_5km` on a synthetic disc: a cell centre at 5 km
    counts, one at 5.01 km does not; cells without data in one pre year are
    left out.
-8. Every table read is restricted to the exploration half (the existing
+8. `pop22_5km` is reported but never enters the omnibus: changing it
+   leaves every omnibus p unchanged. No voter ID or CPF reaches the
+   outputs: on a synthetic run, neither `summary.md` nor `results.json`
+   contains any of the synthetic IDs, and the script has no print or
+   exception message that formats them.
+9. Every table read is restricted to the exploration half (the existing
    explore test passes); `uv run ruff check .`, `uv run ruff format --check .`
    and `uv run pytest` pass.
