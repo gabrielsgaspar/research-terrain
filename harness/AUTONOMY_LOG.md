@@ -114,3 +114,15 @@ session to keep T1.
   42367009833. Drafted kill criterion 1 is met; the idea's status stays
   `proposed` (its kill criteria are unconfirmed drafts), recommended dead.
   Own PR, merged on CI.
+- 2026-11-07 (T7): draft pre-analysis plan for idea 0001,
+  `harness/drafts/pap-draft.md`, marked "Draft; nothing here is
+  registered". Written after decision 0008 (0.25%) merged in #219; window,
+  power (0.868 / 0.622 / 0.307) and kill criterion 3's options filled from
+  decision 0008 and run 42366460941 only. Nothing under `confirm/` or
+  `sealed/` read or touched. Option (v) is closed (the window is narrower);
+  recommendation (ii). Open choices A-C left to Gabriel. Own PR, merged on
+  CI.
+- 2026-11-07 (T5 follow-up): `README.md`'s "What exists" line on task 35
+  refreshed now that decision 0008 is merged (0.25%, 0.50% unbalanced on
+  incumbency), with idea 0003's power result and the PAP draft. Same PR as
+  T7.
