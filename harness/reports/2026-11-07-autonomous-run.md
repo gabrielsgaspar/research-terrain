@@ -19,7 +19,7 @@ asking you is in `harness/AUTONOMY_LOG.md`, with the reason.
 | T5 | Harness lesson on post-build tests; 2026-11-06 lessons tidy; README status | #210, and #220 (after 0008) | merged |
 | T6 | Drafts of "What it doesn't do" and "Relevance to us" in the six literature notes | #215 | merged; marked as drafts |
 | T7 | Pre-analysis plan draft, `harness/drafts/pap-draft.md` | #220 | merged; marked draft, nothing registered |
-| — | This report | {{REPORT_PR}} | |
+| — | This report | #221 | merged on CI |
 
 ## 2. Results
 
