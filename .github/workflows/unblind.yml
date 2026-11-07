@@ -19,8 +19,17 @@ name: Unblind
 #     branch, after approval and before it gets GCP credentials, through an
 #     API call that fails if the branch exists. That claim is what stops a
 #     second run while the first one's ledger pull request is still open.
-#     If a run fails after the claim, it is not retried automatically:
-#     Gabriel decides, and removes the branch himself if he wants a rerun.
+#
+# Deterministic: the inputs are fixed build files, the re-flips inside the
+# analysis use a fixed seed (20261106, in the specification), and every
+# number in the ledger is recorded to 12 significant digits
+# (terrain.confirm.validate_results), so a rerun of the same specification
+# on the same code gives identical numbers.
+#
+# Rerun rule: nothing here retries a run. A manual rerun, by deleting the
+# branch ledger/unblind-<spec>, is allowed only if the first run produced no
+# ledger entry (it failed before the record job wrote one, and no ledger
+# pull request exists). Once a ledger entry exists, the result stands.
 #
 # Safety otherwise as in confirm-run.yml. The App token is minted in the run
 # job only for the claim, before GCP credentials exist, and is given to that

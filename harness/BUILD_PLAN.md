@@ -342,8 +342,9 @@ links: [research/ideas/0001-electoral-strongholds.md]
 
 These pieces are human-heavy, and the existing design in `confirm/README.md` is followed as written.
 
-- **`confirm-run.yml`:** manual, `main` only, environment `analysis`. Runs one registered spec from `confirm/specs/` on the confirmation half with **shuffled treatment**, and appends to `confirm/ledger/`.
-- **`unblind.yml`:** manual, environment `unblind` (required reviewer: Gabriel). Reruns with the real treatment. Anything run afterwards is labelled post-unblinding.
+- **`confirm-run.yml`:** manual, `main` only, environment `unblind` (required reviewer: Gabriel), so every confirm-run waits for Gabriel's approval. Not `analysis`: the shuffled run reads the confirmation half's outcomes, and only terrain-unblind can read `sealed/` (decision 0003). Runs one registered spec from `confirm/specs/` on the confirmation half with **shuffled treatment**, and adds its entry to `confirm/ledger/` through a pull request.
+- **`unblind.yml`:** manual, `main` only, environment `unblind` (required reviewer: Gabriel). Reruns with the real treatment, once, and only after a shuffled entry of the same spec is in the ledger. Deterministic (fixed seeds; numbers recorded to 12 significant digits). A manual rerun, by deleting `ledger/unblind-<spec>`, is allowed only if the first run produced no ledger entry. Anything run afterwards is labelled post-unblinding.
+- **Registered analyses** live in `src/terrain/registered/` (idea 0001: `r0001/`), reviewed and merged before the plan is registered.
 - **Generated outputs:** tables and numbers go to `overleaf/generated/`. Numbers in the paper are never typed by hand.
 
 ### 4.9 Out of scope for now

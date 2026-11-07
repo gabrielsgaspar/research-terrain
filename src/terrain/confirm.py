@@ -16,16 +16,20 @@ two workflows (harness/BUILD_PLAN.md, section 4.8, item 3.6):
   the same hash, if that shuffled run's check failed (unless the dispatch
   accepts it), or if the specification was unblinded before.
 
-A specification is a YAML file:
+A specification is a YAML file in the format of `confirm/specs/TEMPLATE.yaml`, with
+every one of its fields, plus three this runner needs:
 
-    id: 0001-direct            # NNNN-some-name; one ledger history per id
-    analysis: 0001_direct      # a name registered with `register`
-    pap_commit: <40 hex>       # the commit that added the plan to confirm/pap/
-    params: {}                 # optional, passed to the analysis as is
-    description: ...           # optional, free text
+    analysis: 0001_direct      # added: a name registered with `register`
+    pap_commit: <40 hex>       # added: the commit that added the plan to confirm/pap/
+    params: {...}              # added, optional: settings the analysis reads
 
-Any other top-level key is refused, so nothing in a registered
-specification is silently ignored.
+The template's fields are checked here (`id` like `NNNN-slug` with the idea's
+number, `idea` an idea file, `registered` a date, `predicted_sign`, `sample:
+confirm`, `treatment.design: close_pair_swap`, `inference.method: randomisation`,
+`inference.draws` a whole number, ...); the registered analysis checks that the
+others (outcome, exposure, fixed effects, cluster) describe what it computes. Any
+other top-level key is refused, so nothing in a registered specification is
+silently ignored.
 
 The analysis is a function registered by name (`register`) in a module under
 `terrain.registered`, written, reviewed and merged before the plan is
@@ -39,6 +43,7 @@ fails if the analysis never calls it.
 from __future__ import annotations
 
 import csv
+import datetime as dt
 import hashlib
 import importlib
 import io
@@ -77,8 +82,26 @@ OUTPUT_MAX_BYTES = 200_000
 _SPEC_ID = re.compile(r"[0-9]{4}-[a-z0-9-]{1,40}")
 _NAME = re.compile(r"[a-z0-9_]{1,60}")
 _COMMIT = re.compile(r"[0-9a-f]{40}")
-_SPEC_KEYS_REQUIRED = {"id", "analysis", "pap_commit"}
-_SPEC_KEYS_OPTIONAL = {"params", "description"}
+_TEMPLATE_KEYS = {
+    "id",
+    "idea",
+    "registered",
+    "hypothesis",
+    "predicted_sign",
+    "sample",
+    "outcome",
+    "treatment",
+    "exposure",
+    "fixed_effects",
+    "inference",
+    "seed_policy",
+}
+_SPEC_KEYS_REQUIRED = _TEMPLATE_KEYS | {"analysis", "pap_commit"}
+_SPEC_KEYS_OPTIONAL = {"params"}
+# The template lists positive, negative and zero; two_sided is added for a test whose
+# sign is not predicted (idea 0001's direct effect).
+PREDICTED_SIGNS = ("positive", "negative", "zero", "two_sided")
+OUTCOME_WINDOWS = ("term_years", "pre_years")
 
 
 class ConfirmError(Exception):
@@ -94,8 +117,21 @@ class Spec:
     analysis: str
     pap_commit: str
     params: Mapping[str, Any]
-    description: str
+    raw: Mapping[str, Any]
     sha256: str
+
+
+def _sub(raw: dict[str, Any], key: str, fields: tuple[str, ...]) -> dict[str, Any]:
+    value = raw.get(key)
+    if not isinstance(value, dict) or set(value) != set(fields):
+        raise ConfirmError(f"{key} must have exactly {sorted(fields)}")
+    return value
+
+
+def _text(value: Any, what: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ConfirmError(f"{what} must be filled in")
+    return value
 
 
 def load_spec(data: bytes) -> Spec:
@@ -118,6 +154,41 @@ def load_spec(data: bytes) -> Spec:
     spec_id, analysis, commit = raw["id"], raw["analysis"], raw["pap_commit"]
     if not (isinstance(spec_id, str) and _SPEC_ID.fullmatch(spec_id)):
         raise ConfirmError(f"id must look like 0001-some-name, not {spec_id!r}")
+    idea = raw["idea"]
+    if not (
+        isinstance(idea, str)
+        and re.fullmatch(rf"research/ideas/{spec_id[:4]}-[a-z0-9-]+\.md", idea)
+    ):
+        raise ConfirmError(f"idea must be the file research/ideas/{spec_id[:4]}-....md")
+    registered = raw["registered"]
+    if not isinstance(registered, dt.date) or isinstance(registered, dt.datetime):
+        raise ConfirmError("registered must be a date, YYYY-MM-DD")
+    _text(raw["hypothesis"], "hypothesis")
+    if raw["predicted_sign"] not in PREDICTED_SIGNS:
+        raise ConfirmError(f"predicted_sign must be one of {list(PREDICTED_SIGNS)}")
+    if raw["sample"] != "confirm":
+        raise ConfirmError("sample must be confirm: these runs use the confirmation half only")
+    outcome = _sub(raw, "outcome", ("dataset", "variable", "window"))
+    _text(outcome["dataset"], "outcome.dataset")
+    _text(outcome["variable"], "outcome.variable")
+    if outcome["window"] not in OUTCOME_WINDOWS:
+        raise ConfirmError(f"outcome.window must be one of {list(OUTCOME_WINDOWS)}")
+    treatment = _sub(raw, "treatment", ("design", "bandwidth_rule"))
+    if treatment["design"] != "close_pair_swap":
+        raise ConfirmError("treatment.design must be close_pair_swap, the shuffle this runner does")
+    _text(treatment["bandwidth_rule"], "treatment.bandwidth_rule")
+    _text(raw["exposure"], "exposure")
+    effects = raw["fixed_effects"]
+    if not (isinstance(effects, list) and effects and all(isinstance(e, str) for e in effects)):
+        raise ConfirmError("fixed_effects must be a list of names")
+    inference = _sub(raw, "inference", ("method", "draws", "cluster"))
+    if inference["method"] != "randomisation":
+        raise ConfirmError("inference.method must be randomisation")
+    draws = inference["draws"]
+    if isinstance(draws, bool) or not isinstance(draws, int) or draws < 1:
+        raise ConfirmError("inference.draws must be a whole number")
+    _text(inference["cluster"], "inference.cluster")
+    _text(raw["seed_policy"], "seed_policy")
     if not (isinstance(analysis, str) and _NAME.fullmatch(analysis)):
         raise ConfirmError(f"analysis must be a registered name, not {analysis!r}")
     if not (isinstance(commit, str) and _COMMIT.fullmatch(commit)):
@@ -125,15 +196,12 @@ def load_spec(data: bytes) -> Spec:
     params = raw.get("params") or {}
     if not isinstance(params, dict):
         raise ConfirmError("params must be a mapping")
-    description = raw.get("description") or ""
-    if not isinstance(description, str):
-        raise ConfirmError("description must be text")
     return Spec(
         id=spec_id,
         analysis=analysis,
         pap_commit=commit,
         params=params,
-        description=description,
+        raw=raw,
         sha256=hashlib.sha256(data).hexdigest(),
     )
 
@@ -248,6 +316,7 @@ class RunContext:
     store: Store
     mode: str
     params: Mapping[str, Any]
+    spec: Mapping[str, Any]
     municipalities: frozenset[str]
     seed: int
     assigned: bool = False
@@ -333,64 +402,104 @@ def load_registered() -> None:
 # --- results ----------------------------------------------------------------
 
 
-def _number(value: Any, what: str) -> float:
+SIGNIFICANT = 12  # every number is recorded to 12 significant digits
+EXTRA_FIELDS = ("q025", "q975", "clustered_se", "mean_y", "pct_of_baseline", "p1", "coef_z")
+STOP_REASONS = ("kill_criterion_1",)
+
+
+def _number(value: Any, what: str, missing: bool = False) -> float | None:
+    """A finite number, rounded to `SIGNIFICANT` digits; None only where `missing` allows."""
+    if value is None and missing:
+        return None
     if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
         raise ConfirmError(f"{what} must be a finite number")
-    return float(value)
+    return float(f"{float(value):.{SIGNIFICANT}g}")
 
 
 def validate_results(results: Any) -> dict[str, Any]:
     """Results hold numbers and short names only, so nothing else can leave a run.
 
-    {"estimates": [{"name": str, "estimate": float, "p_value": float,
-                    "confirmatory": bool}, ...],
-     "counts": {name: int, ...}}            # optional
+        {"estimates": [{"name": str, "estimate": float | None, "p_value": float | None,
+                        "confirmatory": bool, <EXTRA_FIELDS>: float | None}, ...],
+         "counts": {name: int, ...},              # optional
+         "values": {name: float | None, ...},     # optional: constants and other numbers
+         "stopped": one of STOP_REASONS}          # optional: the run stopped early
+
+    A number is None where it is not estimable. Unless the run stopped, at least one
+    estimate is confirmatory. Numbers are rounded to 12 significant digits, so a rerun
+    that differs only in floating-point summation order records the same numbers.
     """
-    if not isinstance(results, dict) or set(results) - {"estimates", "counts"}:
-        raise ConfirmError("results must be a mapping with estimates and, optionally, counts")
+    allowed = {"estimates", "counts", "values", "stopped"}
+    if not isinstance(results, dict) or set(results) - allowed:
+        raise ConfirmError(f"results must be a mapping with keys among {sorted(allowed)}")
+    stopped = results.get("stopped")
+    if stopped is not None and stopped not in STOP_REASONS:
+        raise ConfirmError(f"stopped must be one of {list(STOP_REASONS)}")
     estimates = results.get("estimates")
-    if not isinstance(estimates, list) or not estimates:
+    if not isinstance(estimates, list) or (not estimates and stopped is None):
         raise ConfirmError("results need at least one estimate")
     clean, names = [], set()
+    base = {"name", "estimate", "p_value", "confirmatory"}
     for e in estimates:
-        if not isinstance(e, dict) or set(e) != {"name", "estimate", "p_value", "confirmatory"}:
-            raise ConfirmError("each estimate has exactly name, estimate, p_value, confirmatory")
+        if not isinstance(e, dict) or not base <= set(e) or set(e) - base - set(EXTRA_FIELDS):
+            raise ConfirmError(
+                "each estimate has name, estimate, p_value, confirmatory and only "
+                f"{list(EXTRA_FIELDS)} besides"
+            )
         name = e["name"]
         if not (isinstance(name, str) and _NAME.fullmatch(name)) or name in names:
             raise ConfirmError(f"estimate names are unique and look like direct_y4, not {name!r}")
         names.add(name)
-        p = _number(e["p_value"], f"{name}: p_value")
-        if not 0 <= p <= 1:
-            raise ConfirmError(f"{name}: p_value must be between 0 and 1")
         if not isinstance(e["confirmatory"], bool):
             raise ConfirmError(f"{name}: confirmatory must be true or false")
-        clean.append(
-            {
-                "name": name,
-                "estimate": _number(e["estimate"], f"{name}: estimate"),
-                "p_value": p,
-                "confirmatory": e["confirmatory"],
-            }
-        )
-    if not any(e["confirmatory"] for e in clean):
+        # None where the estimate is not estimable (no variance), confirmatory or not.
+        missing = True
+        p = _number(e["p_value"], f"{name}: p_value", missing)
+        if p is not None and not 0 <= p <= 1:
+            raise ConfirmError(f"{name}: p_value must be between 0 and 1")
+        row = {
+            "name": name,
+            "estimate": _number(e["estimate"], f"{name}: estimate", missing),
+            "p_value": p,
+            "confirmatory": e["confirmatory"],
+        }
+        for extra in EXTRA_FIELDS:
+            if extra in e:
+                row[extra] = _number(e[extra], f"{name}: {extra}", True)
+        clean.append(row)
+    if stopped is None and not any(e["confirmatory"] for e in clean):
         raise ConfirmError("results need at least one confirmatory estimate")
     counts = results.get("counts", {})
-    if not isinstance(counts, dict):
-        raise ConfirmError("counts must be a mapping")
+    values = results.get("values", {})
+    if not isinstance(counts, dict) or not isinstance(values, dict):
+        raise ConfirmError("counts and values must be mappings")
+    for group in (counts, values):
+        for k in group:
+            if not (isinstance(k, str) and _NAME.fullmatch(k)):
+                raise ConfirmError(f"names look like pairs_2008, not {k!r}")
     for k, v in counts.items():
-        if not (isinstance(k, str) and _NAME.fullmatch(k)):
-            raise ConfirmError(f"count names look like pairs_2008, not {k!r}")
         if isinstance(v, bool) or not isinstance(v, int):
             raise ConfirmError(f"count {k} must be a whole number")
-    return {"estimates": clean, "counts": dict(sorted(counts.items()))}
+    out = {
+        "estimates": clean,
+        "counts": dict(sorted(counts.items())),
+        "values": {k: _number(v, k, True) for k, v in sorted(values.items())},
+    }
+    if stopped is not None:
+        out["stopped"] = stopped
+    return out
 
 
 def shuffled_check(results: dict[str, Any]) -> dict[str, Any]:
-    """The shuffled run must find nothing: no confirmatory p below 0.05."""
+    """The shuffled run must find nothing: no confirmatory p below 0.05.
+
+    A run that stopped early (kill criterion 1, which does not depend on the treatment)
+    has nothing to find, and passes.
+    """
     failing = [
         e["name"]
         for e in results["estimates"]
-        if e["confirmatory"] and e["p_value"] < SHUFFLED_CHECK_ALPHA
+        if e["confirmatory"] and e["p_value"] is not None and e["p_value"] < SHUFFLED_CHECK_ALPHA
     ]
     return {"alpha": SHUFFLED_CHECK_ALPHA, "passed": not failing, "failing": failing}
 
@@ -424,6 +533,7 @@ def run(
         store=store,
         mode=mode,
         params=spec.params,
+        spec=spec.raw,
         municipalities=confirmation_municipalities(store, split_sha256),
         seed=shuffle_seed(spec.sha256),
     )

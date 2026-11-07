@@ -6,6 +6,7 @@ made up in a MemoryStore, and git checks run in a temporary repository.
 
 from __future__ import annotations
 
+import datetime as dt
 import hashlib
 import importlib.util
 import io
@@ -44,7 +45,18 @@ def spec_bytes(**overrides: object) -> bytes:
         "analysis": "test_synthetic",
         "pap_commit": COMMIT,
         "params": {"effect": "synthetic"},
-        "description": "Synthetic specification for tests.",
+        # The fields of confirm/specs/TEMPLATE.yaml:
+        "idea": "research/ideas/0001-synthetic.md",
+        "registered": dt.date(2026, 12, 1),
+        "hypothesis": "Synthetic specification for tests.",
+        "predicted_sign": "two_sided",
+        "sample": "confirm",
+        "outcome": {"dataset": "synthetic", "variable": "y", "window": "term_years"},
+        "treatment": {"design": "close_pair_swap", "bandwidth_rule": "all pairs"},
+        "exposure": "none",
+        "fixed_effects": ["municipality_by_year"],
+        "inference": {"method": "randomisation", "draws": 999, "cluster": "municipality"},
+        "seed_policy": "fixed in the workflow, logged in the ledger",
     }
     raw.update(overrides)
     return yaml.safe_dump({k: v for k, v in raw.items() if v is not None}).encode("utf-8")
@@ -146,6 +158,15 @@ def test_load_spec_reads_the_documented_fields_and_hashes_the_bytes():
         ({"analysis": "Not A Name"}, "analysis must"),
         ({"pap_commit": "abc123"}, "40-character"),
         ({"params": [1, 2]}, "params"),
+        ({"sample": "explore"}, "confirmation half only"),
+        ({"registered": "YYYY-MM-DD"}, "registered must be a date"),
+        ({"predicted_sign": "up"}, "predicted_sign"),
+        ({"idea": "research/ideas/0002-other.md"}, "idea must"),
+        ({"hypothesis": ""}, "hypothesis must be filled in"),
+        ({"treatment": {"design": "permute", "bandwidth_rule": "x"}}, "close_pair_swap"),
+        ({"inference": {"method": "randomisation", "draws": 9}}, "inference must have"),
+        ({"inference": {"method": "bootstrap", "draws": 9, "cluster": "m"}}, "randomisation"),
+        ({"outcome": {"dataset": "d", "variable": "v", "window": "all_years"}}, "outcome.window"),
     ],
 )
 def test_load_spec_refuses_what_it_cannot_use(overrides, message):
@@ -154,7 +175,7 @@ def test_load_spec_refuses_what_it_cannot_use(overrides, message):
 
 
 def test_shuffle_seed_is_fixed_by_the_specification():
-    a, b = confirm.load_spec(spec_bytes()), confirm.load_spec(spec_bytes(description="Changed."))
+    a, b = confirm.load_spec(spec_bytes()), confirm.load_spec(spec_bytes(hypothesis="Changed."))
     assert confirm.shuffle_seed(a.sha256) == confirm.shuffle_seed(a.sha256)
     assert confirm.shuffle_seed(a.sha256) != confirm.shuffle_seed(b.sha256)
 
@@ -399,7 +420,7 @@ def test_unblind_needs_a_passing_shuffled_run_of_the_same_specification(register
     assert entries[0]["label"] == confirm.LABEL_SHUFFLED
     assert confirm.check_unblind(spec, entries) == confirm.LABEL_UNBLINDED
 
-    edited = confirm.load_spec(spec_bytes(description="Edited after the shuffled run."))
+    edited = confirm.load_spec(spec_bytes(hypothesis="Edited after the shuffled run."))
     with pytest.raises(ConfirmError, match="no shuffled run"):
         confirm.check_unblind(edited, entries)
 
