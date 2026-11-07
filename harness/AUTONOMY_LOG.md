@@ -156,3 +156,56 @@ next step run without waiting. Each step below is one he named.
   (kill criterion 1 of idea 0001 recounted at 0.25%, with 0.50% as a
   reproduction check; no outcome), for decision 0009's counts. Own PR,
   merged on CI.
+- 2026-11-07: PR #222 merged on CI (only its eight listed files). Issues
+  #223 (draft 37) and #224 (draft 38) filed with `explore` and
+  `agent-plan`.
+- 2026-11-07: plans on #223 and #224 read: each follows its issue (two
+  files, Done when as written, no outcome table). The #224 planner's risk
+  (0.50% type counts 455 / 1,987 in decision 0008 against 551 / 2,083 in
+  run 41839642406, 2008-2020) is the 96 "both" candidates, which kill
+  criterion 1 counts on each side; not a conflict. `agent-plan` swapped for
+  `agent-build` on both.
+- 2026-11-07: PR #225 (agent build for #224) merged. CI `test` passed on
+  head 43735a95; reviewer Approve on that commit, no must-fix; only the two
+  planned files. Referee R1-R3, R6, R7 OK; R4 and R5 "Not applicable"
+  (counts only, no inference or estimate), read as no referee problem, as
+  before. Nice-to-haves (test identities, a shared reader) not acted on:
+  none changes a count.
+- 2026-11-07: PR #226 (agent build for #223) merged. CI `test` passed on
+  head 61532257; reviewer Approve on that commit, no must-fix; only the two
+  planned files. Referee R1-R3, R5-R7 OK; R4 "Not applicable" (counts and
+  an analytic scaling), read as no referee problem. Nice-to-haves (a comment
+  on text-order ties, a fake store for `load_candidates`, pooled asserts)
+  not acted on: the per-year stop checks already imply the pooled totals.
+- 2026-11-07: explore runs started on main (53b783cf):
+  0001_kill_criterion_1_window (run 42384056410) and 0004_alignment_counts
+  (run 42384059012).
+- 2026-11-07: record PR #228 (run 42384056410, kill criterion 1 at 0.25%)
+  merged on CI. Counts match what issue #224 said to expect: the 0.50%
+  table equals run 41839642406's in every cell, and 0.25% candidates are
+  956 / 1,156 / 1,192 / 1,352 / 1,082 (5,738 pooled), twice decision 0008's
+  pairs. Only the record, its JSON and the index.
+- 2026-11-07: record PR #227 (run 42384059012, alignment counts) **not
+  merged**. Its counts match what issue #223 said to expect (pairs per
+  election; aligned + unaligned + mixed + left out = pairs; left out under
+  5%), but its verdict on drafted kill criterion 1 is inverted ("met" for
+  1,414 and 1,446). A mismatch in the notes, so no merge; the record was not
+  edited by hand. PR closed with a comment, branch kept. Fix issue #229
+  filed (`explore`, `agent-plan`): verdict and its sentence only. This is
+  fix round 1 for task 37.
+- 2026-11-07: decision 0009 (`research/decisions/0009-pap-kill-criteria.md`)
+  written from Gabriel's five points, in his words, and marked accepted by
+  him; it supersedes only decision 0007's "How kill criteria 3 and 4 are
+  applied" for the confirmation half (0007's file and idea 0001's
+  kill-criteria texts unchanged). Kill criterion 1's counts at 0.25% from
+  run 42384056410. A separate section, "What follows from it", is Claude
+  Code's reading (kill criterion 4 on the direct effect alone, at 5%; the
+  fallback triggered by any covariate), for Gabriel to check.
+- 2026-11-07: plan draft `harness/drafts/pap-draft.md` revised to match
+  decision 0009, still "Draft; nothing here is registered": the
+  confirmation framed as a registered test of the direct effect; power
+  carried over; balance fallback; an incumbency adjustment proposed (an
+  incumbent-side exposure contrast that does not flip under re-flips), for
+  Gabriel to confirm. Nothing under `confirm/` or `sealed/` read.
+- 2026-11-07: idea 0001 status line (still `exploring`) and log line;
+  lessons entry for run 42384056410. Own PR, merged on CI.
