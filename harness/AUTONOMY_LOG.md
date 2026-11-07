@@ -22,3 +22,12 @@ the pre-election clearing share as drafted.
 - 2026-11-07: draft 35 updated with these answers, the ID rule, and the
   `cd_ibge` join for `tse_candidates` (the table has no `cd_ibge`, so
   `restrict` needs it from `municipalities`). PR #205.
+- 2026-11-07: PR #205 merged after CI passed (draft only). Issue #206 filed
+  with `explore` and `agent-plan`.
+- 2026-11-07: the planner withheld a plan: my Done-when 5 example
+  contradicted the rule (the sequence picks 0.50%, not 0.25%). Draft fixed
+  (two examples, one per case), "once any window fails, no wider window can
+  be chosen" stated, 2020-2023 outcomes confirmed from the manifest. The rule
+  itself is unchanged.
+- 2026-11-07: coordination with a second session running handoff 5: it takes
+  T2-T7; this session keeps T1 (task 35, issue #206).
