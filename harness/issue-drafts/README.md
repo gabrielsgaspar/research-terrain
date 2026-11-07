@@ -46,6 +46,7 @@ acquired or built (its manifest merged into `data/manifests/`).
 | 32 | Pre-election placebo, kill criterion 2 (explore) | cell_outcomes available (done; #189) |
 | 33 | Minimum detectable effects for decision 0007 (explore) | placebo recorded (done; #194) |
 | 34 | Main exploration, kill criteria 3 and 4 (explore) | decision 0007 accepted (done) |
+| 35 | Close-race window by covariate balance (explore) | task B recorded (done; #204) |
 
 ## Before filing a task
 
