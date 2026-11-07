@@ -1,10 +1,11 @@
 # Pre-analysis plan for idea 0001: DRAFT
 
 > **Draft; nothing here is registered.** Written by Claude Code (handoff 5,
-> T7, revised the same day to match decision 0009), for Gabriel to rewrite.
-> The registered plan lives only in `confirm/pap/` and is written by a
-> person. This file was written without reading anything under `confirm/`
-> or `sealed/`, and it does not use the confirmation half.
+> T7), revised on 2026-11-07 to match decision 0009 and then Gabriel's
+> rulings on the follow-up report. For Gabriel to rewrite. The registered
+> plan lives only in `confirm/pap/` and is written by a person (section 9).
+> This file was written without reading anything under `confirm/` or
+> `sealed/`, and it does not use the confirmation half.
 
 ## 0. What the confirmation is
 
@@ -12,15 +13,15 @@
 confirmation half answers one question: does a narrow council win change
 clearing around the winner's stronghold, relative to the loser's (H1)? The
 answer is gated by kill criterion 1 (enough constituency variation) and
-checked by the placebo (kill criterion 2). Displacement (H2) and the
-constituency split (H3) are estimated and reported in full, but as secondary
-results: neither can kill the idea.
+checked by the placebo (kill criterion 2). Displacement (H2), the
+constituency split (H3) and the alignment split (H4) are estimated and
+reported in full, but as secondary results: none of them can kill the idea.
 
 The exploration half points to a null on H1 (2026-11-06: the direct slope is
 about zero and rules out ±3.5% of baseline, at the 0.50% window, which
 decision 0008 later found unbalanced on incumbency). **When** to spend the
-confirmation half is still Gabriel's decision. The run report recommended
-waiting for idea 0004's pair counts (task 37).
+confirmation half is Gabriel's decision; section 9 lists what registration
+needs first.
 
 ## 1. Hypotheses
 
@@ -38,6 +39,10 @@ before the confirmation half is read:
 - **H3, constituency split (secondary).** The effect around indigenous-side
   strongholds is below the effect around settlement-side strongholds (5 km,
   exclusive types). One-sided at 5% (δ < 0), two-sided p reported.
+- **H4, alignment split (secondary, descriptive, underpowered).** The direct
+  slope for close pairs aligned with the elected mayor, and for unaligned
+  pairs (idea 0004, dead as a standalone design). Reported with no verdict
+  and no kill criterion; its power is about 0.34 (section 5).
 
 ## 2. Outcomes
 
@@ -71,12 +76,14 @@ not re-chosen on the confirmation half.
   0.50% gap (2.3 points, p 0.014).
 - **The registered run prints the balance table first** (issue #206's ten
   covariates, winner minus loser, RI p and omnibus p) on the confirmation
-  half at 0.25%, before any outcome. **If the omnibus p is below 0.15**, the
+  half at 0.25%, before any outcome.
+- **The fallback is triggered by decision 0008's omnibus test only:** the
+  minimum RI p across the ten covariates, set against the re-flip
+  distribution of that minimum. **If the omnibus p is below 0.15**, the
   table is reported, the window stays 0.25%, and the incumbency-adjusted
   direct estimate (section 4) becomes the estimate that kill criteria 2 and
-  4 are read on (decision 0009, point 5). This applies whichever covariate
-  fails; a failure on a covariate other than incumbency is reported as
-  such.
+  4 are read on. A single covariate's p below 0.15 does not trigger it
+  (decision 0009, point 5 and Gabriel's ruling of 2026-11-07).
 
 ## 4. Treatment, exposure and estimators
 
@@ -91,10 +98,19 @@ not re-chosen on the confirmation half.
 - **Displacement exposure (decision 0005):** `g_exp10` on unrepresented
   cells (empty in 2022 and beyond the direct reach), exp(-d/10 km) to 50 km,
   recentred G / 2. The 10-20 and 20-50 km rings are robustness.
-- **Split:** the direct exposure divided into components by the type of
-  each side's stronghold (indigenous, settlement, both, neither, untyped;
-  5 km, 2 km as robustness), estimated jointly; δ = β_indigenous −
+- **Constituency split:** the direct exposure divided into components by the
+  type of each side's stronghold (indigenous, settlement, both, neither,
+  untyped; 5 km, 2 km as robustness), estimated jointly; δ = β_indigenous −
   β_settlement.
+- **Alignment split (H4):** idea 0004's definitions. A side is aligned if
+  its party is in the elected mayor's coalition in the same election
+  (`tse_parties` coalition rows of the deciding mayoral round; from 2024 a
+  federation counts when it is in the coalition). A pair is aligned when
+  both sides are, unaligned when neither is; mixed pairs are counted and
+  left out. The direct slope is estimated separately on aligned and on
+  unaligned pairs, with one set of re-flips shared by both, and the
+  difference is reported. Exploration half at 0.25%, 2008-2020: 1,100
+  aligned and 1,219 unaligned pairs (run 42384829937).
 - **Regression:** OLS of the outcome on the recentred exposure, with
   municipality-by-election fixed effects, pooled over elections, exactly as
   `explore/0001_effects.py` at commit `ce10d89` (run 42298466207).
@@ -104,37 +120,60 @@ not re-chosen on the confirmation half.
   for H3, p1 = (1 + #{δ_r ≤ δ}) / (1 + 2,000). Municipality-clustered
   standard errors are reported as a check.
 - **Incumbency-adjusted direct estimate (registered robustness check,
-  decision 0009, point 4).** Reported next to the unadjusted estimate in
-  every run. *Proposed specification, for Gabriel to confirm before
-  registration:* add one regressor, the incumbent-side exposure contrast
-  Z = Σ over the municipality's close pairs whose sides differ in
-  incumbency of (exposure of the side that held the seat − exposure of the
-  side that did not), with the same kernel as D. Incumbency as rebuilt in
-  task 35 (previous election's elected councillors). Z does not depend on
-  which side won, so it stays fixed under re-flips, and the RI p of the
-  coefficient on D / 2 is computed as above with Z in the regression. Pairs
-  whose sides do not differ in incumbency add nothing to Z.
+  decision 0009, point 4; term accepted by Gabriel on 2026-11-07).**
+  Reported next to the unadjusted estimate in every run. The term is
+  **D^inc**: a cell's exposure to incumbent winners minus incumbent losers,
+  built like D, with the same kernel (`exp2`) and the same close pairs. Per
+  pair, the winner's exposure counts if the winner held the seat before, and
+  the loser's exposure is subtracted if the loser held the seat before;
+  D^inc sums this over the municipality's close pairs. **D^inc / 2 is added
+  to the direct regression**, next to D / 2, with the same fixed effects.
+  Incumbency is as rebuilt in task 35 (the previous election's elected
+  councillors). **The re-flips are unchanged:** the same 2,000 sign
+  vectors, the same seed, and each re-flip swaps a pair's winner and loser
+  in D and D^inc alike. The adjusted direct estimate is the coefficient on
+  D / 2, and its RI p is computed as above.
+  - *Note (Claude Code), for Gabriel before registration:* this term is not
+    the one the previous draft proposed. The earlier term (Z, the
+    incumbent side's exposure minus the other side's, over pairs whose
+    sides differ in incumbency) does not depend on who won, so it stays
+    fixed under re-flips. D^inc depends on who won and flips with the pair.
+    With D / 2 and D^inc / 2 both in the regression, the coefficient on
+    D / 2 is the effect around non-incumbent sides, and the coefficient on
+    D^inc / 2 is how much the effect differs around incumbent sides. The
+    RI test of the coefficient on D / 2 is still valid. But a term that
+    flips with the pair does not absorb a fixed difference between
+    incumbent and non-incumbent sides, which is the balance concern. If
+    "adjusted for incumbency" means removing that difference, Z is the
+    term; if it means letting the effect differ by incumbency, D^inc is.
+    The text above follows Gabriel's wording.
 
 ## 5. Effect size and power (decisions 0007 and 0009)
 
 - **Effect size:** 8% of baseline four-year clearing, read at the mean
   exposure among exposed cells (median and 90th-percentile readings
-  reported alongside). For the split, a gap of one effect size on the
-  indigenous-side cells.
+  reported alongside). For the constituency split, a gap of one effect size
+  on the indigenous-side cells; for the alignment split, a gap of one effect
+  size between aligned and unaligned slopes.
 - **Power is carried over from the exploration half** (decision 0009, point
   3): the halves are a stratified random split of the same size, so the
   sealed half is not read before registration, not even its pre-election
   years. At 0.25% (decision 0008, 2,328 pairs, 2008-2020): **direct 0.868**,
-  displacement 0.622, split 0.307 (5 km, one-sided). Formula: Φ(τ / SD_RI −
-  z), with τ the slope that gives 8% at the mean exposure, SD_RI the
-  re-flip spread and z = 1.96 (1.645 for the split).
+  displacement 0.622, constituency split 0.307 (5 km, one-sided).
+  Formula: Φ(τ / SD_RI − z), with τ the slope that gives 8% at the mean
+  exposure, SD_RI the re-flip spread and z = 1.96 (1.645 for the split).
+- **Alignment split: about 0.34, underpowered.** A rough scaling of the
+  direct power (run 42384829937), not a computation on outcomes: Φ(K ·
+  √((1/2,328) / (1/1,100 + 1/1,219)) − 1.96) with K = 1.96 + Φ⁻¹(0.868),
+  giving 0.335 (0.337 for an even split, the best case). 80% would need a
+  gap of about 1.8 effect sizes.
 - The registered run reports these carried-over figures. It does not
   recompute power on the confirmation half.
 
 ## 6. Kill criteria, and how each is read on the confirmation half
 
 Texts as in the idea file (unchanged). Readings from decisions 0007 and
-0009.
+0009, with Gabriel's rulings of 2026-11-07.
 
 1. **Too little constituency variation** (fewer than 200 close-pair
    candidates within 5 km of an indigenous land, or of a settlement). "0.5%"
@@ -154,29 +193,58 @@ Texts as in the idea file (unchanged). Readings from decisions 0007 and
 3. **Wrong signs by constituency type: secondary, no kill role** (decision
    0009, point 2). δ, its one-sided p1 and its power (about 0.31) are
    reported, with no verdict.
-4. **No effect at all.** Not met if the direct effect is clearly non-zero
-   (two-sided RI p below 0.05, the only confirmatory test). Met if it is not
-   clearly non-zero and its power (0.868, carried over) is at least 0.80,
-   which it is. The displacement branch is secondary (decision 0009, point
-   2): the displacement estimate, its p and its power (0.622) are reported,
-   and it cannot make the criterion met. By the criterion's text, a clearly
-   non-zero displacement effect would still mean "not met". This reading is
-   Claude Code's (decision 0009, "What follows from it"), for Gabriel to
-   check.
+4. **No effect at all.** Judged on the direct effect alone, at 5% (decision
+   0009, accepted by Gabriel on 2026-11-07). Not met if the direct effect
+   is clearly non-zero (two-sided RI p below 0.05, the only confirmatory
+   test). Met if it is not clearly non-zero and its power (0.868, carried
+   over) is at least 0.80, which it is. The displacement branch is
+   secondary (decision 0009, point 2): the displacement estimate, its p and
+   its power (0.622) are reported, and it cannot make the criterion met. By
+   the criterion's text, a clearly non-zero displacement effect would still
+   mean "not met".
+
+The alignment split (H4) has no kill criterion.
 
 ## 7. What is reported, whatever the result
 
-In this order: the balance table; kill criterion 1's counts; the
-carried-over power lines; the placebo; the direct estimate, unadjusted and
-incumbency-adjusted, for Y4 and Y2 and every robustness kernel;
-displacement with ΔY; the split; counts of pairs, cells and candidates per
-type. Dead ends are results. The run happens once, through `confirm-run`,
-and its record is committed as it comes out.
+In this order: the balance table and the omnibus p; kill criterion 1's
+counts; the carried-over power lines; the placebo; the direct estimate,
+unadjusted and incumbency-adjusted (with the coefficient on D^inc / 2), for
+Y4 and Y2 and every robustness kernel; displacement with ΔY; the
+constituency split; the alignment split (aligned and unaligned slopes, their
+difference and its RI p, labelled underpowered, with no verdict); counts of
+pairs, cells and candidates per type, and aligned, unaligned and mixed
+pairs. Dead ends are results. The real run happens once, through `unblind`,
+after a shuffled run through `confirm-run` (section 9), and its ledger entry
+is committed as it comes out.
 
 ## 8. What this draft does not settle
 
 - When to spend the confirmation half (section 0).
-- The incumbency adjustment's specification (section 4, proposed).
-- Claude Code's readings in decision 0009's "What follows from it" (kill
-  criterion 4 with one confirmatory test; the fallback triggered by any
-  covariate).
+- Whether the incumbency term is D^inc as written, or the fixed term Z
+  (section 4, note).
+- The registered specification file in `confirm/specs/` and the analysis
+  code it names. The `confirm-run` and `unblind` workflows are built in a
+  separate pull request that waits for Gabriel's review; the estimator code
+  for this plan is not written yet and would be written, reviewed and
+  merged before registration.
+
+## 9. Registration
+
+What Gabriel must do, in this order, before any run on the confirmation
+half:
+
+1. **Merge the plan into `confirm/pap/`.** Rewrite this draft in his own
+   words and merge it in a pull request that he writes (agents never touch
+   `confirm/`).
+2. **Record its commit hash.** The merge commit that adds the plan to
+   `confirm/pap/` is the registration commit. Its hash goes into the
+   registered specification in `confirm/specs/` and into the external
+   registration.
+3. **Register it externally**, with the plan and the commit hash, before
+   `confirm-run` is started. The date of the external registration is the
+   date the plan was fixed.
+
+After registration: `confirm-run` on the registered specification
+(shuffled treatment; it must give nothing), then `unblind`, once, with
+Gabriel's approval.

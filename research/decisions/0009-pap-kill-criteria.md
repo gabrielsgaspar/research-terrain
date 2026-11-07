@@ -104,3 +104,20 @@ By Gabriel on 2026-11-07, in his review of the run report
 (`harness/reports/2026-11-07-autonomous-run.md`): points 1-5 above, in his
 words. Written by Claude Code at his request; the section "What follows from
 it" is Claude Code's reading, for Gabriel to check.
+
+### Gabriel's rulings on "What follows from it" (2026-11-07)
+
+In his review of `harness/reports/2026-11-07-review-follow-up.md`. Points
+1-5 above are unchanged.
+
+- **Kill criterion 4 is judged on the direct effect alone, at 5%** (the
+  first bullet of "What follows from it"). Accepted by Gabriel.
+- **The balance fallback in point 5 is triggered by decision 0008's omnibus
+  test:** the minimum randomisation-inference p across the ten covariates,
+  set against the re-flip distribution of that minimum, below 0.15. It is
+  not triggered by any single covariate's p. This replaces the fourth bullet
+  of "What follows from it" ("triggered by any covariate"), which was Claude
+  Code's reading. Accepted by Gabriel.
+
+The incumbency adjustment's term is given in the plan draft
+(`harness/drafts/pap-draft.md`, section 4), as Gabriel wrote it.
