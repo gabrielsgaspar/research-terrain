@@ -49,3 +49,15 @@ session to keep T1.
   No stop (2.6).
 - 2026-11-07 (T2): the identifier rule in `AGENTS.md` (protected; handoff 5
   section 1 allows this rule only), own PR, merged on CI.
+- 2026-11-07 (T3): idea files 0003 (mayoral close races) and 0004
+  (alignment with the elected mayor), both `proposed`, kill criteria marked
+  "(drafted; confirm)"; the swing-voter line in idea 0001's body (status
+  untouched); the ideas table (0001's row corrected from "proposed" to
+  "exploring (2026-11-03)", as its status has said since then). Own PR,
+  merged on CI. Idea 0003's close-race counts are the scoping counts of
+  session projects-3e (first-round margins; 34 run-off municipalities).
+- 2026-11-07 (T5): `harness/LESSONS.md` entry (requested tests go in "Done
+  when" before `agent-build`); the 2026-11-06 lessons Implication tidied
+  (first, duplicated "no kill criterion is met on this half" removed, no
+  other word changed); `README.md`'s "What exists" refreshed in plain
+  words. Own PR, merged on CI.
