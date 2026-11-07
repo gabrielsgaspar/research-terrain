@@ -46,8 +46,10 @@ acquired or built (its manifest merged into `data/manifests/`).
 | 32 | Pre-election placebo, kill criterion 2 (explore) | cell_outcomes available (done; #189) |
 | 33 | Minimum detectable effects for decision 0007 (explore) | placebo recorded (done; #194) |
 | 34 | Main exploration, kill criteria 3 and 4 (explore) | decision 0007 accepted (done) |
-| 35 | Close-race window by covariate balance (explore) | task B recorded (done; #204) |
-| 36 | Close mayoral races: power at the municipality level (explore, idea 0003) | idea 0003 merged (done; #209) |
+| 35 | Close-race window by covariate balance (explore) | done (#212; record #219, decision 0008) |
+| 36 | Close mayoral races: power at the municipality level (explore, idea 0003) | done (#216; record #217) |
+| 37 | Aligned and unaligned close pairs at 0.25% (explore, idea 0004) | decision 0008 accepted (done) |
+| 38 | Kill criterion 1 at the 0.25% window (explore, idea 0001) | decision 0008 accepted (done) |
 
 ## Before filing a task
 

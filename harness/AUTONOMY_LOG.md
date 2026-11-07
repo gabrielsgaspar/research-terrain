@@ -131,3 +131,28 @@ session to keep T1.
 - 2026-11-07: final report `harness/reports/2026-11-07-autonomous-run.md`
   (handoff 5, section 4). Own PR, merged on CI. No hard stop was hit in
   either session's threads.
+
+### Follow-up: Gabriel's choices on the run report (2026-11-07)
+
+Gabriel reviewed `harness/reports/2026-11-07-autonomous-run.md` and asked,
+under handoff 5's rules and hard stops, that his choices be recorded and the
+next step run without waiting. Each step below is one he named.
+
+- 2026-11-07: decision 0008: his acceptance added under "Accepted" (the
+  accepted-by-rule line and the decision's text unchanged).
+- 2026-11-07: idea 0003 marked `dead`: he confirmed its three kill criteria
+  as drafted (the "(drafted; confirm)" marks removed, texts unchanged);
+  kill criterion 1 is met (run 42367009833). Ideas table row updated.
+- 2026-11-07: PR #213 labelled "unverified; drafted from memory; do not
+  merge" and left open. GitHub rejects commas in label names, so his commas
+  became semicolons. A second label, created by mistake while testing
+  names, was deleted at once; no other label was touched.
+- 2026-11-07: `harness/issue-drafts/README.md`: task 35's row said "task B
+  recorded (done; #204)", which reads as if #204 had done it; now "done
+  (#212; record #219, decision 0008)". Row 36 updated the same way; rows 37
+  and 38 added.
+- 2026-11-07: draft 37 (aligned, unaligned and mixed close pairs at 0.25%
+  for idea 0004; same election, no lineage table, no outcome) and draft 38
+  (kill criterion 1 of idea 0001 recounted at 0.25%, with 0.50% as a
+  reproduction check; no outcome), for decision 0009's counts. Own PR,
+  merged on CI.

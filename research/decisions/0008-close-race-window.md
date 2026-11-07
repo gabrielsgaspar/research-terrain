@@ -143,3 +143,7 @@ pooled imbalance and was not re-tested on task B's years.
 Accepted by rule (Claude Code, autonomous run); Gabriel to review.
 The rule was fixed in issue #206 before the run; run 42366460941 applied it
 on 2026-11-07 and chose 0.25%.
+
+Accepted by Gabriel on 2026-11-07, after reviewing the run report
+(`harness/reports/2026-11-07-autonomous-run.md`); recorded by Claude Code at
+his request. Decision 0009 sets how the pre-analysis plan uses this window.
