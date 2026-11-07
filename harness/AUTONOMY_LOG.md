@@ -236,3 +236,65 @@ next step run without waiting. Each step below is one he named.
   kill-criterion verdict states the idea's condition and is tested both
   ways). Own PR, merged on CI. One stop was hit and contained (record #227
   not merged); no hard stop was hit.
+
+### Follow-up 2: Gabriel's decisions on the follow-up report (2026-11-07)
+
+Gabriel reviewed `harness/reports/2026-11-07-review-follow-up.md` and asked
+for five things under handoff 5's rules and hard stops, except that the
+confirm-run and unblind PR waits for him.
+
+- 2026-11-07: how the hard stops were read for this request. Building
+  `confirm-run` and `unblind` is code that would use the confirmation half
+  (hard stop 1) and adds two workflows (hard stop 4). Gabriel named that
+  item and excepted its PR, so it was built, under these limits: it is
+  never run, never merged by me, and tested only on synthetic data; nothing
+  under `confirm/` or `sealed/` was read, including
+  `confirm/specs/TEMPLATE.yaml` and `confirm/README.md`; no environment,
+  permission or ruleset was changed.
+- 2026-11-07: decision 0009: Gabriel's two rulings appended under
+  "Accepted" (kill criterion 4 on the direct effect alone at 5%; the
+  fallback triggered by decision 0008's omnibus test, not by any single
+  covariate). Points 1-5 and the text of "What follows from it" were not
+  edited, because 0009 is accepted (hard stop 3); the ruling says which
+  bullet it replaces.
+- 2026-11-07: idea 0004 marked `dead` as a standalone design (Gabriel; power
+  about 0.34). Its kill criteria stay drafts: Gabriel did not confirm them,
+  and it did not die by one. Ideas table row updated.
+- 2026-11-07: plan draft `harness/drafts/pap-draft.md` revised, still
+  "Draft; nothing here is registered": the omnibus trigger; Gabriel's
+  incumbency term D^inc / 2, with the re-flips unchanged; the alignment
+  split as H4 (secondary, descriptive, underpowered, no kill criterion);
+  kill criterion 4's reading marked accepted; a "Registration" section.
+- 2026-11-07: judgement call, flagged in the draft and the report: Gabriel's
+  term D^inc (exposure to incumbent winners minus incumbent losers) flips
+  with each pair, unlike the earlier proposal Z (incumbent side minus the
+  other side), which does not. With both D / 2 and D^inc / 2 in the
+  regression, the coefficient on D / 2 is the effect around non-incumbent
+  sides. The draft follows his wording and adds a note; it does not
+  substitute Z.
+- 2026-11-07: PR #235 (decision 0009 rulings, idea 0004 dead, plan draft,
+  index, log) merged on CI; only its six listed files.
+- 2026-11-07: `confirm-run` and `unblind` built (build plan 3.6) as PR #236,
+  **not merged**, for Gabriel's review as he asked. Files:
+  `.github/workflows/confirm-run.yml`, `.github/workflows/unblind.yml`,
+  `src/terrain/confirm.py`, `src/terrain/registered/__init__.py`,
+  `scripts/confirm_run.py`, `tests/test_confirm.py`. Shuffle seeded from the
+  spec's hash; outcomes readable only after `assign`; results numbers only;
+  unblind needs a passing shuffled ledger entry with the same spec hash,
+  refuses a second run, and claims `ledger/unblind-<spec>` before it gets
+  credentials. Tested on synthetic data only (40 tests; shuffled 0.04 with
+  p 0.62, real 1.06 with p 0.001; a mutation that skips the shuffle fails 4
+  tests). Not run, and cannot run until merged.
+- 2026-11-07: judgement calls in PR #236, flagged there:
+  - confirm-run uses the `unblind` environment, not the build plan's
+    `analysis`, because only terrain-unblind can read `sealed/`
+    (decision 0003). No permission was changed to make `analysis` work.
+  - The spec format was written without reading
+    `confirm/specs/TEMPLATE.yaml` (hard stop 1), so Gabriel must reconcile
+    the two.
+  - No output credential scan was copied from explore-run (`AGENTS.md`
+    forbids adding one, and copying it would write credential prefixes).
+    Results are restricted to numbers and short names instead.
+- 2026-11-07: short report `harness/reports/2026-11-07-follow-up-2.md`.
+  Own PR, merged on CI. No stop was hit. PR #236 stays open for Gabriel,
+  and #213 stays open under its label.
