@@ -40,9 +40,9 @@ Format:
   so it reflects a pre-existing difference, not the election. The split's
   point estimate runs against the prediction, but rests on 455
   indigenous-side candidates (power 0.45).
-- Implication: no kill criterion is met on this half; criteria 3 and 4 are
-  unchanged and the confirmation half stays sealed. If the confirmation half
-  is about as large, kill criterion 3 will again have power near 0.45, so
+- Implication: criteria 3 and 4 are unchanged and the confirmation half
+  stays sealed. If the confirmation half is about as large, kill criterion
+  3 will again have power near 0.45, so
   the pre-analysis plan has to say how it is read there. The displacement
   effect cannot be separated from its pre-election difference on this half,
   which is why dY is reported. No pre-specified criterion is met, but the

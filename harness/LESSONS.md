@@ -21,6 +21,24 @@ plan review. They fall into five groups:
 Expect the rate to fall: each first use of a capability (first build, first
 deletion, first big task) has now happened once.
 
+## 2026-11-07: Tests asked for after `agent-build` need a human push the reviewer never sees (PR #203)
+- Tried: on PR #203 (issue #201), two more tests (the exp10 helper, the
+  2020-only Y3) and a report-order fix were asked for after the build. They
+  were added by a person's commit on the agent branch.
+- Result: the reviewer had already approved the builder's commit, and a
+  human push does not start a new review. So the commit that was merged was
+  never reviewed by the reviewer or the referee.
+- Why: agent-review runs after CI on `agent/` branches, and its guard
+  accepts only pushes by the GitHub App (`.github/workflows/agent-review.yml`).
+  A person's push fails the guard, which only removes `agent-approved`. So
+  anything added after the build sits outside the review loop.
+- Implication: put every test you want into the issue's "Done when" list
+  before adding `agent-build`, so the builder writes it and the reviewer
+  checks it. If something is still needed after the review, send it back as
+  a fix round (`agent-build` with a review comment) instead of pushing by
+  hand. A hand push is the exception, and it is recorded on the PR as
+  unreviewed.
+
 ## 2026-11-04: Figures now go through one style module (handoff 2)
 - Tried: the first five paper figures, each drawn with its own colours,
   sizes, legend placement and PDF settings in `terrain.figures`.
