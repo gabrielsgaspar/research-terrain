@@ -298,3 +298,47 @@ confirm-run and unblind PR waits for him.
 - 2026-11-07: short report `harness/reports/2026-11-07-follow-up-2.md`.
   Own PR, merged on CI. No stop was hit. PR #236 stays open for Gabriel,
   and #213 stays open under its label.
+
+### Follow-up 3: Gabriel's decisions on follow-up 2 (2026-11-07)
+
+Gabriel chose Z, accepted confirm-run under `unblind`, allowed me to read
+`confirm/specs/TEMPLATE.yaml` and `confirm/README.md` for this task only, and
+asked for the registered estimator, its validation, determinism, the rerun
+rule and the shuffled-check procedure, pushed to PR #236 for his review.
+
+- 2026-11-07: read `confirm/specs/TEMPLATE.yaml` and `confirm/README.md`
+  (authorised by Gabriel for this task); nothing else under `confirm/`,
+  nothing under `confirm/ledger/` or `sealed/`.
+- 2026-11-07: merged main into `build/confirm-run-unblind` (no force push).
+  Pushed to PR #236 (not merged):
+  - the spec format reconciled with the template;
+  - the draft spec `harness/drafts/specs/0001-direct.yaml`;
+  - the registered estimator `src/terrain/registered/r0001/` (frozen
+    verbatim copies of 72 explore functions and classes, plus
+    `analysis.py`);
+  - `explore/0001_registered_check.py`;
+  - issue draft 39 and issue #241 (label `explore` only, blocked on #236);
+  - synthetic tests;
+  - the plan draft: Z with the pairs that contribute; the estimator; section
+    8 on determinism, the rerun rule and the shuffled check;
+  - build plan 4.8;
+  - the header of `unblind.yml`.
+- 2026-11-07: validation. On synthetic data the registered estimator gives
+  every number of `explore/0001_effects.py` identically (11 estimates), and
+  kill criterion 1, alignment and balance match their scripts. The real-data
+  check against run 42298466207 at 0.50% **has not run**: explore-run runs
+  only merged code, and #236 waits for Gabriel. It is issue #241. Nothing
+  was run at 0.25% on any data; the estimator refuses that window outside
+  confirm-run and unblind, and no test uses it.
+- 2026-11-07: judgement calls, flagged in PR #236:
+  - The alignment split is estimated as components of D (like the
+    constituency split), and the plan now says so.
+  - The fallback is also triggered when no omnibus p exists.
+  - `predicted_sign: two_sided`, `analysis`, `pap_commit` and `params` are
+    additions to the template.
+  - Ledger numbers are recorded to 12 significant digits, which is what
+    makes reruns identical.
+  - Issue-draft rows 37 and 38 were marked done.
+- 2026-11-07: CI passes on PR #236's head (54d5598); #236 left open for
+  Gabriel. Short report `harness/reports/2026-11-07-follow-up-3.md`, own
+  PR, merged on CI. No stop was hit.
