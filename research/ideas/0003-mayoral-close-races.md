@@ -1,7 +1,7 @@
 ---
 id: "0003"
 title: "Mayoral close races and the geography of deforestation"
-status: proposed
+status: dead
 created: 2026-11-07
 updated: 2026-11-07
 datasets:
@@ -14,9 +14,9 @@ datasets:
   - grid_cells
   - cell_outcomes
 kill_criteria:
-  - "(drafted; confirm) Too little power: at the municipality level, on the exploration half (elections 2008-2020), the close mayoral races at 0.5%, 1% and 2% all give power below 0.50 for decision 0007's effect size (8% of baseline clearing), measured on pre-election clearing. Then no design on these races, municipal or stronghold, is pursued."
-  - "(drafted; confirm) A non-flat placebo: in the four years before the election, the winner's turf and the runner-up's turf differ in clearing (randomisation-inference p below 0.05) on the exploration half, at the window chosen by covariate balance."
-  - "(drafted; confirm) No effect at all: the winner-minus-runner-up turf contrast is indistinguishable from zero, with at least 80% power for the effect size fixed in the pre-analysis plan."
+  - "Too little power: at the municipality level, on the exploration half (elections 2008-2020), the close mayoral races at 0.5%, 1% and 2% all give power below 0.50 for decision 0007's effect size (8% of baseline clearing), measured on pre-election clearing. Then no design on these races, municipal or stronghold, is pursued."
+  - "A non-flat placebo: in the four years before the election, the winner's turf and the runner-up's turf differ in clearing (randomisation-inference p below 0.05) on the exploration half, at the window chosen by covariate balance."
+  - "No effect at all: the winner-minus-runner-up turf contrast is indistinguishable from zero, with at least 80% power for the effect size fixed in the pre-analysis plan."
 related: ["0001"]
 ---
 
@@ -95,11 +95,18 @@ that cannot reach reasonable power at 2%, the idea is not worth a design.
   67% and 45% of baseline. Drafted kill criterion 1 is met. The idea is not
   worth a design unless Gabriel sees a reason to keep it. Proposed: dead,
   once he confirms the kill criteria.
+- 2026-11-07: dead. Gabriel confirmed the three kill criteria as drafted,
+  after reviewing the run report; kill criterion 1 is met (power 4.4%, 5.2%
+  and 7.2% at 8%, all below 0.50, run 42367009833). No design on close
+  mayoral races, municipal or stronghold, is pursued. Recorded by Claude
+  Code at his request.
 
 ## Log
 
 - 2026-11-07: idea file written (Claude Code, autonomous run; Gabriel to
   review). Kill criteria are drafts until Gabriel confirms them.
+- 2026-11-07: Gabriel confirmed the kill criteria (the "(drafted; confirm)"
+  marks removed, texts unchanged) and the idea is dead by kill criterion 1.
 - 2026-11-07: municipality-level power check: issue #214, PR #216, run
   42367009833 (`research/explore-runs/0003/42367009833.md`), record PR #217;
   `research/lessons.md` entry of the same date.
