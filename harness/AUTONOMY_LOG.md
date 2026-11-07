@@ -126,3 +126,8 @@ session to keep T1.
   refreshed now that decision 0008 is merged (0.25%, 0.50% unbalanced on
   incumbency), with idea 0003's power result and the PAP draft. Same PR as
   T7.
+- 2026-11-07: PR #220 (T7 draft and README) merged on CI; only its three
+  files.
+- 2026-11-07: final report `harness/reports/2026-11-07-autonomous-run.md`
+  (handoff 5, section 4). Own PR, merged on CI. No hard stop was hit in
+  either session's threads.
