@@ -135,10 +135,15 @@ not support the predictions either. The direct effect is about zero and
 rules out effects as large as the chosen effect size (8% of baseline
 clearing, decision 0007). The displacement estimate is as large before the
 election as after it. The comparison between constituency types points the
-wrong way, and with power of only 0.45. A test of which close-race window
-is balanced is under way (task 35, decision 0008 to follow). Two new ideas
-are written down but not started: mayoral close races (0003) and alignment
-with the mayor (0004). The newest results are in `research/lessons.md`, and
+wrong way, and with power of only 0.45. A balance test then chose the
+close-race window: 0.25% of valid votes (decision 0008, accepted by rule,
+Gabriel to review). The 0.50% window used until then is not balanced,
+because narrow winners had held the seat more often than narrow losers, so
+those results carry a caveat. The narrower window has fewer pairs and less
+power. Two new ideas are written down: mayoral close races (0003), whose
+power check found far too few races (power below 0.10), and alignment with
+the mayor (0004), not started. A draft pre-analysis plan for idea 0001 is in
+`harness/drafts/pap-draft.md`; nothing is registered. The newest results are in `research/lessons.md`, and
 `research/INDEX.md` lists every record.
 
 | Area | State |
