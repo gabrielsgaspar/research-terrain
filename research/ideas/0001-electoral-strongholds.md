@@ -122,6 +122,15 @@ Elections with usable geography: 2008, 2012, 2016, 2020 and 2024 (see
   often, RI p 0.014), so the 2026-11-06 result is reported with that caveat.
   At 0.25%, power at 8% is 0.868 (direct), 0.622 (displacement) and 0.307
   (split).
+- 2026-11-07: still exploring. Gabriel accepted decision 0008 (0.25%) and
+  decided decision 0009 for the pre-analysis plan: kill criterion 1's
+  "0.5%" means the registered window; kill criterion 3 and kill criterion
+  4's displacement branch are reported, not used to kill; power is carried
+  over from the exploration half; an incumbency-adjusted direct estimate is
+  a registered robustness check and the fallback if confirmation-half
+  balance fails. The kill-criteria texts are unchanged. Kill criterion 1 at
+  0.25% (run 42384056410): 434 indigenous-side and 1,625 settlement-side
+  candidates at 5 km, pooled 2008-2024; not met.
 
 ## Log
 
@@ -149,3 +158,6 @@ Elections with usable geography: 2008, 2012, 2016, 2020 and 2024 (see
 - 2026-11-07: close-race window by covariate balance: issue #206, PR #212,
   run 42366460941 (`research/explore-runs/0001/42366460941.md`), record PR
   #219; decision 0008; `research/lessons.md` entry of the same date.
+- 2026-11-07: kill criterion 1 at 0.25%: issue #224, PR #225, run
+  42384056410 (`research/explore-runs/0001/42384056410.md`), record PR #228;
+  decision 0009; `research/lessons.md` entry of the same date.

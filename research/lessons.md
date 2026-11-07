@@ -16,6 +16,26 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-07: Kill criterion 1 still passes at the 0.25% window (idea 0001, issue #224)
+- Tried: `explore/0001_kill_criterion_1_window.py` on the exploration half,
+  run 42384056410 (`research/explore-runs/0001/42384056410.md`): kill
+  criterion 1's counts (close-pair candidates with a stronghold in or within
+  5 km of an indigenous land, and of a settlement; 2008-2024 pooled) at
+  decision 0008's 0.25% window, with 0.50% recounted in the same pass. No
+  outcome data.
+- Result: at 0.25%, 434 indigenous-side and 1,625 settlement-side
+  candidates (5,738 candidates, twice the 2,869 pairs); not met (minimum
+  200). The 0.50% recount equals run 41839642406 in every cell (711 and
+  2,590).
+- Why: halving the window keeps about 61-63% of the candidates on each side,
+  as it keeps 63% of the pairs; constituency types are not concentrated in
+  the widest races.
+- Implication: under decision 0009 ("0.5%" in kill criterion 1 means the
+  registered window), the criterion is not met at 0.25% on this half. A
+  confirmation half of the same size would clear the bar by about two to
+  one on the indigenous side. The split itself remains secondary, with power
+  near 0.31.
+
 ## 2026-11-07: The balance rule picks a 0.25% window; 0.50% is unbalanced on incumbency (idea 0001, issue #206)
 - Tried: `explore/0001_window.py` on the exploration half, run 42366460941
   (`research/explore-runs/0001/42366460941.md`): seven close-race windows
