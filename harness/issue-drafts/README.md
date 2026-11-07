@@ -65,7 +65,10 @@ acquired or built (its manifest merged into `data/manifests/`).
 5. "Done when" items are checkable on fixtures or inputs built in the test,
    and say exactly which parts of anything they mirror.
 6. Size: at most about ten files changed. Split larger work.
-7. After editing a draft, update the issue (`gh issue edit N --body-file
+7. A task that reports a kill-criterion verdict states the condition as
+   the idea writes it ("met if fewer than 200 ..."), and its Done when has
+   one case each way (harness lesson of 2026-11-07, PR #226).
+8. After editing a draft, update the issue (`gh issue edit N --body-file
    ...`) before adding `agent-plan`.
 
 ## Before building a plan

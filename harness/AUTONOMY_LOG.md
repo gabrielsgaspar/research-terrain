@@ -230,3 +230,9 @@ next step run without waiting. Each step below is one he named.
   42384829937; lessons entry; harness lesson on the inverted verdict (my
   draft's wording "(200 each) is met" was ambiguous, and its Done when had
   no direction test). Own PR, merged on CI.
+- 2026-11-07: PR #233 merged on CI; only its five listed files.
+- 2026-11-07: follow-up report `harness/reports/2026-11-07-review-follow-up.md`
+  and a filing-checklist item in `harness/issue-drafts/README.md` (a
+  kill-criterion verdict states the idea's condition and is tested both
+  ways). Own PR, merged on CI. One stop was hit and contained (record #227
+  not merged); no hard stop was hit.
