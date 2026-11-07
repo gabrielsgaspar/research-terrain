@@ -193,6 +193,10 @@ jobs:
           ACTOR: ${{ github.event_name == 'workflow_dispatch' && github.actor || github.event.sender.login }}
           AUTHOR: ${{ steps.context.outputs.author }}
           EVENT: ${{ github.event_name }}
+          # The agent App files and labels campaign issues (decision 0010);
+          # it has no collaborator role, so its exact login is accepted, as in
+          # agent-plan.
+          APP_BOT: ${{ vars.AGENT_APP_BOT }}
         run: |
           set -euo pipefail
           fail() { printf 'reason=%s\n' "$1" >> "${GITHUB_OUTPUT}"; echo "::error::$1"; exit 1; }
@@ -205,6 +209,10 @@ jobs:
             users=("${AUTHOR}")
           fi
           for user in "${users[@]}"; do
+            if [ -n "${APP_BOT}" ] && [ "${user}" = "${APP_BOT}" ]; then
+              echo "User ${user} is the agent App (campaigns, decision 0010)."
+              continue
+            fi
             if ! permission="$(gh api "repos/${REPO}/collaborators/${user}/permission" --jq .permission 2>/dev/null)"; then
               fail "Could not look up the repository permission of ${user}."
             fi

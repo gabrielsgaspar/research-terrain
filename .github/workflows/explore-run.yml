@@ -24,6 +24,15 @@ on:
         description: "Script in explore/ without .py, e.g. 0001_feasibility_census"
         type: string
         required: true
+      campaign:
+        description: "Campaign step, e.g. 0001/s2 (set by the campaign tick; leave empty)"
+        type: string
+        required: false
+        default: ""
+
+# The campaign tick and gate find a campaign's run by this title
+# (terrain.campaigns.markers.explore_run_title).
+run-name: ${{ inputs.campaign != '' && format('Explore {0} campaign {1}', inputs.script, inputs.campaign) || format('Explore {0}', inputs.script) }}
 
 permissions:
   contents: read
@@ -34,6 +43,7 @@ concurrency:
 
 env:
   SCRIPT: ${{ inputs.script }}
+  CAMPAIGN: ${{ inputs.campaign }}
 
 jobs:
   run:
@@ -52,6 +62,8 @@ jobs:
           set -euo pipefail
           [[ "${SCRIPT}" =~ ^[0-9]{4}_[a-z0-9_]{1,60}$ ]] \
             || { echo "::error::script must look like 0001_some_name"; exit 1; }
+          [[ -z "${CAMPAIGN}" || "${CAMPAIGN}" =~ ^[0-9]{4}/s[0-9]{1,2}$ ]] \
+            || { echo "::error::campaign must be empty or look like 0001/s2"; exit 1; }
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -202,7 +214,11 @@ jobs:
             push "https://github.com/${REPO}.git" "refs/heads/${branch}:refs/heads/${branch}"
           {
             printf 'Records an `explore-run` of `explore/%s.py` (%s).\n\n' "${SCRIPT}" "${RUN_URL}"
-            printf 'Before merging: add a dated entry to `research/lessons.md` and update the idea file in `research/ideas/`, whatever the result, then run `uv run python scripts/build_index.py` and commit `research/INDEX.md` too. Exploration half only; nothing here is a finding.\n\n---\n\n'
+            if [ -n "${CAMPAIGN}" ]; then
+              printf 'Campaign step `%s` (decision 0010): the campaign gate checks this record and the tick merges it; the lessons entry and the idea status line come in the campaign'"'"'s close-out. Exploration half only; nothing here is a finding.\n\n---\n\n' "${CAMPAIGN}"
+            else
+              printf 'Before merging: add a dated entry to `research/lessons.md` and update the idea file in `research/ideas/`, whatever the result, then run `uv run python scripts/build_index.py` and commit `research/INDEX.md` too. Exploration half only; nothing here is a finding.\n\n---\n\n'
+            fi
             head -c 6000 "research/explore-runs/${idea}/${GITHUB_RUN_ID}.md"
           } > "${RUNNER_TEMP}/body.md"
           gh pr create --repo "${REPO}" --base "${BASE_BRANCH}" --head "${branch}" \
