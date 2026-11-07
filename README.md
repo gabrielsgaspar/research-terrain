@@ -91,6 +91,12 @@ flowchart TD
 | Accept or kill an idea | `research/ideas/` | Edit the idea file, add a lessons entry |
 | Register and confirm | `confirm/`, Actions | Write the pre-analysis plan and spec, approve `unblind` |
 
+Inside a **campaign** (`research/campaigns/`, decision 0010) the first three
+rows are done by the `campaign-tick` workflow instead, for steps you approved
+in advance, and only when the required `campaign-gate` check passes. You
+decide when you merge the campaign file and when you merge its close-out
+report.
+
 ## How to
 
 **Run an agent task.** Open an issue with the **Agent task** template (ready
@@ -102,6 +108,14 @@ review adds a referee checklist (exploration half only, no outcomes,
 definitions, inference level, magnitudes, claims, forking paths);
 after that, or if anything fails, it gets `needs-human` and the reason. The
 full log is in the Actions tab.
+
+**Run a campaign.** In Claude Code, describe an idea and ask to design a
+campaign (the `campaign-design` skill). It checks what is already known,
+helps you set the steps, kill rules and budget, and opens a PR with
+`research/campaigns/NNNN-slug/`. Merge it with `status: active`; the
+tracking issue opens on the next tick, and you are mentioned only when a
+step is blocked and when the report is ready. Controls are in
+`research/campaigns/README.md`.
 
 **Acquire or build data.** Once the script is merged:
 
@@ -189,8 +203,10 @@ protected paths (`.github/`, `confirm/`, `data/fixtures/`, `data/manifests/`,
 `data/reference/`, `harness/`, `legacy/`, `pyproject.toml`, `uv.lock`,
 `AGENTS.md`). Only the publish step holds the GitHub App token, and only
 merged code running from `main` gets GCP credentials. Every post and push is
-scanned for credentials. `main` accepts only pull requests with passing tests,
-and a person merges each one. Rules for agents: `AGENTS.md`.
+scanned for credentials. `main` accepts only pull requests with passing tests
+and a passing `campaign-gate`; a person merges each one, except campaign
+steps the gate passes, and paths in `.github/CODEOWNERS` always need a
+person. Rules for agents: `AGENTS.md`.
 
 ## Setup
 

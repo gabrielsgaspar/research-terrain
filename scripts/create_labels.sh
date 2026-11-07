@@ -18,3 +18,6 @@ label agent-approved "The agent reviewer found nothing to fix on the current com
 label idea "A research idea under discussion" fbca04
 label data "Acquiring or building a dataset" c5def5
 label explore "Exploration on the exploration half" bfdadc
+label campaign "Part of a campaign (research/campaigns/); filed and moved by the campaign tick" 6f42c1
+label campaign-pause "On a tracking issue: the campaign tick does nothing for this campaign" fbca04
+label campaign-stop "On a tracking issue: no new steps, no merges; the close-out task is filed" b60205

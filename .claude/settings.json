@@ -9,7 +9,10 @@
       "Read(**/*-key.json)",
       "Read(**/gha-creds-*.json)",
       "Read(./.overleaf-token)",
-      "Read(~/.config/gcloud/**)"
+      "Read(~/.config/gcloud/**)",
+      "Bash(gh pr merge)",
+      "Bash(gh pr merge *)",
+      "Bash(gh api *merge*)"
     ]
   },
   "sandbox": {
