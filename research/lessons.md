@@ -16,6 +16,45 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-06: Kill criteria 3 and 4 on the exploration half (idea 0001, issue #201)
+- Tried: `explore/0001_effects.py` on the exploration half, run 42298466207
+  (`research/explore-runs/0001/42298466207.md`): the direct slope (`exp2`),
+  the displacement slope (`g_exp10`) and the constituency split (5 km; 2 km
+  as robustness) on post-election clearing (E+1..E+4, and E+1..E+2),
+  elections 2008-2020 pooled, 2,000 re-flips of the close pairs shared by
+  every estimate; verdicts by decision 0007. Same pairs, cells and candidate
+  types as the power run (42265146230), to the unit.
+- Result: both criteria "cannot be applied at 80% power on this half".
+  Direct slope -0.0032, -1.0% of baseline at the mean exposure (RI p 0.59);
+  displacement -0.0086, -4.4% (RI p 0.086); under Holm neither is non-zero
+  (the smaller p, 0.086, is above 0.025). Split difference (indigenous-side
+  minus settlement-side) +0.0118, +3.4% (one-sided p1 0.81, two-sided p
+  0.40): the point estimate has the opposite sign to the prediction.
+  Displacement placebo (E-4..E-1) -0.0117, -5.35% (RI p 0.06); change
+  outcome dY +0.0032 (RI p 0.49). The 95% re-flip band of the direct slope
+  is about -3.6% to +3.4% of baseline, and of the displacement slope about
+  -5.0% to +4.8%.
+- Why: the direct null is informative: the design detects 8% with power
+  0.94, and the 95% band excludes effects beyond about ±3.5% of baseline.
+  The displacement slope after the election is about as large as before it,
+  so it reflects a pre-existing difference, not the election. The split's
+  point estimate runs against the prediction, but rests on 455
+  indigenous-side candidates (power 0.45).
+- Implication: no kill criterion is met on this half; criteria 3 and 4 are
+  unchanged and the confirmation half stays sealed. If the confirmation half
+  is about as large, kill criterion 3 will again have power near 0.45, so
+  the pre-analysis plan has to say how it is read there. The displacement
+  effect cannot be separated from its pre-election difference on this half,
+  which is why dY is reported. No pre-specified criterion is met, but the
+  exploration gives no support to the idea's predictions: the direct effect
+  is ruled out at the effect size of interest, displacement is not separated
+  from a pre-existing difference, and the split points the wrong way. Kill
+  criterion 4 is "cannot be applied" only because displacement's power is
+  0.797 against a bar of 0.80. The pre-existing displacement difference also
+  questions balance at the 0.5% window; the window-selection task tests
+  this. Before the pre-analysis plan, decide whether the confirmation half
+  is spent on this design.
+
 ## 2026-11-06: The design's minimum detectable effects, for decision 0007 (idea 0001, issue #194)
 - Tried: `explore/0001_power.py` on the exploration half, run 42265146230
   (`research/explore-runs/0001/42265146230.md`): the spread over 2,000

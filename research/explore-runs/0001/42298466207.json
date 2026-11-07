@@ -1,0 +1,1396 @@
+{
+  "draws": 2000,
+  "elections": [
+    2008,
+    2012,
+    2016,
+    2020
+  ],
+  "estimates": {
+    "direct": {
+      "cells_nonzero_by_regressor": {
+        "beta": 1820156
+      },
+      "counts": {
+        "per_election": {
+          "2008": {
+            "cells": 435786,
+            "cells_dropped": 8,
+            "cells_nonzero": 412034,
+            "municipalities": 349,
+            "pairs": 765
+          },
+          "2012": {
+            "cells": 494099,
+            "cells_dropped": 8,
+            "cells_nonzero": 469194,
+            "municipalities": 367,
+            "pairs": 919
+          },
+          "2016": {
+            "cells": 492301,
+            "cells_dropped": 8,
+            "cells_nonzero": 470724,
+            "municipalities": 360,
+            "pairs": 940
+          },
+          "2020": {
+            "cells": 498638,
+            "cells_dropped": 8,
+            "cells_nonzero": 473670,
+            "municipalities": 356,
+            "pairs": 1060
+          }
+        },
+        "pooled": {
+          "cells": 1920824,
+          "cells_dropped": 32,
+          "cells_nonzero": 1825622,
+          "mean_y": 0.02287102628871776,
+          "municipalities": 386,
+          "pairs": 3684
+        }
+      },
+      "not_estimable": [],
+      "slots": {
+        "Y2": {
+          "beta": {
+            "clustered_se": 0.0021804220808065997,
+            "mean_abs_x": 0.07132919859260775,
+            "mean_y": 0.011087115269280268,
+            "mean_y_nonzero": 0.011123262072042178,
+            "pct_of_baseline": -0.3573734738654122,
+            "q025": -0.0059006296701591306,
+            "q975": 0.005780879361119527,
+            "ri_p": 0.8620689655172413,
+            "slope": -0.0005572975563772932
+          }
+        },
+        "Y4": {
+          "beta": {
+            "clustered_se": 0.004016446678350424,
+            "mean_abs_x": 0.07132919859260775,
+            "mean_y": 0.02287102628871776,
+            "mean_y_nonzero": 0.022945709433696893,
+            "pct_of_baseline": -0.9800911305632647,
+            "q025": -0.011644589257651316,
+            "q975": 0.010946373184457322,
+            "ri_p": 0.5882058970514743,
+            "slope": -0.0031528303617838213
+          }
+        }
+      }
+    },
+    "direct_y3": {
+      "cells_nonzero_by_regressor": {
+        "beta": 472446
+      },
+      "counts": {
+        "per_election": {
+          "2008": {
+            "cells": 0,
+            "cells_dropped": 0,
+            "cells_nonzero": 0,
+            "municipalities": 0,
+            "pairs": 0
+          },
+          "2012": {
+            "cells": 0,
+            "cells_dropped": 0,
+            "cells_nonzero": 0,
+            "municipalities": 0,
+            "pairs": 0
+          },
+          "2016": {
+            "cells": 0,
+            "cells_dropped": 0,
+            "cells_nonzero": 0,
+            "municipalities": 0,
+            "pairs": 0
+          },
+          "2020": {
+            "cells": 498638,
+            "cells_dropped": 8,
+            "cells_nonzero": 473670,
+            "municipalities": 356,
+            "pairs": 1060
+          }
+        },
+        "pooled": {
+          "cells": 498638,
+          "cells_dropped": 8,
+          "cells_nonzero": 473670,
+          "mean_y": 0.01984540989655823,
+          "municipalities": 356,
+          "pairs": 1060
+        }
+      },
+      "not_estimable": [],
+      "slots": {
+        "Y2": {
+          "beta": {
+            "clustered_se": 0.006023151313061116,
+            "mean_abs_x": 0.07244189005961264,
+            "mean_y": 0.01984540989655823,
+            "mean_y_nonzero": 0.020084616442937395,
+            "pct_of_baseline": 0.6691644153124774,
+            "q025": -0.016594217080185263,
+            "q975": 0.01568123067703233,
+            "ri_p": 0.8315842078960519,
+            "slope": 0.0018552678026144583
+          }
+        },
+        "Y4": {
+          "beta": {
+            "clustered_se": 0.006023151313061116,
+            "mean_abs_x": 0.07244189005961264,
+            "mean_y": 0.01984540989655823,
+            "mean_y_nonzero": 0.020084616442937395,
+            "pct_of_baseline": 0.6691644153124774,
+            "q025": -0.016594217080185263,
+            "q975": 0.01568123067703233,
+            "ri_p": 0.8315842078960519,
+            "slope": 0.0018552678026144583
+          }
+        }
+      }
+    },
+    "disp_pre": {
+      "cells_nonzero_by_regressor": {
+        "beta": 2825234
+      },
+      "counts": {
+        "per_election": {
+          "2008": {
+            "cells": 1916080,
+            "cells_dropped": 164,
+            "cells_nonzero": 683163,
+            "municipalities": 333,
+            "pairs": 723
+          },
+          "2012": {
+            "cells": 1935586,
+            "cells_dropped": 164,
+            "cells_nonzero": 695751,
+            "municipalities": 343,
+            "pairs": 846
+          },
+          "2016": {
+            "cells": 1874974,
+            "cells_dropped": 164,
+            "cells_nonzero": 733738,
+            "municipalities": 335,
+            "pairs": 864
+          },
+          "2020": {
+            "cells": 1830075,
+            "cells_dropped": 153,
+            "cells_nonzero": 713504,
+            "municipalities": 331,
+            "pairs": 967
+          }
+        },
+        "pooled": {
+          "cells": 7556715,
+          "cells_dropped": 645,
+          "cells_nonzero": 2826156,
+          "mean_y": 0.009815409394161353,
+          "municipalities": 365,
+          "pairs": 3400
+        }
+      },
+      "not_estimable": [],
+      "slots": {
+        "Y2": {
+          "beta": {
+            "clustered_se": 0.004113424240233298,
+            "mean_abs_x": 0.07758753296696379,
+            "mean_y": -0.000688906952293424,
+            "mean_y_nonzero": -0.0018571986249634547,
+            "pct_of_baseline": null,
+            "q025": -0.008778813357517625,
+            "q975": 0.009098686977569046,
+            "ri_p": 0.4917541229385307,
+            "slope": 0.0031504579820325926
+          }
+        },
+        "Y4": {
+          "beta": {
+            "clustered_se": 0.0072867473355455,
+            "mean_abs_x": 0.07758753296696379,
+            "mean_y": 0.009815409394161353,
+            "mean_y_nonzero": 0.01704178174268043,
+            "pct_of_baseline": -5.345587588992666,
+            "q025": -0.012158033979121808,
+            "q975": 0.012319697974873816,
+            "ri_p": 0.06046976511744128,
+            "slope": -0.011741362754346544
+          }
+        }
+      }
+    },
+    "disp_ring10_20": {
+      "cells_nonzero_by_regressor": {
+        "beta": 610755
+      },
+      "counts": {
+        "per_election": {
+          "2008": {
+            "cells": 1916080,
+            "cells_dropped": 164,
+            "cells_nonzero": 137825,
+            "municipalities": 333,
+            "pairs": 723
+          },
+          "2012": {
+            "cells": 1935586,
+            "cells_dropped": 164,
+            "cells_nonzero": 148986,
+            "municipalities": 343,
+            "pairs": 846
+          },
+          "2016": {
+            "cells": 1874974,
+            "cells_dropped": 164,
+            "cells_nonzero": 159608,
+            "municipalities": 335,
+            "pairs": 864
+          },
+          "2020": {
+            "cells": 1830075,
+            "cells_dropped": 153,
+            "cells_nonzero": 164336,
+            "municipalities": 331,
+            "pairs": 967
+          }
+        },
+        "pooled": {
+          "cells": 7556715,
+          "cells_dropped": 645,
+          "cells_nonzero": 610755,
+          "mean_y": 0.00912650244186793,
+          "municipalities": 365,
+          "pairs": 3400
+        }
+      },
+      "not_estimable": [],
+      "slots": {
+        "Y2": {
+          "beta": {
+            "clustered_se": 0.0005502564129168932,
+            "mean_abs_x": 1.1393946836292785,
+            "mean_y": 0.004451093550570585,
+            "mean_y_nonzero": 0.008914872903209962,
+            "pct_of_baseline": -12.447682844086838,
+            "q025": -0.0008942301177403382,
+            "q975": 0.0009165439249557225,
+            "ri_p": 0.03498250874562719,
+            "slope": -0.0009739338974360802
+          }
+        },
+        "Y4": {
+          "beta": {
+            "clustered_se": 0.0009395713164334727,
+            "mean_abs_x": 1.1393946836292785,
+            "mean_y": 0.009126502441867928,
+            "mean_y_nonzero": 0.018258620559798936,
+            "pct_of_baseline": -9.769339352477374,
+            "q025": -0.0015633140900165115,
+            "q975": 0.0015785788348718038,
+            "ri_p": 0.05247376311844078,
+            "slope": -0.0015655212624709194
+          }
+        }
+      }
+    },
+    "disp_ring20_50": {
+      "cells_nonzero_by_regressor": {
+        "beta": 1727223
+      },
+      "counts": {
+        "per_election": {
+          "2008": {
+            "cells": 1916080,
+            "cells_dropped": 164,
+            "cells_nonzero": 382359,
+            "municipalities": 333,
+            "pairs": 723
+          },
+          "2012": {
+            "cells": 1935586,
+            "cells_dropped": 164,
+            "cells_nonzero": 426474,
+            "municipalities": 343,
+            "pairs": 846
+          },
+          "2016": {
+            "cells": 1874974,
+            "cells_dropped": 164,
+            "cells_nonzero": 456506,
+            "municipalities": 335,
+            "pairs": 864
+          },
+          "2020": {
+            "cells": 1830075,
+            "cells_dropped": 153,
+            "cells_nonzero": 461884,
+            "municipalities": 331,
+            "pairs": 967
+          }
+        },
+        "pooled": {
+          "cells": 7556715,
+          "cells_dropped": 645,
+          "cells_nonzero": 1727223,
+          "mean_y": 0.00912650244186793,
+          "municipalities": 365,
+          "pairs": 3400
+        }
+      },
+      "not_estimable": [],
+      "slots": {
+        "Y2": {
+          "beta": {
+            "clustered_se": 0.0003350653544354655,
+            "mean_abs_x": 1.2001785525088537,
+            "mean_y": 0.004451093550570585,
+            "mean_y_nonzero": 0.007021404821496703,
+            "pct_of_baseline": 1.7602440521019793,
+            "q025": -0.0007385879358824738,
+            "q975": 0.0007069664313199672,
+            "ri_p": 0.7776111944027986,
+            "slope": 0.00010297956123781472
+          }
+        },
+        "Y4": {
+          "beta": {
+            "clustered_se": 0.000643546676816056,
+            "mean_abs_x": 1.2001785525088537,
+            "mean_y": 0.009126502441867928,
+            "mean_y_nonzero": 0.014520702538120439,
+            "pct_of_baseline": 0.2840283260647253,
+            "q025": -0.0013393637815093066,
+            "q975": 0.00130013432517007,
+            "ri_p": 0.9620189905047476,
+            "slope": 3.4363977147939666e-05
+          }
+        }
+      }
+    },
+    "displacement": {
+      "cells_nonzero_by_regressor": {
+        "beta": 2825234
+      },
+      "counts": {
+        "per_election": {
+          "2008": {
+            "cells": 1916080,
+            "cells_dropped": 164,
+            "cells_nonzero": 683163,
+            "municipalities": 333,
+            "pairs": 723
+          },
+          "2012": {
+            "cells": 1935586,
+            "cells_dropped": 164,
+            "cells_nonzero": 695751,
+            "municipalities": 343,
+            "pairs": 846
+          },
+          "2016": {
+            "cells": 1874974,
+            "cells_dropped": 164,
+            "cells_nonzero": 733738,
+            "municipalities": 335,
+            "pairs": 864
+          },
+          "2020": {
+            "cells": 1830075,
+            "cells_dropped": 153,
+            "cells_nonzero": 713504,
+            "municipalities": 331,
+            "pairs": 967
+          }
+        },
+        "pooled": {
+          "cells": 7556715,
+          "cells_dropped": 645,
+          "cells_nonzero": 2826156,
+          "mean_y": 0.00912650244186793,
+          "municipalities": 365,
+          "pairs": 3400
+        }
+      },
+      "not_estimable": [],
+      "slots": {
+        "Y2": {
+          "beta": {
+            "clustered_se": 0.0035928646822927478,
+            "mean_abs_x": 0.07758753296696379,
+            "mean_y": 0.004451093550570585,
+            "mean_y_nonzero": 0.007313614235139461,
+            "pct_of_baseline": -5.892912440733064,
+            "q025": -0.005546104112753678,
+            "q975": 0.0055900382796160945,
+            "ri_p": 0.050974512743628186,
+            "slope": -0.005554821330809268
+          }
+        },
+        "Y4": {
+          "beta": {
+            "clustered_se": 0.006207220903723078,
+            "mean_abs_x": 0.07758753296696379,
+            "mean_y": 0.009126502441867928,
+            "mean_y_nonzero": 0.015184583117716978,
+            "pct_of_baseline": -4.389630601450265,
+            "q025": -0.009699173504218624,
+            "q975": 0.009483187586052166,
+            "ri_p": 0.0864567716141929,
+            "slope": -0.00859090477231395
+          }
+        }
+      }
+    },
+    "displacement_y3": {
+      "cells_nonzero_by_regressor": {
+        "beta": 713504
+      },
+      "counts": {
+        "per_election": {
+          "2008": {
+            "cells": 0,
+            "cells_dropped": 0,
+            "cells_nonzero": 0,
+            "municipalities": 0,
+            "pairs": 0
+          },
+          "2012": {
+            "cells": 0,
+            "cells_dropped": 0,
+            "cells_nonzero": 0,
+            "municipalities": 0,
+            "pairs": 0
+          },
+          "2016": {
+            "cells": 0,
+            "cells_dropped": 0,
+            "cells_nonzero": 0,
+            "municipalities": 0,
+            "pairs": 0
+          },
+          "2020": {
+            "cells": 1830075,
+            "cells_dropped": 153,
+            "cells_nonzero": 713504,
+            "municipalities": 331,
+            "pairs": 967
+          }
+        },
+        "pooled": {
+          "cells": 1830075,
+          "cells_dropped": 153,
+          "cells_nonzero": 713504,
+          "mean_y": 0.00989866956272284,
+          "municipalities": 331,
+          "pairs": 967
+        }
+      },
+      "not_estimable": [],
+      "slots": {
+        "Y2": {
+          "beta": {
+            "clustered_se": 0.010834386090928775,
+            "mean_abs_x": 0.08270323656372167,
+            "mean_y": 0.00989866956272284,
+            "mean_y_nonzero": 0.015674344362470286,
+            "pct_of_baseline": -4.106814370618839,
+            "q025": -0.019324590093731244,
+            "q975": 0.018540601508233407,
+            "ri_p": 0.41679160419790107,
+            "slope": -0.007783446616170085
+          }
+        },
+        "Y4": {
+          "beta": {
+            "clustered_se": 0.010834386090928775,
+            "mean_abs_x": 0.08270323656372167,
+            "mean_y": 0.00989866956272284,
+            "mean_y_nonzero": 0.015674344362470286,
+            "pct_of_baseline": -4.106814370618839,
+            "q025": -0.019324590093731244,
+            "q975": 0.018540601508233407,
+            "ri_p": 0.41679160419790107,
+            "slope": -0.007783446616170085
+          }
+        }
+      }
+    },
+    "ring2": {
+      "cells_nonzero_by_regressor": {
+        "beta": 169406
+      },
+      "counts": {
+        "per_election": {
+          "2008": {
+            "cells": 39865,
+            "cells_dropped": 1,
+            "cells_nonzero": 37310,
+            "municipalities": 349,
+            "pairs": 765
+          },
+          "2012": {
+            "cells": 46398,
+            "cells_dropped": 1,
+            "cells_nonzero": 43469,
+            "municipalities": 367,
+            "pairs": 919
+          },
+          "2016": {
+            "cells": 46904,
+            "cells_dropped": 1,
+            "cells_nonzero": 44387,
+            "municipalities": 360,
+            "pairs": 940
+          },
+          "2020": {
+            "cells": 47585,
+            "cells_dropped": 1,
+            "cells_nonzero": 45037,
+            "municipalities": 356,
+            "pairs": 1060
+          }
+        },
+        "pooled": {
+          "cells": 180752,
+          "cells_dropped": 4,
+          "cells_nonzero": 170203,
+          "mean_y": 0.02086580010179694,
+          "municipalities": 386,
+          "pairs": 3684
+        }
+      },
+      "not_estimable": [],
+      "slots": {
+        "Y2": {
+          "beta": {
+            "clustered_se": 0.002504691387474161,
+            "mean_abs_x": 0.07451544858629591,
+            "mean_y": 0.010255006306984156,
+            "mean_y_nonzero": 0.010120024084152864,
+            "pct_of_baseline": -0.7528178011252111,
+            "q025": -0.004269281626118499,
+            "q975": 0.004307553149436807,
+            "ri_p": 0.638680659670165,
+            "slope": -0.0010224100401869227
+          }
+        },
+        "Y4": {
+          "beta": {
+            "clustered_se": 0.004493169290475167,
+            "mean_abs_x": 0.07451544858629591,
+            "mean_y": 0.02086580010179694,
+            "mean_y_nonzero": 0.020532690695725064,
+            "pct_of_baseline": -1.3956571391644457,
+            "q025": -0.008211522602864325,
+            "q975": 0.008305874643161067,
+            "ri_p": 0.36081959020489757,
+            "slope": -0.003845725537377264
+          }
+        }
+      }
+    },
+    "ring5": {
+      "cells_nonzero_by_regressor": {
+        "beta": 735452
+      },
+      "counts": {
+        "per_election": {
+          "2008": {
+            "cells": 174250,
+            "cells_dropped": 5,
+            "cells_nonzero": 163441,
+            "municipalities": 349,
+            "pairs": 765
+          },
+          "2012": {
+            "cells": 201367,
+            "cells_dropped": 5,
+            "cells_nonzero": 189564,
+            "municipalities": 367,
+            "pairs": 919
+          },
+          "2016": {
+            "cells": 201741,
+            "cells_dropped": 5,
+            "cells_nonzero": 191620,
+            "municipalities": 360,
+            "pairs": 940
+          },
+          "2020": {
+            "cells": 204681,
+            "cells_dropped": 5,
+            "cells_nonzero": 193551,
+            "municipalities": 356,
+            "pairs": 1060
+          }
+        },
+        "pooled": {
+          "cells": 782039,
+          "cells_dropped": 20,
+          "cells_nonzero": 738176,
+          "mean_y": 0.023175282818376067,
+          "municipalities": 386,
+          "pairs": 3684
+        }
+      },
+      "not_estimable": [],
+      "slots": {
+        "Y2": {
+          "beta": {
+            "clustered_se": 0.0020641870685805443,
+            "mean_abs_x": 0.07355146634710565,
+            "mean_y": 0.011215361382232858,
+            "mean_y_nonzero": 0.011125812561526791,
+            "pct_of_baseline": 0.09316019444209583,
+            "q025": -0.004811998831250167,
+            "q975": 0.00473466907738931,
+            "ri_p": 0.952023988005997,
+            "slope": 0.00014091940147960562
+          }
+        },
+        "Y4": {
+          "beta": {
+            "clustered_se": 0.003946635485147988,
+            "mean_abs_x": 0.07355146634710565,
+            "mean_y": 0.023175282818376067,
+            "mean_y_nonzero": 0.023000599767217984,
+            "pct_of_baseline": -0.46199480859370057,
+            "q025": -0.009389260275842791,
+            "q975": 0.008953714772056934,
+            "ri_p": 0.7666166916541729,
+            "slope": -0.0014447241115287896
+          }
+        }
+      }
+    },
+    "split2": {
+      "cells_nonzero_by_regressor": {
+        "both": 19672,
+        "indigenous": 261699,
+        "neither": 1629457,
+        "settlement": 796609,
+        "untyped": 45657
+      },
+      "counts": {
+        "per_election": {
+          "2008": {
+            "cells": 435786,
+            "cells_dropped": 8,
+            "cells_nonzero": 412034,
+            "municipalities": 349,
+            "pairs": 765
+          },
+          "2012": {
+            "cells": 494099,
+            "cells_dropped": 8,
+            "cells_nonzero": 469194,
+            "municipalities": 367,
+            "pairs": 919
+          },
+          "2016": {
+            "cells": 492301,
+            "cells_dropped": 8,
+            "cells_nonzero": 470724,
+            "municipalities": 360,
+            "pairs": 940
+          },
+          "2020": {
+            "cells": 498638,
+            "cells_dropped": 8,
+            "cells_nonzero": 473670,
+            "municipalities": 356,
+            "pairs": 1060
+          }
+        },
+        "pooled": {
+          "cells": 1920824,
+          "cells_dropped": 32,
+          "cells_nonzero": 1825622,
+          "mean_y": 0.02287102628871776,
+          "municipalities": 386,
+          "pairs": 3684
+        }
+      },
+      "not_estimable": [],
+      "slots": {
+        "Y2": {
+          "both": {
+            "mean_abs_x": 0.040032060753341515,
+            "mean_y": 0.011087115269280268,
+            "mean_y_nonzero": 0.008148988409922734,
+            "pct_of_baseline": 16.359376529730948,
+            "q025": -0.05649363121713237,
+            "q975": 0.05617195562786426,
+            "ri_p": 0.9170414792603698,
+            "slope": 0.03330140073371361
+          },
+          "delta": {
+            "mean_abs_x": 0.05964719422511211,
+            "mean_y": 0.011087115269280268,
+            "mean_y_nonzero": 0.008746244349424339,
+            "p1": 0.6966516741629185,
+            "pct_of_baseline": 2.4438361246291964,
+            "q025": -0.014603555294893175,
+            "q975": 0.015106794852476154,
+            "ri_p": 0.631184407796102,
+            "slope": 0.003583469126022752
+          },
+          "indigenous": {
+            "mean_abs_x": 0.05964719422511211,
+            "mean_y": 0.011087115269280268,
+            "mean_y_nonzero": 0.008746244349424339,
+            "pct_of_baseline": 2.2286393598239798,
+            "q025": -0.01126464693971432,
+            "q975": 0.010799176155380372,
+            "ri_p": 0.5757121439280359,
+            "slope": 0.0032679197506257085
+          },
+          "neither": {
+            "mean_abs_x": 0.057545429531619736,
+            "mean_y": 0.011087115269280268,
+            "mean_y_nonzero": 0.011255901996800162,
+            "pct_of_baseline": -0.8334661654971087,
+            "q025": -0.00782436684834201,
+            "q975": 0.007644792485260954,
+            "ri_p": 0.6941529235382309,
+            "slope": -0.0016302621342550643
+          },
+          "settlement": {
+            "mean_abs_x": 0.05205536142334315,
+            "mean_y": 0.011087115269280268,
+            "mean_y_nonzero": 0.012238944952919188,
+            "pct_of_baseline": -0.13421121547969206,
+            "q025": -0.010800380200480852,
+            "q975": 0.010903939639586274,
+            "ri_p": 0.9555222388805598,
+            "slope": -0.0003155493753970432
+          },
+          "untyped": {
+            "mean_abs_x": 0.02153830129618397,
+            "mean_y": 0.011087115269280268,
+            "mean_y_nonzero": 0.00844073636025144,
+            "pct_of_baseline": -4.130928430525089,
+            "q025": -0.05697830389621253,
+            "q975": 0.06208848707065056,
+            "ri_p": 0.7231384307846077,
+            "slope": -0.016188870851810054
+          }
+        },
+        "Y4": {
+          "both": {
+            "mean_abs_x": 0.040032060753341515,
+            "mean_y": 0.02287102628871776,
+            "mean_y_nonzero": 0.015595465636437576,
+            "pct_of_baseline": 13.420471704690973,
+            "q025": -0.0967083318315724,
+            "q975": 0.09625867027412735,
+            "ri_p": 0.9130434782608695,
+            "slope": 0.052282720738482225
+          },
+          "delta": {
+            "mean_abs_x": 0.05964719422511211,
+            "mean_y": 0.02287102628871776,
+            "mean_y_nonzero": 0.01872456104150188,
+            "p1": 0.6376811594202898,
+            "pct_of_baseline": 1.6521654786655655,
+            "q025": -0.0311482718505312,
+            "q975": 0.03003443394169194,
+            "ri_p": 0.7491254372813593,
+            "slope": 0.005186509400455778
+          },
+          "indigenous": {
+            "mean_abs_x": 0.05964719422511211,
+            "mean_y": 0.02287102628871776,
+            "mean_y_nonzero": 0.01872456104150188,
+            "pct_of_baseline": 1.0235453176040654,
+            "q025": -0.020812175216406353,
+            "q975": 0.019680729186972997,
+            "ri_p": 0.7666166916541729,
+            "slope": 0.00321313299430133
+          },
+          "neither": {
+            "mean_abs_x": 0.057545429531619736,
+            "mean_y": 0.02287102628871776,
+            "mean_y_nonzero": 0.023132641671427968,
+            "pct_of_baseline": -1.3292198643366695,
+            "q025": -0.01371375166641494,
+            "q975": 0.013407447346565293,
+            "ri_p": 0.45977011494252873,
+            "slope": -0.005343320412153468
+          },
+          "settlement": {
+            "mean_abs_x": 0.05205536142334315,
+            "mean_y": 0.02287102628871776,
+            "mean_y_nonzero": 0.025516600490328382,
+            "pct_of_baseline": -0.4025803597371985,
+            "q025": -0.023689377667671117,
+            "q975": 0.024219964152832906,
+            "ri_p": 0.8730634682658671,
+            "slope": -0.0019733764061544475
+          },
+          "untyped": {
+            "mean_abs_x": 0.02153830129618397,
+            "mean_y": 0.02287102628871776,
+            "mean_y_nonzero": 0.019000558512385832,
+            "pct_of_baseline": -0.6145378981424694,
+            "q025": -0.1227505447100095,
+            "q975": 0.12901194252854398,
+            "ri_p": 0.9695152423788106,
+            "slope": -0.005421301861815527
+          }
+        }
+      }
+    },
+    "split5": {
+      "cells_nonzero_by_regressor": {
+        "both": 94668,
+        "indigenous": 320077,
+        "neither": 1466448,
+        "settlement": 993853,
+        "untyped": 45657
+      },
+      "counts": {
+        "per_election": {
+          "2008": {
+            "cells": 435786,
+            "cells_dropped": 8,
+            "cells_nonzero": 412034,
+            "municipalities": 349,
+            "pairs": 765
+          },
+          "2012": {
+            "cells": 494099,
+            "cells_dropped": 8,
+            "cells_nonzero": 469194,
+            "municipalities": 367,
+            "pairs": 919
+          },
+          "2016": {
+            "cells": 492301,
+            "cells_dropped": 8,
+            "cells_nonzero": 470724,
+            "municipalities": 360,
+            "pairs": 940
+          },
+          "2020": {
+            "cells": 498638,
+            "cells_dropped": 8,
+            "cells_nonzero": 473670,
+            "municipalities": 356,
+            "pairs": 1060
+          }
+        },
+        "pooled": {
+          "cells": 1920824,
+          "cells_dropped": 32,
+          "cells_nonzero": 1825622,
+          "mean_y": 0.02287102628871776,
+          "municipalities": 386,
+          "pairs": 3684
+        }
+      },
+      "not_estimable": [],
+      "slots": {
+        "Y2": {
+          "both": {
+            "mean_abs_x": 0.04378824670142325,
+            "mean_y": 0.011087115269280268,
+            "mean_y_nonzero": 0.012631291460683654,
+            "pct_of_baseline": -1.6872532319798021,
+            "q025": -0.03407324212414006,
+            "q975": 0.03387366930958769,
+            "ri_p": 0.7956021989005497,
+            "slope": -0.0048671022355468415
+          },
+          "delta": {
+            "mean_abs_x": 0.05792235877780631,
+            "mean_y": 0.011087115269280268,
+            "mean_y_nonzero": 0.009222822008454217,
+            "p1": 0.7711144427786107,
+            "pct_of_baseline": 3.177267867422375,
+            "q025": -0.013582145530488605,
+            "q975": 0.013841760030349306,
+            "ri_p": 0.47726136931534235,
+            "slope": 0.0050590785031436655
+          },
+          "indigenous": {
+            "mean_abs_x": 0.05792235877780631,
+            "mean_y": 0.011087115269280268,
+            "mean_y_nonzero": 0.009222822008454217,
+            "pct_of_baseline": 2.374501172870023,
+            "q025": -0.010272371168524317,
+            "q975": 0.010452603231766111,
+            "ri_p": 0.4987506246876562,
+            "slope": 0.0037808546023227756
+          },
+          "neither": {
+            "mean_abs_x": 0.055163514752945786,
+            "mean_y": 0.011087115269280268,
+            "mean_y_nonzero": 0.01103807417651359,
+            "pct_of_baseline": -0.551104053996209,
+            "q025": -0.009151752565625651,
+            "q975": 0.008790588624421222,
+            "ri_p": 0.8170914542728636,
+            "slope": -0.0011027447134634692
+          },
+          "settlement": {
+            "mean_abs_x": 0.05339926955888038,
+            "mean_y": 0.011087115269280268,
+            "mean_y_nonzero": 0.012285677258105577,
+            "pct_of_baseline": -0.5555755796165462,
+            "q025": -0.009327207356464204,
+            "q975": 0.009591181740205911,
+            "ri_p": 0.7996001999000499,
+            "slope": -0.0012782239008208894
+          },
+          "untyped": {
+            "mean_abs_x": 0.02153830129618397,
+            "mean_y": 0.011087115269280268,
+            "mean_y_nonzero": 0.00844073636025144,
+            "pct_of_baseline": -4.096388694528042,
+            "q025": -0.057004754676653974,
+            "q975": 0.06219837076572081,
+            "ri_p": 0.7261369315342329,
+            "slope": -0.016053511613634937
+          }
+        },
+        "Y4": {
+          "both": {
+            "mean_abs_x": 0.04378824670142325,
+            "mean_y": 0.02287102628871776,
+            "mean_y_nonzero": 0.026614138885367813,
+            "pct_of_baseline": -0.7856872528858755,
+            "q025": -0.0644774724156472,
+            "q975": 0.06418060289461537,
+            "ri_p": 0.8820589705147426,
+            "slope": -0.004775342984465313
+          },
+          "delta": {
+            "mean_abs_x": 0.05792235877780631,
+            "mean_y": 0.02287102628871776,
+            "mean_y_nonzero": 0.019910529341377232,
+            "p1": 0.8070964517741129,
+            "pct_of_baseline": 3.4400128381116697,
+            "q025": -0.026801744740967078,
+            "q975": 0.027226525033015255,
+            "ri_p": 0.4027986006996502,
+            "slope": 0.011824876954800487
+          },
+          "indigenous": {
+            "mean_abs_x": 0.05792235877780631,
+            "mean_y": 0.02287102628871776,
+            "mean_y_nonzero": 0.019910529341377232,
+            "pct_of_baseline": 1.969447795534275,
+            "q025": -0.020158525741015267,
+            "q975": 0.01942918206224476,
+            "ri_p": 0.5032483758120939,
+            "slope": 0.006769881086804212
+          },
+          "neither": {
+            "mean_abs_x": 0.055163514752945786,
+            "mean_y": 0.02287102628871776,
+            "mean_y_nonzero": 0.02265630168952462,
+            "pct_of_baseline": -1.1427021598809797,
+            "q025": -0.015414428630292513,
+            "q975": 0.01578690630083978,
+            "ri_p": 0.5602198900549725,
+            "slope": -0.004693211625742603
+          },
+          "settlement": {
+            "mean_abs_x": 0.05339926955888038,
+            "mean_y": 0.02287102628871776,
+            "mean_y_nonzero": 0.025347946627921836,
+            "pct_of_baseline": -1.0649110594102988,
+            "q025": -0.020040837495843615,
+            "q975": 0.02047675323319166,
+            "ri_p": 0.6206896551724138,
+            "slope": -0.0050549958679962734
+          },
+          "untyped": {
+            "mean_abs_x": 0.02153830129618397,
+            "mean_y": 0.02287102628871776,
+            "mean_y_nonzero": 0.019000558512385832,
+            "pct_of_baseline": -0.5360506918359046,
+            "q025": -0.1220679373303195,
+            "q975": 0.12922640127754206,
+            "ri_p": 0.9715142428785607,
+            "slope": -0.004728907073854324
+          }
+        }
+      }
+    }
+  },
+  "outcome_cells_dropped": {
+    "2008": {
+      "post_incomplete": 172,
+      "pre_incomplete": 0
+    },
+    "2012": {
+      "post_incomplete": 172,
+      "pre_incomplete": 0
+    },
+    "2016": {
+      "post_incomplete": 172,
+      "pre_incomplete": 0
+    },
+    "2020": {
+      "post_incomplete": 172,
+      "pre_incomplete": 0
+    }
+  },
+  "outcome_years": {
+    "2008": [
+      2004,
+      2005,
+      2006,
+      2007,
+      2009,
+      2010,
+      2011,
+      2012
+    ],
+    "2012": [
+      2008,
+      2009,
+      2010,
+      2011,
+      2013,
+      2014,
+      2015,
+      2016
+    ],
+    "2016": [
+      2012,
+      2013,
+      2014,
+      2015,
+      2017,
+      2018,
+      2019,
+      2020
+    ],
+    "2020": [
+      2016,
+      2017,
+      2018,
+      2019,
+      2021,
+      2022,
+      2023,
+      2024
+    ]
+  },
+  "seed": 20261106,
+  "type_counts": {
+    "2km": {
+      "per_election": {
+        "2008": {
+          "both": {
+            "losers": 1,
+            "total": 2,
+            "winners": 1
+          },
+          "indigenous": {
+            "losers": 23,
+            "total": 53,
+            "winners": 30
+          },
+          "neither": {
+            "losers": 634,
+            "total": 1270,
+            "winners": 636
+          },
+          "settlement": {
+            "losers": 104,
+            "total": 197,
+            "winners": 93
+          },
+          "untyped": {
+            "losers": 3,
+            "total": 8,
+            "winners": 5
+          }
+        },
+        "2012": {
+          "both": {
+            "losers": 1,
+            "total": 1,
+            "winners": 0
+          },
+          "indigenous": {
+            "losers": 39,
+            "total": 87,
+            "winners": 48
+          },
+          "neither": {
+            "losers": 715,
+            "total": 1416,
+            "winners": 701
+          },
+          "settlement": {
+            "losers": 156,
+            "total": 323,
+            "winners": 167
+          },
+          "untyped": {
+            "losers": 8,
+            "total": 11,
+            "winners": 3
+          }
+        },
+        "2016": {
+          "both": {
+            "losers": 2,
+            "total": 4,
+            "winners": 2
+          },
+          "indigenous": {
+            "losers": 50,
+            "total": 96,
+            "winners": 46
+          },
+          "neither": {
+            "losers": 718,
+            "total": 1439,
+            "winners": 721
+          },
+          "settlement": {
+            "losers": 169,
+            "total": 330,
+            "winners": 161
+          },
+          "untyped": {
+            "losers": 1,
+            "total": 11,
+            "winners": 10
+          }
+        },
+        "2020": {
+          "both": {
+            "losers": 3,
+            "total": 5,
+            "winners": 2
+          },
+          "indigenous": {
+            "losers": 55,
+            "total": 101,
+            "winners": 46
+          },
+          "neither": {
+            "losers": 812,
+            "total": 1644,
+            "winners": 832
+          },
+          "settlement": {
+            "losers": 187,
+            "total": 361,
+            "winners": 174
+          },
+          "untyped": {
+            "losers": 3,
+            "total": 9,
+            "winners": 6
+          }
+        }
+      },
+      "pooled": {
+        "both": {
+          "losers": 7,
+          "total": 12,
+          "winners": 5
+        },
+        "indigenous": {
+          "losers": 167,
+          "total": 337,
+          "winners": 170
+        },
+        "neither": {
+          "losers": 2879,
+          "total": 5769,
+          "winners": 2890
+        },
+        "settlement": {
+          "losers": 616,
+          "total": 1211,
+          "winners": 595
+        },
+        "untyped": {
+          "losers": 15,
+          "total": 39,
+          "winners": 24
+        }
+      }
+    },
+    "5km": {
+      "per_election": {
+        "2008": {
+          "both": {
+            "losers": 8,
+            "total": 10,
+            "winners": 2
+          },
+          "indigenous": {
+            "losers": 36,
+            "total": 82,
+            "winners": 46
+          },
+          "neither": {
+            "losers": 526,
+            "total": 1058,
+            "winners": 532
+          },
+          "settlement": {
+            "losers": 192,
+            "total": 372,
+            "winners": 180
+          },
+          "untyped": {
+            "losers": 3,
+            "total": 8,
+            "winners": 5
+          }
+        },
+        "2012": {
+          "both": {
+            "losers": 11,
+            "total": 23,
+            "winners": 12
+          },
+          "indigenous": {
+            "losers": 59,
+            "total": 118,
+            "winners": 59
+          },
+          "neither": {
+            "losers": 603,
+            "total": 1197,
+            "winners": 594
+          },
+          "settlement": {
+            "losers": 238,
+            "total": 489,
+            "winners": 251
+          },
+          "untyped": {
+            "losers": 8,
+            "total": 11,
+            "winners": 3
+          }
+        },
+        "2016": {
+          "both": {
+            "losers": 19,
+            "total": 32,
+            "winners": 13
+          },
+          "indigenous": {
+            "losers": 66,
+            "total": 132,
+            "winners": 66
+          },
+          "neither": {
+            "losers": 602,
+            "total": 1185,
+            "winners": 583
+          },
+          "settlement": {
+            "losers": 252,
+            "total": 520,
+            "winners": 268
+          },
+          "untyped": {
+            "losers": 1,
+            "total": 11,
+            "winners": 10
+          }
+        },
+        "2020": {
+          "both": {
+            "losers": 17,
+            "total": 31,
+            "winners": 14
+          },
+          "indigenous": {
+            "losers": 62,
+            "total": 123,
+            "winners": 61
+          },
+          "neither": {
+            "losers": 672,
+            "total": 1351,
+            "winners": 679
+          },
+          "settlement": {
+            "losers": 306,
+            "total": 606,
+            "winners": 300
+          },
+          "untyped": {
+            "losers": 3,
+            "total": 9,
+            "winners": 6
+          }
+        }
+      },
+      "pooled": {
+        "both": {
+          "losers": 55,
+          "total": 96,
+          "winners": 41
+        },
+        "indigenous": {
+          "losers": 223,
+          "total": 455,
+          "winners": 232
+        },
+        "neither": {
+          "losers": 2403,
+          "total": 4791,
+          "winners": 2388
+        },
+        "settlement": {
+          "losers": 988,
+          "total": 1987,
+          "winners": 999
+        },
+        "untyped": {
+          "losers": 15,
+          "total": 39,
+          "winners": 24
+        }
+      }
+    }
+  },
+  "verdicts": {
+    "constants": {
+      "effect_size_pct": 8.0,
+      "power_bar": 0.8,
+      "power_direct": 0.94,
+      "power_displacement": 0.797,
+      "power_split": 0.45
+    },
+    "holm_nonzero": {
+      "direct": false,
+      "displacement": false
+    },
+    "kc3": "Kill criterion 3 cannot be applied at 80% power on this half (power 0.45); the criterion is unchanged. delta 0.01182, one-sided p1 0.807, two-sided p 0.403.",
+    "kc4": "Kill criterion 4 cannot be applied at 80% power on this half (displacement power 0.797); the criterion is unchanged.",
+    "p_direct": 0.5882058970514743,
+    "p_displacement": 0.0864567716141929
+  },
+  "y3_years": [
+    2021,
+    2022,
+    2023
+  ]
+}
