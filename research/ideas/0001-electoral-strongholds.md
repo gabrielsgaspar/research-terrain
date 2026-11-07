@@ -115,6 +115,13 @@ Elections with usable geography: 2008, 2012, 2016, 2020 and 2024 (see
   +3.4% (one-sided p1 0.81, power 0.45). The confirmation half stays sealed.
   The exploration does not support the predictions; see the lessons entry
   of the same date.
+- 2026-11-07: still exploring. The close-race window is 0.25%, chosen by
+  the covariate-balance rule (run 42366460941, decision 0008, accepted by
+  rule; Gabriel to review). The 0.50% window of the earlier runs is not
+  balanced (omnibus p 0.119; narrow winners were incumbents 2.3 points more
+  often, RI p 0.014), so the 2026-11-06 result is reported with that caveat.
+  At 0.25%, power at 8% is 0.868 (direct), 0.622 (displacement) and 0.307
+  (split).
 
 ## Log
 
@@ -139,3 +146,6 @@ Elections with usable geography: 2008, 2012, 2016, 2020 and 2024 (see
 - 2026-11-06: main exploration (kill criteria 3 and 4): issue #201, PR #203,
   run 42298466207 (`research/explore-runs/0001/42298466207.md`), record PR
   #204; `research/lessons.md` entry of the same date.
+- 2026-11-07: close-race window by covariate balance: issue #206, PR #212,
+  run 42366460941 (`research/explore-runs/0001/42366460941.md`), record PR
+  #219; decision 0008; `research/lessons.md` entry of the same date.
