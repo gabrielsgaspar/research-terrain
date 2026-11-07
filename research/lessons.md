@@ -16,6 +16,27 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-07: Alignment with the mayor splits close pairs evenly, but the moderation test has power near 0.34 (idea 0004, issue #223)
+- Tried: `explore/0004_alignment_counts.py` on the exploration half, run
+  42384829937 (`research/explore-runs/0004/42384829937.md`): close council
+  pairs at 0.25% typed by whether their party was in the elected mayor's
+  coalition the same election (2024 federations count); no lineage table,
+  no outcome data. A first run (42384059012) had the same counts but an
+  inverted verdict; it was fixed (#229, #231) and re-run, not edited.
+- Result: 1,414 aligned, 1,446 unaligned, 4 mixed, 5 left out (2008),
+  pooled 2008-2024; 1,100 and 1,219 in 2008-2020. Drafted kill criterion 1
+  (fewer than 200 of either) is not met. The implied power for a gap of one
+  effect size is 0.335, a rough scaling of decision 0008's direct power.
+- Why: about half of close council pairs belong to the mayor's coalition,
+  so the split is close to even, which is already the best case (0.337). A
+  difference between two slopes, each estimated on half the pairs, has
+  about twice the standard error of the pooled slope.
+- Implication: idea 0004 has enough pairs to be estimated, but on a half of
+  this size it cannot test moderation of one effect size at 80% power.
+  Drafted kill criterion 3 would read "cannot be applied". By the same
+  scaling, 80% power needs a gap of about 1.8 effect sizes. Gabriel to decide
+  whether the idea is worth a design, and to confirm its kill criteria.
+
 ## 2026-11-07: Kill criterion 1 still passes at the 0.25% window (idea 0001, issue #224)
 - Tried: `explore/0001_kill_criterion_1_window.py` on the exploration half,
   run 42384056410 (`research/explore-runs/0001/42384056410.md`): kill
