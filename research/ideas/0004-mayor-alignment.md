@@ -1,7 +1,7 @@
 ---
 id: "0004"
 title: "Council effects moderated by alignment with the elected mayor"
-status: proposed
+status: dead
 created: 2026-11-07
 updated: 2026-11-07
 datasets:
@@ -100,6 +100,13 @@ proposal.
   not a computation on outcomes. Drafted kill criterion 3 needs 80% power,
   so on a half of this size it would read "cannot be applied". Kill
   criteria are still drafts until Gabriel confirms them.
+- 2026-11-07: dead as a standalone design (Gabriel, 2026-11-07): the
+  implied power for a gap of one effect size is about 0.34 (run
+  42384829937), far below 80%. It did not die by a kill criterion; the
+  kill criteria above stay drafts and were not confirmed. Kept as a
+  secondary, descriptive split of idea 0001's direct effect (aligned and
+  unaligned slopes) in the plan draft (`harness/drafts/pap-draft.md`),
+  labelled underpowered, with no kill criterion.
 
 ## Log
 
@@ -110,3 +117,5 @@ proposal.
   record #227 not merged), run 42384829937
   (`research/explore-runs/0004/42384829937.md`), record PR #232;
   `research/lessons.md` entry of the same date.
+- 2026-11-07: marked dead as a standalone design by Gabriel, and moved into
+  idea 0001's plan draft as a secondary, descriptive split.
