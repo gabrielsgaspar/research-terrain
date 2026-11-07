@@ -1,0 +1,80 @@
+# PROPOSAL, NOT REVIEWED: party lineage across the municipal elections 2008-2024.
+#
+# Drafted by Claude Code (autonomous run, 2026-11-07) from memory, for idea
+# 0004 (research/ideas/0004-mayor-alignment.md). NOT CHECKED against the TSE
+# party register. Every row must be checked against the TSE files (sg_partido
+# and nr_partido in each year's consulta_cand) before any code uses it. Not to
+# be merged until Gabriel has reviewed it.
+#
+# One entry per lineage: the sigla (and number) the party used in each
+# municipal election. null means the party did not run in that election (it
+# did not exist yet, or it had been merged into another lineage). `absorbed`
+# lists parties merged into this lineage, with the last election in which
+# each ran on its own.
+#
+# Why it is needed: a party's sigla and even its number change across
+# elections (PMDB -> MDB; PR -> PL; number 25 was DEM until 2020 and is PRD in
+# 2024). Alignment within one election does not need this table; anything
+# that follows a party across elections does.
+#
+# Human-maintained: agents may read this file but not change it.
+lineages:
+  - {id: mdb, years: {2008: PMDB, 2012: PMDB, 2016: PMDB, 2020: MDB, 2024: MDB}, number: 15}
+  - {id: pt, years: {2008: PT, 2012: PT, 2016: PT, 2020: PT, 2024: PT}, number: 13}
+  - {id: psdb, years: {2008: PSDB, 2012: PSDB, 2016: PSDB, 2020: PSDB, 2024: PSDB}, number: 45}
+  - {id: pp, years: {2008: PP, 2012: PP, 2016: PP, 2020: PP, 2024: PP}, number: 11, note: "named Progressistas from 2017; sigla unchanged"}
+  - {id: pdt, years: {2008: PDT, 2012: PDT, 2016: PDT, 2020: PDT, 2024: PDT}, number: 12}
+  - {id: psb, years: {2008: PSB, 2012: PSB, 2016: PSB, 2020: PSB, 2024: PSB}, number: 40}
+  - {id: pl, years: {2008: PR, 2012: PR, 2016: PR, 2020: PL, 2024: PL}, number: 22, note: "PR renamed PL in 2019"}
+  - {id: republicanos, years: {2008: PRB, 2012: PRB, 2016: PRB, 2020: REPUBLICANOS, 2024: REPUBLICANOS}, number: 10}
+  - id: uniao
+    years: {2008: null, 2012: null, 2016: null, 2020: null, 2024: UNIÃO}
+    number: 44
+    absorbed:
+      - {sigla: DEM, number: 25, last: 2020}
+      - {sigla: PSL, number: 17, last: 2020}
+    note: "DEM and PSL merged in 2022"
+  - id: podemos
+    years: {2008: PTN, 2012: PTN, 2016: PTN, 2020: PODE, 2024: PODE}
+    number: 19
+    absorbed:
+      - {sigla: PHS, number: 31, last: 2016}
+      - {sigla: PSC, number: 20, last: 2020}
+  - {id: avante, years: {2008: PT do B, 2012: PT do B, 2016: PT do B, 2020: AVANTE, 2024: AVANTE}, number: 70}
+  - {id: dc, years: {2008: PSDC, 2012: PSDC, 2016: PSDC, 2020: DC, 2024: DC}, number: 27}
+  - {id: cidadania, years: {2008: PPS, 2012: PPS, 2016: PPS, 2020: CIDADANIA, 2024: CIDADANIA}, number: 23}
+  - {id: agir, years: {2008: PTC, 2012: PTC, 2016: PTC, 2020: PTC, 2024: AGIR}, number: 36, note: "PTC renamed Agir in 2022"}
+  - id: prd
+    years: {2008: null, 2012: null, 2016: null, 2020: null, 2024: PRD}
+    number: 25
+    absorbed:
+      - {sigla: PTB, number: 14, last: 2020}
+      - {sigla: PATRIOTA, number: 51, last: 2020, note: "PEN until 2016 (founded 2012); absorbed PRP (44, last 2016) in 2019"}
+    note: "PTB and Patriota merged in 2023; number 25 was DEM's until 2020"
+  - id: solidariedade
+    years: {2008: null, 2012: null, 2016: SD, 2020: SOLIDARIEDADE, 2024: SOLIDARIEDADE}
+    number: 77
+    absorbed:
+      - {sigla: PROS, number: 90, last: 2020}
+  - id: pcdob
+    years: {2008: PCdoB, 2012: PCdoB, 2016: PCdoB, 2020: PCdoB, 2024: PCdoB}
+    number: 65
+    absorbed:
+      - {sigla: PPL, number: 54, last: 2016}
+  - {id: psd, years: {2008: null, 2012: PSD, 2016: PSD, 2020: PSD, 2024: PSD}, number: 55, note: "founded 2011"}
+  - {id: pv, years: {2008: PV, 2012: PV, 2016: PV, 2020: PV, 2024: PV}, number: 43}
+  - {id: psol, years: {2008: PSOL, 2012: PSOL, 2016: PSOL, 2020: PSOL, 2024: PSOL}, number: 50}
+  - {id: pmn, years: {2008: PMN, 2012: PMN, 2016: PMN, 2020: PMN, 2024: PMN}, number: 33}
+  - {id: prtb, years: {2008: PRTB, 2012: PRTB, 2016: PRTB, 2020: PRTB, 2024: PRTB}, number: 28}
+  - {id: pcb, years: {2008: PCB, 2012: PCB, 2016: PCB, 2020: PCB, 2024: PCB}, number: 21}
+  - {id: pco, years: {2008: PCO, 2012: PCO, 2016: PCO, 2020: PCO, 2024: PCO}, number: 29}
+  - {id: pstu, years: {2008: PSTU, 2012: PSTU, 2016: PSTU, 2020: PSTU, 2024: PSTU}, number: 16}
+  - {id: novo, years: {2008: null, 2012: null, 2016: NOVO, 2020: NOVO, 2024: NOVO}, number: 30}
+  - {id: rede, years: {2008: null, 2012: null, 2016: REDE, 2020: REDE, 2024: REDE}, number: 18}
+  - {id: pmb, years: {2008: null, 2012: null, 2016: PMB, 2020: PMB, 2024: PMB}, number: 35}
+  - {id: up, years: {2008: null, 2012: null, 2016: null, 2020: UP, 2024: UP}, number: 80}
+
+# 2024 federations (relevant to same-election alignment in idea 0004, not to
+# lineage): Federação Brasil da Esperança (PT, PCdoB, PV); PSDB Cidadania
+# (PSDB, Cidadania); PSOL Rede (PSOL, Rede). Check against nm_federacao /
+# ds_composicao_federacao in the 2024 files.
