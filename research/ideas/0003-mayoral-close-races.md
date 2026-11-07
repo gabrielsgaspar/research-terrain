@@ -89,8 +89,17 @@ that cannot reach reasonable power at 2%, the idea is not worth a design.
 - 2026-11-07: proposed. Counts of close races recorded above; the first step
   is a municipality-level power check (handoff 5, T4), on pre-election
   clearing only.
+- 2026-11-07: still proposed. The municipality-level power check (run
+  42367009833) gives power 4.4%, 5.2% and 7.2% at 8% of baseline for 45, 80
+  and 157 races (0.5%, 1%, 2%; exploration half, 2008-2020). The MDE is 89%,
+  67% and 45% of baseline. Drafted kill criterion 1 is met. The idea is not
+  worth a design unless Gabriel sees a reason to keep it. Proposed: dead,
+  once he confirms the kill criteria.
 
 ## Log
 
 - 2026-11-07: idea file written (Claude Code, autonomous run; Gabriel to
   review). Kill criteria are drafts until Gabriel confirms them.
+- 2026-11-07: municipality-level power check: issue #214, PR #216, run
+  42367009833 (`research/explore-runs/0003/42367009833.md`), record PR #217;
+  `research/lessons.md` entry of the same date.

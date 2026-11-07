@@ -72,3 +72,20 @@ session to keep T1.
 - 2026-11-07 (T6): drafts of "What it doesn't do" and "Relevance to us" in
   the six core literature notes, each headed "(drafted by Claude Code;
   Gabriel to rewrite)". Own PR, merged on CI. They are not Gabriel's text.
+- 2026-11-07 (T4): issue #214's plan read (two files, Done when as the
+  issue, pre-election years only; null-outcome races dropped before
+  numbering, which changes no result); swapped `agent-plan` for
+  `agent-build`.
+- 2026-11-07 (T4): PR #216 (agent build for #214) merged. CI `test` passed
+  on head 990a0dec; reviewer Approve on that commit, no must-fix; only the
+  two planned files. Referee R1-R4, R6, R7 OK; R5 "Not applicable" (no real
+  run at build time), read as no referee problem, as on PRs #191 and #196
+  that Gabriel merged. Explore run 42367009833 started on main (35f6bffa).
+- 2026-11-07 (T4): record PR #217 (run 42367009833) merged on CI. Counts
+  match what was expected: 45 / 80 / 157 races at 0.5% / 1% / 2%
+  (2008-2020, exploration half), against about 45 / 81 / 155 (half of the
+  Legal Amazon scoping counts). Only the record, its JSON and the index.
+- 2026-11-07 (T4): lessons entry and idea 0003 status line for run
+  42367009833. Drafted kill criterion 1 is met; the idea's status stays
+  `proposed` (its kill criteria are unconfirmed drafts), recommended dead.
+  Own PR, merged on CI.
