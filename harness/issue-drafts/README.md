@@ -50,7 +50,7 @@ acquired or built (its manifest merged into `data/manifests/`).
 | 36 | Close mayoral races: power at the municipality level (explore, idea 0003) | done (#216; record #217) |
 | 37 | Aligned and unaligned close pairs at 0.25% (explore, idea 0004) | done (#223, #226, fix #231; record #232) |
 | 38 | Kill criterion 1 at the 0.25% window (explore, idea 0001) | done (#224, #225; record #228) |
-| 39 | Validate the registered analysis against run 42298466207, at 0.50% (explore, idea 0001) | PR #236 merged; script already in it, so no agent build |
+| 39 | Validate the registered analysis against run 42298466207, at 0.50% (explore, idea 0001) | PR #236 merged (issue #241; the script is in #236, so no agent build) |
 
 ## Before filing a task
 
