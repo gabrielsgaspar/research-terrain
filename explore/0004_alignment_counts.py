@@ -343,7 +343,7 @@ def build_results(per_election: dict[str, dict[str, Any]]) -> dict[str, Any]:
         "pooled_2008_2020": to_2020,
         "kill_criterion_1": {
             "minimum_each": MIN_EACH,
-            "met": all_years["aligned"] >= MIN_EACH and all_years["unaligned"] >= MIN_EACH,
+            "met": all_years["aligned"] < MIN_EACH or all_years["unaligned"] < MIN_EACH,
         },
         "implied_power": {
             "formula": "Phi(K * sqrt((1/2328) / (1/n_a + 1/n_u)) - 1.96)",
@@ -364,7 +364,8 @@ def _summary(r: dict[str, Any]) -> str:
     met = "met" if r["kill_criterion_1"]["met"] else "not met"
     lines = [
         f"Pooled 2008-2024: {p['aligned']:,} aligned, {p['unaligned']:,} unaligned, "
-        f"{p['mixed']:,} mixed close pairs at 0.25%; kill criterion 1 (200 each) {met}; "
+        f"{p['mixed']:,} mixed close pairs at 0.25%; "
+        f"drafted kill criterion 1 (fewer than 200 aligned or unaligned) {met}; "
         f"implied power {power['power']:.3f}.",
         "",
         "## Close pairs at 0.25% by alignment with the elected mayor",
