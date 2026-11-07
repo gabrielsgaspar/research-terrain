@@ -16,6 +16,32 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-07: Close mayoral races cannot detect an 8% effect (idea 0003, issue #214)
+- Tried: `explore/0003_mayor_power.py` on the exploration half, run 42367009833
+  (`research/explore-runs/0003/42367009833.md`): close mayoral races
+  (deciding round, 2008-2020) at 0.5%, 1% and 2%, one observation per race,
+  pre-election clearing only (E-4..E-1, municipal share of primary vegetation
+  lost), the spread of the winner-minus-loser contrast over 2,000 re-flips.
+  No effect was estimated and no post-election year was read.
+- Result: 45, 80 and 157 races (as expected from the Legal Amazon counts:
+  about half of 91, 162 and 310). Power at decision 0007's 8% is 4.4%, 5.2%
+  and 7.2%. The minimum detectable effect at 80% power is 89%, 67% and 45% of
+  baseline clearing (baseline about 0.048). Only 1 of the 157 races at 2% was
+  decided in a run-off.
+- Why: one observation per race, and municipal clearing varies a lot between
+  municipalities (SD of Y 0.051 against a mean of 0.049), so 157 races give a
+  re-flip SD of 0.0078. That is about 2 SD / √n, the best case for a 50/50
+  attribute.
+- Implication: a municipality-level design on close mayoral races is not
+  worth building: even at 2% it could only detect effects of about half the
+  baseline. A turf design compares cells within the same municipality, so it
+  would be more precise, but it rests on the same 157 races. As a rough
+  guide, not a computation: idea 0001's direct design has an MDE of 6.3% with
+  3,684 pairs, and scaling that by √(3,684 / 157) gives about 30%. Idea
+  0003's drafted kill criterion 1 (power below 0.50 at every window) is met.
+  The idea stays `proposed` until Gabriel confirms its kill criteria. The
+  recommendation is to mark it dead.
+
 ## 2026-11-06: Kill criteria 3 and 4 on the exploration half (idea 0001, issue #201)
 - Tried: `explore/0001_effects.py` on the exploration half, run 42298466207
   (`research/explore-runs/0001/42298466207.md`): the direct slope (`exp2`),
