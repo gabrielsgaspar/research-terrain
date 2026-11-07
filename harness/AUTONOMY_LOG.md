@@ -65,3 +65,10 @@ session to keep T1.
   races, idea 0003; pre-election outcome years only), own PR, merged on CI.
   Run-off ids, vote columns and the `ELEITO` check come from session
   projects-3e's profiling of the raw TSE files.
+- 2026-11-07 (T3): party-lineage proposal `data/reference/party_lineage.yaml`
+  opened as a draft PR, **not merged** (protected path; handoff 5 says
+  proposal only). Drafted from memory, unverified.
+- 2026-11-07 (T4): issue #214 filed from draft 36 (`explore`, `agent-plan`).
+- 2026-11-07 (T6): drafts of "What it doesn't do" and "Relevance to us" in
+  the six core literature notes, each headed "(drafted by Claude Code;
+  Gabriel to rewrite)". Own PR, merged on CI. They are not Gabriel's text.

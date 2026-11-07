@@ -61,4 +61,32 @@ For each extension it gives the theory and then the empirical evidence. The desi
 - **Open areas the review flags** (pp. 747-749): measuring conservation value, scaling PES and Pigouvian instruments, enforcement under low state capacity, local politicians' incentives and capture, cross-border policy design, and the DRC and sub-Saharan Africa.
 
 ## What it doesn't do  <!-- Gabriel -->
+(drafted by Claude Code; Gabriel to rewrite)
+
+- It makes no new estimates. The magnitudes it reports come from studies with
+  different units, periods and outcome definitions (mostly Hansen tree-cover
+  loss, not MapBiomas primary vegetation), so they are not directly comparable
+  with each other or with ours.
+- Its political-economy section covers national policy, enforcement and
+  electoral timing. It says nothing about who is elected or where their voters
+  live within a municipality.
+- The Brazilian electoral figure it cites (8-10% more clearing in election
+  years when the incumbent mayor runs again, Pailler 2018, p. 746) is an
+  electoral-cycle effect averaged over municipalities. It is not a
+  close-election estimate.
+
 ## Relevance to us     <!-- Gabriel: what we borrow, how we differ -->
+(drafted by Claude Code; Gabriel to rewrite)
+
+- It is the source of one of decision 0007's anchors (Pailler's 8-10%), and of
+  the scale contrast: national programmes move clearing by 25-43% (pp.
+  745-746), so one council seat should move it by much less.
+- Its measurement warnings apply to us: correlated, nonclassical error in
+  satellite data; two-way fixed effects on a binary, irreversible loss
+  outcome (Garcia and Heilmayr 2022); and the gap between pixels and decision
+  units. We use cell shares, not binary pixels, and municipality-by-year
+  fixed effects.
+- It lists local politicians' incentives and capture as an open area (pp.
+  747-749). That is our question.
+- How we differ: our variation is within a municipality, from close council
+  races, so the mayor, the budget and enforcement are held fixed.

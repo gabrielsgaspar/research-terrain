@@ -46,4 +46,31 @@ links: []
 - **Careers (Fig. 4, pp. 23-24):** no evidence that regional councilors prepare a local career. Marginal winners are not more likely to be local top candidates at t+4. They are more likely to run nationally at t+6 (28% vs. 19%, significant at 5%; Online App. Table F.1). About half of regional council members previously held a local council seat (p. 24).
 
 ## What it doesn't do  <!-- Gabriel -->
+(drafted by Claude Code; Gabriel to rewrite)
+
+- Its outcome is regional investment money paid to municipalities, not land
+  use, in Norway, a high-capacity, low-corruption state.
+- Its identifying RD is on the bloc seat majority, not on individual
+  candidates. The within-list rank RD appears only in the career analysis,
+  and the authors do not claim it is causal, because parties can anticipate
+  seat counts.
+- "Hometown" is a place of residence, a single point. It has no geography of
+  votes within municipalities.
+- It has only 18 clusters (wild-bootstrap p-values).
+
 ## Relevance to us     <!-- Gabriel: what we borrow, how we differ -->
+(drafted by Claude Code; Gabriel to rewrite)
+
+- It is the closest analogue: local favouritism in an at-large proportional
+  system. Brazilian councils are elected at large by open-list PR within the
+  municipality, where personal votes give councillors even more reason to
+  favour their bases than Norway's closed lists did.
+- Favouritism runs through alignment with the executive (the governor's
+  party) and is concentrated in small municipalities. That is the motivation
+  for idea 0004 (alignment with the mayor).
+- Friends-and-neighbours voting (1.4-3.2 pp, Table 5) supports reading vote
+  geography as constituency, as our strongholds do.
+- How we differ: our within-list close races are a candidate-level RD on vote
+  margins. In open lists, order is set by votes, not by the party, so its
+  caution about anticipated seats applies less. Sorting at the margin still
+  has to be checked (balance, task 35).

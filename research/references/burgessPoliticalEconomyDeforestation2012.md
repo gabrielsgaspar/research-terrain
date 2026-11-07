@@ -41,4 +41,30 @@ links: []
 - Version note: this QJE version contains no estimate of deforestation around election dates. Its only election variable is the post-direct-election dummy in Table VII.
 
 ## What it doesn't do  <!-- Gabriel -->
+(drafted by Claude Code; Gabriel to rewrite)
+
+- Its treatment is the number of jurisdictions (district splits) and its unit
+  is the province by forest zone. It does not study who wins an election,
+  individual politicians, or where voters live.
+- MODIS at 250 m catches clear-cuts and large burns, but not selective
+  logging: a lower bound.
+- The QJE version has no estimate around election dates. The "42% before
+  elections" figure is not in it (decision 0007's correction).
+- Indonesian district heads issue logging permits themselves. Brazilian
+  councillors have no such power, so the mechanism is not the same.
+
 ## Relevance to us     <!-- Gabriel: what we borrow, how we differ -->
+(drafted by Claude Code; Gabriel to rewrite)
+
+- It is decision 0007's main anchor: an 8.2% cumulative effect three years
+  after a split (Table IV, Panel B), the closest match to our four-year
+  window.
+- It shows that officials' rents drive clearing even where all logging is
+  illegal (Conservation and Protection zones). Most Amazon clearing is
+  illegal too, so local politics can matter there.
+- Its oil-and-gas result, which weakens after direct elections, suggests that
+  electoral competition changes incentives. That is relevant to ideas 0003
+  (mayors) and 0004 (alignment).
+- How we differ: our treatment, one council seat, is much smaller than a new
+  district. So 8% sets the order of magnitude. It is not a prediction of our
+  effect, which could well be smaller.

@@ -71,4 +71,27 @@ On the empirical designs it reviews, it notes the following.
   - The authors stress that any prescription depends on which mechanism drives the inequity (p. 204).
 
 ## What it doesn't do  <!-- Gabriel -->
+(drafted by Claude Code; Gabriel to rewrite)
+
+- It is about the US and about pollution siting. Land use and forests get one
+  sentence (p. 189), and it estimates nothing itself.
+- It measures the political-economy channel with collective-action proxies
+  such as turnout, not with who holds office, and it has no electoral
+  discontinuity.
+- Environmental justice is about exposed people. Land with no residents, the
+  focus of our displacement hypothesis, is outside its frame.
+
 ## Relevance to us     <!-- Gabriel: what we borrow, how we differ -->
+(drafted by Claude Code; Gabriel to rewrite)
+
+- Its framing is ours: harm goes where political power is weak (p. 202).
+  Clearing pushed onto land with no voters is the extreme case.
+- We borrow its exposure lessons. Distance-based measures beat counting only
+  the hazard's own unit (pp. 190-191), which is why decision 0004 uses a
+  distance-decay exposure rather than catchment membership. Results depend on
+  spatial scale, which is why we keep 1 km cells and report 2 and 5 km rings.
+- Sorting ("coming to the nuisance") confounds cross-sectional patterns. In
+  our design, sorting can shape where strongholds are, but not which side of a
+  close race wins, so it changes who is exposed, not the comparison.
+- How we differ: we test one mechanism, representation, with quasi-random
+  variation, instead of describing exposure gaps.
