@@ -370,7 +370,7 @@ def test_results_have_no_estimate_key_and_serialise(tmp_path):
     results = ac.build_results(per)
     assert results["pooled_2008_2024"]["aligned"] == 200
     assert results["pooled_2008_2020"]["aligned"] == 160
-    assert results["kill_criterion_1"]["met"] is False  # 150 unaligned pairs, under 200
+    assert results["kill_criterion_1"]["met"] is True  # 150 unaligned pairs, under 200
     banned = ("estimate", "coef", "beta", "tau", "effect", "diff", "slope", "stderr")
     for key in keys_of(results):
         assert not any(b in key.lower() for b in banned), key
@@ -378,3 +378,22 @@ def test_results_have_no_estimate_key_and_serialise(tmp_path):
     assert summary.splitlines()[0].startswith("Pooled 2008-2024: 200 aligned")
     ac.write_results(tmp_path, summary, results)
     json.loads((tmp_path / "results.json").read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize(
+    ("aligned", "unaligned", "met"),
+    [(1414, 1446, False), (199, 1446, True), (1414, 199, True), (200, 200, False)],
+)
+def test_kill_criterion_1_is_met_when_either_side_has_under_200(aligned, unaligned, met):
+    zero = dict.fromkeys(ac.SUM_KEYS, 0)
+    per = {str(y): dict(zero) for y in ac.ELECTIONS}
+    per[str(ac.ELECTIONS[0])] |= {"aligned": aligned, "unaligned": unaligned}
+    results = ac.build_results(per)
+    assert results["kill_criterion_1"]["met"] is met
+    first = ac._summary(results).splitlines()[0]
+    phrase = "drafted kill criterion 1 (fewer than 200 aligned or unaligned)"
+    if met:
+        assert f"{phrase} met;" in first
+        assert "not met" not in first
+    else:
+        assert f"{phrase} not met" in first
