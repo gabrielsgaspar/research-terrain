@@ -129,4 +129,32 @@ Empirical application (Section 4, pp. 2170–2175; Appendix A, pp. 2176–2177):
 - The authors read this as consistent with a correctly specified assignment process. They say it does not directly support Assumption 1 (fn. 35, p. 2174).
 
 ## What it doesn't do  <!-- Gabriel -->
+(drafted by Claude Code; Gabriel to rewrite)
+
+- It does not say how to choose the exposure formula. Our exp(-d/2 km) kernel
+  with a 10 km cut-off is our own choice (decision 0004). A different formula
+  changes the estimand, not the validity of the test.
+- Its randomisation inference tests a sharp null of no effect anywhere, and its
+  confidence sets need a constant effect (fns. 26, 30). Our RI p-values carry
+  the same limits.
+- Consistency needs many shocks with weak mutual dependence (Assumption 3).
+  Our close pairs overlap in space, and the constituency split rests on only
+  455 indigenous-side candidates, so that assumption is weakest where we most
+  need it.
+- It gives no guidance on power or minimum detectable effects.
+
 ## Relevance to us     <!-- Gabriel: what we borrow, how we differ -->
+(drafted by Claude Code; Gabriel to rewrite)
+
+- It is the core of our identification. The close-race flips are the shocks;
+  stronghold geography is the non-random exposure. We recentre by the
+  expected exposure over swaps, D / 2 (decision 0004), and infer by
+  re-flipping pairs (Section 3.5). Every exploration run does this.
+- Its falsification test with lagged outcomes (p. 2170) is our placebo, kill
+  criterion 2, on E-4..E-1.
+- Its rail application is a warning. The unadjusted estimate mostly picked up
+  expected exposure (0.32 on μ). Comparing exposed with unexposed cells
+  without recentring would measure where strongholds are, not the election.
+- How we differ: our shocks are 50/50 flips per pair under local
+  randomisation (Assumption 2 via an RD, p. 2166), simpler than its
+  permutations of rail lines.

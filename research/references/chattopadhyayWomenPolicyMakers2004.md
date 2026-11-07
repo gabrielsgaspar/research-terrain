@@ -80,4 +80,29 @@ links: []
 - Female Pradhans in West Bengal are younger, less educated (-2.79 years), poorer, and less experienced: 11% vs. 43% previously on the GP council. 43% report spousal help (Table VII, p. 1435).
 
 ## What it doesn't do  <!-- Gabriel -->
+(drafted by Claude Code; Gabriel to rewrite)
+
+- Its treatment is the randomised reservation of the executive head (the
+  Pradhan), who has real spending power. It is not about legislators or close
+  elections.
+- It measures public goods built, not land use or environmental outcomes, in
+  two districts (161 GPs and 100 hamlets).
+- Its estimates are averages over villages and GPs. It does not ask where
+  within a GP the goods go relative to the leader's voters (it surveys the
+  Pradhan's own village but leaves it out of the regressions).
+- Its horizon is short: investment since the last election.
+
 ## Relevance to us     <!-- Gabriel: what we borrow, how we differ -->
+(drafted by Claude Code; Gabriel to rewrite)
+
+- It is the classic evidence that who the representative is changes policy
+  toward their group's preferences. Idea 0001 assumes this (strongholds'
+  voters shape land use), and it motivated idea 0002.
+- Its design is a template: assignment by rule, then a joint covariate
+  balance test (Table II), as in the window task (task 35).
+- Its citizen-candidate logic says identity matters only when politicians
+  cannot commit to a platform. Council seats matter under the same condition.
+- How we differ: a councillor is one of nine or more legislators with little
+  executive power, a much weaker treatment than a Pradhan. That is one reading
+  of our near-zero direct effect, and the reason for idea 0004 (alignment with
+  the mayor).
