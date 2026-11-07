@@ -31,3 +31,21 @@ the pre-election clearing share as drafted.
   itself is unchanged.
 - 2026-11-07: coordination with a second session running handoff 5: it takes
   T2-T7; this session keeps T1 (task 35, issue #206).
+
+## Handoff 5: the autonomous run (Claude Code session projects-4c, 2026-11-07)
+
+Authorised by `research-terrain-handoff-5.md` (sections 1-3): merges,
+`agent-build` and decisions accepted by rule, within its limits and hard
+stops. Task 35 (T1) was already under way in another session (projects-3e)
+under the authorisation above; this session took T2-T7 and asked that
+session to keep T1.
+
+- 2026-11-07 (T2): scanned every tracked file under `data/fixtures/`,
+  `research/`, `explore/` and `paper/` for CPF and voter ID numbers (CPF and
+  voter-ID check digits on every 11- and 12-digit run; the CPF and voter-ID
+  columns of the seven TSE candidate fixtures). None found: the fixture
+  columns hold zero-padded row numbers (CPF is `-4` in 2024), and the only
+  11-digit runs that pass the CPF check are run ID 42193625417, by chance.
+  No stop (2.6).
+- 2026-11-07 (T2): the identifier rule in `AGENTS.md` (protected; handoff 5
+  section 1 allows this rule only), own PR, merged on CI.
