@@ -17,7 +17,9 @@ computes exactly what this issue lists and nothing beyond it (referee R7).
 script reads `cell_outcomes` for the years E-4 to E-1 of each election E,
 and no other year: for the pre-election clearing covariate (all five
 elections) and for power, computed as in the power run 42265146230
-(2008-2020). No year E or later is read. The years are fixed in code
+(2008-2020). `cell_outcomes` is built for 2004-2024 on the exploration half
+(`data/manifests/build/cell_outcomes.json`), so 2020-2023 exist for the 2024
+election. No year E or later is read. The years are fixed in code
 (`pre_years`), not by an argument. Exploration half only.
 
 ## Idea
@@ -111,7 +113,8 @@ them and do not change any existing explore script. Also read
   A covariate with fewer than 20 pairs in a window is reported and left out
   of that window's omnibus.
 - **Rule (fixed now):** the chosen window is the widest window whose omnibus
-  p is at least 0.15, with every smaller window also at least 0.15. If 0.10%
+  p is at least 0.15, with every smaller window also at least 0.15. Once any
+  window fails, no wider window can be chosen, whatever its p. If 0.10%
   already fails, the line says "No window passes; Gabriel decides" and no
   window is chosen.
 - **Power, reported, never used to choose.** For each window: the power at
@@ -204,9 +207,10 @@ lessons entry and decision 0008 (written by a person from the record);
 4. No outcome year after E-1 is read: `pre_years(2008)` is exactly
    2004-2007, the years read for each election are exactly `pre_years(E)`,
    and E is never read.
-5. The rule: omnibus p (0.50, 0.40, 0.20, 0.10, 0.30, ...) picks 0.25%
-   (a later window above 0.15 does not count); 0.10% below 0.15 gives "No
-   window passes; Gabriel decides".
+5. The rule: omnibus p (0.50, 0.40, 0.20, 0.10, 0.30, 0.40, 0.50) for the
+   windows 0.10% ... 2.00% picks 0.50%; (0.50, 0.40, 0.10, 0.30, 0.20, 0.40,
+   0.50) picks 0.25% (the later windows above 0.15 do not count); 0.10%
+   below 0.15 gives "No window passes; Gabriel decides".
 6. `incumbent`: on a synthetic candidate table, a 2008 candidate whose voter
    ID was `MÉDIA` (code 5) in 2004 in the same `sg_ue` is an incumbent; one
    elected in another `sg_ue`, or `SUPLENTE` in 2004, is not; a 2012
