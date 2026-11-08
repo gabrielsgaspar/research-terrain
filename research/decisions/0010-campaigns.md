@@ -1,14 +1,14 @@
 ---
 id: "0010"
 title: "Campaigns: agent work approved in advance, merged by a gate"
-status: proposed
-date: 2026-11-08
+status: accepted
+date: 2026-11-07
 supersedes: null
 ---
 
 # 0010: Campaigns: agent work approved in advance, merged by a gate
 
-Date: 2026-11-08. Status: proposed, drafted by Claude for Gabriel. It takes
+Date: 2026-11-07. Status: accepted (Gabriel, 2026-11-07), drafted by Claude for Gabriel. It takes
 effect when Gabriel accepts it and merges the pull request that adds it with
 the campaign workflows, CODEOWNERS and the `AGENTS.md` changes.
 

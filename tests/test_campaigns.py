@@ -302,10 +302,24 @@ def test_repo_codeowners_protect_the_gate():
         "scripts/campaign.py",
         "research/ideas/0001-electoral-strongholds.md",
         "confirm/pap/README.md",
+        "src/terrain/registered/r0001/analysis.py",
+        "src/terrain/confirm.py",
+        "scripts/confirm_run.py",
+        "src/terrain/explore.py",
+        "scripts/seal_split.py",
+        "scripts/gcp/setup_gcs.sh",
+        "src/terrain/split.py",
+        "src/terrain/builds/cell_outcomes.py",
+        "pipeline/build/cell_outcomes.py",
+        "tests/test_split.py",
+        "tests/test_explore.py",
+        "tests/test_build_cell_outcomes.py",
+        "tests/test_repo_rules.py",
     ):
         assert owners.owned(path), path
     for path in (
         "explore/0001_effects.py",
+        "tests/test_explore_effects.py",
         "research/explore-runs/0001/1.json",
         "research/lessons.md",
     ):
