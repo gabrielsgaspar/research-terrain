@@ -342,3 +342,36 @@ rule and the shuffled-check procedure, pushed to PR #236 for his review.
 - 2026-11-07: CI passes on PR #236's head (54d5598); #236 left open for
   Gabriel. Short report `harness/reports/2026-11-07-follow-up-3.md`, own
   PR, merged on CI. No stop was hit.
+
+## Campaigns bootstrap, decision 0010 (authorised 2026-11-07)
+
+Gabriel's authorisation, in a local session: apply his setup package's three
+patches on stacked branches and open PRs, which he reviews and merges
+himself; then carry the setup through to a running smoke-test campaign.
+Never merge, never push to main, change no setting he did not name, and
+stop and ask if anything unexpected happens.
+
+- 2026-11-07: patches 0001-0003 applied with `git am -3` on `main` at
+  `bda0ee1` as PRs #238 (rules and code), #239 (workflows) and #240 (the
+  `campaign-design` skill), stacked, **not merged**.
+- 2026-11-07: renumbered the package's decision 0009 to 0010, because
+  `main` already has `0009-pap-kill-criteria.md` (PR #235). The file was
+  renamed and every citation of the campaigns decision was changed. Main's
+  references to its own 0009 were not touched.
+- 2026-11-07: `research/INDEX.md` conflicted. Main's version was taken and
+  `scripts/build_index.py` re-run, which added one row. `README.md` merged
+  automatically.
+- 2026-11-07: checked on each branch:
+  - `uv sync`, ruff check and format, `uv run pytest` (769 passed) and
+    `scripts/campaign.py validate` (0 campaigns, no problems).
+  - Each branch changes exactly the patches' files.
+  - Apart from the renumbering, every file is byte-identical to the
+    package's `files/` copy, except `README.md` and `research/INDEX.md`,
+    which main had changed.
+  - CI `test` passed on all three PRs.
+  - `AGENT_APP_BOT` is `terrain-agent[bot]`, the author of PR #212.
+  - `CAMPAIGNS_ENABLED` is `false`.
+  - actionlint was not installed for that first check.
+- 2026-11-07: decision 0010 accepted by Gabriel. Status set to `accepted`
+  and date to 2026-11-07, in the front matter and the body's "Date:" line,
+  on PR #238; index re-run.
