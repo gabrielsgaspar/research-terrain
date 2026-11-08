@@ -12,16 +12,55 @@ name: Campaign tick
 #           it out. Merges also need the required checks on main, so a wrong
 #           action cannot merge anything the gate and the ruleset refuse.
 #
-# Every three hours, or by hand. Set the repository variable
-# CAMPAIGNS_ENABLED to `true` to run; anything else stops every campaign.
+# Set the repository variable CAMPAIGNS_ENABLED to `true` to run; anything
+# else stops every campaign.
+#
+# Triggers (coordination report 2026-11-08, section 4):
+#   workflow_run       The end of every workflow a campaign step waits on:
+#                      Explore run and Data pipeline (a step's run), CI (a
+#                      record PR's checks, and main's after a merge), Agent
+#                      plan and Agent build (a close-out's plan and PR) and
+#                      Agent review (its verdict). The next step then starts
+#                      minutes after the last one ends, instead of at the
+#                      cron, which fired once in about eight hours on
+#                      2026-11-08, 37 minutes late. workflow_run always runs
+#                      this file from main, so the job's `github.ref` check
+#                      below still holds.
+#   schedule           A backup only, for a missed event or a grace period
+#                      that runs out with nothing else happening. GitHub
+#                      delays and drops scheduled runs, so nothing relies on
+#                      it alone.
+#   workflow_dispatch  By hand.
+#
+# Not Campaign gate, and not this workflow. GitHub runs at most three levels
+# of workflow_run chains and silently skips a fourth. CI on a pull request
+# (level 1) starts Agent review (level 2), which starts a tick (level 3).
+# Campaign gate's workflow_run on Agent review is level 3 too, so a tick on
+# the gate would be level 4 and would never run, just after a review, where
+# it matters. A tick on itself would loop. A workflow_dispatch starts a new
+# chain, so the tick's own dispatches (explore-run, campaign-gate) and
+# agent-review's dispatch of the gate do not count towards the three.
+# https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_run
+#
+# Bursts collapse to one pending run. CI runs twice per push, on every
+# branch, so several listed runs can end close together. The concurrency
+# group below allows one running tick and one pending: a newer pending tick
+# cancels the older pending one, and a running tick is never cancelled
+# (cancel-in-progress: false). Each tick reads every campaign's state afresh
+# and acts only on what changed, so the one pending run covers every event
+# that arrived while the current one ran.
 on:
+  workflow_run:
+    workflows: [Explore run, Data pipeline, CI, Agent plan, Agent build, Agent review]
+    types: [completed]
   schedule:
-    - cron: "41 */3 * * *"
+    - cron: "41 */3 * * *" # backup only (see above)
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# One running, at most one pending; see "Bursts" above.
 concurrency:
   group: campaign-tick
   cancel-in-progress: false
