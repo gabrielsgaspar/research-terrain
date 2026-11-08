@@ -302,6 +302,9 @@ def test_repo_codeowners_protect_the_gate():
         "scripts/campaign.py",
         "research/ideas/0001-electoral-strongholds.md",
         "confirm/pap/README.md",
+        "src/terrain/registered/r0001/analysis.py",
+        "src/terrain/confirm.py",
+        "scripts/confirm_run.py",
     ):
         assert owners.owned(path), path
     for path in (

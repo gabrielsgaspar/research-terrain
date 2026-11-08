@@ -21,6 +21,15 @@
 /scripts/campaign.py @gabrielsgaspar
 /tests/test_campaigns.py @gabrielsgaspar
 
+# Registered analyses and the confirmation runner (frozen once registered)
+/src/terrain/registered/ @gabrielsgaspar
+/src/terrain/confirm.py @gabrielsgaspar
+/scripts/confirm_run.py @gabrielsgaspar
+/tests/test_confirm.py @gabrielsgaspar
+/tests/test_registered_0001.py @gabrielsgaspar
+/tests/world_0001.py @gabrielsgaspar
+/explore/0001_registered_check.py @gabrielsgaspar
+
 # Research decisions and the plan of every campaign
 /research/questions.md @gabrielsgaspar
 /research/ideas/ @gabrielsgaspar
@@ -38,3 +47,8 @@
 /overleaf/ @gabrielsgaspar
 /data/fixtures/ @gabrielsgaspar
 /data/reference/ @gabrielsgaspar
+
+# The sample split, the exploration restriction and GCP setup
+/src/terrain/explore.py @gabrielsgaspar
+/scripts/seal_split.py @gabrielsgaspar
+/scripts/gcp/ @gabrielsgaspar
