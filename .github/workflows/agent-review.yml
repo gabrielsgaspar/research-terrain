@@ -770,7 +770,7 @@ jobs:
     permissions:
       issues: write # one comment, and adding or removing our labels (PRs are issues)
       pull-requests: write # the same calls on a PR, which 403 with issues: write alone; also reads the PR's head
-      actions: write # dispatch agent-build for a fix round; a dispatch is the one event the job token may start
+      actions: write # dispatch agent-build for a fix round and campaign-gate after posting; a dispatch is the one event the job token may start
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       PR: ${{ needs.review.outputs.pr }}
@@ -861,3 +861,18 @@ jobs:
             gh api --method DELETE "repos/${REPO}/issues/${PR}/labels/${remove}" > /dev/null
           fi
           echo "Posted the review on #${PR}${add:+ and added ${add}}."
+          # Refresh the campaign-gate status for this PR now that the verdict
+          # and labels are final. The gate's own workflow_run on Agent review
+          # gets this run's branch, main, which matches no PR (run
+          # 42498187254), and this job's comment and labels use the job token,
+          # so they start no pull_request_target event either. A
+          # workflow_dispatch is the one event the job token may start, under
+          # the actions: write above. Without it the status stays stale until
+          # a tick notices and dispatches the gate itself (tick 6, run
+          # 42502229036). A failed dispatch only warns: the tick and the
+          # gate's hourly sweep still cover it.
+          if gh workflow run campaign-gate.yml --repo "${REPO}" --ref main -f pr="${PR}"; then
+            echo "Dispatched campaign-gate for #${PR}."
+          else
+            echo "::warning::Could not dispatch campaign-gate for #${PR}; the next tick or sweep will refresh it."
+          fi

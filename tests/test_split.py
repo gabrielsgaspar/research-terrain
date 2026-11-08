@@ -2,6 +2,7 @@ import random
 
 import pytest
 
+from terrain.catalog import load_catalog
 from terrain.split import (
     CONFIRM,
     EXPLORE,
@@ -60,3 +61,17 @@ def test_serialize_is_deterministic_and_hash_is_stable():
     assert data == b"code_ibge,half\n1500001,explore\n1500002,confirm\n"
     assert sha256_hex(data) == sha256_hex(serialize(dict(reversed(assignment.items()))))
     assert len(sha256_hex(data)) == 64
+
+
+# Every `sealed:` line in data/catalog.yaml, written out. CODEOWNERS cannot own
+# one line of the catalog (coordination report 2026-11-08, Phase 1), and this
+# file is code-owned, so adding, removing or changing a sealed folder means
+# editing this constant too, which needs code-owner review.
+SEALED = {
+    "cell_outcomes": "sealed/outcomes/cell_outcomes/",
+}
+
+
+def test_catalog_sealed_lines_are_the_known_ones():
+    sealed = {e["name"]: e["sealed"] for e in load_catalog() if "sealed" in e}
+    assert sealed == SEALED
