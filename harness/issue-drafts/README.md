@@ -51,7 +51,7 @@ acquired or built (its manifest merged into `data/manifests/`).
 | 37 | Aligned and unaligned close pairs at 0.25% (explore, idea 0004) | done (#223, #226, fix #231; record #232) |
 | 38 | Kill criterion 1 at the 0.25% window (explore, idea 0001) | done (#224, #225; record #228) |
 | 39 | Validate the registered analysis against run 42298466207, at 0.50% (explore, idea 0001) | done (issue #241; run 42476480500, record #243) |
-| 40 | Check the registered analysis's new paths on real data, without estimates (explore, idea 0001) | Gabriel decides whether to file it (before registration) |
+| 40 | Check the registered analysis's new paths on real data, without estimates (explore, idea 0001) | moved to campaign 0002 (`research/campaigns/0002-registered-new-paths/`) |
 
 ## Before filing a task
 
