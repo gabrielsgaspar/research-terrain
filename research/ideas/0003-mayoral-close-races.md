@@ -100,6 +100,10 @@ that cannot reach reasonable power at 2%, the idea is not worth a design.
   and 7.2% at 8%, all below 0.50, run 42367009833). No design on close
   mayoral races, municipal or stronghold, is pursued. Recorded by Claude
   Code at his request.
+- 2026-11-08: campaign 0001 re-ran the power check (run 42494552921,
+  `research/explore-runs/0003/42494552921.md`) and got the same numbers as run
+  42367009833: power 4.4%, 5.2% and 7.2% for 45, 80 and 157 races. Kill rule
+  k1 was met. The idea stays dead.
 
 ## Log
 
