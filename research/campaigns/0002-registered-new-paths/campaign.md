@@ -1,7 +1,7 @@
 ---
 id: "0002"
 title: "Check the registered analysis's new paths on real data, without estimates"
-status: active
+status: done
 idea: "0001"
 owner: gabrielsgaspar
 created: 2026-11-08

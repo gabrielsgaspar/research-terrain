@@ -16,6 +16,21 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-08: The registered analysis new paths pass all seven structural checks (idea 0001, issue #254)
+- Tried: campaign 0002 ran `explore/0001_registered_paths_check.py` on the
+  exploration half at the 0.50% window, run 42514591508
+  (`research/explore-runs/0001/42514591508.md`): seven checks of the
+  incumbency-adjusted estimates, the direct placebo, the alignment split and
+  the balance table. Counts and pass or fail only.
+- Result: all seven pass, and no kill rule was met. Pooled 2008-2020, 1,294
+  close pairs have exactly one incumbent (690 plus, 604 minus), against
+  k8's threshold of 200.
+- Why: the frozen code satisfies the identities the checks test, and each
+  election has pairs with exactly one incumbent.
+- Implication: one item before registration can be ticked, with the caveat
+  that 0.50% is not the registered window. The count at 0.25% is not known and
+  may be lower; no estimate was produced.
+
 ## 2026-11-08: The smoke-test campaign reproduced the known power check (idea 0003, issue #245)
 - Tried: campaign 0001 re-ran `explore/0003_mayor_power.py` on the
   exploration half, run 42494552921
