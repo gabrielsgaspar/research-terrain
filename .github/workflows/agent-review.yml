@@ -83,6 +83,10 @@ jobs:
       #    - The branch is agent/issue-<n>; the issue's author and whoever
       #      last added `agent-build` have admin or write, because the issue
       #      text goes to Claude (the same rule as agent-plan and agent-build).
+      #      In a campaign the agent App files the issue and swaps its labels
+      #      (decision 0010). An App has no collaborator role to look up, so
+      #      `has_write` accepts its exact login, as agent-plan and agent-build
+      #      do, and only when APP_BOT is set.
       #    `pr` is set once the PR is matched at the tested commit, so a later
       #    guard failure removes agent-approved from it (post job).
       - name: Guard - our App's PR, pushed only by our App, people with write
@@ -97,6 +101,10 @@ jobs:
           fail() { printf 'reason=%s\n' "$1" >> "${GITHUB_OUTPUT}"; echo "::error::$1"; exit 1; }
           has_write() {
             local permission
+            if [ -n "${APP_BOT}" ] && [ "$1" = "${APP_BOT}" ]; then
+              echo "User $1 is the agent App (campaigns, decision 0010)."
+              return 0
+            fi
             permission="$(gh api "repos/${REPO}/collaborators/$1/permission" --jq .permission 2>/dev/null)" || return 1
             echo "User $1 has permission: ${permission}"
             [ "${permission}" = admin ] || [ "${permission}" = write ]
