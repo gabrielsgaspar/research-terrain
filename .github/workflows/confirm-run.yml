@@ -1,0 +1,170 @@
+name: Confirm run
+
+# Manual only. Runs one registered specification, confirm/specs/<spec>.yaml,
+# on the confirmation half with SHUFFLED treatment (each close pair's sides
+# swapped by a coin flip seeded from the specification's hash), then opens a
+# pull request that adds its entry to confirm/ledger/. It is a check of the
+# pipeline and must find nothing. The real run is unblind.yml.
+# harness/BUILD_PLAN.md 4.8; logic and rules in src/terrain/confirm.py.
+#
+# Safety:
+#   - Runs only from main, so the code that gets GCP credentials has been
+#     reviewed and merged.
+#   - Environment unblind (required reviewer: Gabriel), not analysis: only
+#     terrain-unblind can read sealed/ (decision 0003,
+#     scripts/gcp/setup_gcs.sh), and the shuffled run needs the confirmation
+#     half's outcomes. Every confirm-run therefore waits for Gabriel.
+#   - The spec name is checked against a strict pattern; the specification
+#     must name a plan commit under confirm/pap/ on main.
+#   - The shuffle's seed is fixed by the specification's hash, so repeated
+#     runs give the same numbers.
+#   - The run job holds GCP credentials and no GitHub write token. Its
+#     output is numbers and short names only (terrain.confirm
+#     validate_results) and at most 200 KB.
+#   - The record job writes the ledger entry before it asks for the App
+#     token; nothing it runs sees the token.
+on:
+  workflow_dispatch:
+    inputs:
+      spec:
+        description: "Specification in confirm/specs/ without .yaml, e.g. 0001-direct"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: confirm-${{ inputs.spec }}
+  cancel-in-progress: false
+
+env:
+  SPEC: ${{ inputs.spec }}
+
+jobs:
+  run:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 240
+    environment: unblind
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      TERRAIN_BUCKET: research-terrain
+    steps:
+      - name: Check the input
+        run: |
+          set -euo pipefail
+          [[ "${SPEC}" =~ ^[0-9]{4}-[a-z0-9-]{1,40}$ ]] \
+            || { echo "::error::spec must look like 0001-some-name"; exit 1; }
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Check the specification exists
+        run: |
+          test -f "confirm/specs/${SPEC}.yaml" \
+            || { echo "::error::confirm/specs/${SPEC}.yaml does not exist on main"; exit 1; }
+
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: false
+
+      - run: uv sync --locked
+
+      - name: Check the specification and the ledger
+        run: uv run python scripts/confirm_run.py check --spec "confirm/specs/${SPEC}.yaml" --mode shuffled
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: terrain-unblind@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+
+      - name: Run the specification with shuffled treatment
+        run: |
+          set -euo pipefail
+          uv run python scripts/confirm_run.py run --spec "confirm/specs/${SPEC}.yaml" \
+            --mode shuffled --out-dir "${RUNNER_TEMP}/out"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: confirm-out
+          path: ${{ runner.temp }}/out/output.json
+          retention-days: 3
+
+  record:
+    needs: run
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: confirm-out
+          path: ${{ runner.temp }}/in
+
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: false
+
+      - name: Write the ledger entry into the tree
+        id: entry
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          CODE_COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          uv sync --locked
+          path="$(uv run python scripts/confirm_run.py ledger --spec "confirm/specs/${SPEC}.yaml" \
+            --mode shuffled --output "${RUNNER_TEMP}/in/output.json")"
+          echo "path=${path}" >> "${GITHUB_OUTPUT}"
+
+      - name: Get a GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.AGENT_APP_CLIENT_ID }}
+          private-key: ${{ secrets.AGENT_APP_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Push a branch and open the pull request
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PUSH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          REPO: ${{ github.repository }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+          ENTRY: ${{ steps.entry.outputs.path }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          branch="ledger/confirm-${SPEC}-${GITHUB_RUN_ID}"
+          bot_id="$(gh api "users/${APP_SLUG}%5Bbot%5D" --jq .id)"
+          git -c core.hooksPath=/dev/null switch -c "${branch}"
+          git add -- "${ENTRY}"
+          git -c core.hooksPath=/dev/null \
+            -c user.name="${APP_SLUG}[bot]" \
+            -c user.email="${bot_id}+${APP_SLUG}[bot]@users.noreply.github.com" \
+            commit -m "Ledger: shuffled confirm-run of ${SPEC}, run ${GITHUB_RUN_ID}" -m "From ${RUN_URL}"
+          helper='!f() { echo username=x-access-token; echo "password=${PUSH_TOKEN}"; }; f'
+          git -c core.hooksPath=/dev/null -c credential.helper= -c "credential.helper=${helper}" \
+            push "https://github.com/${REPO}.git" "refs/heads/${branch}:refs/heads/${branch}"
+          {
+            printf 'Adds the ledger entry of a shuffled `confirm-run` of `confirm/specs/%s.yaml` (%s).\n\n' "${SPEC}" "${RUN_URL}"
+            printf 'Shuffled treatment: a working pipeline finds nothing. Merge it before `unblind`, which needs this entry.\n\n```json\n'
+            head -c 6000 "${ENTRY}"
+            printf '\n```\n'
+          } > "${RUNNER_TEMP}/body.md"
+          gh pr create --repo "${REPO}" --base "${BASE_BRANCH}" --head "${branch}" \
+            --title "Ledger: shuffled confirm-run of ${SPEC} (run ${GITHUB_RUN_ID})" --body-file "${RUNNER_TEMP}/body.md"
