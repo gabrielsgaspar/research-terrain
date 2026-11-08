@@ -496,9 +496,11 @@ jobs:
       #      only).
       #    - allowed_bots: the action refuses bot actors, and a fix round is
       #      dispatched by agent-review with its job token, so its actor is
-      #      github-actions[bot]. Only that bot, never `*`; a job token can
-      #      start no other event here (GitHub does not trigger workflows from
-      #      its `labeled` events).
+      #      github-actions[bot]. A job token can start no other event here
+      #      (GitHub does not trigger workflows from its `labeled` events). In a
+      #      campaign the tick swaps `agent-plan` for `agent-build` with the
+      #      agent App's token (decision 0010), so the actor is
+      #      terrain-agent[bot]. Only these two bots, never `*`.
       - name: Build
         id: claude
         uses: anthropics/claude-code-action@d535f5172dec02b204866b393d6b20b9b2aaf98d # v1.0.266
@@ -509,7 +511,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          allowed_bots: github-actions[bot]
+          allowed_bots: github-actions[bot],terrain-agent[bot]
           classify_inline_comments: "false"
           settings: >-
             {"permissions":{"blockReadsOutsideWorkingDirectories":true},
