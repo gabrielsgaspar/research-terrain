@@ -1,9 +1,10 @@
 # Pre-analysis plan for idea 0001: DRAFT
 
 > **Draft; nothing here is registered.** Written by Claude Code (handoff 5,
-> T7), revised on 2026-11-07 to match decision 0009 and then Gabriel's
-> rulings on the follow-up report. For Gabriel to rewrite. The registered
-> plan lives only in `confirm/pap/` and is written by a person (section 9).
+> T7), revised on 2026-11-07 to match decision 0009, Gabriel's rulings on
+> the follow-up report, and his decisions on follow-up 2 (Z, the estimator,
+> determinism, the shuffled check). For Gabriel to rewrite. The registered
+> plan lives only in `confirm/pap/` and is written by a person (section 10).
 > This file was written without reading anything under `confirm/` or
 > `sealed/`, and it does not use the confirmation half.
 
@@ -20,7 +21,7 @@ reported in full, but as secondary results: none of them can kill the idea.
 The exploration half points to a null on H1 (2026-11-06: the direct slope is
 about zero and rules out ±3.5% of baseline, at the 0.50% window, which
 decision 0008 later found unbalanced on incumbency). **When** to spend the
-confirmation half is Gabriel's decision; section 9 lists what registration
+confirmation half is Gabriel's decision; section 10 lists what registration
 needs first.
 
 ## 1. Hypotheses
@@ -79,7 +80,9 @@ not re-chosen on the confirmation half.
   half at 0.25%, before any outcome.
 - **The fallback is triggered by decision 0008's omnibus test only:** the
   minimum RI p across the ten covariates, set against the re-flip
-  distribution of that minimum. **If the omnibus p is below 0.15**, the
+  distribution of that minimum (2,000 re-flips of the window's pairs, seed
+  20261106). If no covariate has enough pairs to give an omnibus p, the
+  fallback is triggered too. **If the omnibus p is below 0.15**, the
   table is reported, the window stays 0.25%, and the incumbency-adjusted
   direct estimate (section 4) becomes the estimate that kill criteria 2 and
   4 are read on. A single covariate's p below 0.15 does not trigger it
@@ -106,10 +109,12 @@ not re-chosen on the confirmation half.
   its party is in the elected mayor's coalition in the same election
   (`tse_parties` coalition rows of the deciding mayoral round; from 2024 a
   federation counts when it is in the coalition). A pair is aligned when
-  both sides are, unaligned when neither is; mixed pairs are counted and
-  left out. The direct slope is estimated separately on aligned and on
-  unaligned pairs, with one set of re-flips shared by both, and the
-  difference is reported. Exploration half at 0.25%, 2008-2020: 1,100
+  both sides are, unaligned when neither is. Mixed pairs, and pairs with an
+  unmatched side or mayor, are counted and left out of the contrast. As
+  the constituency split does, D is divided into components by the pair's
+  kind (aligned, unaligned, mixed, unmatched), estimated jointly with one
+  set of re-flips, and the aligned-minus-unaligned difference is reported
+  with its two-sided RI p. Exploration half at 0.25%, 2008-2020: 1,100
   aligned and 1,219 unaligned pairs (run 42384829937).
 - **Regression:** OLS of the outcome on the recentred exposure, with
   municipality-by-election fixed effects, pooled over elections, exactly as
@@ -120,33 +125,27 @@ not re-chosen on the confirmation half.
   for H3, p1 = (1 + #{δ_r ≤ δ}) / (1 + 2,000). Municipality-clustered
   standard errors are reported as a check.
 - **Incumbency-adjusted direct estimate (registered robustness check,
-  decision 0009, point 4; term accepted by Gabriel on 2026-11-07).**
-  Reported next to the unadjusted estimate in every run. The term is
-  **D^inc**: a cell's exposure to incumbent winners minus incumbent losers,
-  built like D, with the same kernel (`exp2`) and the same close pairs. Per
-  pair, the winner's exposure counts if the winner held the seat before, and
-  the loser's exposure is subtracted if the loser held the seat before;
-  D^inc sums this over the municipality's close pairs. **D^inc / 2 is added
-  to the direct regression**, next to D / 2, with the same fixed effects.
-  Incumbency is as rebuilt in task 35 (the previous election's elected
-  councillors). **The re-flips are unchanged:** the same 2,000 sign
-  vectors, the same seed, and each re-flip swaps a pair's winner and loser
-  in D and D^inc alike. The adjusted direct estimate is the coefficient on
-  D / 2, and its RI p is computed as above.
-  - *Note (Claude Code), for Gabriel before registration:* this term is not
-    the one the previous draft proposed. The earlier term (Z, the
-    incumbent side's exposure minus the other side's, over pairs whose
-    sides differ in incumbency) does not depend on who won, so it stays
-    fixed under re-flips. D^inc depends on who won and flips with the pair.
-    With D / 2 and D^inc / 2 both in the regression, the coefficient on
-    D / 2 is the effect around non-incumbent sides, and the coefficient on
-    D^inc / 2 is how much the effect differs around incumbent sides. The
-    RI test of the coefficient on D / 2 is still valid. But a term that
-    flips with the pair does not absorb a fixed difference between
-    incumbent and non-incumbent sides, which is the balance concern. If
-    "adjusted for incumbency" means removing that difference, Z is the
-    term; if it means letting the effect differ by incumbency, D^inc is.
-    The text above follows Gabriel's wording.
+  decision 0009, point 4; term chosen by Gabriel on 2026-11-07).** Reported
+  next to the unadjusted estimate in every run. The term is **Z**, the
+  incumbent side's exposure minus the other side's, fixed under re-flips:
+  - **Which pairs contribute: those with exactly one incumbent.** For such
+    a pair, Z takes the pair's exposure term with the same kernel as D
+    (`exp2`; ring2 and ring5 for their robustness estimates): plus the term
+    if the winner held the seat, minus it if the loser did. Pairs where both
+    or neither side held the seat, or where either side's incumbency is
+    unknown (no voter ID), contribute nothing. Z sums this over the
+    municipality's close pairs.
+  - Incumbency is as rebuilt in task 35: a candidate held the seat if their
+    voter ID was elected to the same municipality's council in the previous
+    main election.
+  - **Z does not depend on who won.** Swapping a pair's sides negates both
+    its exposure term and its sign, so Z is the same in every re-flip. **Z /
+    2 is added to the direct regression**, next to D / 2, with the same
+    fixed effects. The adjusted direct estimate is the coefficient on D / 2.
+  - **The re-flips are unchanged:** the same 2,000 sign vectors (seed
+    20261106) flip D, Z stays fixed, and the RI p of the coefficient on D / 2
+    is computed as above. The coefficient on Z / 2 is reported, without a
+    p-value.
 
 ## 5. Effect size and power (decisions 0007 and 0009)
 
@@ -209,27 +208,53 @@ The alignment split (H4) has no kill criterion.
 
 In this order: the balance table and the omnibus p; kill criterion 1's
 counts; the carried-over power lines; the placebo; the direct estimate,
-unadjusted and incumbency-adjusted (with the coefficient on D^inc / 2), for
+unadjusted and incumbency-adjusted (with the coefficient on Z / 2), for
 Y4 and Y2 and every robustness kernel; displacement with ΔY; the
 constituency split; the alignment split (aligned and unaligned slopes, their
 difference and its RI p, labelled underpowered, with no verdict); counts of
 pairs, cells and candidates per type, and aligned, unaligned and mixed
 pairs. Dead ends are results. The real run happens once, through `unblind`,
-after a shuffled run through `confirm-run` (section 9), and its ledger entry
+after a shuffled run through `confirm-run` (section 10), and its ledger entry
 is committed as it comes out.
 
-## 8. What this draft does not settle
+**The estimator** is `src/terrain/registered/r0001/analysis.py` (registered
+name `0001_direct`; specification draft `harness/drafts/specs/0001-direct.yaml`).
+Its core is a frozen, verbatim copy of the explore code that produced run
+42298466207 (`src/terrain/registered/r0001/frozen.py`). It takes the
+treatment once, for every election, before it reads any outcome. On
+synthetic data it gives every number of `explore/0001_effects.py`
+identically. On the real exploration half, at 0.50% only, it is checked
+against run 42298466207 by `explore/0001_registered_check.py` (issue draft
+39), once it is merged. It is never run at 0.25% before registration: it
+refuses that window outside `confirm-run` and `unblind`.
+
+## 8. Determinism, reruns and the shuffled check
+
+- **The real run is deterministic.** The inputs are fixed build files. The
+  re-flips use a fixed seed (20261106), and the shuffle in `confirm-run`
+  uses a seed fixed by the specification's hash. Every number in the
+  ledger is recorded to 12 significant digits, so floating-point sums taken
+  in another order cannot change it. A rerun gives identical numbers. A test
+  runs the real analysis twice on synthetic data and checks this.
+- **A manual rerun of `unblind`** (by deleting the branch
+  `ledger/unblind-<spec>`) is allowed **only if the first run produced no
+  ledger entry**: it failed before it wrote one, and its ledger pull
+  request does not exist. Once a ledger entry exists, the result stands.
+- **If the shuffled check fails** (a confirmatory p below 0.05 with
+  shuffled treatment), the pipeline is inspected first. If a fault is
+  found, it is fixed, the specification's code is reviewed again, and
+  `confirm-run` is repeated. If no fault is found, `unblind` is dispatched
+  with `accept_failed_shuffle`, which the ledger records, and the failed
+  check is reported with the result.
+
+## 9. What this draft does not settle
 
 - When to spend the confirmation half (section 0).
-- Whether the incumbency term is D^inc as written, or the fixed term Z
-  (section 4, note).
-- The registered specification file in `confirm/specs/` and the analysis
-  code it names. The `confirm-run` and `unblind` workflows are built in a
-  separate pull request that waits for Gabriel's review; the estimator code
-  for this plan is not written yet and would be written, reviewed and
-  merged before registration.
+- The `confirm-run` and `unblind` workflows and the estimator are in a pull
+  request that waits for Gabriel's review (#236), as is the validation run
+  against run 42298466207.
 
-## 9. Registration
+## 10. Registration
 
 What Gabriel must do, in this order, before any run on the confirmation
 half:
@@ -245,6 +270,10 @@ half:
    `confirm-run` is started. The date of the external registration is the
    date the plan was fixed.
 
-After registration: `confirm-run` on the registered specification
-(shuffled treatment; it must give nothing), then `unblind`, once, with
-Gabriel's approval.
+After registration:
+- Gabriel moves `harness/drafts/specs/0001-direct.yaml` to
+  `confirm/specs/0001-direct.yaml`, with `registered` and `pap_commit`
+  filled in. It does not load until both are filled.
+- `confirm-run` on that specification: shuffled treatment, and it must give
+  nothing (section 8). It needs his approval in the `unblind` environment.
+- Then `unblind`, once, with his approval.

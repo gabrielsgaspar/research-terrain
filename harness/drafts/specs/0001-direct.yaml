@@ -1,0 +1,36 @@
+# DRAFT; nothing here is registered. Drafted by Claude Code (2026-11-07) from the plan
+# draft (harness/drafts/pap-draft.md) for Gabriel, who fills in `registered` and
+# `pap_commit` and moves it to confirm/specs/0001-direct.yaml himself. The format is
+# confirm/specs/TEMPLATE.yaml's, plus `analysis`, `pap_commit` and `params`, which the
+# runner (src/terrain/confirm.py) needs; `predicted_sign: two_sided` is also an
+# addition to the template's list. It does not load until both placeholders are filled.
+id: 0001-direct
+idea: research/ideas/0001-electoral-strongholds.md
+registered: FILL-IN-YYYY-MM-DD   # the date of the external registration
+hypothesis: >-
+  H1: a narrow council win changes clearing (loss of primary vegetation) in the 1 km
+  cells around the winner's stronghold, relative to the loser's, in the four years
+  after the election. Two-sided. Checked by the pre-election placebo (H0, kill
+  criterion 2); gated by kill criterion 1; kill criterion 4 is read on this estimate,
+  or on the incumbency-adjusted one if the omnibus balance p is below 0.15.
+predicted_sign: two_sided   # the pooled sign is not predicted (plan, section 1)
+sample: confirm
+outcome:
+  dataset: cell_outcomes
+  variable: code_4
+  window: term_years        # Y4, E+1 .. E+4; Y2, the placebo and Y3 are reported too
+treatment:
+  design: close_pair_swap
+  bandwidth_rule: "|margin| <= 0.25% of the municipality's valid council votes (decision 0008)"
+exposure: exp2
+fixed_effects: [municipality_by_year]   # municipality by election
+inference:
+  method: randomisation
+  draws: 2000
+  cluster: municipality     # clustered SE reported as a check
+seed_policy: "fixed in the workflow, logged in the ledger"
+analysis: 0001_direct       # src/terrain/registered/r0001/analysis.py
+pap_commit: FILL-IN-40-CHARACTER-COMMIT-HASH   # the merge that adds the plan to confirm/pap/
+params:
+  window: 0.0025            # the share of valid votes in bandwidth_rule
+  ri_seed: 20261106         # the re-flips' seed (plan, section 4); the shuffle's is the spec's hash

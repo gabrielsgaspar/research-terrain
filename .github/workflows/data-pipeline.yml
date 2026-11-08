@@ -28,6 +28,15 @@ on:
         description: "Script name in pipeline/<stage>/ without .py, e.g. tse_candidates"
         type: string
         required: true
+      campaign:
+        description: "Campaign step, e.g. 0001/s3 (set by the campaign tick; leave empty)"
+        type: string
+        required: false
+        default: ""
+
+# The campaign tick and gate find a campaign's run by this title
+# (terrain.campaigns.markers.pipeline_run_title).
+run-name: ${{ inputs.campaign != '' && format('Data pipeline {0} {1} campaign {2}', inputs.stage, inputs.target, inputs.campaign) || format('Data pipeline {0} {1}', inputs.stage, inputs.target) }}
 
 permissions:
   contents: read
@@ -39,6 +48,7 @@ concurrency:
 env:
   STAGE: ${{ inputs.stage }}
   TARGET: ${{ inputs.target }}
+  CAMPAIGN: ${{ inputs.campaign }}
 
 jobs:
   run:
@@ -57,6 +67,7 @@ jobs:
           set -euo pipefail
           [[ "${STAGE}" =~ ^(acquire|build)$ ]] || { echo "::error::stage must be acquire or build"; exit 1; }
           [[ "${TARGET}" =~ ^[a-z][a-z0-9_]{0,63}$ ]] || { echo "::error::target must match ^[a-z][a-z0-9_]{0,63}$"; exit 1; }
+          [[ -z "${CAMPAIGN}" || "${CAMPAIGN}" =~ ^[0-9]{4}/s[0-9]{1,2}$ ]] || { echo "::error::campaign must be empty or look like 0001/s3"; exit 1; }
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
