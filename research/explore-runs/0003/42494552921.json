@@ -1,0 +1,148 @@
+{
+  "draws": 2000,
+  "effect": 0.08,
+  "elections": [
+    2008,
+    2012,
+    2016,
+    2020
+  ],
+  "per_election": {
+    "2008": {
+      "annulled_rows_left_out": 0,
+      "first_not_eleito": 0,
+      "no_valid_votes": 0,
+      "null_outcome_in_2pct": 0,
+      "one_candidacy": 18,
+      "races": 367,
+      "round2_rows_other_ids": 0,
+      "runoff_races": 3,
+      "ties": 0
+    },
+    "2012": {
+      "annulled_rows_left_out": 0,
+      "first_not_eleito": 0,
+      "no_valid_votes": 0,
+      "null_outcome_in_2pct": 0,
+      "one_candidacy": 12,
+      "races": 374,
+      "round2_rows_other_ids": 0,
+      "runoff_races": 4,
+      "ties": 0
+    },
+    "2016": {
+      "annulled_rows_left_out": 0,
+      "first_not_eleito": 0,
+      "no_valid_votes": 0,
+      "null_outcome_in_2pct": 0,
+      "one_candidacy": 12,
+      "races": 373,
+      "round2_rows_other_ids": 0,
+      "runoff_races": 4,
+      "ties": 0
+    },
+    "2020": {
+      "annulled_rows_left_out": 0,
+      "first_not_eleito": 2,
+      "no_valid_votes": 0,
+      "null_outcome_in_2pct": 0,
+      "one_candidacy": 6,
+      "races": 379,
+      "round2_rows_other_ids": 4,
+      "runoff_races": 3,
+      "ties": 0
+    }
+  },
+  "pre_years": {
+    "2008": [
+      2004,
+      2005,
+      2006,
+      2007
+    ],
+    "2012": [
+      2008,
+      2009,
+      2010,
+      2011
+    ],
+    "2016": [
+      2012,
+      2013,
+      2014,
+      2015
+    ],
+    "2020": [
+      2016,
+      2017,
+      2018,
+      2019
+    ]
+  },
+  "seed": 20261106,
+  "windows": {
+    "0.5%": {
+      "draws": 2000,
+      "draws_without_delta": 0,
+      "mde": 0.04282196053815989,
+      "mde_pct_of_ybar": 89.41444070389494,
+      "power": 0.043680927272412406,
+      "q025": -0.029241401217294963,
+      "q975": 0.029989949847181372,
+      "races": 45,
+      "races_per_election": {
+        "2008": 11,
+        "2012": 10,
+        "2016": 14,
+        "2020": 10
+      },
+      "runoff_races": 0,
+      "sd_ri": 0.015293557335057105,
+      "sd_y": 0.058722562854894744,
+      "window": 0.005,
+      "ybar": 0.047891548838256665
+    },
+    "1%": {
+      "draws": 2000,
+      "draws_without_delta": 0,
+      "mde": 0.031389915192035434,
+      "mde_pct_of_ybar": 67.07227191929293,
+      "power": 0.05197143596133924,
+      "q025": -0.021243973760310376,
+      "q975": 0.022607703826628106,
+      "races": 80,
+      "races_per_election": {
+        "2008": 19,
+        "2012": 20,
+        "2016": 19,
+        "2020": 22
+      },
+      "runoff_races": 0,
+      "sd_ri": 0.011210683997155513,
+      "sd_y": 0.05375249488983854,
+      "window": 0.01,
+      "ybar": 0.046800137066784396
+    },
+    "2%": {
+      "draws": 2000,
+      "draws_without_delta": 0,
+      "mde": 0.021965284998971036,
+      "mde_pct_of_ybar": 44.64118179576403,
+      "power": 0.07238979528027706,
+      "q025": -0.015268847222174357,
+      "q975": 0.015885623815374957,
+      "races": 157,
+      "races_per_election": {
+        "2008": 39,
+        "2012": 39,
+        "2016": 43,
+        "2020": 36
+      },
+      "runoff_races": 1,
+      "sd_ri": 0.007844744642489656,
+      "sd_y": 0.05110329967467824,
+      "window": 0.02,
+      "ybar": 0.04920408491751736
+    }
+  }
+}
