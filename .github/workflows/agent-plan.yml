@@ -25,6 +25,10 @@ jobs:
       #    `permission` is admin, write, read or none (maintain counts as write,
       #    triage as read). A failed lookup (for example 404 for a user who is
       #    not a collaborator) also stops the job.
+      #    The agent App (repository variable AGENT_APP_BOT) files and labels
+      #    campaign issues (decision 0010). An App has no collaborator role to
+      #    look up, so its exact login is accepted; logins ending in [bot] are
+      #    reserved for Apps, and only our workflows hold this App's key.
       - name: Guard - labelling user and issue author need admin or write
         id: guard
         env:
@@ -32,9 +36,14 @@ jobs:
           REPO: ${{ github.repository }}
           ACTOR: ${{ github.event.sender.login }}
           AUTHOR: ${{ github.event.issue.user.login }}
+          APP_BOT: ${{ vars.AGENT_APP_BOT }}
         run: |
           set -euo pipefail
           for user in "${ACTOR}" "${AUTHOR}"; do
+            if [ -n "${APP_BOT}" ] && [ "${user}" = "${APP_BOT}" ]; then
+              echo "User ${user} is the agent App (campaigns, decision 0010)."
+              continue
+            fi
             if ! permission="$(gh api "repos/${REPO}/collaborators/${user}/permission" --jq .permission 2>/dev/null)"; then
               echo "::error::Could not look up the permission of ${user}."
               exit 1

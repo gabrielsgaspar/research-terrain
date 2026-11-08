@@ -109,7 +109,8 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
   serious error.
 - Every exploration task updates its idea file in `research/ideas/` and adds a
   dated entry to `research/lessons.md`, whether the idea worked or not. Dead
-  ends are results.
+  ends are results. Inside a campaign, the tracking issue's ledger stands in
+  for both until the campaign's close-out task writes them (see "Campaigns").
 - Numbers in the paper come from generated files, never typed by hand.
 
 ### Code
@@ -180,4 +181,43 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
   delete, why), one full path per file, deletions included, with no braces,
   globs or directories. The workflow prints it as **Files to change** and
   the build's checks enforce exactly that list.
-- Agents never merge, never push to main, never change workflows.
+- Agents never push to main and never change workflows. They never merge,
+  with one exception: the campaign tick merges an agent pull request of an
+  active campaign when the required `campaign-gate` check passes (see
+  "Campaigns"). Local sessions never merge: `gh pr merge` is denied in
+  `.claude/settings.json`, and Gabriel merges everything else.
+
+### Campaigns
+
+A campaign (`research/campaigns/NNNN-slug/`, decision 0010) is a series of
+steps Gabriel approved in advance: tasks (issue drafts), explore runs and
+data-pipeline runs, with kill rules and a budget. The `campaign-tick`
+workflow carries it out; the `campaign-gate` check decides what may merge.
+
+- The campaign file and its drafts are the only source of campaign tasks.
+  The tick files each draft word for word and never edits an issue after
+  filing; the gate refuses a pull request whose issue no longer matches its
+  draft. A campaign's own files never change while it runs (they are owned).
+- A plan may list only the step's `allowed_paths`. Only then does the tick
+  move it from `agent-plan` to `agent-build`; anything else blocks the step
+  and asks Gabriel.
+- The tick merges a pull request only when `campaign-gate` passes: CI's
+  `test` passes on the head commit, the agent review approves that commit,
+  every referee row is OK (only the rows the campaign lists, by default R5,
+  may be "Not applicable"), every file is inside the step, and nothing is
+  protected or owned in `.github/CODEOWNERS`. Owned paths always need
+  Gabriel's review; the App cannot bypass it.
+- Runs start only for steps the campaign lists; new data only for datasets
+  in its `datasets`, within their stated size and identifier rules. A
+  manifest or record pull request from such a run is merged by the tick
+  after the gate checks it.
+- Kill rules are applied by code to the run's `results.json`. A campaign's
+  explore script writes every key a kill rule reads, at the dotted path the
+  rule names. A rule that cannot be applied stops the step; it never passes.
+- At most two campaigns are active, never two on the same idea. One task is
+  in flight per campaign and one run across all campaigns.
+- Never, in a campaign or not: the confirmation half, `confirm/`, accepted
+  decisions, kill criteria in idea files, analysis that a step does not
+  list, deleting data, personal identifiers in Git.
+- New ideas and variations an agent thinks of go into the close-out report
+  as suggestions. They are never run in the same campaign.

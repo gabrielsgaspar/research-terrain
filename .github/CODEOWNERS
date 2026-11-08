@@ -1,0 +1,40 @@
+# Paths only Gabriel changes.
+#
+# The ruleset on main requires a code owner's review for any pull request
+# that touches these paths, and the agent App is not on the bypass list, so
+# no campaign can merge them. The campaign gate refuses them too
+# (terrain.campaigns.gate). Use only these pattern forms, which the gate reads
+# the same way GitHub does: a leading /, a trailing / for a folder, * within
+# one name. `uv run pytest tests/test_campaigns.py` checks this file.
+
+# Rules, workflows and settings
+/.github/ @gabrielsgaspar
+/.claude/ @gabrielsgaspar
+/AGENTS.md @gabrielsgaspar
+/CLAUDE.md @gabrielsgaspar
+/harness/ @gabrielsgaspar
+/pyproject.toml @gabrielsgaspar
+/uv.lock @gabrielsgaspar
+
+# The campaign machinery itself
+/src/terrain/campaigns/ @gabrielsgaspar
+/scripts/campaign.py @gabrielsgaspar
+/tests/test_campaigns.py @gabrielsgaspar
+
+# Research decisions and the plan of every campaign
+/research/questions.md @gabrielsgaspar
+/research/ideas/ @gabrielsgaspar
+/research/decisions/ @gabrielsgaspar
+/research/references/ @gabrielsgaspar
+/research/campaigns/README.md @gabrielsgaspar
+/research/campaigns/TEMPLATE.md @gabrielsgaspar
+/research/campaigns/DRAFT_TEMPLATE.md @gabrielsgaspar
+/research/campaigns/*/campaign.md @gabrielsgaspar
+/research/campaigns/*/drafts/ @gabrielsgaspar
+
+# Human-only by AGENTS.md
+/confirm/ @gabrielsgaspar
+/legacy/ @gabrielsgaspar
+/overleaf/ @gabrielsgaspar
+/data/fixtures/ @gabrielsgaspar
+/data/reference/ @gabrielsgaspar
