@@ -52,3 +52,10 @@
 /src/terrain/explore.py @gabrielsgaspar
 /scripts/seal_split.py @gabrielsgaspar
 /scripts/gcp/ @gabrielsgaspar
+/src/terrain/split.py @gabrielsgaspar
+/src/terrain/builds/cell_outcomes.py @gabrielsgaspar
+/pipeline/build/cell_outcomes.py @gabrielsgaspar
+/tests/test_split.py @gabrielsgaspar
+/tests/test_explore.py @gabrielsgaspar
+/tests/test_build_cell_outcomes.py @gabrielsgaspar
+/tests/test_repo_rules.py @gabrielsgaspar
