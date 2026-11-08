@@ -3,7 +3,7 @@ id: "0001"
 title: "Electoral strongholds and the geography of deforestation"
 status: exploring
 created: 2026-11-01
-updated: 2026-11-07
+updated: 2026-11-08
 datasets:
   - tse_votes_by_section
   - tse_polling_places
@@ -131,6 +131,12 @@ Elections with usable geography: 2008, 2012, 2016, 2020 and 2024 (see
   balance fails. The kill-criteria texts are unchanged. Kill criterion 1 at
   0.25% (run 42384056410): 434 indigenous-side and 1,625 settlement-side
   candidates at 5 km, pooled 2008-2024; not met.
+- 2026-11-08: still exploring. The registered analysis reproduces the
+  explore code on the exploration half at 0.50% (run 42476480500): 875
+  numbers compared with runs 42298466207 and 41839642406, 0 differ. The new
+  paths (direct_adj, ring2_adj, ring5_adj, direct_pre, direct_pre_adj,
+  align, balance) were computed but not compared, as no earlier run has
+  them. Nothing ran at 0.25%.
 
 ## Log
 
@@ -161,3 +167,6 @@ Elections with usable geography: 2008, 2012, 2016, 2020 and 2024 (see
 - 2026-11-07: kill criterion 1 at 0.25%: issue #224, PR #225, run
   42384056410 (`research/explore-runs/0001/42384056410.md`), record PR #228;
   decision 0009; `research/lessons.md` entry of the same date.
+- 2026-11-08: registered-analysis check at 0.50%: issue #241, PR #236, run
+  42476480500 (`research/explore-runs/0001/42476480500.md`), record PR
+  #243; `research/lessons.md` entry of the same date.

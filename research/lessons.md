@@ -16,6 +16,27 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-08: The registered analysis reproduces the explore code at 0.50% (idea 0001, issue #241)
+- Tried: `explore/0001_registered_check.py` on the exploration half at the
+  0.50% window, run 42476480500
+  (`research/explore-runs/0001/42476480500.md`), on main after PR #236:
+  idea 0001's registered analysis (`src/terrain/registered/r0001/`) run
+  with the real treatment, 2,000 re-flips and seed 20261106, its numbers
+  compared with run 42298466207 (the eleven estimates, dropped cells, type
+  counts) and run 41839642406 (kill criterion 1's counts). Only the
+  comparison is reported.
+- Result: reproduced. 875 numbers compared (821 and 54), 0 differ; the
+  largest relative difference is 1.44e-14, within the rule (whole numbers,
+  text, RI p-values and p1 equal; others within a relative 1e-9).
+- Why: the registered core is a verbatim copy of the explore functions, so
+  only the order of floating-point sums can differ.
+- Implication: the code path of the registered analysis gives the numbers
+  of the explore runs it was frozen from, on the exploration half at 0.50%
+  only. The new paths (direct_adj, ring2_adj, ring5_adj, direct_pre,
+  direct_pre_adj, align and balance) were computed but not compared, as no
+  earlier run has them, so this run does not check them. Nothing ran at the
+  registered 0.25% window.
+
 ## 2026-11-07: Alignment with the mayor splits close pairs evenly, but the moderation test has power near 0.34 (idea 0004, issue #223)
 - Tried: `explore/0004_alignment_counts.py` on the exploration half, run
   42384829937 (`research/explore-runs/0004/42384829937.md`): close council

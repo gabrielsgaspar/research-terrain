@@ -1,0 +1,20 @@
+{
+  "computed_not_reported": [
+    "direct_pre",
+    "direct_adj",
+    "ring2_adj",
+    "ring5_adj",
+    "direct_pre_adj",
+    "align",
+    "balance"
+  ],
+  "first_mismatches": [],
+  "max_relative_difference": 1.4430860839795497e-14,
+  "mismatches": 0,
+  "numbers_compared": {
+    "effects": 821,
+    "kill_criterion_1": 54
+  },
+  "reproduced": true,
+  "window": 0.005
+}
