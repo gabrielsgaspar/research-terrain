@@ -1,7 +1,7 @@
 ---
 id: "0001"
 title: "Smoke test: re-run idea 0003's power check"
-status: active
+status: done
 idea: "0003"
 owner: gabrielsgaspar
 created: 2026-11-08

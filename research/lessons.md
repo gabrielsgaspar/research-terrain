@@ -16,6 +16,19 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-08: The smoke-test campaign reproduced the known power check (idea 0003, issue #245)
+- Tried: campaign 0001 re-ran `explore/0003_mayor_power.py` on the
+  exploration half, run 42494552921
+  (`research/explore-runs/0003/42494552921.md`), and compared it with the
+  first run, 42367009833 (`research/explore-runs/0003/42367009833.md`).
+- Result: the same numbers. 45, 80 and 157 races at 0.5%, 1% and 2%; power
+  4.4%, 5.2% and 7.2% at 8% of baseline. Kill rule k1 (power below 0.8 at 1%)
+  was met, as expected.
+- Why: the script has a fixed seed and the inputs did not change.
+- Implication: the single-step path of the campaign machinery gave the
+  expected record and verdict. Idea 0003 stays dead; nothing new was learned
+  about close mayoral races.
+
 ## 2026-11-08: The registered analysis reproduces the explore code at 0.50% (idea 0001, issue #241)
 - Tried: `explore/0001_registered_check.py` on the exploration half at the
   0.50% window, run 42476480500
