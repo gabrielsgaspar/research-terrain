@@ -1,0 +1,132 @@
+{
+  "all_pass": true,
+  "checks": {
+    "c1": {
+      "counts": {
+        "e2008": {
+          "minus": 144,
+          "plus": 144,
+          "zero": 477
+        },
+        "e2012": {
+          "minus": 130,
+          "plus": 170,
+          "zero": 619
+        },
+        "e2016": {
+          "minus": 153,
+          "plus": 201,
+          "zero": 586
+        },
+        "e2020": {
+          "minus": 177,
+          "plus": 175,
+          "zero": 708
+        },
+        "pooled": {
+          "minus": 604,
+          "one_incumbent": 1294,
+          "plus": 690,
+          "zero": 2390
+        }
+      },
+      "pass": true
+    },
+    "c2": {
+      "counts": {
+        "direct": {
+          "e2008": 255579,
+          "e2012": 251884,
+          "e2016": 330307,
+          "e2020": 309262
+        },
+        "direct_pre": {
+          "e2008": 255579,
+          "e2012": 251884,
+          "e2016": 330307,
+          "e2020": 309262
+        },
+        "ring2": {
+          "e2008": 23392,
+          "e2012": 22554,
+          "e2016": 32841,
+          "e2020": 29691
+        },
+        "ring5": {
+          "e2008": 100960,
+          "e2012": 98416,
+          "e2016": 138001,
+          "e2020": 126150
+        }
+      },
+      "pass": true
+    },
+    "c3": {
+      "counts": {},
+      "pass": true
+    },
+    "c4": {
+      "counts": {
+        "e2008": {
+          "aligned": 370,
+          "left_out": 6,
+          "mixed": 0,
+          "pairs": 765,
+          "unaligned": 389
+        },
+        "e2012": {
+          "aligned": 401,
+          "left_out": 0,
+          "mixed": 3,
+          "pairs": 919,
+          "unaligned": 515
+        },
+        "e2016": {
+          "aligned": 442,
+          "left_out": 0,
+          "mixed": 3,
+          "pairs": 940,
+          "unaligned": 495
+        },
+        "e2020": {
+          "aligned": 500,
+          "left_out": 0,
+          "mixed": 0,
+          "pairs": 1060,
+          "unaligned": 560
+        },
+        "e2024": {
+          "aligned": 517,
+          "left_out": 0,
+          "mixed": 0,
+          "pairs": 891,
+          "unaligned": 374
+        }
+      },
+      "pass": true
+    },
+    "c5": {
+      "counts": {
+        "e2008": 435786,
+        "e2012": 494099,
+        "e2016": 492301,
+        "e2020": 498638
+      },
+      "pass": true
+    },
+    "c6": {
+      "counts": {
+        "nonfinite": 0
+      },
+      "pass": true,
+      "paths": []
+    },
+    "c7": {
+      "counts": {},
+      "pass": true
+    }
+  },
+  "n_checks": 7,
+  "n_fail": 0,
+  "window": "0.50%"
+}
