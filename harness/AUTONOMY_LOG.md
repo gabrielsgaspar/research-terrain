@@ -375,3 +375,62 @@ stop and ask if anything unexpected happens.
 - 2026-11-07: decision 0010 accepted by Gabriel. Status set to `accepted`
   and date to 2026-11-07, in the front matter and the body's "Date:" line,
   on PR #238; index re-run.
+
+## Coordination: campaigns setup and idea 0001's validation (authorised 2026-11-08)
+
+Gabriel's authorisation, in a local session (prompts of 2026-11-08): read
+the status first, then CODEOWNERS on #238, his decisions on #236 and the
+validation run, the ruleset, the smoke-test campaign and its ticks, and this
+report. Never merge, never push to main, change no setting he did not name,
+stop and ask at anything unexpected. Later in the session he added the
+workflow fixes (#248, #250) and pre-approved the rest of the smoke test.
+Report: `harness/reports/2026-11-08-coordination.md`.
+
+- 2026-11-08 (Phase 0): status read only. #236 was already merged, a
+  ruleset (`protect-main`) already existed, and an unpushed local commit
+  `85c192e` held the CODEOWNERS lines. Stopped and asked.
+- 2026-11-08 (Phase 2): Gabriel's decisions (a)-(d) posted on #236 as a
+  comment. Explore run 42476480500 (`0001_registered_check`) started on main
+  at `7156972`: "Reproduced: yes", 875 numbers, 0 differ. An earlier run
+  (42463317312, 08:31Z, before #236 was merged) had stopped at "does not
+  exist on main" and read no data.
+- 2026-11-08 (Phase 2): `confirm/specs/TEMPLATE.yaml` read (not edited) to
+  write Gabriel's diff for (d); nothing else under `confirm/` or `sealed/`
+  read.
+- 2026-11-08 (Phase 1): main merged into `campaigns/1-rules-and-code` (log
+  conflict: both appended, both kept); `85c192e` cherry-picked; the split
+  and seal paths added to CODEOWNERS and the gate test. Pushed; #238's
+  description rewritten. Merged by Gabriel.
+- 2026-11-08: issue #241 closed with a link to run 42476480500. PR #213
+  closed with Gabriel's comment; branch `proposal/party-lineage` kept.
+- 2026-11-08: on #243's branch (record of run 42476480500), the lessons
+  entry and the idea 0001 status and log lines Gabriel asked for; later main
+  merged in. Merged by Gabriel.
+- 2026-11-08 (Phase 3): smoke-test campaign file (worked example, kill rule
+  as written) as PR #244. Merged by Gabriel with the admin bypass.
+- 2026-11-08 (Phase 3): ruleset `protect-main` (26319698) updated in place
+  as Gabriel specified: admin bypass for pull requests, code-owner review,
+  `test` and `campaign-gate` required (app 15368, not strict). Read back
+  equal to the request. `require_extra_approval_for_unattributed_changes`
+  left `true`, as he decided.
+- 2026-11-08: `CAMPAIGNS_ENABLED` set to `true` (15:21Z). Ticks 1-4 run by
+  hand, one at a time, none queued before each: tracking issue #245,
+  explore run 42494552921, record PR #246 merged by the App, "Verdict:
+  killed" (0.05197), close-out #247.
+- 2026-11-08: the planner on #247 failed (run 42494950029: the action
+  refuses bot actors). `CAMPAIGNS_ENABLED` set to `false`; stopped and
+  asked.
+- 2026-11-08: PR #248 (`allowed_bots` for the App in agent-plan and
+  agent-build). Merged by Gabriel. `CAMPAIGNS_ENABLED` set to `true`;
+  `agent-plan` removed and re-added on #247 (Gabriel's account); tick 5;
+  build; close-out PR #249.
+- 2026-11-08: the review of #249 failed at its guard (run 42498161849).
+  `CAMPAIGNS_ENABLED` set to `false`; stopped and asked.
+- 2026-11-08: PR #250 (agent-review's guard accepts the App when `APP_BOT`
+  is set), with a trace of every remaining step. Merged by Gabriel.
+- 2026-11-08: pre-approved by Gabriel: `CAMPAIGNS_ENABLED` set to `true`;
+  #249's CI re-run (Gabriel's account); review Approve; tick 6 dispatched
+  the gate (success); tick 7 posted "the report is ready" (#249). No fix
+  round was needed. #249 is not merged; it is Gabriel's.
+- 2026-11-08 (Phase 4): this report, issue draft 40 (not filed) and this
+  section, own PR, not merged. No voter IDs or CPFs were written anywhere.
