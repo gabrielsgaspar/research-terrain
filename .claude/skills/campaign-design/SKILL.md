@@ -120,6 +120,12 @@ Gabriel to choose, change or write his own. Then read each chosen rule back
 in plain words ("the step dies if fewer than 60 close races exist at the 1%
 window") and ask him to confirm. Only then set `confirmed: true`.
 
+If the scripts make no estimate (counts or structural checks only),
+propose `referee_not_applicable_ok: [R4, R5]` and say why: the referee
+rightly marks R4 "Level and inference" "Not applicable" when there is no
+estimate, and the gate stops on any "Not applicable" row not listed there
+(campaign 0003, PR #264). See `references/writing-the-files.md`.
+
 ### 7. Budget and dates
 
 Read `references/budget.md` and run `scripts/budget.py` with the step
