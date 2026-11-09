@@ -1,0 +1,46 @@
+{
+  "counts": {
+    "e2008": {
+      "minus": 96,
+      "one_incumbent": 184,
+      "pairs": 478,
+      "plus": 88,
+      "zero": 294
+    },
+    "e2012": {
+      "minus": 76,
+      "one_incumbent": 180,
+      "pairs": 578,
+      "plus": 104,
+      "zero": 398
+    },
+    "e2016": {
+      "minus": 91,
+      "one_incumbent": 218,
+      "pairs": 596,
+      "plus": 127,
+      "zero": 378
+    },
+    "e2020": {
+      "minus": 117,
+      "one_incumbent": 231,
+      "pairs": 676,
+      "plus": 114,
+      "zero": 445
+    },
+    "pooled": {
+      "minus": 380,
+      "one_incumbent": 813,
+      "pairs": 2328,
+      "plus": 433,
+      "zero": 1515
+    }
+  },
+  "elections": [
+    2008,
+    2012,
+    2016,
+    2020
+  ],
+  "window": "0.25%"
+}
