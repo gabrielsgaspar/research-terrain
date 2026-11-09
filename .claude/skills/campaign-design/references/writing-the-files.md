@@ -24,7 +24,12 @@ comments out of the final file once each field is filled.
 - `created`: today. `end_by`: from the budget, at most 31 days later.
 - `budget`: see `budget.md`.
 - `referee_not_applicable_ok`: leave `[R5]` unless Gabriel decides
-  otherwise.
+  otherwise. When the explore scripts make no estimate (counts or
+  structural checks only), propose `[R4, R5]` and say why: R4 "Level and
+  inference" checks the level and clustering of an estimate, so with none
+  the referee rightly marks it "Not applicable", and the gate stops on any
+  "Not applicable" row not listed here (campaign 0003, PR #264). The field
+  covers the whole campaign: if any script makes an estimate, keep `[R5]`.
 - `datasets`: one entry per dataset the campaign may acquire or build.
   Existing datasets are not listed.
 - `steps`: in order; a step's `after` may name only earlier steps.
