@@ -16,6 +16,21 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-09: The one-incumbent fallback has 813 close pairs at 0.25% (idea 0001, issue #262)
+- Tried: campaign 0003 ran `explore/0001_one_incumbent_pairs.py` on the
+  exploration half at the 0.25% window, run 42681937536
+  (`research/explore-runs/0001/42681937536.md`): close pairs by incumbency,
+  by election and pooled 2008-2020. Counts only; the registered code was not
+  imported.
+- Result: 813 pooled pairs have exactly one incumbent (433 plus, 380 minus)
+  out of 2,328 pairs, equal to decision 0008's 2,328. Kill rule k1 (below 200)
+  was not met. By election the counts are 184, 180, 218 and 231.
+- Why: the count fell with the window about as the pair count did, so the
+  projection of roughly 800 held.
+- Implication: the incumbency-adjusted fallback is not thin at the registered
+  window, pooled. Each election carries only 180 to 231 such pairs. No
+  estimate was produced.
+
 ## 2026-11-08: The registered analysis new paths pass all seven structural checks (idea 0001, issue #254)
 - Tried: campaign 0002 ran `explore/0001_registered_paths_check.py` on the
   exploration half at the 0.50% window, run 42514591508

@@ -1,7 +1,7 @@
 ---
 id: "0003"
 title: "Count close pairs with exactly one incumbent at the registered 0.25% window"
-status: active
+status: done
 idea: "0001"
 owner: gabrielsgaspar
 created: 2026-11-09
