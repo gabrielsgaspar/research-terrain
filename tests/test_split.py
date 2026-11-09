@@ -69,6 +69,7 @@ def test_serialize_is_deterministic_and_hash_is_stable():
 # editing this constant too, which needs code-owner review.
 SEALED = {
     "cell_outcomes": "sealed/outcomes/cell_outcomes/",
+    "cell_enforcement": "sealed/outcomes/cell_enforcement/",
 }
 
 

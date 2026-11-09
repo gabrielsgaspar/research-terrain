@@ -510,6 +510,21 @@ datasets:
       Main outcome code 4 (loss of primary vegetation). Draft:
       harness/issue-drafts/27-build-cell-outcomes.md.
 
+  - name: cell_enforcement
+    source: built from ibama_autos, ibama_embargos, ibge_boundaries_2024 and grid_cells, split by half
+    licence: as ibama_autos and ibama_embargos
+    derived: data/derived/cell_enforcement/
+    sealed: sealed/outcomes/cell_enforcement/
+    status: planned
+    notes: >
+      Decision 0003 and idea 0005: IBAMA flora fines and embargoes per Legal
+      Amazon 1 km cell and year, counted only where the point lies inside its
+      own municipality's polygon; exploration-half rows in derived,
+      confirmation-half rows only in sealed, like cell_outcomes. Name,
+      derived and sealed are fixed by the campaign 0004 PR (the sealed line
+      is pinned in tests/test_split.py); the build task of campaign 0004
+      (step s4) adds the contract and the rest.
+
   - name: funai_indigenous_lands
     source: FUNAI indigenous land boundaries
     licence: public
