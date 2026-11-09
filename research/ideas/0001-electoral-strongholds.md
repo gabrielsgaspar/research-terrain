@@ -137,6 +137,11 @@ Elections with usable geography: 2008, 2012, 2016, 2020 and 2024 (see
   paths (direct_adj, ring2_adj, ring5_adj, direct_pre, direct_pre_adj,
   align, balance) were computed but not compared, as no earlier run has
   them. Nothing ran at 0.25%.
+- 2026-11-08: still exploring. Campaign 0002 checked the new paths of the
+  registered analysis on the exploration half at 0.50% (run 42514591508):
+  all seven structural checks pass, and 1,294 pooled close pairs
+  (2008-2020) have exactly one incumbent, against a threshold of 200. Counts
+  and pass or fail only; no estimate, and nothing at 0.25%.
 
 ## Log
 
