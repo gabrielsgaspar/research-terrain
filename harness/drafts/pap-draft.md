@@ -54,7 +54,10 @@ as the share of each 1 km cell (`cell_outcomes`).
   E+4). The election year E is in no window.
 - **Secondary:** Y2 (E+1 to E+2).
 - **Displacement, secondary:** ΔY = Y4 − Ypre, with Ypre the sum over E-4 to
-  E-1 (decision 0007).
+  E-1 (decision 0007). ΔY was set in decision 0007 (accepted 2026-11-06,
+  18:49 UTC), before any post-election outcome of run 42298466207 existed,
+  but it was motivated by the pre-election displacement placebo on the
+  exploration half in run 42265146230 (RI p 0.06).
 - **Placebo:** Ypre on the direct exposure.
 - Sensitivity: for 2020, Y3 (2021-2023), because 2024 is provisional in
   Collection 10.
