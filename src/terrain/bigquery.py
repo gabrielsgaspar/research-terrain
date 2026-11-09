@@ -1,0 +1,240 @@
+"""A minimal BigQuery REST client, for acquire scripts that read Base dos Dados.
+
+The endpoint, scope, table and columns come from a catalog entry's `bigquery:`
+block. The query is built from that block only. Personal identifiers are
+never selected: the builder refuses names that start with `cpf_cnpj` or
+`nome`, and `geometria`, even if the catalog lists them.
+
+The HTTP session is passed in (anything with `post` and `get` like a
+`requests` session), so tests use a fake. Nothing here logs or raises with a
+header, a token or a data value.
+"""
+
+from __future__ import annotations
+
+import re
+import time
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass
+from datetime import date
+from typing import Any
+from urllib.parse import quote
+
+from terrain.acquire import AcquireError
+
+IDENTIFIER = re.compile(r"[a-z_][a-z0-9_]*")
+TABLE = re.compile(r"[a-z0-9_-]+\.[a-z0-9_]+\.[a-z0-9_]+")
+STATE = re.compile(r"[A-Z]{2}")
+PROJECT = re.compile(r"[A-Za-z0-9][A-Za-z0-9:._-]*")
+FORBIDDEN_PREFIXES = ("cpf_cnpj", "nome")
+FORBIDDEN_NAMES = ("geometria",)
+
+PAGE_SIZE = 50_000
+TIMEOUT_MS = 60_000
+REQUEST_TIMEOUT = 180  # seconds, per HTTP call
+MAX_POLLS = 600
+POLL_SECONDS = 2.0
+
+
+@dataclass(frozen=True)
+class QueryResult:
+    columns: list[str]
+    rows: list[list[Any]]
+    total_bytes_processed: int
+    job_id: str
+    location: str
+
+
+def _identifier(name: object) -> str:
+    if not isinstance(name, str) or not IDENTIFIER.fullmatch(name):
+        raise AcquireError("bigquery: a column name is not a plain identifier")
+    if name.startswith(FORBIDDEN_PREFIXES) or name in FORBIDDEN_NAMES:
+        raise AcquireError("bigquery: a column that may hold a personal identifier is refused")
+    return name
+
+
+def _where(bq: dict[str, Any]) -> str:
+    states = bq["states"]
+    for state in states:
+        if not isinstance(state, str) or not STATE.fullmatch(state):
+            raise AcquireError("bigquery: a state is not a two-letter code")
+    years = bq["years"]
+    if (
+        len(years) != 2
+        or not all(isinstance(y, int) and not isinstance(y, bool) for y in years)
+        or years[0] > years[1]
+    ):
+        raise AcquireError("bigquery: years must be two integers, first not after second")
+    listed = ", ".join(f"'{s}'" for s in states)
+    return f"WHERE sigla_uf IN ({listed}) AND ano BETWEEN {years[0]} AND {years[1]}"
+
+
+def _table(bq: dict[str, Any]) -> str:
+    table = bq["table"]
+    if not isinstance(table, str) or not TABLE.fullmatch(table):
+        raise AcquireError("bigquery: the table id is malformed")
+    return f"`{table}`"
+
+
+def build_query(bq: dict[str, Any]) -> str:
+    """The SELECT for the catalog's `bigquery:` block; raises on a refused name."""
+    columns = [_identifier(c) for c in bq["columns"]]
+    order_by = [_identifier(c) for c in bq["order_by"]]
+    if not columns:
+        raise AcquireError("bigquery: no columns listed")
+    return (
+        f"SELECT {', '.join(columns)} FROM {_table(bq)} {_where(bq)} ORDER BY {', '.join(order_by)}"
+    )
+
+
+def build_summary_query(bq: dict[str, Any]) -> str:
+    """Latest extraction date and row count over the same rows as `build_query`."""
+    return (
+        f"SELECT MAX(data_extracao) AS max_data_extracao, COUNT(*) AS n "
+        f"FROM {_table(bq)} {_where(bq)}"
+    )
+
+
+_TYPES: dict[str, Callable[[str], Any]] = {
+    "INT64": int,
+    "INTEGER": int,
+    "FLOAT64": float,
+    "FLOAT": float,
+    "DATE": date.fromisoformat,
+    "STRING": str,
+}
+
+
+def _payload(response: Any) -> dict[str, Any]:
+    if response.status_code != 200:
+        raise AcquireError(f"bigquery: HTTP status {response.status_code}")
+    body = response.json()
+    if not isinstance(body, dict):
+        raise AcquireError("bigquery: the response is not a JSON object")
+    if "errors" in body:
+        raise AcquireError("bigquery: the response reports errors")
+    return body
+
+
+def _type_rows(fields: list[dict[str, Any]], raw_rows: Iterable[dict[str, Any]]) -> list[list[Any]]:
+    converters: list[Callable[[str], Any]] = []
+    for field in fields:
+        kind = field.get("type")
+        if kind not in _TYPES:
+            raise AcquireError("bigquery: a column has a type this client does not read")
+        converters.append(_TYPES[kind])
+    rows: list[list[Any]] = []
+    for raw in raw_rows:
+        cells = raw["f"]
+        if len(cells) != len(converters):
+            raise AcquireError("bigquery: a row does not match the schema")
+        rows.append(
+            [
+                None if c["v"] is None else conv(c["v"])
+                for c, conv in zip(cells, converters, strict=True)
+            ]
+        )
+    return rows
+
+
+def run_query(
+    session: Any,
+    endpoint: str,
+    project: str,
+    query: str,
+    location: str,
+    max_bytes: int,
+    *,
+    allowed_columns: Iterable[str] | None = None,
+    page_size: int = PAGE_SIZE,
+    sleep: Callable[[float], None] = time.sleep,
+) -> QueryResult:
+    """Run `query` and return every row, typed. Raises `AcquireError` on any problem.
+
+    Posts `jobs.query`, polls `getQueryResults` while the job is not complete,
+    then pages with `pageToken` using the location the job reports. Fails when
+    the status is not 200, the response has `errors`, a column is not in
+    `allowed_columns`, or the rows received differ from `totalRows`.
+    """
+    if not PROJECT.fullmatch(project):
+        raise AcquireError("bigquery: the billing project id is malformed")
+    base = f"{endpoint}projects/{quote(project, safe='')}/queries"
+    body = {
+        "query": query,
+        "useLegacySql": False,
+        "location": location,
+        "maximumBytesBilled": str(max_bytes),
+        "maxResults": page_size,
+        "timeoutMs": TIMEOUT_MS,
+    }
+    response = _payload(session.post(base, json=body, timeout=REQUEST_TIMEOUT))
+    job = response.get("jobReference") or {}
+    job_id = job.get("jobId")
+    job_location = job.get("location") or location
+
+    polls = 0
+    while not response.get("jobComplete"):
+        if not job_id:
+            raise AcquireError("bigquery: the job is not complete and has no id")
+        polls += 1
+        if polls > MAX_POLLS:
+            raise AcquireError("bigquery: the job did not complete in time")
+        sleep(POLL_SECONDS)
+        response = _payload(
+            session.get(
+                f"{base}/{quote(job_id, safe='')}",
+                params={"location": job_location, "maxResults": page_size, "timeoutMs": TIMEOUT_MS},
+                timeout=REQUEST_TIMEOUT,
+            )
+        )
+        job_location = (response.get("jobReference") or {}).get("location") or job_location
+
+    fields = (response.get("schema") or {}).get("fields")
+    if not fields:
+        raise AcquireError("bigquery: the response has no schema")
+    columns = [f["name"] for f in fields]
+    if allowed_columns is not None:
+        allowed = set(allowed_columns)
+        if any(c not in allowed for c in columns):
+            raise AcquireError("bigquery: the response has a column not in the catalog list")
+    try:
+        total_rows = int(response["totalRows"])
+        total_bytes = int(response.get("totalBytesProcessed") or 0)
+    except (KeyError, ValueError) as err:
+        raise AcquireError("bigquery: the response has no usable totalRows") from err
+
+    rows = _type_rows(fields, response.get("rows") or [])
+    token = response.get("pageToken")
+    while token:
+        if not job_id:
+            raise AcquireError("bigquery: a next page was offered but the job has no id")
+        page = _payload(
+            session.get(
+                f"{base}/{quote(job_id, safe='')}",
+                params={
+                    "location": job_location,
+                    "maxResults": page_size,
+                    "timeoutMs": TIMEOUT_MS,
+                    "pageToken": token,
+                },
+                timeout=REQUEST_TIMEOUT,
+            )
+        )
+        rows.extend(_type_rows(fields, page.get("rows") or []))
+        token = page.get("pageToken")
+
+    if len(rows) != total_rows:
+        raise AcquireError(f"bigquery: received {len(rows)} rows, totalRows says {total_rows}")
+    return QueryResult(columns, rows, total_bytes, job_id or "", job_location)
+
+
+def default_session(scope: str) -> Any:
+    """An authorised `requests` session from Application Default Credentials.
+
+    Never called in tests: they pass a fake session.
+    """
+    import google.auth
+    from google.auth.transport.requests import AuthorizedSession
+
+    credentials, _ = google.auth.default(scopes=[scope])
+    return AuthorizedSession(credentials)
