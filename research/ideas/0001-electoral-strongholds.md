@@ -142,6 +142,10 @@ Elections with usable geography: 2008, 2012, 2016, 2020 and 2024 (see
   all seven structural checks pass, and 1,294 pooled close pairs
   (2008-2020) have exactly one incumbent, against a threshold of 200. Counts
   and pass or fail only; no estimate, and nothing at 0.25%.
+- 2026-11-09: still exploring. Campaign 0003 counted close pairs with exactly
+  one incumbent at 0.25% on the exploration half (run 42681937536): 813
+  pooled 2008-2020 (184, 180, 218 and 231 by election), against a threshold
+  of 200. Counts only; no estimate.
 
 ## Log
 
