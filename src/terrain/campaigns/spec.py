@@ -557,3 +557,13 @@ def active_campaigns(root: Path) -> list[Campaign]:
     if validate(root):
         return []
     return [c for c in load_campaigns(root) if c.status == "active"]
+
+
+def finished_campaigns(root: Path) -> list[Campaign]:
+    """Done or stopped campaigns, whose tracking issues the tick closes.
+
+    None at all if any campaign file has a problem, as for `active_campaigns`.
+    """
+    if validate(root):
+        return []
+    return [c for c in load_campaigns(root) if c.status in ("done", "stopped")]

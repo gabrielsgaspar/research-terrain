@@ -21,6 +21,7 @@ from terrain.campaigns.rules import evaluate as apply_rules
 from terrain.campaigns.spec import (
     KillRule,
     active_campaigns,
+    finished_campaigns,
     load_campaigns,
     path_allowed,
     validate,
@@ -712,6 +713,134 @@ def test_tick_one_run_in_flight_across_campaigns(tmp_path):
     running = replace(record_run(), status="in_progress", conclusion=None)
     actions = run_decide(root, snap([t1, t2, merged_issue(root)], runs=[running]))
     assert not [a for a in actions if a["type"] == "dispatch"]
+
+
+# -- closing the tracking issue after the close-out ---------------------------------
+
+
+def closeout_issue(merged=True) -> Issue:
+    pr = PullRequest(
+        number=41,
+        author=BOT,
+        head_ref="agent/issue-40",
+        head_sha=SHA,
+        state="closed" if merged else "open",
+        merged=merged,
+        mergeable=True,
+        files=("research/campaigns/0001-count/report.md",),
+        ci_test="success",
+        gate_status="success",
+    )
+    return Issue(
+        40,
+        "Task: close out campaign 0001",
+        f"x\n{markers.closeout_marker('0001')}",
+        "closed" if merged else "open",
+        ("campaign", "agent-build"),
+        BOT,
+        "2026-11-10T00:00:00Z",
+        (plan_comment(("research/campaigns/0001-count/report.md",)),),
+        pr,
+    )
+
+
+def run_decide_finished(root, s):
+    return decide(active_campaigns(root), s, ctx(root), root, finished_campaigns(root))
+
+
+def test_tick_closes_a_finished_campaigns_tracking_issue(tmp_path):
+    root = make_repo(tmp_path, campaign_text(status="done"))
+    assert active_campaigns(root) == [] and [c.id for c in finished_campaigns(root)] == ["0001"]
+    t = tracking([ledger("started", "finished", "closeout:filed")])
+    actions = run_decide_finished(root, snap([t, closeout_issue()]))
+    assert types(actions) == ["comment", "close_issue"]
+    assert actions[0]["issue"] == 1 and actions[1] == {"type": "close_issue", "issue": 1}
+    assert "Close-out PR #41 merged" in actions[0]["body"]
+    assert markers.parse_ledger(actions[0]["body"]) == ("0001", {"closed"})
+
+
+def test_tick_closing_is_idempotent_and_waits_for_the_merge(tmp_path):
+    root = make_repo(tmp_path, campaign_text(status="done"))
+    # the ledger comment was posted but the close failed: close again, no second comment
+    posted = tracking([ledger("started", "closed")])
+    assert run_decide_finished(root, snap([posted, closeout_issue()])) == [
+        {"type": "close_issue", "issue": 1}
+    ]
+    # already closed, close-out not merged, paused, or no close-out at all: nothing
+    assert run_decide_finished(root, snap([tracking(state="closed"), closeout_issue()])) == []
+    assert run_decide_finished(root, snap([tracking(), closeout_issue(merged=False)])) == []
+    paused = tracking(labels=("campaign", "campaign-pause"))
+    assert run_decide_finished(root, snap([paused, closeout_issue()])) == []
+    assert run_decide_finished(root, snap([tracking()])) == []
+    # someone else's issue with a tracking marker is not the campaign's
+    fake = replace(tracking(), author="someone")
+    assert run_decide_finished(root, snap([fake, closeout_issue()])) == []
+
+
+def test_tick_closes_when_an_active_campaigns_closeout_merges(tmp_path):
+    """The close-out merged after this tick's checkout, so the file still says active."""
+    root = make_repo(tmp_path)
+    t = tracking(
+        [ledger("started", "stopped", "finished", "closeout:filed")],
+        labels=("campaign", "campaign-stop"),
+    )
+    actions = run_decide(root, snap([t, closeout_issue()]))
+    assert types(actions) == ["comment", "close_issue"]
+    found = markers.parse_ledger(actions[0]["body"])
+    assert found == ("0001", {"closeout:merged", "closed"})
+
+
+def act_script() -> str:
+    text = (REPO / ".github" / "workflows" / "campaign-tick.yml").read_text(encoding="utf-8")
+    start = text.index("python3 -I - <<'PY'\n") + len("python3 -I - <<'PY'\n")
+    return textwrap.dedent(text[start : text.index("\n          PY\n", start)])
+
+
+def run_act(tmp_path, monkeypatch, actions, issues):
+    """Run the tick's act script against a fake API; returns (exit code, calls)."""
+    import io
+    import urllib.request
+
+    calls: list[tuple[str, str, object]] = []
+
+    class Answer(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    def urlopen(req, timeout=0):
+        path = req.full_url.removeprefix("https://api.github.com/repos/o/r")
+        body = json.loads(req.data) if req.data else None
+        calls.append((req.get_method(), path, body))
+        if req.get_method() == "GET":
+            return Answer(json.dumps(issues[int(path.rsplit("/", 1)[1])]).encode())
+        return Answer(b"")
+
+    file = tmp_path / "actions.json"
+    file.write_text(json.dumps(actions), encoding="utf-8")
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    monkeypatch.setenv("REPO", "o/r")
+    monkeypatch.setenv("APP_TOKEN", "test")
+    monkeypatch.setenv("ACTIONS", str(file))
+    with pytest.raises(SystemExit) as done:
+        exec(compile(act_script(), "campaign-tick act", "exec"), {"__name__": "__main__"})
+    return done.value.code, calls
+
+
+def test_act_closes_only_campaign_tracking_issues(tmp_path, monkeypatch):
+    issues = {
+        1: {"body": f"x\n{markers.tracking_marker('0001')}"},
+        2: {"body": f"x\n{markers.step_marker('0001', 's1')}"},  # a step, not tracking
+        3: {"body": f"{markers.tracking_marker('0001')}", "pull_request": {}},  # a PR
+    }
+    code, calls = run_act(tmp_path, monkeypatch, [{"type": "close_issue", "issue": 1}], issues)
+    assert code == 0
+    assert calls[-1] == ("PATCH", "/issues/1", {"state": "closed", "state_reason": "completed"})
+    for n in (2, 3):
+        code, calls = run_act(tmp_path, monkeypatch, [{"type": "close_issue", "issue": n}], issues)
+        assert code == 1 and [c[0] for c in calls] == ["GET"]
 
 
 # -- the GitHub reader, against canned API answers ---------------------------------

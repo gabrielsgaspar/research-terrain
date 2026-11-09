@@ -20,6 +20,7 @@ Pacing, to stay gentle on the subscription's usage limits:
 from __future__ import annotations
 
 import datetime as dt
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -263,10 +264,16 @@ def _run_state(
     return _pr_state(st, pr, gctx)
 
 
-def view(c: Campaign, snap: Snapshot, gctx: GateContext) -> CampaignView:
+def _own_issues(c: Campaign, snap: Snapshot) -> tuple[list[Issue], Issue | None, Issue | None]:
+    """The App's issues, oldest first, and the campaign's tracking and close-out issues."""
     mine = sorted((i for i in snap.issues if i.author == snap.app_bot), key=lambda i: i.number)
     tracking = next((i for i in mine if markers.parse_tracking(i.body) == c.id), None)
     closeout = next((i for i in mine if markers.parse_closeout(i.body) == c.id), None)
+    return mine, tracking, closeout
+
+
+def view(c: Campaign, snap: Snapshot, gctx: GateContext) -> CampaignView:
+    mine, tracking, closeout = _own_issues(c, snap)
     events = _ledger_events(tracking, c.id, snap.app_bot)
     by_step: dict[str, Issue] = {}
     for i in mine:
@@ -363,8 +370,18 @@ def _reason(v: CampaignView, stopped: bool, today: dt.date) -> str:
     return "every step finished"
 
 
-def decide(campaigns: list[Campaign], snap: Snapshot, gctx: GateContext, root: Path) -> list[dict]:
-    """The actions for this tick, ledger comments first within each campaign."""
+def decide(
+    campaigns: list[Campaign],
+    snap: Snapshot,
+    gctx: GateContext,
+    root: Path,
+    ended: Sequence[Campaign] = (),
+) -> list[dict]:
+    """The actions for this tick, ledger comments first within each campaign.
+
+    `campaigns` are the active ones. `ended` (done or stopped) only get their
+    tracking issue closed once their close-out PR is merged (`close_tracking`).
+    """
     if not snap.enabled:
         return []
     actions: list[dict] = []
@@ -599,9 +616,39 @@ def decide(campaigns: list[Campaign], snap: Snapshot, gctx: GateContext, root: P
                     )
                 elif cst.status == "done":
                     event("closeout:merged", "Close-out merged. The campaign is done.")
+                    if v.tracking.state == "open":
+                        event("closed", "Closing this tracking issue.")
+                        doing.append({"type": "close_issue", "issue": v.tracking.number})
         if new:
             body = "\n".join(f"- {line}" for _, line in new)
             body += "\n\n" + markers.ledger_marker(c.id, [e for e, _ in new]) + "\n"
             actions.append({"type": "comment", "issue": v.tracking.number, "body": body})
         actions.extend(doing)
+    for c in ended:
+        actions.extend(close_tracking(c, snap))
+    return actions
+
+
+def close_tracking(c: Campaign, snap: Snapshot) -> list[dict]:
+    """A done or stopped campaign: once its close-out PR is merged, close the tracking issue.
+
+    The close-out PR sets `status: done` (or `stopped`), so from then on the campaign is
+    no longer active and `decide` would never look at it again. This posts one last
+    ledger comment and closes the issue. A repeated tick posts nothing twice, and does
+    nothing once the issue is closed.
+    """
+    _, tracking, closeout = _own_issues(c, snap)
+    if tracking is None or tracking.state != "open" or "campaign-pause" in tracking.labels:
+        return []
+    if closeout is None or closeout.pr is None or not closeout.pr.merged:
+        return []
+    actions: list[dict] = []
+    if "closed" not in _ledger_events(tracking, c.id, snap.app_bot):
+        line = (
+            f"Close-out PR #{closeout.pr.number} merged. The campaign is {c.status}; "
+            "closing this tracking issue."
+        )
+        body = f"- {line}\n\n{markers.ledger_marker(c.id, ['closed'])}\n"
+        actions.append({"type": "comment", "issue": tracking.number, "body": body})
+    actions.append({"type": "close_issue", "issue": tracking.number})
     return actions

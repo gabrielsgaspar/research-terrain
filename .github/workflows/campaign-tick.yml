@@ -8,8 +8,9 @@ name: Campaign tick
 #   act     Holds the agent App's token and runs no repository code: a fixed
 #           script below checks each action against a closed list (issue
 #           bodies must carry a campaign marker, labels and workflows come
-#           from fixed sets, merges name the exact head commit) and carries
-#           it out. Merges also need the required checks on main, so a wrong
+#           from fixed sets, merges name the exact head commit, and only an
+#           issue whose body carries a campaign-tracking marker may be
+#           closed) and carries it out. Merges also need the required checks on main, so a wrong
 #           action cannot merge anything the gate and the ruleset refuse.
 #
 # Set the repository variable CAMPAIGNS_ENABLED to `true` to run; anything
@@ -29,7 +30,11 @@ name: Campaign tick
 #   schedule           A backup only, for a missed event or a grace period
 #                      that runs out with nothing else happening. GitHub
 #                      delays and drops scheduled runs, so nothing relies on
-#                      it alone.
+#                      it alone. Hourly, not every three hours: run
+#                      42670921949 failed on a GitHub internal server error,
+#                      no workflow_run event followed, and nothing re-ticked
+#                      for hours. A tick that finds nothing to do is cheap
+#                      (the decide job only reads).
 #   workflow_dispatch  By hand.
 #
 # Not Campaign gate, and not this workflow. GitHub runs at most three levels
@@ -54,7 +59,7 @@ on:
     workflows: [Explore run, Data pipeline, CI, Agent plan, Agent build, Agent review]
     types: [completed]
   schedule:
-    - cron: "41 */3 * * *" # backup only (see above)
+    - cron: "41 * * * *" # backup only, hourly (see above)
   workflow_dispatch:
 
 permissions:
@@ -160,6 +165,7 @@ jobs:
               "campaign-gate.yml": {"pr": r"^[0-9]{1,7}$"},
           }
           MARKER = re.compile(r"<!-- campaign-(step|tracking|closeout|ledger): [0-9]{4}")
+          TRACKING = re.compile(r"<!-- campaign-tracking: [0-9]{4} -->")
 
           def call(method, path, body=None):
               req = urllib.request.Request(
@@ -230,6 +236,13 @@ jobs:
                               raise ValueError(f"bad input {key}={value!r}")
                       call("POST", f"/actions/workflows/{wf}/dispatches", {"ref": "main", "inputs": inputs})
                       print(f"started {wf} {inputs}")
+                  elif kind == "close_issue":
+                      n = number(a["issue"])
+                      issue = call("GET", f"/issues/{n}")
+                      if "pull_request" in issue or not TRACKING.search(issue.get("body") or ""):
+                          raise ValueError(f"#{n} is not a campaign tracking issue")
+                      call("PATCH", f"/issues/{n}", {"state": "closed", "state_reason": "completed"})
+                      print(f"closed #{n}")
                   else:
                       raise ValueError(f"unknown action type {kind!r}")
               except (ValueError, KeyError, urllib.error.HTTPError, urllib.error.URLError) as exc:
