@@ -18,7 +18,7 @@ datasets:
 kill_criteria:
   - "Too few elections with usable locations: fewer than 3 of the elections 2008-2020 have at least half of the pre-election (E-4 to E-1) flora fines and embargoes of exploration-half municipalities located inside their own municipality (stated by Gabriel, 2026-11-09)."
   - "Enforcement too rare near strongholds: fewer than 400 located pre-election flora fines and embargoes, pooled 2008-2020, in the cells exposed to close pairs at the 0.50% window (stated by Gabriel, 2026-11-09)."
-  - "Underpowered: the minimum detectable effect at 80% power (5%, two-sided) at the registered 0.25% window is above 25% of the pre-election baseline mean, anchored to Katovich and Moffette's 27% (stated by Gabriel, 2026-11-09)."
+  - "Underpowered: the minimum detectable effect at 80% power (5%, two-sided) at the registered 0.25% window is above 25% of the pre-election baseline mean, anchored to Katovich & Moffette's estimates of violations under landholder-financed mayors (15% or 27% depending on the version of the paper; unverified web find) (stated by Gabriel, 2026-11-09)."
   - "A non-flat placebo: at the 0.50% window, stronghold exposure predicts pre-election flora fines and embargoes with randomisation-inference p below 0.10 (stated by Gabriel, 2026-11-09)."
 related: ["0001"]
 ---

@@ -15,12 +15,12 @@ referee_not_applicable_ok: [R5]
 datasets:
   - name: ibama_autos
     source: "IBAMA open-data portal, dataset fiscalizacao-auto-de-infracao, with its coordinates file; fallback in the same run: Base dos Dados on BigQuery, table basedosdados.br_ibama_fiscalizacao.auto_infracao (URLs and table ids in data/catalog.yaml)"
-    licence: "As stated by each source, checked 2026-11-09. Base dos Dados: no licence on the auto_infracao table; its record of the IBAMA source gives the licence as 'Desconhecida'. IBAMA portal: not readable by automated clients (HTTP 403); a search snippet shows 'Outra (Aberta)' (unconfirmed)."
+    licence: "IBAMA enforcement records published under Brazil's federal open-data policy; IBAMA's portal lists 'Outra (Aberta)', Base dos Dados lists 'Desconhecida'. Accepted by Gabriel on 2026-11-09 for research use; only cell-level counts are published."
     max_size_gb: 2
     identifiers: none
   - name: ibama_embargos
     source: "IBAMA open-data portal, dataset fiscalizacao-termo-de-embargo; fallback in the same run: Base dos Dados on BigQuery, table basedosdados.br_ibama_fiscalizacao.area_embargada (URLs and table ids in data/catalog.yaml)"
-    licence: "As stated by each source, checked 2026-11-09. Base dos Dados: no licence on the area_embargada table; its record of the IBAMA source gives the licence as 'Desconhecida'. IBAMA portal: not readable by automated clients (HTTP 403); a search snippet shows 'Outra (Aberta)' (unconfirmed)."
+    licence: "IBAMA enforcement records published under Brazil's federal open-data policy; IBAMA's portal lists 'Outra (Aberta)', Base dos Dados lists 'Desconhecida'. Accepted by Gabriel on 2026-11-09 for research use; only cell-level counts are published."
     max_size_gb: 2
     identifiers: none
   - name: cell_enforcement
@@ -243,17 +243,12 @@ and for s9.
   strongholds. These are located pre-election actions, pooled 2008-2020, in
   the cells exposed at 0.50%: the cells with D ≠ 0, which also give the
   baseline of the effect share. The "exposed cells" reading of "the 10 km
-  reach of close-pair strongholds" was suggested by Claude (see
-  Provenance).
+  reach of close-pair strongholds" was suggested by Claude and confirmed
+  by Gabriel on 2026-11-09 (see Provenance).
 - **s7 k3** (`power.mde_share_025 > 0.25`). Underpowered at the registered
   window. Decision 0007's method gives the MDE: 2.8 × the re-flip SD of the
-  pre-election slope, times mean |D|, over the baseline mean. **Anchor,
-  corrected:** Gabriel anchored 25% to "Katovich and Moffette's 27% more
-  violations". The web check (unverified) finds that 27% is the paper's
-  rise in rural credit; its violations figure (IBAMA embargoes) is +15%.
-  The threshold stays at 0.25 as Gabriel set it. If he wants the anchor
-  matched, 0.15 is the paper's violations figure, which is stricter, so k3
-  would fire more easily. He decides before merging.
+  pre-election slope, times mean |D|, over the baseline mean. The 0.25 is
+  anchored to Katovich & Moffette's estimates of violations under landholder-financed mayors (15% or 27% depending on the version of the paper; unverified web find). Gabriel kept 0.25 on 2026-11-09.
 - **s7 k4** (`placebo.ri_p_050 < 0.10`). A non-flat placebo at 0.50%. This
   is idea 0001's kill criterion 2 with a looser bar (0.10 rather than
   0.05), as `kill-rules.md` suggests for placebos.
@@ -306,9 +301,7 @@ When a number runs out, no new step starts and the close-out reports why.
     and `data_extracao`.
 - **cell_enforcement:** the build of s4, sealed like `cell_outcomes`
   (decision 0003).
-- **Licences:** recorded above as each source states them. Neither source
-  states a usable licence today: Base dos Dados says "Desconhecida" and
-  the portal could not be read. Gabriel checks this before merging.
+- **Licences:** "IBAMA enforcement records published under Brazil's federal open-data policy; IBAMA's portal lists 'Outra (Aberta)', Base dos Dados lists 'Desconhecida'. Accepted by Gabriel on 2026-11-09 for research use; only cell-level counts are published."
 - **Identifiers:** none.
   - The BigQuery query never selects `cpf_cnpj_*`, `nome_*`, `nome_imovel`
     or `geometria`, and the query builder refuses those names.
@@ -393,19 +386,19 @@ Stated by Gabriel on 2026-11-09:
   - listing the distinct values in the manifest;
   - our own-polygon check for both sources, with agreement against
     `indicador_coordenada_valida` reported;
-  - recording each source's licence.
+  - recording each source's licence; the licence text and its acceptance
+    for research use (2026-11-09).
 - All steps and their order; no other variants.
 - Every kill rule, threshold and `on_kill`, confirmed:
-  - k3's anchor text was his; the corrected reading is in "Kill rules and
-    why";
+  - k3 kept at 0.25 and its reason reworded by him on 2026-11-09:
+    "anchored to Katovich & Moffette's estimates of violations under landholder-financed mayors (15% or 27% depending on the version of the paper; unverified web find)";
   - no enforcement data had been seen by anyone in the project.
 - The budget, `end_by` eleven days from 2026-11-09, `status: active` and
   `referee_not_applicable_ok: [R5]`.
 - The novelty check across the repo, Zotero and the web, with the five
   required citations.
 
-Suggested by Claude on 2026-11-09, not yet confirmed by Gabriel (he checks
-them in this PR):
+Suggested by Claude, confirmed by Gabriel on 2026-11-09:
 
 - **Renumbering:** Gabriel's s6 and s7 become s6/s7 and s8/s9, because step
   ids cannot repeat.
