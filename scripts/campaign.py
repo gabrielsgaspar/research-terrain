@@ -30,7 +30,12 @@ sys.path.insert(0, str(REPO / "src"))
 
 from terrain.campaigns.codeowners import CodeOwners  # noqa: E402
 from terrain.campaigns.gate import GateContext, evaluate  # noqa: E402
-from terrain.campaigns.spec import active_campaigns, load_campaigns, validate  # noqa: E402
+from terrain.campaigns.spec import (  # noqa: E402
+    active_campaigns,
+    finished_campaigns,
+    load_campaigns,
+    validate,
+)
 from terrain.campaigns.tick import decide  # noqa: E402
 
 
@@ -107,14 +112,16 @@ def cmd_decide(root: Path, args: argparse.Namespace) -> int:
     enabled = os.environ.get("CAMPAIGNS_ENABLED", "").strip() == "true"
     now = dt.datetime.now(dt.UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     campaigns = list(ctx.campaigns)
+    finished = finished_campaigns(root)
     actions: list[dict] = []
-    if campaigns and enabled:
-        since = min(c.created for c in campaigns)
+    if (campaigns or finished) and enabled:
+        # Runs matter only to active campaigns; with none, read only today's.
+        since = min(c.created for c in campaigns) if campaigns else now[:10]
         gh = GitHub(_env("GITHUB_REPOSITORY"))
         snap = safe_snapshot(
             gh, now=now, enabled=enabled, app_bot=ctx.app_bot, since=since, root=root
         )
-        actions = decide(campaigns, snap, ctx, root)
+        actions = decide(campaigns, snap, ctx, root, finished)
     elif not enabled:
         print("CAMPAIGNS_ENABLED is not 'true': nothing to do.")
     else:

@@ -210,8 +210,29 @@ jobs:
             -c user.email="${bot_id}+${APP_SLUG}[bot]@users.noreply.github.com" \
             commit -m "Explore: record ${SCRIPT} run ${GITHUB_RUN_ID}" -m "From ${RUN_URL}"
           helper='!f() { echo username=x-access-token; echo "password=${PUSH_TOKEN}"; }; f'
-          git -c core.hooksPath=/dev/null -c credential.helper= -c "credential.helper=${helper}" \
-            push "https://github.com/${REPO}.git" "refs/heads/${branch}:refs/heads/${branch}"
+          # Up to 3 retries, 60 s apart: GitHub sometimes refuses a push for a
+          # moment (run 42675991313 got a 403). On a final failure the error
+          # quotes git's own last error line.
+          log="${RUNNER_TEMP}/push.log"
+          pushed=""
+          for attempt in 1 2 3 4; do
+            if git -c core.hooksPath=/dev/null -c credential.helper= -c "credential.helper=${helper}" \
+              push "https://github.com/${REPO}.git" "refs/heads/${branch}:refs/heads/${branch}" > "${log}" 2>&1; then
+              cat "${log}"
+              pushed=yes
+              break
+            fi
+            cat "${log}"
+            if [ "${attempt}" -lt 4 ]; then
+              echo "::warning::Push attempt ${attempt} failed; retrying in 60 s."
+              sleep 60
+            fi
+          done
+          if [ -z "${pushed}" ]; then
+            said="$(grep -E '^(fatal|error|remote): ' "${log}" | tail -n 1 | tr -d '\r' | cut -c 1-300 || true)"
+            echo "::error::Pushing ${branch} failed after 1 try and 3 retries, 60 s apart. Git said: ${said:-nothing}"
+            exit 1
+          fi
           {
             printf 'Records an `explore-run` of `explore/%s.py` (%s).\n\n' "${SCRIPT}" "${RUN_URL}"
             if [ -n "${CAMPAIGN}" ]; then

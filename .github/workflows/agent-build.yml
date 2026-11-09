@@ -1101,6 +1101,10 @@ jobs:
       # No force push: if the branch appeared meanwhile, the push fails. The
       # token reaches git through a credential helper that reads an env var,
       # so it is never on a command line or in .git/config. Hooks are off.
+      # A failed push is retried up to 3 times, 60 s apart, because GitHub
+      # sometimes refuses one for a moment (run 42675991313 got a 403). The
+      # needs-human reason quotes git's own error line, since the same message
+      # covers a 403, an existing branch and a workflow change.
       - name: Push the branch
         id: push
         env:
@@ -1112,9 +1116,21 @@ jobs:
           # The single quotes are deliberate: git's helper reads PUSH_TOKEN when it runs.
           # shellcheck disable=SC2016
           helper='!f() { echo username=x-access-token; echo "password=${PUSH_TOKEN}"; }; f'
-          git -c core.hooksPath=/dev/null -c credential.helper= -c "credential.helper=${helper}" \
-            push "https://github.com/${REPO}.git" "refs/heads/${BRANCH}:refs/heads/${BRANCH}" \
-            || fail "Pushing ${BRANCH} failed. A branch of that name may already exist, or the change touches .github/workflows/, which the app cannot push."
+          log="${RUNNER_TEMP}/push.log"
+          for attempt in 1 2 3 4; do
+            if git -c core.hooksPath=/dev/null -c credential.helper= -c "credential.helper=${helper}" \
+              push "https://github.com/${REPO}.git" "refs/heads/${BRANCH}:refs/heads/${BRANCH}" > "${log}" 2>&1; then
+              cat "${log}"
+              exit 0
+            fi
+            cat "${log}"
+            if [ "${attempt}" -lt 4 ]; then
+              echo "::warning::Push attempt ${attempt} failed; retrying in 60 s."
+              sleep 60
+            fi
+          done
+          said="$(grep -E '^(fatal|error|remote): ' "${log}" | tail -n 1 | tr -d '\r' | cut -c 1-300 || true)"
+          fail "Pushing ${BRANCH} failed after 1 try and 3 retries, 60 s apart. Git said: ${said:-nothing}. Possible causes: a branch of that name already exists, or the change touches .github/workflows/, which the app cannot push."
 
       - name: Open the pull request
         id: pr
