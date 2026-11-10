@@ -1,0 +1,28 @@
+{
+  "dataset": "inep_school_catalogue",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/inep/catalogue/2026-11-10/",
+  "created_at": "2026-11-10T21:28:02.341562+00:00",
+  "code_commit": "26851abcbb46f8d9950a0a2d6aa6526bbdb4fe0e",
+  "sources": [
+    {
+      "fonte": "basedosdados",
+      "url": "https://basedosdados.org/dataset/33b49786-fb5f-496f-bb7c-9811c985af8e",
+      "table": "basedosdados.br_bd_diretorios_brasil.escola",
+      "query": "SELECT id_escola, id_municipio, sigla_uf, nome, endereco, latitude, longitude, dependencia_administrativa, localizacao, situacao_catalogo FROM `basedosdados.br_bd_diretorios_brasil.escola` WHERE sigla_uf IN ('AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MG', 'MS', 'MT', 'PA', 'PB', 'PE', 'PI', 'PR', 'RJ', 'RN', 'RO', 'RR', 'RS', 'SC', 'SE', 'SP', 'TO') ORDER BY id_escola",
+      "location": "US",
+      "rows": 299547,
+      "total_bytes_processed": 42519968,
+      "job_id": "job_mUWyhktTdet0GEiT0u2QC8anapoc"
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/inep/catalogue/2026-11-10/inep_school_catalogue.parquet",
+      "sha256": "caa724079d25349f6fb4f49c4e65694d3936757ac11db2946b5df4deaec71a10",
+      "bytes": 9898979
+    }
+  ],
+  "notes": "rows: 299547\nrows per state: AC=2405, AL=4996, AM=7859, AP=1107, BA=32636, CE=16413, DF=1752, ES=5102, GO=6889, MA=17813, MG=31504, MS=2260, MT=4129, PA=16825, PB=9284, PE=15103, PI=9713, PR=12341, RJ=17777, RN=6412, RO=2337, RR=1186, RS=14918, SC=9690, SE=3385, SP=42407, TO=3304\nrows with an endereco: 234969\nshare with a cep parsed from endereco: 0.7797\nshare with a street number parsed from endereco: 0.6098\nshare with a neighbourhood parsed from endereco: 0.5104\nshare with coordinates: 0.5519\ncoordinates that are not numbers (set to null): 0\ncoordinates at 0 or outside Brazil (set to null): 0\ndependencia_administrativa labels not known (rede null): none\nlocalizacao labels not known (tipo_localizacao null): none\nrows per situacao_catalogo: Ausente=89227, Presente=210320\nano is null: the catalogue has no census year"
+}
