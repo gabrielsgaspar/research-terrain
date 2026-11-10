@@ -520,9 +520,13 @@ jobs:
             "credentials":{
             "envVars":[{"name":"CLAUDE_CODE_OAUTH_TOKEN","mode":"deny"},{"name":"ANTHROPIC_API_KEY","mode":"deny"},{"name":"GITHUB_TOKEN","mode":"deny"},{"name":"GH_TOKEN","mode":"deny"},{"name":"ACTIONS_RUNTIME_TOKEN","mode":"deny"},{"name":"ACTIONS_ID_TOKEN_REQUEST_TOKEN","mode":"deny"}],
             "files":[{"path":"~/.claude/.credentials.json","mode":"deny"},{"path":"~/.claude.json","mode":"deny"}]}}}
+          # max-turns was 100. Campaign 0006 step s1 (#295) finished in 106 turns
+          # and was rejected ("reported a successful result after 106 turns,
+          # exceeding the configured maximum of 100"), run 42825610230:
+          # https://github.com/gabrielsgaspar/research-terrain/actions/runs/42825610230
           claude_args: |
             --model claude-sonnet-5-5
-            --max-turns 100
+            --max-turns 160
             --tools "Read,Grep,Glob,Edit,Write,Bash"
             --allowedTools "Read" "Grep" "Glob" "Edit(./**)" "Bash(uv sync)" "Bash(uv run ruff *)" "Bash(uv run pytest *)" "Bash(git status)" "Bash(git diff)" "Bash(git add *)" "Bash(git rm *)" "Bash(git commit -m *)"
             --disallowedTools "mcp__*" "NotebookEdit" "WebFetch" "WebSearch" "Edit(./.git/**)" "Edit(./.agent-build/**)" "Bash(git commit *-F *)" "Bash(git commit *--file*)" "Bash(git commit *--template*)" "Bash(git commit *-t *)" "Bash(git * --pathspec-from-file*)" "Read(./.git/config)" "Read(//proc/**)" "Read(//etc/**)" "Read(//root/**)" "Read(//tmp/**)" "Read(//home/runner/.*)" "Read(//home/runner/.*/**)" "Read(//home/runner/work/_temp/**)" "Read(//home/runner/work/_actions/**)" "Read(//home/runner/work/_tool/**)" "Read(//home/runner/runners/**)"
