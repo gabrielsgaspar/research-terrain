@@ -1,0 +1,382 @@
+{
+  "dataset": "place_outcomes",
+  "stage": "build",
+  "status": "created",
+  "gcs_prefix": "data/derived/place_outcomes/93fa08c9e524d704/",
+  "created_at": "2026-11-10T23:34:40.502485+00:00",
+  "code_commit": "3304d1950128c23460253ea6014096c92ef216db",
+  "sources": [],
+  "files": [
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2008_y2004.parquet",
+      "sha256": "9d1f5db16ae341a7e116be60e0baeae8de37fd0836b025c154dcb9a00e2368d7",
+      "bytes": 628358
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2008_y2005.parquet",
+      "sha256": "82fee87533ad32976d5e3ff552b767f8df3f2ccf242af5564638edee12c6dc1a",
+      "bytes": 628230
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2008_y2006.parquet",
+      "sha256": "8f8e2f5d38e92f2f6029d76272d83f6e2e223eaefc857a9dcfdb6450e6199f10",
+      "bytes": 628502
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2008_y2007.parquet",
+      "sha256": "00876130bb8977c4c557f5dae4e25868a1daab4e8bdc79134467aa5bf856fcea",
+      "bytes": 645589
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2008_y2008.parquet",
+      "sha256": "516f1334246732172799b5cc5d487bbd2e18fb47dfb48f8f178e68a003ba4271",
+      "bytes": 646049
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2008_y2009.parquet",
+      "sha256": "3172228e80555d4f541605b90ca495a0e1ed8152ce816239631d0a6b4c6b3453",
+      "bytes": 645875
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2008_y2010.parquet",
+      "sha256": "41b84588a12aa6b9c652813cce197318325efd108cdc7f58ee2cade4c9299da2",
+      "bytes": 645930
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2008_y2011.parquet",
+      "sha256": "38045082659f84c739cbe946ea4dfe30a95e8fd6b2e35d332ab68b1275bf50f3",
+      "bytes": 645726
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2008_y2012.parquet",
+      "sha256": "28720e09e0735aa41a1906f22b91785edc67ebaf992121fe20001310586f2882",
+      "bytes": 645625
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2012_y2008.parquet",
+      "sha256": "18366134ef7e6807f9dca187b859884b6de60f3fd80c6e8878295124fdf320d3",
+      "bytes": 775309
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2012_y2009.parquet",
+      "sha256": "8a473ef38a1b0c5dba9cadc7b565eee1fdf57603ea7d392a1fb913599b5deeda",
+      "bytes": 775132
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2012_y2010.parquet",
+      "sha256": "e20fc471350e150d634821ebadaf2f585f97417eb5e3ccc5c3a591b10805ee89",
+      "bytes": 781447
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2012_y2011.parquet",
+      "sha256": "3e0247a6305150c1d3c10688752d8a8af59fc297070a390d035e32e28e5c7cfe",
+      "bytes": 776751
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2012_y2012.parquet",
+      "sha256": "51367c14952bc759e1f2f9ff1e43b6ae451a20ff5784aa169fbbc3497e07c801",
+      "bytes": 775687
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2012_y2013.parquet",
+      "sha256": "e2308eebb74e3990d8f21152f84b26c5534ea5332f4e9b9a8c72b16585a3ace2",
+      "bytes": 901956
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2012_y2014.parquet",
+      "sha256": "86a803ba73f96aa514f3ca939de2b6be3d35243a07756525b5a242420b37d69d",
+      "bytes": 907822
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2012_y2015.parquet",
+      "sha256": "f21140bc45d5b26171c89e911a5c72e383840b5f09e58947dd79c7affaddf2b9",
+      "bytes": 902519
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2012_y2016.parquet",
+      "sha256": "0675ea9be37d327dc90bbd4f2bddaa3032039cd0e4f3d1417a6b995735ee2a26",
+      "bytes": 904347
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2016_y2012.parquet",
+      "sha256": "801c575f6988cd91e76ce78a9ade351f0b66178e5d2b3c941b231a281e17a07c",
+      "bytes": 794233
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2016_y2013.parquet",
+      "sha256": "66e05ca172716caf84461510662b2d1c479fb5fa7f703f9bf486f69955436d69",
+      "bytes": 922560
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2016_y2014.parquet",
+      "sha256": "8950f1ee1b9597159b598ce7e7c5bfff51ab9b65c14460df364c8273ce6f8dbb",
+      "bytes": 923375
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2016_y2015.parquet",
+      "sha256": "b66f598bad5d98d51c1774ce2d33d0638626c86442139bb3c207b0741f25740d",
+      "bytes": 923145
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2016_y2016.parquet",
+      "sha256": "91794961b0e35609d550deaa4aa3d8de36abf70ae00d3112c438b9cc9805d5aa",
+      "bytes": 923917
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2016_y2017.parquet",
+      "sha256": "f2a1654f5e6b9dc59e77c63155554918c786505d60c36e3eb29d664b0070b03b",
+      "bytes": 924438
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2016_y2018.parquet",
+      "sha256": "42036feb0977fddda624a90cd6a64e0de38ee579f8c357b26978aaa0b16d5ccf",
+      "bytes": 924155
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2016_y2019.parquet",
+      "sha256": "dcce696b17776ebeae9ab80b5146d5d7b64e5a62aaf7872489df67f594880b48",
+      "bytes": 923664
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2016_y2020.parquet",
+      "sha256": "4f3f57621c44312b3260605ecbc711dc44c72cccd2606976972222524f00207b",
+      "bytes": 923822
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2020_y2016.parquet",
+      "sha256": "4b6b8926e451eea17853e7b399121c98d36fa2921e9a29396937a3857b37d838",
+      "bytes": 954621
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2020_y2017.parquet",
+      "sha256": "d21b461a65a94ee8e42242754a578ac164cb326feaf02ccf2fb89f120de39ae3",
+      "bytes": 955647
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2020_y2018.parquet",
+      "sha256": "f0baa0e73334c1edec38618aa73a8f646c4d217b4a9e4d67307a53dbd075e308",
+      "bytes": 955568
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2020_y2019.parquet",
+      "sha256": "3c9b26035804a6b6de941a22d2aa7edcb415e0fee1e3c0a7ef23f1265f464367",
+      "bytes": 960577
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2020_y2020.parquet",
+      "sha256": "463b9b3922bf6b2f43604ec7cfd80da7e32514564112188daab46cca503d07c8",
+      "bytes": 955216
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2020_y2021.parquet",
+      "sha256": "993ea2eec617e519a66246bbbb7cb02c5716d59116e057acc94609e22f7b4230",
+      "bytes": 956802
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2020_y2022.parquet",
+      "sha256": "801468630f4de0d9070c6404c35741efbbcbe0101414908b5300a7575bafc732",
+      "bytes": 955239
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2020_y2023.parquet",
+      "sha256": "a7e4fbd1d45b8a723acbc06ebe7efd84b563144b5ddc8ac21b1a710740e5d3ac",
+      "bytes": 956657
+    },
+    {
+      "path": "data/derived/place_outcomes/93fa08c9e524d704/place_outcomes_E2020_y2024.parquet",
+      "sha256": "58c111d6cc62d39d34a86238e44230dded90694779f3db730a9881e90811717e",
+      "bytes": 957340
+    }
+  ],
+  "notes": "E2008 y2004: places=47115, places_with_school=26305 (by rede null=638/1=3/2=8888/3=15899/4=877), school_n_fac_null=26305, located_places=31305, empty_rings_1km=9, empty_rings_10km=1; E2008 y2005: places=47115, places_with_school=26305 (by rede null=638/1=3/2=8888/3=15899/4=877), school_n_fac_null=26305, located_places=31305, empty_rings_1km=9, empty_rings_10km=1; E2008 y2006: places=47115, places_with_school=26305 (by rede null=638/1=3/2=8888/3=15899/4=877), school_n_fac_null=26305, located_places=31305, empty_rings_1km=9, empty_rings_10km=1; E2008 y2007: places=47115, places_with_school=26305 (by rede null=638/1=3/2=8888/3=15899/4=877), school_n_fac_null=715, located_places=31305, empty_rings_1km=9, empty_rings_10km=1; E2008 y2008: places=47115, places_with_school=26305 (by rede null=638/1=3/2=8888/3=15899/4=877), school_n_fac_null=647, located_places=31305, empty_rings_1km=9, empty_rings_10km=1; E2008 y2009: places=47115, places_with_school=26305 (by rede null=638/1=3/2=8888/3=15899/4=877), school_n_fac_null=652, located_places=31305, empty_rings_1km=9, empty_rings_10km=1; E2008 y2010: places=47115, places_with_school=26305 (by rede null=638/1=3/2=8888/3=15899/4=877), school_n_fac_null=700, located_places=31305, empty_rings_1km=9, empty_rings_10km=1; E2008 y2011: places=47115, places_with_school=26305 (by rede null=638/1=3/2=8888/3=15899/4=877), school_n_fac_null=749, located_places=31305, empty_rings_1km=9, empty_rings_10km=1; E2008 y2012: places=47115, places_with_school=26305 (by rede null=638/1=3/2=8888/3=15899/4=877), school_n_fac_null=801, located_places=31305, empty_rings_1km=9, empty_rings_10km=1; E2012 y2008: places=48517, places_with_school=28673 (by rede null=253/1=4/2=9186/3=18200/4=1030), school_n_fac_null=908, located_places=43346, empty_rings_1km=298, empty_rings_10km=75; E2012 y2009: places=48517, places_with_school=28673 (by rede null=253/1=4/2=9186/3=18200/4=1030), school_n_fac_null=809, located_places=43346, empty_rings_1km=298, empty_rings_10km=75; E2012 y2010: places=48517, places_with_school=28673 (by rede null=253/1=4/2=9186/3=18200/4=1030), school_n_fac_null=759, located_places=43346, empty_rings_1km=298, empty_rings_10km=75; E2012 y2011: places=48517, places_with_school=28673 (by rede null=253/1=4/2=9186/3=18200/4=1030), school_n_fac_null=755, located_places=43346, empty_rings_1km=298, empty_rings_10km=75; E2012 y2012: places=48517, places_with_school=28673 (by rede null=253/1=4/2=9186/3=18200/4=1030), school_n_fac_null=758, located_places=43346, empty_rings_1km=298, empty_rings_10km=75; E2012 y2013: places=48517, places_with_school=28673 (by rede null=253/1=4/2=9186/3=18200/4=1030), school_n_fac_null=833, located_places=43346, empty_rings_1km=298, empty_rings_10km=75; E2012 y2014: places=48517, places_with_school=28673 (by rede null=253/1=4/2=9186/3=18200/4=1030), school_n_fac_null=942, located_places=43346, empty_rings_1km=298, empty_rings_10km=75; E2012 y2015: places=48517, places_with_school=28673 (by rede null=253/1=4/2=9186/3=18200/4=1030), school_n_fac_null=1008, located_places=43346, empty_rings_1km=298, empty_rings_10km=75; E2012 y2016: places=48517, places_with_school=28673 (by rede null=253/1=4/2=9186/3=18200/4=1030), school_n_fac_null=1105, located_places=43346, empty_rings_1km=298, empty_rings_10km=75; E2016 y2012: places=48371, places_with_school=30080 (by rede null=180/1=11/2=9259/3=19499/4=1131), school_n_fac_null=892, located_places=44412, empty_rings_1km=308, empty_rings_10km=73; E2016 y2013: places=48371, places_with_school=30080 (by rede null=180/1=11/2=9259/3=19499/4=1131), school_n_fac_null=881, located_places=44412, empty_rings_1km=308, empty_rings_10km=73; E2016 y2014: places=48371, places_with_school=30080 (by rede null=180/1=11/2=9259/3=19499/4=1131), school_n_fac_null=901, located_places=44412, empty_rings_1km=308, empty_rings_10km=73; E2016 y2015: places=48371, places_with_school=30080 (by rede null=180/1=11/2=9259/3=19499/4=1131), school_n_fac_null=910, located_places=44412, empty_rings_1km=308, empty_rings_10km=73; E2016 y2016: places=48371, places_with_school=30080 (by rede null=180/1=11/2=9259/3=19499/4=1131), school_n_fac_null=974, located_places=44412, empty_rings_1km=308, empty_rings_10km=73; E2016 y2017: places=48371, places_with_school=30080 (by rede null=180/1=11/2=9259/3=19499/4=1131), school_n_fac_null=1101, located_places=44412, empty_rings_1km=308, empty_rings_10km=73; E2016 y2018: places=48371, places_with_school=30080 (by rede null=180/1=11/2=9259/3=19499/4=1131), school_n_fac_null=1344, located_places=44412, empty_rings_1km=308, empty_rings_10km=73; E2016 y2019: places=48371, places_with_school=30080 (by rede null=180/1=11/2=9259/3=19499/4=1131), school_n_fac_null=1591, located_places=44412, empty_rings_1km=308, empty_rings_10km=73; E2016 y2020: places=48371, places_with_school=30080 (by rede null=180/1=11/2=9259/3=19499/4=1131), school_n_fac_null=1732, located_places=44412, empty_rings_1km=308, empty_rings_10km=73; E2020 y2016: places=47928, places_with_school=31086 (by rede null=114/1=11/2=9252/3=20488/4=1221), school_n_fac_null=997, located_places=45983, empty_rings_1km=409, empty_rings_10km=160; E2020 y2017: places=47928, places_with_school=31086 (by rede null=114/1=11/2=9252/3=20488/4=1221), school_n_fac_null=1017, located_places=45983, empty_rings_1km=409, empty_rings_10km=160; E2020 y2018: places=47928, places_with_school=31086 (by rede null=114/1=11/2=9252/3=20488/4=1221), school_n_fac_null=1103, located_places=45983, empty_rings_1km=409, empty_rings_10km=160; E2020 y2019: places=47928, places_with_school=31086 (by rede null=114/1=11/2=9252/3=20488/4=1221), school_n_fac_null=1251, located_places=45983, empty_rings_1km=409, empty_rings_10km=160; E2020 y2020: places=47928, places_with_school=31086 (by rede null=114/1=11/2=9252/3=20488/4=1221), school_n_fac_null=1332, located_places=45983, empty_rings_1km=409, empty_rings_10km=160; E2020 y2021: places=47928, places_with_school=31086 (by rede null=114/1=11/2=9252/3=20488/4=1221), school_n_fac_null=1470, located_places=45983, empty_rings_1km=409, empty_rings_10km=160; E2020 y2022: places=47928, places_with_school=31086 (by rede null=114/1=11/2=9252/3=20488/4=1221), school_n_fac_null=1655, located_places=45983, empty_rings_1km=409, empty_rings_10km=160; E2020 y2023: places=47928, places_with_school=31086 (by rede null=114/1=11/2=9252/3=20488/4=1221), school_n_fac_null=1822, located_places=45983, empty_rings_1km=409, empty_rings_10km=160; E2020 y2024: places=47928, places_with_school=31086 (by rede null=114/1=11/2=9252/3=20488/4=1221), school_n_fac_null=1957, located_places=45983, empty_rings_1km=409, empty_rings_10km=160",
+  "inputs": [
+    "data/derived/polling_places/d6415bca8080aaa9/_MANIFEST.json",
+    "data/derived/school_polling_match/949769ed337fb40b/_MANIFEST.json",
+    "data/raw/inep/schools/2026-11-10/_MANIFEST.json",
+    "data/raw/ibge/boundaries_2024/2026-11-04/_MANIFEST.json",
+    "data/raw/viirs/annual/2026-11-10/_MANIFEST.json",
+    "data/raw/mapbiomas/coverage/2026-11-10/_MANIFEST.json"
+  ],
+  "sealed_files": [
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2008_y2004.parquet",
+      "sha256": "ac4a29c7f7a83379c4857e449c893660b2b09c2206110f312bde4166e560e8c2",
+      "bytes": 596343
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2008_y2005.parquet",
+      "sha256": "de0a53deb1600353b58d79f55019ec72b7e94ebe88c11955334310cd16cc75a7",
+      "bytes": 596737
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2008_y2006.parquet",
+      "sha256": "8370bf816d57228962423dde75d50df396dabd8504b00191080c352616316db8",
+      "bytes": 596571
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2008_y2007.parquet",
+      "sha256": "4e97db9c46172d325571766f2944ff1407f318dd07d6691dfe8d4678b32b25ba",
+      "bytes": 613242
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2008_y2008.parquet",
+      "sha256": "8b8b76e3cae3bb029a6a20d040d499ddb1f5b23223ac655ebd91dec60ede6167",
+      "bytes": 613387
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2008_y2009.parquet",
+      "sha256": "d00ef7b8d5cf373cbbfe389f1f7469cf1dd881764315361f5ce4f37015b25877",
+      "bytes": 613446
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2008_y2010.parquet",
+      "sha256": "19bfd1d490705890a44c6013a1bc4fc1010721d3466cb57c177823a2ab932c79",
+      "bytes": 613421
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2008_y2011.parquet",
+      "sha256": "c362f819763bb3e8364ac081544db739602ad4d86d664be48e4c843340459753",
+      "bytes": 613609
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2008_y2012.parquet",
+      "sha256": "dfc51fc7ddbc0467369df7497422e2958975d0da41df0be8137b821f8dc14642",
+      "bytes": 613576
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2012_y2008.parquet",
+      "sha256": "b2011429b3d97fd809c782be95e36143651af08b296aa099bd84a63f909cdbd7",
+      "bytes": 737107
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2012_y2009.parquet",
+      "sha256": "750d57e848b59c386bf2d865a6d4c9b69881c99d847bb0bbf41c777b5d22bdcc",
+      "bytes": 737380
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2012_y2010.parquet",
+      "sha256": "3b3dad03c8fe315a02c5489c7b79bae106989d9ff6c90f73dac5369c012a1314",
+      "bytes": 738329
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2012_y2011.parquet",
+      "sha256": "f503511b824a0751e8e12eed0b069bbb56e6f433feaf74e47b683803528b2d87",
+      "bytes": 738170
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2012_y2012.parquet",
+      "sha256": "9f5bcd1fae628a8a136114a3695429b38eb86eaac87d8b6d8956d67ab8e4bd14",
+      "bytes": 738276
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2012_y2013.parquet",
+      "sha256": "0abc868ee6eb9e0579e410951999b890d3f17960cb2ad307227488e06862e61b",
+      "bytes": 858668
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2012_y2014.parquet",
+      "sha256": "f7b3e7fa08a402d21cd84b9cd2638eca6f7db69a58a5fb257ce4cf6efb5fe366",
+      "bytes": 864099
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2012_y2015.parquet",
+      "sha256": "b81df5f373a9208c1c89d90fe20c3f772f90af82fc0676be9c2953ffdc9c47a7",
+      "bytes": 858426
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2012_y2016.parquet",
+      "sha256": "f6016cfe6b0517c81fb2f7c897e0b6feec5c3e0d4a185994023b2b731ab2cfce",
+      "bytes": 859220
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2016_y2012.parquet",
+      "sha256": "ac0324cd06a8d2f4055ecb4e697bccaca5aa1c613cc7fd8c02d577df081da0ca",
+      "bytes": 767570
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2016_y2013.parquet",
+      "sha256": "c4889f4bca27f09043e749110ac337e075c982352eb3935595b52f7c2017a14d",
+      "bytes": 891708
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2016_y2014.parquet",
+      "sha256": "55502b5b7648ab1b13f6b08c27675d0fb6fd936dc61665e0973e1f247a4916e8",
+      "bytes": 890722
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2016_y2015.parquet",
+      "sha256": "0201bfc090cddd0df2146218ba4788d9d4557a5276b6270832b104a550663b5b",
+      "bytes": 885831
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2016_y2016.parquet",
+      "sha256": "acfb5b1e831160a7eeb387f23838a79d8f2e1651be7d7be699c4ba2817470923",
+      "bytes": 888453
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2016_y2017.parquet",
+      "sha256": "770d068121c6da531489b5aade79b402428cf7ad31ec9859295e6fd6131729f7",
+      "bytes": 886311
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2016_y2018.parquet",
+      "sha256": "6e0a16b9cae5b4af372e4b5b6e7fec62181c5d71cade6bcdee09d7edba8b27ab",
+      "bytes": 887029
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2016_y2019.parquet",
+      "sha256": "b05a9c2bfebda74619a6d582da486fdd7b7466af713e29789a699d6063bffa5a",
+      "bytes": 893274
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2016_y2020.parquet",
+      "sha256": "5cdb585b1f597fe077e1f50e0c2908f7c61ebccc9550904ac93917547bfe66b4",
+      "bytes": 886760
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2020_y2016.parquet",
+      "sha256": "f8b17297b27d680d5a77107663b9c2a98a90faf5e2c665ad8f68d709405f56fc",
+      "bytes": 911174
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2020_y2017.parquet",
+      "sha256": "d8e5f5c26b59a2b9b4524f08da8b72597e82637c2ef2578e875f93130e0f1009",
+      "bytes": 916388
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2020_y2018.parquet",
+      "sha256": "87392db4ff5249b281fe6c883bdcd43d3e5204e8d2835ae79b060efb3dd3f735",
+      "bytes": 918142
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2020_y2019.parquet",
+      "sha256": "dd7d60bec36e7439934c9ff69fee7f4220c06a2fe250e574928f8ae26671e6c2",
+      "bytes": 912032
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2020_y2020.parquet",
+      "sha256": "b5755947b5977bcb87a9b5c8d536499b1e3a8effb64c5d9a2ae7a1ff6c9037fc",
+      "bytes": 912213
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2020_y2021.parquet",
+      "sha256": "d9251d84059f2261894ea340438f4ffabe976461b30e2bedd04fbe246ba70c62",
+      "bytes": 912421
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2020_y2022.parquet",
+      "sha256": "805d98983d28e054589926b5afa8743d41b66f6174dc1e0ac59cf3a3dfc4f188",
+      "bytes": 911574
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2020_y2023.parquet",
+      "sha256": "72675288b210b34e3c3ea7f4fe93fd09472035af0a12e12a7019929553eac38a",
+      "bytes": 913453
+    },
+    {
+      "path": "sealed/outcomes/place_outcomes/93fa08c9e524d704/place_outcomes_E2020_y2024.parquet",
+      "sha256": "136d6133640aa5e6358df549a892352a5623df5355e5438525daa72b466d7975",
+      "bytes": 914428
+    }
+  ]
+}
