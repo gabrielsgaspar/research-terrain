@@ -9,6 +9,8 @@ import re
 import subprocess
 from pathlib import Path
 
+import pytest
+
 REPO = Path(__file__).resolve().parents[1]
 SKIP_DIRS = {
     ".git",
@@ -102,11 +104,12 @@ def test_fixtures_are_small_text_files():
             assert path.stat().st_size <= FIXTURE_MAX_BYTES, f"{path}: fixture over 200 KB"
 
 
-def test_split_hash_is_well_formed_if_sealed():
-    path = REPO / "confirm" / "split.sha256"
+@pytest.mark.parametrize("name", ["split.sha256", "split_non_amazon.sha256"])
+def test_split_hash_is_well_formed_if_sealed(name):
+    path = REPO / "confirm" / name
     if path.exists():
         assert re.fullmatch(r"[0-9a-f]{64}\n?", path.read_text(encoding="utf-8")), (
-            "split.sha256 must be one hash"
+            f"{name} must be one hash"
         )
 
 
