@@ -357,24 +357,15 @@ def year_table(
 
     A place that is not located has no ring cells, so its means are null already.
     """
-    table = (
-        places.select(*KEY, "located_1km", "school_id")
-        .join(schools_e, left_on="school_id", right_on="id_escola", how="left")
-        .join(schools_y, left_on="school_id", right_on="id_escola", how="left")
-    )
     empty = pl.Series([None] * places.height, dtype=pl.Float64)
     located = places["located_1km"]
 
     def counts(cells: np.ndarray) -> pl.Series:
         return pl.select(pl.when(located).then(pl.Series(cells, dtype=pl.Int32))).to_series()
 
-    return table.select(
-        *KEY,
-        pl.lit(year, dtype=pl.Int64).alias("y"),
-        "located_1km",
-        "school_id",
-        "school_rede",
-        "school_n_fac",
+    # The ring series line up with `places` by construction, so they are attached
+    # to it before any join; the joins then keep the left order explicitly.
+    base = places.select(*KEY, "located_1km", "school_id").with_columns(
         (empty if lights is None else ring_mean(lights, rings, SMALL_KM, 1000.0)).alias(
             "lights_1km"
         ),
@@ -387,6 +378,22 @@ def year_table(
         counts(rings.cells_1km).alias("ring_cells_1km"),
         counts(rings.cells_10km).alias("ring_cells_10km"),
     )
+    table = base.join(
+        schools_e, left_on="school_id", right_on="id_escola", how="left", maintain_order="left"
+    ).join(schools_y, left_on="school_id", right_on="id_escola", how="left", maintain_order="left")
+    return table.select(
+        *KEY,
+        pl.lit(year, dtype=pl.Int64).alias("y"),
+        "located_1km",
+        "school_id",
+        "school_rede",
+        "school_n_fac",
+        "lights_1km",
+        "builtup_1km",
+        "native_10km",
+        "ring_cells_1km",
+        "ring_cells_10km",
+    ).sort(KEY)
 
 
 def year_note(explore_rows: pl.DataFrame, election: int, year: int) -> str:
@@ -531,7 +538,6 @@ def build(
         schools_e = schools.filter(pl.col("ano") == e).select(
             "id_escola", pl.col("rede").alias("school_rede")
         )
-        is_explore = frame["cd_ibge"].is_in(sorted(explore))
         for y in outcome_years[e]:
             lights = coverage = None
             if y in light_entries:
@@ -547,6 +553,7 @@ def build(
             )
             table = year_table(frame, schools_e, schools_y, rings, y, lights, coverage)
             check_table(table, e, y)
+            is_explore = table["cd_ibge"].is_in(sorted(explore))
             notes.append(year_note(table.filter(is_explore), e, y))
             sealed_file, derived_file = (
                 sealed_dir / output_name(e, y),
