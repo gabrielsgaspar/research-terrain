@@ -7,6 +7,8 @@ import pytest
 
 from terrain.explore import (
     EXPLORE_LIST,
+    EXPLORE_LIST_NON_AMAZON,
+    NATIONAL_IDEAS,
     ExploreError,
     exploration_municipalities,
     idea_of,
@@ -36,6 +38,26 @@ def test_exploration_list_is_read_and_checked():
 def test_a_missing_list_stops_the_run():
     with pytest.raises(ExploreError, match="sealed"):
         exploration_municipalities(MemoryStore())
+
+
+def test_national_list_is_the_union_of_both_lists():
+    store = store_with("code_ibge\n1500107\n1500131\n")
+    store.create(EXPLORE_LIST_NON_AMAZON, b"code_ibge\n3550308\n")
+    assert exploration_municipalities(store) == {"1500107", "1500131"}
+    assert exploration_municipalities(store, national=True) == {"1500107", "1500131", "3550308"}
+
+
+def test_national_list_needs_both_lists_and_no_overlap():
+    with pytest.raises(ExploreError, match="explore_municipalities_non_amazon"):
+        exploration_municipalities(store_with("code_ibge\n1500107\n"), national=True)
+    store = store_with("code_ibge\n1500107\n")
+    store.create(EXPLORE_LIST_NON_AMAZON, b"code_ibge\n1500107\n3550308\n")
+    with pytest.raises(ExploreError, match="in both"):
+        exploration_municipalities(store, national=True)
+    store = store_with("code_ibge\n1500107\n")
+    store.create(EXPLORE_LIST_NON_AMAZON, b"code\n3550308\n")
+    with pytest.raises(ExploreError, match="exactly one column"):
+        exploration_municipalities(store, national=True)
 
 
 def test_restrict_keeps_only_the_exploration_half():
@@ -72,3 +94,13 @@ def test_every_explore_script_restricts_to_the_exploration_half():
         assert re.fullmatch(r"\d{4}_[a-z0-9_]{1,60}\.py", script.name), f"{script.name}: bad name"
         for needed in ("exploration_municipalities(", "restrict("):
             assert needed in source, f"{script.name} must call {needed[:-1]}"
+
+
+def test_national_idea_scripts_read_both_exploration_lists():
+    for idea in NATIONAL_IDEAS:
+        for script in sorted((REPO / "explore").glob(f"{idea}_*.py")):
+            source = script.read_text(encoding="utf-8")
+            assert "national=True" in source, (
+                f"{script.name}: idea {idea} is national (decision 0011); call "
+                "exploration_municipalities(store, national=True)"
+            )

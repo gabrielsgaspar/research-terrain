@@ -5,6 +5,11 @@ Exploration reads only the exploration half of the municipality split
 `exploration_municipalities` and `restrict` before computing anything; a test
 in tests/test_explore.py checks that each script does.
 
+Ideas with national scope (decision 0011; today idea 0006) call
+`exploration_municipalities(store, national=True)`, which returns the Legal
+Amazon exploration list and the exploration list of the municipalities
+outside it, together. A test checks that every `explore/0006_*.py` does.
+
 The contract for `explore/NNNN_slug.py`, run by the `explore-run` workflow:
 
     python explore/NNNN_slug.py --out-dir DIR
@@ -28,6 +33,10 @@ import polars as pl
 from terrain.storage import Store
 
 EXPLORE_LIST = "data/derived/split/explore_municipalities.csv"
+EXPLORE_LIST_NON_AMAZON = "data/derived/split/explore_municipalities_non_amazon.csv"
+# Every exploration list of a national idea (decision 0011), in reading order.
+EXPLORE_LISTS_NATIONAL = (EXPLORE_LIST, EXPLORE_LIST_NON_AMAZON)
+NATIONAL_IDEAS = ("0006",)
 EXPLORE_ROOT = "data/explore/"
 SUMMARY_MAX_BYTES = 20_000
 RESULTS_MAX_BYTES = 200_000
@@ -38,19 +47,33 @@ class ExploreError(Exception):
     """An explore script broke the contract above."""
 
 
-def exploration_municipalities(store: Store) -> frozenset[str]:
-    """IBGE codes (7 digits, strings) of the exploration half."""
+def _read_list(store: Store, path: str) -> frozenset[str]:
     try:
-        text = store.read_bytes(EXPLORE_LIST).decode("utf-8")
+        text = store.read_bytes(path).decode("utf-8")
     except Exception as exc:  # a missing list must stop the run, whatever the store raises
-        raise ExploreError(f"cannot read {EXPLORE_LIST}; has the split been sealed?") from exc
+        raise ExploreError(f"cannot read {path}; has the split been sealed?") from exc
     reader = csv.DictReader(io.StringIO(text))
     if reader.fieldnames != ["code_ibge"]:
-        raise ExploreError(f"{EXPLORE_LIST} must have exactly one column, code_ibge")
+        raise ExploreError(f"{path} must have exactly one column, code_ibge")
     codes = frozenset(row["code_ibge"].strip() for row in reader)
     if not codes or not all(len(c) == 7 and c.isdigit() for c in codes):
-        raise ExploreError(f"{EXPLORE_LIST} is empty or holds non-IBGE codes")
+        raise ExploreError(f"{path} is empty or holds non-IBGE codes")
     return codes
+
+
+def exploration_municipalities(store: Store, national: bool = False) -> frozenset[str]:
+    """IBGE codes (7 digits, strings) of the exploration half.
+
+    By default the Legal Amazon exploration list (decision 0001). With
+    `national=True`, the union of that list and the list outside the Legal
+    Amazon (decision 0011); a code in both lists stops the run.
+    """
+    if not national:
+        return _read_list(store, EXPLORE_LIST)
+    amazon, rest = (_read_list(store, path) for path in EXPLORE_LISTS_NATIONAL)
+    if amazon & rest:
+        raise ExploreError(f"{len(amazon & rest)} codes are in both exploration lists")
+    return amazon | rest
 
 
 def restrict(
