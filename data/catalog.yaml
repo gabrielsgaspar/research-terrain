@@ -701,6 +701,7 @@ datasets:
       scope: https://www.googleapis.com/auth/bigquery
       page: https://basedosdados.org/dataset/7e01700d-1f9a-4be6-8ec6-85b7c2c6cf15
       table: basedosdados.br_ibama_fiscalizacao.auto_infracao
+      freshness_column: data_extracao
       location: US
       maximum_bytes_billed: 20000000000
       columns: [ano, data_auto, id_auto, id_municipio, sigla_uf, latitude, longitude, tipo_infracao, tipo_auto, situacao_auto, indicador_cancelado, gravidade, indicador_coordenada_valida, data_extracao]
@@ -749,9 +750,76 @@ datasets:
       scope: https://www.googleapis.com/auth/bigquery
       page: https://basedosdados.org/dataset/7e01700d-1f9a-4be6-8ec6-85b7c2c6cf15
       table: basedosdados.br_ibama_fiscalizacao.area_embargada
+      freshness_column: data_extracao
       location: US
       maximum_bytes_billed: 20000000000
       columns: [ano, data_embargo, id_embargo, id_auto, id_municipio, sigla_uf, latitude, longitude, area_ha, tipo_area, indicador_desembargado, indicador_coordenada_valida, data_extracao]
       order_by: [ano, id_embargo]
       states: [AC, AM, AP, MA, MT, PA, RO, RR, TO]
       years: [2000, 2025]
+
+  - name: inep_schools
+    source: "INEP, Censo Escolar, via Base dos Dados: basedosdados.br_inep_censo_escolar.escola"
+    licence: "INEP publishes its open data under Creative Commons Atribuição-SemDerivações 3.0 (CC BY-ND 3.0, a site-wide statement at gov.br/inep); Base dos Dados states no licence for the table and refers to the source's terms. Estimates may be published; school-level derived tables may not be shareable."
+    gcs: data/raw/inep/schools/
+    status: planned
+    contract: data/contracts/inep_schools.md
+    notes: >
+      School facilities by school and year, 2007-2024, all 26 states and DF
+      (idea 0006, decision 0011, campaign 0006 step s6). BigQuery path only.
+      Every facility column is INT64, 0 = no, 1 = yes. dependencia_pne is
+      collected 2007-2018 only. acessibilidade_inexistente (1 = none of the
+      accessibility items) is collected 2019-2024 only, after INEP's 2019
+      questionnaire change. The other facility columns are collected
+      2007-2024. The table has 4,272,656 rows for 2007-2025, is partitioned by
+      ano, and (ano, id_escola) is unique. Source facts: Base dos Dados model
+      queries-basedosdados/models/br_inep_censo_escolar/ and INEP's 2024
+      dictionary, read on 2026-11-10. Telephone and names are never selected.
+      This is outcome data for both halves; it stays in raw, and only
+      place_outcomes (step s14) reads it.
+    bigquery:
+      endpoint: https://bigquery.googleapis.com/bigquery/v2/
+      scope: https://www.googleapis.com/auth/bigquery
+      page: https://basedosdados.org/dataset/dae21af4-4b6a-42f4-b94a-4c2061ea9de5
+      table: basedosdados.br_inep_censo_escolar.escola
+      location: US
+      maximum_bytes_billed: 50000000000
+      columns: [ano, id_escola, id_municipio, sigla_uf, rede, tipo_localizacao, agua_rede_publica, esgoto_rede_publica, energia_rede_publica, internet, biblioteca_sala_leitura, laboratorio_ciencias, laboratorio_informatica, quadra_esportes, dependencia_pne, acessibilidade_inexistente]
+      order_by: [ano, id_escola]
+      states: [AC, AL, AM, AP, BA, CE, DF, ES, GO, MA, MG, MS, MT, PA, PB, PE, PI, PR, RJ, RN, RO, RR, RS, SC, SE, SP, TO]
+      years: [2007, 2024]
+
+  - name: inep_school_catalogue
+    source: "INEP, Microdados do Censo Escolar 2024; coordinates from INEP's Catálogo de Escolas via Base dos Dados: basedosdados.br_bd_diretorios_brasil.escola"
+    licence: "INEP publishes its open data under Creative Commons Atribuição-SemDerivações 3.0 (CC BY-ND 3.0, a site-wide statement at gov.br/inep); Base dos Dados states no licence for the table and refers to the source's terms. Estimates may be published; school-level derived tables may not be shareable."
+    gcs: data/raw/inep/catalogue/
+    status: planned
+    contract: data/contracts/inep_school_catalogue.md
+    notes: >
+      One recent year (2024) of school names, addresses and postcodes from
+      INEP's Censo Escolar microdata, with coordinates from INEP's school
+      catalogue where it gives them (idea 0006, decision 0011, campaign 0006
+      step s6; read by the match, step s9). Phone numbers and emails are never
+      selected or stored. download.inep.gov.br does not send its intermediate
+      certificate, so the run fetches it from extra_ca_url, checks its
+      SHA-256 against extra_ca_sha256, and adds it to the system trust store
+      for the INEP download only; nothing is stored. If INEP or its issuer
+      changes the certificate, the fingerprint check fails by design, and a
+      person updates extra_ca_url and extra_ca_sha256.
+    microdata:
+      url: https://download.inep.gov.br/dados_abertos/microdados_censo_escolar_2024.zip
+      member: "*/dados/microdados_ed_basica_2024.csv"
+      encoding: latin-1
+      delimiter: ";"
+      extra_ca_url: http://secure.globalsign.com/cacert/rnpicpedugr46ovtlsca2025.crt
+      extra_ca_sha256: e10747d4da7bab09cba9952f019d3534cb9fba070bf13d8791b1699cd2ff59dd
+      columns: [NU_ANO_CENSO, CO_ENTIDADE, NO_ENTIDADE, CO_MUNICIPIO, SG_UF, TP_DEPENDENCIA, TP_LOCALIZACAO, DS_ENDERECO, NU_ENDERECO, DS_COMPLEMENTO, NO_BAIRRO, CO_CEP]
+    bigquery:
+      endpoint: https://bigquery.googleapis.com/bigquery/v2/
+      scope: https://www.googleapis.com/auth/bigquery
+      table: basedosdados.br_bd_diretorios_brasil.escola
+      location: US
+      maximum_bytes_billed: 50000000000
+      columns: [id_escola, id_municipio, sigla_uf, latitude, longitude]
+      order_by: [id_escola]
+      states: [AC, AL, AM, AP, BA, CE, DF, ES, GO, MA, MG, MS, MT, PA, PB, PE, PI, PR, RJ, RN, RO, RR, RS, SC, SE, SP, TO]

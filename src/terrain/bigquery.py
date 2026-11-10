@@ -3,7 +3,7 @@
 The endpoint, scope, table and columns come from a catalog entry's `bigquery:`
 block. The query is built from that block only. Personal identifiers are
 never selected: the builder refuses names that start with `cpf_cnpj` or
-`nome`, and `geometria`, even if the catalog lists them.
+`nome`, and `geometria` and `telefone`, even if the catalog lists them.
 
 The HTTP session is passed in (anything with `post` and `get` like a
 `requests` session), so tests use a fake. Nothing here logs or raises with a
@@ -27,7 +27,7 @@ TABLE = re.compile(r"[a-z0-9_-]+\.[a-z0-9_]+\.[a-z0-9_]+")
 STATE = re.compile(r"[A-Z]{2}")
 PROJECT = re.compile(r"[A-Za-z0-9][A-Za-z0-9:._-]*")
 FORBIDDEN_PREFIXES = ("cpf_cnpj", "nome")
-FORBIDDEN_NAMES = ("geometria",)
+FORBIDDEN_NAMES = ("geometria", "telefone")
 
 PAGE_SIZE = 50_000
 TIMEOUT_MS = 60_000
@@ -58,14 +58,16 @@ def _where(bq: dict[str, Any]) -> str:
     for state in states:
         if not isinstance(state, str) or not STATE.fullmatch(state):
             raise AcquireError("bigquery: a state is not a two-letter code")
-    years = bq["years"]
+    listed = ", ".join(f"'{s}'" for s in states)
+    years = bq.get("years")
+    if years is None:
+        return f"WHERE sigla_uf IN ({listed})"
     if (
         len(years) != 2
         or not all(isinstance(y, int) and not isinstance(y, bool) for y in years)
         or years[0] > years[1]
     ):
         raise AcquireError("bigquery: years must be two integers, first not after second")
-    listed = ", ".join(f"'{s}'" for s in states)
     return f"WHERE sigla_uf IN ({listed}) AND ano BETWEEN {years[0]} AND {years[1]}"
 
 
@@ -88,11 +90,15 @@ def build_query(bq: dict[str, Any]) -> str:
 
 
 def build_summary_query(bq: dict[str, Any]) -> str:
-    """Latest extraction date and row count over the same rows as `build_query`."""
-    return (
-        f"SELECT MAX(data_extracao) AS max_data_extracao, COUNT(*) AS n "
-        f"FROM {_table(bq)} {_where(bq)}"
-    )
+    """Row count over the same rows as `build_query`.
+
+    When the block names a `freshness_column`, the latest value of it comes too.
+    """
+    freshness = bq.get("freshness_column")
+    if freshness is None:
+        return f"SELECT COUNT(*) AS n FROM {_table(bq)} {_where(bq)}"
+    column = _identifier(freshness)
+    return f"SELECT MAX({column}) AS max_{column}, COUNT(*) AS n FROM {_table(bq)} {_where(bq)}"
 
 
 _TYPES: dict[str, Callable[[str], Any]] = {
