@@ -25,8 +25,11 @@ import fnmatch
 import hashlib
 import json
 import os
+import socket
 import ssl
 import tempfile
+import time
+import urllib.error
 import urllib.request
 import zipfile
 from collections.abc import Callable
@@ -47,6 +50,8 @@ CHUNK = 1 << 20
 MAX_BYTES = 2 * 1024**3
 MAX_CERT_BYTES = 1 << 16
 REQUEST_TIMEOUT = 180  # seconds
+DOWNLOAD_RETRIES = 3  # the microdata download is retried up to this many times
+RETRY_WAIT_S = 60  # seconds between attempts
 
 FACILITIES = [
     "agua_rede_publica",
@@ -276,7 +281,7 @@ def fetch_certificate(microdata: dict[str, Any], opener: Opener) -> bytes:
             der = response.read(MAX_CERT_BYTES + 1)
     except Exception as err:
         raise AcquireError(
-            f"the intermediate certificate could not be downloaded ({type(err).__name__})"
+            f"the intermediate certificate could not be downloaded ({describe_error(err)})"
         ) from err
     if not der or len(der) > MAX_CERT_BYTES:
         raise AcquireError("the intermediate certificate download has an unusable size")
@@ -305,14 +310,59 @@ def certificate_context(microdata: dict[str, Any], opener: Opener) -> ssl.SSLCon
 # --- inep_school_catalogue -----------------------------------------------------
 
 
-def _download(opener: Opener, url: str, context: ssl.SSLContext, dest: Path) -> int:
-    try:
-        with opener(url, context=context) as response, open(dest, "wb") as out:
-            for chunk in iter(lambda: response.read(CHUNK), b""):
-                out.write(chunk)
-    except Exception as err:
-        raise AcquireError(f"the microdata download failed ({type(err).__name__})") from err
-    return dest.stat().st_size
+def describe_error(err: BaseException) -> str:
+    """The reason a request failed, in words: HTTP status, TLS, timeout, DNS or connection.
+
+    `urllib` wraps most failures in a `URLError` whose `reason` holds the real one.
+    """
+    if isinstance(err, urllib.error.HTTPError):  # before URLError: it is a subclass
+        return f"HTTP {err.code} {err.reason}".strip()
+    reason: object = err.reason if isinstance(err, urllib.error.URLError) else err
+    if isinstance(reason, ssl.SSLCertVerificationError):
+        detail = getattr(reason, "verify_message", None) or reason
+        text = f"TLS certificate verification failed: {detail}"
+    elif isinstance(reason, ssl.SSLError):
+        text = f"TLS error: {getattr(reason, 'reason', None) or reason}"
+    elif isinstance(reason, socket.gaierror):
+        text = f"DNS lookup failed: {reason.strerror or reason}"
+    elif isinstance(reason, TimeoutError):
+        text = f"timeout (no answer within {REQUEST_TIMEOUT} s)"
+    elif isinstance(reason, ConnectionError):  # refused, reset, aborted
+        text = f"connection failed: {type(reason).__name__} ({reason.strerror or reason})"
+    elif isinstance(reason, OSError):
+        text = f"{type(reason).__name__}: {reason.strerror or reason}"
+    elif isinstance(reason, str):
+        text = reason
+    else:
+        text = f"{type(reason).__name__}: {reason}"
+    return text[:300]
+
+
+def _download(
+    opener: Opener,
+    url: str,
+    context: ssl.SSLContext,
+    dest: Path,
+    sleep: Callable[[float], None] = time.sleep,
+) -> int:
+    """Download `url` to `dest`, retrying up to `DOWNLOAD_RETRIES` times, `RETRY_WAIT_S` apart."""
+    reasons: list[str] = []
+    for attempt in range(1 + DOWNLOAD_RETRIES):
+        if attempt:
+            sleep(RETRY_WAIT_S)
+        try:
+            with opener(url, context=context) as response, open(dest, "wb") as out:
+                for chunk in iter(lambda: response.read(CHUNK), b""):
+                    out.write(chunk)
+            return dest.stat().st_size
+        except Exception as err:
+            reasons.append(f"{attempt + 1}: {describe_error(err)}")
+            last = err
+    host = urlsplit(url).hostname
+    raise AcquireError(
+        f"the microdata download from {host} failed {len(reasons)} times, "
+        f"{RETRY_WAIT_S} s apart ({'; '.join(reasons)})"
+    ) from last
 
 
 def _member_to_utf8(zip_path: Path, pattern: str, encoding: str, dest: Path) -> None:
@@ -463,6 +513,7 @@ def acquire_catalogue(
     tmp_dir: Path,
     code_commit: str,
     entry: dict[str, Any] | None = None,
+    sleep: Callable[[float], None] = time.sleep,
 ) -> dict[str, Any]:
     """Run the `inep_school_catalogue` acquire. Nothing is uploaded until every check passed."""
     entry = entry or dataset(name)
@@ -472,7 +523,7 @@ def acquire_catalogue(
     context = certificate_context(micro, opener)  # before any request to INEP
     zip_path = tmp_dir / "microdata.zip"
     csv_path = tmp_dir / "microdata.csv"
-    zip_bytes = _download(opener, micro["url"], context, zip_path)
+    zip_bytes = _download(opener, micro["url"], context, zip_path, sleep)
     zip_sha = _sha256(zip_path)
     _member_to_utf8(zip_path, micro["member"], micro["encoding"], csv_path)
     zip_path.unlink()

@@ -63,7 +63,11 @@ class EarthEngineError(RuntimeError):
 
 class EarthEngine(Protocol):
     def asset_info(self, asset: str) -> dict[str, Any]:
-        """`{"updateTime": str, "sizeBytes": int}` of the asset."""
+        """`{"updateTime": str, "sizeBytes": int | None}` of the asset.
+
+        `sizeBytes` is None for an image collection: Earth Engine reports no size
+        for one, only its update time.
+        """
         ...
 
     def band_names(self, asset: str) -> list[str]:
@@ -146,7 +150,7 @@ def source(entry: dict[str, Any], info: dict[str, Any]) -> dict[str, Any]:
     """The manifest source: the asset version plus a hash of the export block.
 
     `info` is the asset's info; for `log1p_mean` it is one combined info over the
-    collections (newest update time, summed size).
+    collections (newest update time; size None, since collections have none).
     """
     block = json.dumps(entry["earthengine"], sort_keys=True, default=str)
     eb = entry["earthengine"]
@@ -158,7 +162,7 @@ def source(entry: dict[str, Any], info: dict[str, Any]) -> dict[str, Any]:
         "url": url,
         "last_modified": str(info["updateTime"]),
         "etag": content_hash(block),
-        "bytes": int(info["sizeBytes"]),
+        "bytes": None if info["sizeBytes"] is None else int(info["sizeBytes"]),
     }
 
 
@@ -312,11 +316,13 @@ def acquire_mapbiomas(
     root = entry["gcs"]
     params = export_params(entry)
     infos = [ee.asset_info(a) for a in _assets(params)]
+    sizes = [i["sizeBytes"] for i in infos]
     current = source(
         entry,
         {
             "updateTime": max(str(i["updateTime"]) for i in infos),
-            "sizeBytes": sum(int(i["sizeBytes"]) for i in infos),
+            # a collection has no size, so a run over one records none
+            "sizeBytes": None if None in sizes else sum(int(s) for s in sizes),
         },
     )
 
@@ -394,6 +400,13 @@ class RealEarthEngine:
 
     def asset_info(self, asset: str) -> dict[str, Any]:
         info = self._ee.data.getAsset(asset)
+        if "updateTime" not in info:
+            raise EarthEngineError(f"{asset}: Earth Engine gave no updateTime")
+        if str(info.get("type", "")) == "IMAGE_COLLECTION":
+            # Collections have no sizeBytes; the update time tracks their version.
+            return {"updateTime": info["updateTime"], "sizeBytes": None}
+        if "sizeBytes" not in info:
+            raise EarthEngineError(f"{asset}: Earth Engine gave no sizeBytes for an image")
         return {"updateTime": info["updateTime"], "sizeBytes": int(info["sizeBytes"])}
 
     def band_names(self, asset: str) -> list[str]:
