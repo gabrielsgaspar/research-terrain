@@ -515,15 +515,18 @@ datasets:
     licence: as ibama_autos and ibama_embargos
     derived: data/derived/cell_enforcement/
     sealed: sealed/outcomes/cell_enforcement/
+    contract: data/contracts/cell_enforcement.md
     status: planned
     notes: >
-      Decision 0003 and idea 0005: IBAMA flora fines and embargoes per Legal
-      Amazon 1 km cell and year, counted only where the point lies inside its
-      own municipality's polygon; exploration-half rows in derived,
-      confirmation-half rows only in sealed, like cell_outcomes. Name,
+      Decision 0003 and idea 0005: IBAMA flora fines (cancelled ones
+      excluded) and embargoes per Legal Amazon 1 km cell and year 2000-2025,
+      counted only where the point lies inside its own municipality's polygon
+      and in a cell of that municipality; plus a municipality-by-year table of
+      all and located records for the coverage check. Exploration-half rows
+      in derived, confirmation-half rows only in sealed, like cell_outcomes;
+      the notes of the manifest count exploration-half records only. Name,
       derived and sealed are fixed by the campaign 0004 PR (the sealed line
-      is pinned in tests/test_split.py); the build task of campaign 0004
-      (step s4) adds the contract and the rest.
+      is pinned in tests/test_split.py). Built by step s4, run once in s5.
 
   - name: funai_indigenous_lands
     source: FUNAI indigenous land boundaries
