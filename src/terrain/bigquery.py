@@ -3,7 +3,9 @@
 The endpoint, scope, table and columns come from a catalog entry's `bigquery:`
 block. The query is built from that block only. Personal identifiers are
 never selected: the builder refuses names that start with `cpf_cnpj` or
-`nome`, and `geometria` and `telefone`, even if the catalog lists them.
+`nome`, and `geometria` and `telefone`, even if the catalog lists them. The
+one exception is `ALLOWED_BY_TABLE`, fixed here and not in the catalog: the
+exact column `nome` of INEP's school catalogue, which is a school's name.
 
 The HTTP session is passed in (anything with `post` and `get` like a
 `requests` session), so tests use a fake. Nothing here logs or raises with a
@@ -28,6 +30,13 @@ STATE = re.compile(r"[A-Z]{2}")
 PROJECT = re.compile(r"[A-Za-z0-9][A-Za-z0-9:._-]*")
 FORBIDDEN_PREFIXES = ("cpf_cnpj", "nome")
 FORBIDDEN_NAMES = ("geometria", "telefone")
+# Columns a table may select although FORBIDDEN_PREFIXES refuses them, because
+# there they name no person. Only exact names; `telefone` is never allowed.
+# basedosdados.br_bd_diretorios_brasil.escola is INEP's Catálogo de Escolas:
+# its `nome` is the name of a school, a public building (inep_school_catalogue).
+ALLOWED_BY_TABLE: dict[str, frozenset[str]] = {
+    "basedosdados.br_bd_diretorios_brasil.escola": frozenset({"nome"}),
+}
 
 PAGE_SIZE = 50_000
 TIMEOUT_MS = 60_000
@@ -45,10 +54,12 @@ class QueryResult:
     location: str
 
 
-def _identifier(name: object) -> str:
+def _identifier(name: object, allowed: frozenset[str] = frozenset()) -> str:
     if not isinstance(name, str) or not IDENTIFIER.fullmatch(name):
         raise AcquireError("bigquery: a column name is not a plain identifier")
-    if name.startswith(FORBIDDEN_PREFIXES) or name in FORBIDDEN_NAMES:
+    if name in FORBIDDEN_NAMES:
+        raise AcquireError("bigquery: a column that may hold a personal identifier is refused")
+    if name.startswith(FORBIDDEN_PREFIXES) and name not in allowed:
         raise AcquireError("bigquery: a column that may hold a personal identifier is refused")
     return name
 
@@ -80,8 +91,9 @@ def _table(bq: dict[str, Any]) -> str:
 
 def build_query(bq: dict[str, Any]) -> str:
     """The SELECT for the catalog's `bigquery:` block; raises on a refused name."""
-    columns = [_identifier(c) for c in bq["columns"]]
-    order_by = [_identifier(c) for c in bq["order_by"]]
+    allowed = ALLOWED_BY_TABLE.get(str(bq.get("table")), frozenset())
+    columns = [_identifier(c, allowed) for c in bq["columns"]]
+    order_by = [_identifier(c, allowed) for c in bq["order_by"]]
     if not columns:
         raise AcquireError("bigquery: no columns listed")
     return (

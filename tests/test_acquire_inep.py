@@ -1,34 +1,28 @@
-"""The INEP acquirers and the `bigquery.py` changes, with a fake opener, store and session.
+"""The INEP acquirers and the `bigquery.py` changes, with a fake store and session.
 
-No test touches the network, GCS or BigQuery. Every value is synthetic. The
-certificate bytes are arbitrary; no certificate file exists in the repository.
+No test touches the network, GCS or BigQuery. Every value is synthetic.
 """
 
 import copy
-import hashlib
 import io
 import json
-import socket
-import ssl
-import urllib.error
-import zipfile
 from datetime import date
 from pathlib import Path
 
 import polars as pl
 import pytest
 
-from terrain import inep
+from terrain import bigquery, inep
 from terrain.acquire import AcquireError
 from terrain.bigquery import build_query, build_summary_query
 from terrain.catalog import dataset
 from terrain.inep import (
+    CATALOGUE_COLUMNS,
     CATALOGUE_SCHEMA,
     FACILITIES,
     SCHOOLS_SCHEMA,
-    acquire_catalogue,
-    certificate_context,
     execute,
+    parse_endereco,
 )
 from terrain.storage import MemoryStore
 
@@ -39,11 +33,8 @@ STATES = (
     "SC, SE, SP, TO"
 ).split(", ")
 STATES_SQL = ", ".join(f"'{s}'" for s in STATES)
-FIXED = (2024, 1, 1, 0, 0, 0)
 
-CERT = b"synthetic certificate bytes, not a certificate \x00\x01\x02"
 PHONE = "987654321"
-DDD = "69"
 
 
 # --- fakes ---------------------------------------------------------------------
@@ -57,23 +48,6 @@ class RecordingStore(MemoryStore):
     def create(self, path, data):
         super().create(path, data)
         self.created.append(path)
-
-
-class FakeOpener:
-    """Serves `files` (url -> bytes) and records every request."""
-
-    def __init__(self, files):
-        self.files = files
-        self.requests: list[tuple[str, object]] = []
-
-    def __call__(self, url, context=None):
-        self.requests.append((url, context))
-        if url not in self.files:
-            raise OSError("unreachable")
-        return io.BytesIO(self.files[url])
-
-    def urls(self):
-        return [u for u, _ in self.requests]
 
 
 class FakeResponse:
@@ -99,7 +73,7 @@ class Session:
     def __init__(self, schools=None, coords=None, count=None):
         self.schools = schools or []
         self.coords = coords or []
-        self.count = len(self.schools) if count is None else count
+        self.count = count  # None: the number of rows the main query returns
         self.queries: list[str] = []
 
     def post(self, url, json=None, timeout=None):
@@ -107,13 +81,16 @@ class Session:
         self.queries.append(query)
         job = {"projectId": "proj", "jobId": "job1", "location": "US"}
         if "COUNT(*)" in query:
-            columns, rows = ["n"], [{"n": self.count}]
+            n = len(self.coords if "br_bd_diretorios_brasil" in query else self.schools)
+            columns, rows = ["n"], [{"n": n if self.count is None else self.count}]
         elif "br_bd_diretorios_brasil" in query:
             columns = dataset("inep_school_catalogue")["bigquery"]["columns"]
             rows = self.coords
         else:
             columns, rows = dataset("inep_schools")["bigquery"]["columns"], self.schools
-        fields = [{"name": c, "type": _kind(c)} for c in columns]
+        catalogue = "br_bd_diretorios_brasil" in query and "COUNT(*)" not in query
+        # every column of the catalogue table is STRING in BigQuery
+        fields = [{"name": c, "type": "STRING" if catalogue else _kind(c)} for c in columns]
         cells = [
             {"f": [{"v": None if r.get(c) is None else str(r[c])} for c in columns]} for r in rows
         ]
@@ -255,26 +232,26 @@ def test_inep_schools_entry_and_query():
         assert fact in entry["notes"]
 
 
-def test_catalogue_entry_and_coordinates_query():
+def test_catalogue_entry_and_query():
     entry = dataset("inep_school_catalogue")
-    micro, bq = entry["microdata"], entry["bigquery"]
+    bq = entry["bigquery"]
     assert entry["gcs"] == "data/raw/inep/catalogue/"
     assert entry["licence"] == dataset("inep_schools")["licence"]
-    assert micro["encoding"] == "latin-1"
-    assert micro["delimiter"] == ";"
-    assert micro["member"] == "*/dados/microdados_ed_basica_2024.csv"
-    assert micro["columns"] == list(inep.CATALOGUE_SOURCE.values())
-    assert not set(micro["columns"]) & {"NU_DDD", "NU_TELEFONE"}
-    assert len(micro["extra_ca_sha256"]) == 64
-    assert bq["columns"] == ["id_escola", "id_municipio", "sigla_uf", "latitude", "longitude"]
+    assert "microdata" not in entry
+    assert bq["columns"] == CATALOGUE_COLUMNS
+    assert "telefone" not in bq["columns"]
     assert bq["states"] == STATES
     assert "years" not in bq
-    query = build_query(bq)
-    assert "ano" not in query
-    assert query == (
-        "SELECT id_escola, id_municipio, sigla_uf, latitude, longitude "
+    assert "nome" in entry["notes"] and "ALLOWED_BY_TABLE" in entry["notes"]
+    assert build_query(bq) == (
+        "SELECT id_escola, id_municipio, sigla_uf, nome, endereco, latitude, longitude, "
+        "dependencia_administrativa, localizacao, situacao_catalogo "
         "FROM `basedosdados.br_bd_diretorios_brasil.escola` "
         f"WHERE sigla_uf IN ({STATES_SQL}) ORDER BY id_escola"
+    )
+    assert build_summary_query(bq) == (
+        "SELECT COUNT(*) AS n FROM `basedosdados.br_bd_diretorios_brasil.escola` "
+        f"WHERE sigla_uf IN ({STATES_SQL})"
     )
 
 
@@ -284,6 +261,23 @@ def test_refused_bigquery_columns(column):
     bq["columns"] = ["id_escola", column]
     with pytest.raises(AcquireError):
         build_query(bq)
+
+
+def test_nome_is_allowed_only_in_the_school_catalogue_table():
+    """The one exception to the `nome` guard: a school's name (bigquery.ALLOWED_BY_TABLE)."""
+    catalogue = copy.deepcopy(dataset("inep_school_catalogue")["bigquery"])
+    assert "nome" in build_query(catalogue)
+    assert bigquery.ALLOWED_BY_TABLE == {
+        "basedosdados.br_bd_diretorios_brasil.escola": frozenset({"nome"})
+    }
+    for column in ("telefone", "nome_escola", "nome_diretor", "cpf_cnpj"):
+        bq = {**catalogue, "columns": ["id_escola", column]}
+        with pytest.raises(AcquireError):
+            build_query(bq)
+    for name in ("inep_schools", "ibama_autos"):
+        other = {**dataset(name)["bigquery"], "columns": ["id_escola", "nome"]}
+        with pytest.raises(AcquireError):
+            build_query(other)
 
 
 @pytest.mark.parametrize(
@@ -303,7 +297,6 @@ def run_schools(store, session, tmp_path, name="manifest.json"):
     return execute(
         "inep_schools",
         store,
-        None,
         lambda: session,
         "proj",
         TODAY,
@@ -377,7 +370,6 @@ def test_schools_needs_a_billing_project(tmp_path):
         execute(
             "inep_schools",
             RecordingStore(),
-            None,
             no_session,
             None,
             TODAY,
@@ -387,405 +379,243 @@ def test_schools_needs_a_billing_project(tmp_path):
         )
 
 
-# --- the certificate -----------------------------------------------------------
+# --- inep_school_catalogue: Base dos Dados' copy of INEP's catalogue -----------
 
 
-@pytest.fixture
-def cadata(monkeypatch):
-    """Replace `load_verify_locations` with a recorder of the `cadata` it receives."""
-    seen: list[bytes] = []
-
-    def record(self, cafile=None, capath=None, cadata=None):
-        seen.append(cadata)
-
-    monkeypatch.setattr(ssl.SSLContext, "load_verify_locations", record)
-    return seen
-
-
-def catalogue_entry(cert=CERT):
-    entry = copy.deepcopy(dataset("inep_school_catalogue"))
-    entry["microdata"]["extra_ca_sha256"] = hashlib.sha256(cert).hexdigest()
-    return entry
-
-
-def test_correct_certificate_gives_a_verifying_context(cadata):
-    micro = catalogue_entry()["microdata"]
-    opener = FakeOpener({micro["extra_ca_url"]: CERT})
-    context = certificate_context(micro, opener)
-    assert context.verify_mode == ssl.CERT_REQUIRED
-    assert context.check_hostname is True
-    assert not context.verify_flags & ssl.VERIFY_X509_PARTIAL_CHAIN
-    assert cadata == [CERT]
-    assert opener.urls() == [micro["extra_ca_url"]]
-
-
-def test_wrong_fingerprint_raises_before_inep_is_contacted(cadata, tmp_path):
-    entry = catalogue_entry(cert=b"other bytes")
-    micro = entry["microdata"]
-    opener = FakeOpener({micro["extra_ca_url"]: CERT, micro["url"]: b"never served"})
-    with pytest.raises(AcquireError):
-        acquire_catalogue(
-            "inep_school_catalogue",
-            RecordingStore(),
-            opener,
-            no_session,
-            "proj",
-            TODAY,
-            tmp_path,
-            "",
-            entry,
-        )
-    assert opener.urls() == [micro["extra_ca_url"]]
-    assert cadata == []
+@pytest.mark.parametrize(
+    ("text", "parts"),
+    [
+        (
+            "RUA JOSE DE ALENCAR, 1234 CENTRO. 76801-000 Porto Velho - RO.",
+            ("RUA JOSE DE ALENCAR", "1234", "CENTRO", "76801000"),
+        ),
+        (
+            "AVENIDA BRASIL, S/N ZONA RURAL. 69900000 Rio Branco - AC.",
+            ("AVENIDA BRASIL", "S/N", "ZONA RURAL", "69900000"),
+        ),
+        (
+            "RUA 7 DE SETEMBRO, 15A JARDIM AÇAÍ. 01310-100 São Paulo - SP.",
+            ("RUA 7 DE SETEMBRO", "15A", "JARDIM AÇAÍ", "01310100"),
+        ),
+        (
+            "RODOVIA BR 364, KM 5. 76800-000 Porto Velho - RO.",
+            ("RODOVIA BR 364, KM 5", None, None, "76800000"),
+        ),
+        ("RUA A, 10", ("RUA A", "10", None, None)),
+        ("SITIO BOA VISTA. Porto Velho - RO.", ("SITIO BOA VISTA", None, None, None)),
+        ("RUA X, 123456789", ("RUA X", "123456789", None, None)),  # 9 digits: no CEP
+        ("  RUA   B,  20   VILA  NOVA .  76801000  ", ("RUA B", "20", "VILA NOVA", "76801000")),
+        ("", (None, None, None, None)),
+        (None, (None, None, None, None)),
+    ],
+)
+def test_parse_endereco(text, parts):
+    assert parse_endereco(text) == parts
 
 
-def test_failed_certificate_download_raises_before_inep_is_contacted(cadata, tmp_path):
-    entry = catalogue_entry()
-    micro = entry["microdata"]
-    opener = FakeOpener({micro["url"]: b"never served"})
-    with pytest.raises(AcquireError):
-        acquire_catalogue(
-            "inep_school_catalogue",
-            RecordingStore(),
-            opener,
-            no_session,
-            "proj",
-            TODAY,
-            tmp_path,
-            "",
-            entry,
-        )
-    assert opener.urls() == [micro["extra_ca_url"]]
+def catalogue_row(id_escola, **over):
+    row = {
+        "id_escola": id_escola,
+        "id_municipio": "1100015",
+        "sigla_uf": "RO",
+        "nome": "ESCOLA MUNICIPAL JOÃO PAULO",
+        "endereco": "RUA AÇAÍ, 10 SÃO JOSÉ. 76801-000 Porto Velho - RO.",
+        "latitude": "-8.76",
+        "longitude": "-63.9",
+        "dependencia_administrativa": "Municipal",
+        "localizacao": "Urbana",
+        "situacao_catalogo": "Presente",
+    }
+    row.update(over)
+    return row
 
 
-def test_an_oversized_certificate_download_raises(cadata):
-    micro = catalogue_entry()["microdata"]
-    big = b"x" * (inep.MAX_CERT_BYTES + 1)
-    micro["extra_ca_sha256"] = hashlib.sha256(big).hexdigest()
-    with pytest.raises(AcquireError):
-        certificate_context(micro, FakeOpener({micro["extra_ca_url"]: big}))
+CATALOGUE = [
+    catalogue_row("11000001"),
+    catalogue_row(
+        "11000002",
+        dependencia_administrativa="ESTADUAL",
+        localizacao="rural",
+        latitude="0",
+        longitude="0",
+        endereco="LINHA 10, KM 5",
+    ),
+    catalogue_row(
+        "11000003",
+        id_municipio="1200013",
+        sigla_uf="AC",
+        dependencia_administrativa="Privada",
+        latitude="40.0",
+        longitude="-3.0",
+        endereco=None,
+        situacao_catalogo="Ausente",
+    ),
+    catalogue_row("11000004", dependencia_administrativa="3", latitude="-9,5", longitude="-63,1"),
+    catalogue_row("11000005", dependencia_administrativa="Federal", latitude="sem dado"),
+] + [catalogue_row(f"2{i:07d}") for i in range(200)]
 
 
-# --- inep_school_catalogue -----------------------------------------------------
-
-HEADER = [
-    "NU_ANO_CENSO",
-    "NO_REGIAO",
-    "CO_ENTIDADE",
-    "NO_ENTIDADE",
-    "CO_MUNICIPIO",
-    "SG_UF",
-    "TP_DEPENDENCIA",
-    "TP_LOCALIZACAO",
-    "DS_ENDERECO",
-    "NU_ENDERECO",
-    "DS_COMPLEMENTO",
-    "NO_BAIRRO",
-    "CO_CEP",
-    "NU_DDD",
-    "NU_TELEFONE",
-]
-
-
-def micro_row(id_escola, name, cep, municipio="1100015", uf="RO", address="RUA AÇAÍ"):
-    return [
-        "2024",
-        "Norte",
-        id_escola,
-        name,
-        municipio,
-        uf,
-        "3",
-        "1",
-        address,
-        "10",
-        "",
-        "SÃO JOSÉ",
-        cep,
-        DDD,
-        PHONE,
-    ]
-
-
-def build_zip(rows, member="microdados_censo_escolar_2024/dados/microdados_ed_basica_2024.csv"):
-    text = ";".join(HEADER) + "\r\n" + "".join(";".join(r) + "\r\n" for r in rows)
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr(zipfile.ZipInfo(member, date_time=FIXED), text.encode("latin-1"))
-        zf.writestr(
-            zipfile.ZipInfo("microdados_censo_escolar_2024/leia-me.txt", date_time=FIXED), b"hi"
-        )
-    return buffer.getvalue()
-
-
-CATALOGUE_ROWS = [
-    micro_row("11000001", "ESCOLA JOÃO PAULO", "76800000"),
-    micro_row("11000002", "ESCOLA AÇAÍ", "1310"),
-    micro_row("11000003", "ESCOLA SÃO JOSÉ", "ABC12", municipio="1200013", uf="AC"),
-    micro_row("11000004", "ESCOLA SEM PONTO", ""),
-] + [micro_row(f"2{i:07d}", f"ESCOLA FILLER {i}", "69900000") for i in range(300)]
-
-COORDS = [
-    {"id_escola": "11000001", "id_municipio": "1100015", "sigla_uf": "RO"},
-    {"id_escola": "11000002", "id_municipio": "1100015", "sigla_uf": "RO"},
-    {"id_escola": "11000003", "id_municipio": "1200013", "sigla_uf": "AC"},
-    {"id_escola": "99999999", "id_municipio": "1100015", "sigla_uf": "RO"},
-]
-for _row, _lat, _lon in zip(
-    COORDS, [-8.76, 0.0, 40.0, -9.0], [-63.9, 0.0, -3.0, -63.0], strict=True
-):
-    _row["latitude"], _row["longitude"] = _lat, _lon
-
-
-def run_catalogue(tmp_path, data=None, entry=None, rows=CATALOGUE_ROWS, coords=COORDS):
-    entry = entry or catalogue_entry()
-    micro = entry["microdata"]
-    opener = FakeOpener(
-        {micro["extra_ca_url"]: CERT, micro["url"]: data if data is not None else build_zip(rows)}
-    )
-    store = RecordingStore()
+def run_catalogue(tmp_path, rows=CATALOGUE, store=None, name="manifest.json"):
+    store = store if store is not None else RecordingStore()
+    session = Session(coords=rows)
     manifest = execute(
         "inep_school_catalogue",
         store,
-        opener,
-        lambda: Session(coords=coords),
+        lambda: session,
         "proj",
         TODAY,
         tmp_path / "work",
         "abc123",
-        tmp_path / "manifest.json",
-        entry,
+        tmp_path / name,
     )
-    return manifest, store, opener
+    return manifest, store, session
 
 
-def test_catalogue_writes_the_contract_columns(cadata, monkeypatch, tmp_path):
-    monkeypatch.setattr(inep, "CHUNK", 1024)
-    data = build_zip(CATALOGUE_ROWS)
-    manifest, store, opener = run_catalogue(tmp_path, data)
-
+def test_catalogue_writes_the_contract_columns(tmp_path):
+    manifest, store, session = run_catalogue(tmp_path)
     prefix = "data/raw/inep/catalogue/2026-11-10/"
     assert store.created == [prefix + "inep_school_catalogue.parquet", prefix + "_MANIFEST.json"]
     frame = read_parquet(store, prefix + "inep_school_catalogue.parquet")
     assert frame.columns == list(CATALOGUE_SCHEMA)
     assert dict(frame.schema) == CATALOGUE_SCHEMA
-    assert frame.height == len(CATALOGUE_ROWS)
-
-    first = frame.row(0, named=True)
-    assert first["id_escola"] == "11000001"
-    assert first["nome_escola"] == "ESCOLA JOÃO PAULO"
-    assert first["endereco"] == "RUA AÇAÍ"
-    assert first["bairro"] == "SÃO JOSÉ"
-    assert first["complemento"] is None
-    assert first["ano"] == 2024
-    assert (first["latitude"], first["longitude"]) == (-8.76, -63.9)
+    assert frame.height == len(CATALOGUE)
+    assert frame["ano"].null_count() == frame.height
+    assert frame["complemento"].null_count() == frame.height
 
     by_id = {r["id_escola"]: r for r in frame.iter_rows(named=True)}
-    assert by_id["11000001"]["cep"] == "76800000"
-    assert by_id["11000002"]["cep"] == "00001310"
-    assert by_id["11000003"]["cep"] is None
-    assert by_id["11000004"]["cep"] is None
-    # (0, 0) and a point outside Brazil are null; so is a school with no coordinate row
-    for key in ("11000002", "11000003", "11000004"):
-        assert by_id[key]["latitude"] is None
-        assert by_id[key]["longitude"] is None
+    first = by_id["11000001"]
+    assert first["nome_escola"] == "ESCOLA MUNICIPAL JOÃO PAULO"
+    assert (first["endereco"], first["numero"], first["bairro"], first["cep"]) == (
+        "RUA AÇAÍ",
+        "10",
+        "SÃO JOSÉ",
+        "76801000",
+    )
+    assert (first["rede"], first["tipo_localizacao"]) == ("3", "1")
+    assert (first["latitude"], first["longitude"]) == (-8.76, -63.9)
+    assert [by_id[k]["rede"] for k in ("11000002", "11000003", "11000004", "11000005")] == [
+        "2",
+        "4",
+        "3",
+        "1",
+    ]
+    assert by_id["11000002"]["tipo_localizacao"] == "2"
+    # no CEP in the text: street kept whole, number and neighbourhood empty
+    assert (by_id["11000002"]["endereco"], by_id["11000002"]["numero"]) == ("LINHA 10, KM 5", None)
+    assert by_id["11000002"]["cep"] is None
+    assert by_id["11000003"]["endereco"] is None and by_id["11000003"]["cep"] is None
+    # (0, 0), a point outside Brazil and a non-number are null; a decimal comma is read
+    for key in ("11000002", "11000003", "11000005"):
+        assert (by_id[key]["latitude"], by_id[key]["longitude"]) == (None, None)
+    assert (by_id["11000004"]["latitude"], by_id["11000004"]["longitude"]) == (-9.5, -63.1)
 
     notes = manifest["notes"]
-    assert f"rows: {len(CATALOGUE_ROWS)}" in notes
+    n = len(CATALOGUE)
+    assert f"rows: {n}" in notes
     assert "rows per state: AC=1, RO=" in notes
-    assert "cep values not 1-8 digits (set to null): 1" in notes
-    assert "microdata rows with no coordinate row: 301" in notes
-    assert "coordinate rows with no microdata row: 1" in notes
-    assert "share with coordinates: 0.0033" in notes
-    micro = catalogue_entry()["microdata"]
-    assert micro["extra_ca_url"] in notes
-    assert micro["extra_ca_sha256"] in notes
-    assert manifest["sources"][0]["sha256"] == hashlib.sha256(data).hexdigest()
-    assert opener.urls() == [micro["extra_ca_url"], micro["url"]]
-    assert opener.requests[1][1] is not None  # INEP is fetched with the checked context
-    assert cadata == [CERT]
+    assert f"rows with an endereco: {n - 1}" in notes
+    assert f"share with a cep parsed from endereco: {(n - 2) / n:.4f}" in notes
+    assert f"share with coordinates: {(n - 3) / n:.4f}" in notes
+    assert "coordinates that are not numbers (set to null): 1" in notes
+    assert "coordinates at 0 or outside Brazil (set to null): 2" in notes
+    assert "dependencia_administrativa labels not known (rede null): none" in notes
+    assert f"rows per situacao_catalogo: Ausente=1, Presente={n - 1}" in notes
+    assert "ano is null" in notes
+    source = manifest["sources"][0]
+    assert source["fonte"] == "basedosdados"
+    assert source["table"] == "basedosdados.br_bd_diretorios_brasil.escola"
+    assert source["rows"] == n
+    assert all("telefone" not in q for q in session.queries)
 
 
-def test_catalogue_stores_no_phone_value_and_no_certificate(cadata, tmp_path):
-    manifest, store, _ = run_catalogue(tmp_path)
-    for path in store.created:
-        blob = store.read_bytes(path)
-        assert PHONE.encode() not in blob
-        assert CERT not in blob
-    assert PHONE not in json.dumps(manifest)
-    assert PHONE not in (tmp_path / "manifest.json").read_text(encoding="utf-8")
-    assert CERT.decode("latin-1") not in json.dumps(manifest)
-    frame = read_parquet(store, store.created[0])
-    assert not {"NU_DDD", "NU_TELEFONE"} & set(frame.columns)
-    assert PHONE not in str(frame.rows())
-    assert len(store.created) == 2
+def test_catalogue_matching_count_is_unchanged_and_uploads_nothing(tmp_path):
+    _, store, _ = run_catalogue(tmp_path)
+    before = list(store.created)
+    manifest, _, again = run_catalogue(tmp_path, store=store, name="second.json")
+    assert manifest["status"] == "unchanged"
+    assert store.created == before
+    assert again.main_queries == []
 
 
-def test_catalogue_failed_coordinates_query_fails_the_run(cadata, tmp_path):
-    entry = catalogue_entry()
-    micro = entry["microdata"]
-    opener = FakeOpener({micro["extra_ca_url"]: CERT, micro["url"]: build_zip(CATALOGUE_ROWS)})
-    store = RecordingStore()
+def test_catalogue_refuses_a_phone_column_in_the_result(tmp_path):
+    """Even if the table sent `telefone`, the client refuses a column it did not ask for."""
+    entry = copy.deepcopy(dataset("inep_school_catalogue"))
 
-    class Failing:
+    class WithPhone(Session):
         def post(self, url, json=None, timeout=None):
-            return FakeResponse({}, 500)
+            response = super().post(url, json, timeout)
+            if "COUNT(*)" not in json["query"]:
+                payload = response.payload
+                payload["schema"]["fields"].append({"name": "telefone", "type": "STRING"})
+                for r in payload["rows"]:
+                    r["f"].append({"v": PHONE})
+            return response
 
-    with pytest.raises(AcquireError):
-        acquire_catalogue(
+    store = RecordingStore()
+    with pytest.raises(AcquireError) as info:
+        inep.acquire_catalogue(
             "inep_school_catalogue",
             store,
-            opener,
-            Failing,
+            lambda: WithPhone(coords=CATALOGUE),
             "proj",
             TODAY,
             tmp_path,
             "",
             entry,
         )
+    assert PHONE not in str(info.value)
     assert store.created == []
 
 
-def test_catalogue_rejects_a_zip_without_exactly_one_member(cadata, tmp_path):
-    with pytest.raises(AcquireError):
-        run_catalogue(tmp_path, build_zip(CATALOGUE_ROWS, member="other/file.csv"))
+def test_catalogue_unknown_labels_are_null_up_to_one_percent(tmp_path):
+    rows = [*CATALOGUE[:-1], catalogue_row("19999999", dependencia_administrativa="Comunitária")]
+    manifest, store, _ = run_catalogue(tmp_path, rows=rows)
+    frame = read_parquet(store, store.created[0])
+    assert frame.filter(pl.col("id_escola") == "19999999")["rede"].to_list() == [None]
+    assert "rede null): COMUNITARIA=1" in manifest["notes"]
+
+    many = [catalogue_row(f"3{i:07d}", localizacao="Indefinida") for i in range(3)] + CATALOGUE
+    with pytest.raises(AcquireError, match="localizacao: 3 of"):
+        run_catalogue(tmp_path, rows=many, name="m2.json")
 
 
-def test_catalogue_rejects_a_download_that_is_not_a_zip(cadata, tmp_path):
-    with pytest.raises(AcquireError):
-        run_catalogue(tmp_path, b"not a zip")
-
-
-def test_catalogue_stops_on_a_repeated_key(cadata, tmp_path):
-    rows = [micro_row("11000001", "A", "1"), micro_row("11000001", "B", "2")]
+@pytest.mark.parametrize(
+    "rows",
+    [
+        [catalogue_row("11000001"), catalogue_row("11000001")],
+        [catalogue_row("11000001", id_municipio="12")],
+        [catalogue_row(None)],
+    ],
+)
+def test_catalogue_stops_on_a_bad_key(tmp_path, rows):
     with pytest.raises(AcquireError):
         run_catalogue(tmp_path, rows=rows)
 
 
-def test_catalogue_stops_on_a_bad_municipality_code(cadata, tmp_path):
+def test_catalogue_failed_query_fails_the_run(tmp_path):
+    class Failing:
+        def post(self, url, json=None, timeout=None):
+            return FakeResponse({}, 500)
+
+    store = RecordingStore()
     with pytest.raises(AcquireError):
-        run_catalogue(tmp_path, rows=[micro_row("11000001", "A", "1", municipio="12")])
-
-
-def test_catalogue_refuses_a_missing_header_column(cadata, tmp_path):
-    entry = catalogue_entry()
-    entry["microdata"]["columns"] = [*entry["microdata"]["columns"], "CO_NOT_THERE"]
-    with pytest.raises(AcquireError):
-        run_catalogue(tmp_path, entry=entry)
-
-
-def test_catalogue_refuses_contact_columns_in_the_catalog(cadata, tmp_path):
-    entry = catalogue_entry()
-    entry["microdata"]["columns"] = [*entry["microdata"]["columns"], "NU_TELEFONE"]
-    with pytest.raises(AcquireError):
-        run_catalogue(tmp_path, entry=entry)
-
-
-# --- download errors and retries (run 42861990498: "failed (URLError)") --------
-
-
-def _cert_error():
-    err = ssl.SSLCertVerificationError(1, "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify")
-    err.verify_message = "unable to get local issuer certificate"
-    return err
-
-
-@pytest.mark.parametrize(
-    "err, words",
-    [
-        (
-            urllib.error.HTTPError("u", 503, "Service Unavailable", None, None),
-            "HTTP 503 Service Unavailable",
-        ),
-        (
-            urllib.error.URLError(_cert_error()),
-            "TLS certificate verification failed: unable to get local issuer certificate",
-        ),
-        (urllib.error.URLError(ssl.SSLError(1, "wrong version number")), "TLS error:"),
-        (urllib.error.URLError(TimeoutError("timed out")), "timeout (no answer within 180 s)"),
-        (TimeoutError("The read operation timed out"), "timeout"),
-        (
-            urllib.error.URLError(socket.gaierror(-2, "Name or service not known")),
-            "DNS lookup failed: Name or service not known",
-        ),
-        (
-            urllib.error.URLError(ConnectionRefusedError(111, "Connection refused")),
-            "connection failed: ConnectionRefusedError (Connection refused)",
-        ),
-        (
-            urllib.error.URLError(ConnectionResetError(104, "Connection reset by peer")),
-            "connection failed: ConnectionResetError (Connection reset by peer)",
-        ),
-        (urllib.error.URLError("no host given"), "no host given"),
-    ],
-)
-def test_describe_error_names_the_underlying_reason(err, words):
-    assert words in inep.describe_error(err)
-
-
-class FlakyOpener(FakeOpener):
-    """Raises `failures` (in order) for the microdata URL before serving it."""
-
-    def __init__(self, files, micro_url, failures):
-        super().__init__(files)
-        self.micro_url = micro_url
-        self.failures = list(failures)
-
-    def __call__(self, url, context=None):
-        if url == self.micro_url and self.failures:
-            self.requests.append((url, context))
-            raise self.failures.pop(0)
-        return super().__call__(url, context)
-
-
-def flaky_catalogue(tmp_path, failures):
-    entry = catalogue_entry()
-    micro = entry["microdata"]
-    opener = FlakyOpener(
-        {micro["extra_ca_url"]: CERT, micro["url"]: build_zip(CATALOGUE_ROWS)},
-        micro["url"],
-        failures,
-    )
-    store, sleeps = RecordingStore(), []
-    run = lambda: acquire_catalogue(  # noqa: E731
-        "inep_school_catalogue",
-        store,
-        opener,
-        lambda: Session(coords=COORDS),
-        "proj",
-        TODAY,
-        tmp_path / "work",
-        "abc123",
-        entry,
-        sleep=sleeps.append,
-    )
-    return run, opener, store, sleeps, micro
-
-
-def test_download_is_retried_60_s_apart_and_then_succeeds(cadata, tmp_path):
-    failures = [urllib.error.URLError(ConnectionResetError(104, "reset")), TimeoutError("t")]
-    run, opener, _, sleeps, micro = flaky_catalogue(tmp_path, failures)
-    manifest = run()
-    assert manifest["status"] == "created"
-    assert sleeps == [60, 60]
-    assert opener.urls().count(micro["url"]) == 3
-    assert opener.urls().count(micro["extra_ca_url"]) == 1
-
-
-def test_download_gives_up_after_three_retries_with_every_reason(cadata, tmp_path):
-    failures = [urllib.error.URLError(_cert_error()) for _ in range(5)]
-    run, opener, store, sleeps, micro = flaky_catalogue(tmp_path, failures)
-    with pytest.raises(AcquireError) as info:
-        run()
-    message = str(info.value)
-    assert "from download.inep.gov.br failed 4 times, 60 s apart" in message
-    assert message.count("unable to get local issuer certificate") == 4
-    assert sleeps == [60, 60, 60]
-    assert opener.urls().count(micro["url"]) == 4
+        inep.acquire_catalogue(
+            "inep_school_catalogue", store, Failing, "proj", TODAY, tmp_path, "", None
+        )
     assert store.created == []
 
 
-def test_failed_certificate_download_names_its_reason(cadata, tmp_path):
-    micro = catalogue_entry()["microdata"]
-    with pytest.raises(AcquireError, match=r"could not be downloaded \(OSError: unreachable\)"):
-        certificate_context(micro, FakeOpener({}))
+def test_catalogue_refuses_other_catalog_columns(tmp_path):
+    entry = copy.deepcopy(dataset("inep_school_catalogue"))
+    entry["bigquery"]["columns"] = [*CATALOGUE_COLUMNS, "porte"]
+    with pytest.raises(AcquireError, match="not the expected"):
+        inep.acquire_catalogue(
+            "inep_school_catalogue",
+            RecordingStore(),
+            no_session,
+            "proj",
+            TODAY,
+            tmp_path,
+            "",
+            entry,
+        )

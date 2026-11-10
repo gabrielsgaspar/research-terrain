@@ -867,37 +867,33 @@ datasets:
       years: [2007, 2024]
 
   - name: inep_school_catalogue
-    source: "INEP, Microdados do Censo Escolar 2024; coordinates from INEP's Catálogo de Escolas via Base dos Dados: basedosdados.br_bd_diretorios_brasil.escola"
+    source: "INEP, Catálogo de Escolas, via Base dos Dados: basedosdados.br_bd_diretorios_brasil.escola"
     licence: "INEP publishes its open data under Creative Commons Atribuição-SemDerivações 3.0 (CC BY-ND 3.0, a site-wide statement at gov.br/inep); Base dos Dados states no licence for the table and refers to the source's terms. Estimates may be published; school-level derived tables may not be shareable."
     gcs: data/raw/inep/catalogue/
     status: planned
     contract: data/contracts/inep_school_catalogue.md
     notes: >
-      One recent year (2024) of school names, addresses and postcodes from
-      INEP's Censo Escolar microdata, with coordinates from INEP's school
-      catalogue where it gives them (idea 0006, decision 0011, campaign 0006
-      step s6; read by the match, step s9). Phone numbers and emails are never
-      selected or stored. download.inep.gov.br does not send its intermediate
-      certificate, so the run fetches it from extra_ca_url, checks its
-      SHA-256 against extra_ca_sha256, and adds it to the system trust store
-      for the INEP download only; nothing is stored. If INEP or its issuer
-      changes the certificate, the fingerprint check fails by design, and a
-      person updates extra_ca_url and extra_ca_sha256.
-    microdata:
-      url: https://download.inep.gov.br/dados_abertos/microdados_censo_escolar_2024.zip
-      member: "*/dados/microdados_ed_basica_2024.csv"
-      encoding: latin-1
-      delimiter: ";"
-      extra_ca_url: http://secure.globalsign.com/cacert/rnpicpedugr46ovtlsca2025.crt
-      extra_ca_sha256: e10747d4da7bab09cba9952f019d3534cb9fba070bf13d8791b1699cd2ff59dd
-      columns: [NU_ANO_CENSO, CO_ENTIDADE, NO_ENTIDADE, CO_MUNICIPIO, SG_UF, TP_DEPENDENCIA, TP_LOCALIZACAO, DS_ENDERECO, NU_ENDERECO, DS_COMPLEMENTO, NO_BAIRRO, CO_CEP]
+      INEP's school catalogue (Catálogo de Escolas) as copied by Base dos
+      Dados: school names, one address field, administrative dependency,
+      location and coordinates (idea 0006, decision 0011, campaign 0006 step
+      s8; read by the match, step s9). Every column is STRING in BigQuery.
+      The postcode, street number and neighbourhood are parsed from
+      endereco; situacao_catalogo (Presente or Ausente in INEP's latest
+      catalogue) is counted in the notes and no row is dropped. telefone is
+      never selected. `nome` is selected for this table only: it is a
+      school's name, not a person's, and terrain.bigquery.ALLOWED_BY_TABLE
+      allows exactly this column of this table. Until 2026-11-10 the plan
+      was INEP's Censo Escolar 2024 microdata from download.inep.gov.br,
+      but INEP resets every connection from GitHub's servers (runs
+      42861990498 and 42900676058), so the source changed.
     bigquery:
       endpoint: https://bigquery.googleapis.com/bigquery/v2/
       scope: https://www.googleapis.com/auth/bigquery
+      page: https://basedosdados.org/dataset/33b49786-fb5f-496f-bb7c-9811c985af8e
       table: basedosdados.br_bd_diretorios_brasil.escola
       location: US
       maximum_bytes_billed: 50000000000
-      columns: [id_escola, id_municipio, sigla_uf, latitude, longitude]
+      columns: [id_escola, id_municipio, sigla_uf, nome, endereco, latitude, longitude, dependencia_administrativa, localizacao, situacao_catalogo]
       order_by: [id_escola]
       states: [AC, AL, AM, AP, BA, CE, DF, ES, GO, MA, MG, MS, MT, PA, PB, PE, PI, PR, RJ, RN, RO, RR, RS, SC, SE, SP, TO]
 
