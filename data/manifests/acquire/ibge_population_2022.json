@@ -1,0 +1,24 @@
+{
+  "dataset": "ibge_population_2022",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/ibge/population/2026-11-10/",
+  "created_at": "2026-11-10T10:07:43.585825+00:00",
+  "code_commit": "0f71d10b4b325b2dde8946b0ca69930c9927e23d",
+  "sources": [
+    {
+      "url": "https://ftp.ibge.gov.br/Censos/Censo_Demografico_2022/Populacao_e_domicilios_Primeiros_resultados/Resultados_da_2a_apuracao_20231027/CD2022_Populacao_2010_Compatibilizada_20231222.ods",
+      "last_modified": "Fri, 22 Dec 2023 12:42:14 GMT",
+      "etag": "\"44ca5-60d188bba53a9\"",
+      "bytes": 281765
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/ibge/population/2026-11-10/CD2022_Populacao_2010_Compatibilizada_20231222.ods",
+      "sha256": "a0bc9c6d07c9ba429f1c3985732d3502196eec18ac68a82e81420e5d722b6e59",
+      "bytes": 281765
+    }
+  ],
+  "notes": ""
+}
