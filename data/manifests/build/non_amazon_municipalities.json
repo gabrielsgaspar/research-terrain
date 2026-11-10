@@ -1,0 +1,21 @@
+{
+  "dataset": "non_amazon_municipalities",
+  "stage": "build",
+  "status": "created",
+  "gcs_prefix": "data/derived/non_amazon_municipalities/676f775ab76de2d4/",
+  "created_at": "2026-11-10T10:36:16.330925+00:00",
+  "code_commit": "8ada57a4f7b0dc3e1a9493c1bfa260b00b82590c",
+  "sources": [],
+  "files": [
+    {
+      "path": "data/derived/non_amazon_municipalities/676f775ab76de2d4/non_amazon.csv",
+      "sha256": "1a051aa7f4174a40c67bfd6d2ba3aba3753f491453ba7f81595c6b5b9b3e1a70",
+      "bytes": 79603
+    }
+  ],
+  "notes": "non_amazon=4798; population_rows=5570; legal_amazon_without_population=['5101837']; by state: AL=102, BA=417, CE=184, DF=1, ES=78, GO=246, MA=36, MG=853, MS=79, PB=223, PE=185, PI=224, PR=399, RJ=92, RN=167, RS=497, SC=295, SE=75, SP=645",
+  "inputs": [
+    "data/derived/municipalities/03690186b97be705/_MANIFEST.json",
+    "data/raw/ibge/population/2026-11-10/_MANIFEST.json"
+  ]
+}
