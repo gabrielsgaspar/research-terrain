@@ -1,0 +1,124 @@
+{
+  "dataset": "mapbiomas_coverage_national",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/mapbiomas/coverage/2026-11-10/",
+  "created_at": "2026-11-10T21:41:31.988898+00:00",
+  "code_commit": "529d181f47d521bf447ca3bf68448ea91c856cd4",
+  "sources": [
+    {
+      "url": "projects/mapbiomas-public/assets/brazil/lulc/collection10/mapbiomas_brazil_collection10_coverage_v2",
+      "last_modified": "2025-08-09T14:24:12.711807Z",
+      "etag": "e71cccf9adb0a178",
+      "bytes": 33612854490
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/mapbiomas/coverage/2026-11-10/coverage_shares_2004.tif",
+      "sha256": "d248b021edc4b45bba8e98f3d25199bcdf72f743891a54628d10963ee3baa05d",
+      "bytes": 13477660
+    },
+    {
+      "path": "data/raw/mapbiomas/coverage/2026-11-10/coverage_shares_2005.tif",
+      "sha256": "26895459949d6fdbf48a09b02c06ae93caf47a15e9de07883379d850933bfebc",
+      "bytes": 13575918
+    },
+    {
+      "path": "data/raw/mapbiomas/coverage/2026-11-10/coverage_shares_2006.tif",
+      "sha256": "cc57930b0ddefe3e88f3826aa3b6c63d4bb0462621a08a9f2e087723d5e2d201",
+      "bytes": 13694090
+    },
+    {
+      "path": "data/raw/mapbiomas/coverage/2026-11-10/coverage_shares_2007.tif",
+      "sha256": "033ac3eb9045bf5392e0bfe0873237e1d40cde7ac0a70b9637c7035877728592",
+      "bytes": 13755841
+    },
+    {
+      "path": "data/raw/mapbiomas/coverage/2026-11-10/coverage_shares_2008.tif",
+      "sha256": "61aa0d028cb1253675e4851d1d2159b0c9e7dd10d939aaa8a83cce7634e79540",
+      "bytes": 13805698
+    },
+    {
+      "path": "data/raw/mapbiomas/coverage/2026-11-10/coverage_shares_2009.tif",
+      "sha256": "a7ddb93d176f7aa531423e6929abd3628e67134e05e39ab3b4469db1d61f1122",
+      "bytes": 13789779
+    },
+    {
+      "path": "data/raw/mapbiomas/coverage/2026-11-10/coverage_shares_2010.tif",
+      "sha256": "9a4e70f256cabfc835441543308a56fa28dcb8b99f4a1436afb90d1af224c0c1",
+      "bytes": 13840934
+    },
+    {
+      "path": "data/raw/mapbiomas/coverage/2026-11-10/coverage_shares_2011.tif",
+      "sha256": "3935da8cde6584f7f71e57e4acee49c2179a59a1a89166faee27f869f3e3a287",
+      "bytes": 13930900
+    },
+    {
+      "path": "data/raw/mapbiomas/coverage/2026-11-10/coverage_shares_2012.tif",
+      "sha256": "6a96808c958a35b444c2591738bb378076b4c37837b352d3988c18f510ed586b",
+      "bytes": 13915045
+    },
+    {
+      "path": "data/raw/mapbiomas/coverage/2026-11-10/coverage_shares_2013.tif",
+      "sha256": "7e0f2196f0fdf30557d56afeb8a1a1cf0d70356962c8eb581607a13ce8be63c7",
+      "bytes": 13981443
+    },
+    {
+      "path": "data/raw/mapbiomas/coverage/2026-11-10/coverage_shares_2014.tif",
+      "sha256": "40cac9b246b844dd967858dc9f7ee210b1779882fecf8bdb376f1764e1337469",
+      "bytes": 14070141
+    },
+    {
+      "path": "data/raw/mapbiomas/coverage/2026-11-10/coverage_shares_2015.tif",
+      "sha256": "c1ab962cb03f2132218e88b2f6d5b162af2fd8e88bfe0b1b60e626c91e472487",
+      "bytes": 14085392
+    },
+    {
+      "path": "data/raw/mapbiomas/coverage/2026-11-10/coverage_shares_2016.tif",
+      "sha256": "0a17fe131c7f4e1a205807176a0be76bf3748b98cb58cccdee28a455b4b35224",
+      "bytes": 14163941
+    },
+    {
+      "path": "data/raw/mapbiomas/coverage/2026-11-10/coverage_shares_2017.tif",
+      "sha256": "1506452fe648d2e1376e9775ea10c33b1f4b6bfa085188b5c66ab600156db28d",
+      "bytes": 14213462
+    },
+    {
+      "path": "data/raw/mapbiomas/coverage/2026-11-10/coverage_shares_2018.tif",
+      "sha256": "6d504bf3500cf7a5546f229e9dc03fe76b44b2dec858e875462e471d16d3e5a6",
+      "bytes": 14302213
+    },
+    {
+      "path": "data/raw/mapbiomas/coverage/2026-11-10/coverage_shares_2019.tif",
+      "sha256": "a2934dcef569751741319f89d073b2149a4eb1aa4ece4d51ba21c248d77b6270",
+      "bytes": 14359837
+    },
+    {
+      "path": "data/raw/mapbiomas/coverage/2026-11-10/coverage_shares_2020.tif",
+      "sha256": "427c65436b09af3e97f37ee2533837c6be2fd38121523635fa3f4cbc0b478574",
+      "bytes": 14439022
+    },
+    {
+      "path": "data/raw/mapbiomas/coverage/2026-11-10/coverage_shares_2021.tif",
+      "sha256": "79df755f613167eb2636bf9fd461de23e6e2145fbac74f4bf96d8b223bb7328c",
+      "bytes": 14538688
+    },
+    {
+      "path": "data/raw/mapbiomas/coverage/2026-11-10/coverage_shares_2022.tif",
+      "sha256": "6033d6ee722b5ce9623a6e540b8d7a301df2c557ea11de6891232d3179ad0dfa",
+      "bytes": 14738415
+    },
+    {
+      "path": "data/raw/mapbiomas/coverage/2026-11-10/coverage_shares_2023.tif",
+      "sha256": "c6258dc7d34bd8f602101fff46be98854e6c0d2750b8ab4b950e72b1b92a3ff3",
+      "bytes": 14777439
+    },
+    {
+      "path": "data/raw/mapbiomas/coverage/2026-11-10/coverage_shares_2024.tif",
+      "sha256": "9890dacf218e570cea716d3fd9d59f596f3ca8d4ac4c5e5a7fde3e7b62d856f9",
+      "bytes": 14802233
+    }
+  ],
+  "notes": "cells with data per year: 2004=8250573 (4529370 partly unclassified), 2005=8247020 (4564316 partly unclassified), 2006=8244141 (4606536 partly unclassified), 2007=8242052 (4628457 partly unclassified), 2008=8239124 (4644394 partly unclassified), 2009=8238317 (4635301 partly unclassified), 2010=8239464 (4651991 partly unclassified), 2011=8241195 (4684031 partly unclassified), 2012=8241441 (4674703 partly unclassified), 2013=8243075 (4696662 partly unclassified), 2014=8243031 (4727720 partly unclassified), 2015=8243345 (4730115 partly unclassified), 2016=8244727 (4756762 partly unclassified), 2017=8245880 (4772157 partly unclassified), 2018=8247068 (4802667 partly unclassified), 2019=8245698 (4820866 partly unclassified), 2020=8243342 (4847202 partly unclassified), 2021=8240488 (4880918 partly unclassified), 2022=8234452 (4951841 partly unclassified), 2023=8221303 (4964227 partly unclassified), 2024=8222014 (4970482 partly unclassified)"
+}
