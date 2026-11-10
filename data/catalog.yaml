@@ -43,6 +43,24 @@ datasets:
         - url: https://geoftp.ibge.gov.br/organizacao_do_territorio/estrutura_territorial/amazonia_legal/2024/Municipios_da_Amazonia_Legal_2024.ods
           check: {type: ods}
 
+  - name: ibge_population_2022
+    source: IBGE, Censo Demografico 2022, Populacao e Domicilios - Primeiros Resultados (2nd count, 2023-12-22), table CD2022_Populacao_2010_Compatibilizada
+    licence: public
+    gcs: data/raw/ibge/population/
+    status: planned
+    notes: >
+      Decision 0011. One ODS, sheet "Municípios", 5,570 municipalities: the
+      2010 census population (Sinopse), the 2010 population on 2022
+      boundaries ("População 2010 (Alterações de Limites até 2022)", the
+      column used) and the 2022 census population. Codes come split as
+      COD. UF (2 digits) and COD. MUNIC (5 digits); numbers use a space as
+      thousands separator ("24 392"). Boa Esperança do Norte (MT, created
+      after the census) is not listed. Input to non_amazon_municipalities.
+    acquire:
+      files:
+        - url: https://ftp.ibge.gov.br/Censos/Censo_Demografico_2022/Populacao_e_domicilios_Primeiros_resultados/Resultados_da_2a_apuracao_20231027/CD2022_Populacao_2010_Compatibilizada_20231222.ods
+          check: {type: ods}
+
   - name: tse_votes_by_section
     source: https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/
     licence: public
@@ -177,6 +195,17 @@ datasets:
       and a Legal Amazon flag. Every TSE-IBGE pair is checked by name;
       reviewed exceptions are in data/reference/tse_ibge_name_variants.yaml.
       Also writes legal_amazon.csv, the input to scripts/seal_split.py.
+
+  - name: non_amazon_municipalities
+    source: built from municipalities and ibge_population_2022
+    licence: public
+    derived: data/derived/non_amazon_municipalities/
+    contract: data/contracts/non_amazon_municipalities.md
+    status: planned
+    notes: >
+      Decision 0011: the municipalities outside the Legal Amazon (4,798
+      expected), each with its state and 2010 population on 2022 boundaries,
+      as non_amazon.csv, the input to scripts/seal_split.py --non-amazon.
 
   - name: polling_places
     source: built from tse_polling_places, polling_stations_geocoded and municipalities

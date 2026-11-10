@@ -10,10 +10,12 @@ data/
   derived/<dataset>/<hash>/      cleaned panels (Parquet, GeoParquet); the hash
                                  covers inputs and code, so nothing is rebuilt
                                  or overwritten
-  derived/split/                 the exploration municipality list
+  derived/split/                 the exploration municipality lists (Legal
+                                 Amazon; outside it, decision 0011)
   explore/<idea>/                exploration outputs; deleted after 90 days
-sealed/split/                    the full split; readable only by the unblind
-                                 account
+sealed/split/                    the full splits (split.csv, and
+                                 split_non_amazon.csv from decision 0011);
+                                 readable only by the unblind account
 sealed/outcomes/<dataset>/<hash>/ confirmation-half outcome rows (decision
                                  0003); written by builds, read only by unblind
 ```
