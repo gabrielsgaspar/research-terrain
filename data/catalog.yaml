@@ -557,6 +557,23 @@ datasets:
       derived and sealed are fixed by the campaign 0004 PR (the sealed line
       is pinned in tests/test_split.py). Built by step s4, run once in s5.
 
+  - name: place_outcomes
+    source: built from polling_places, school_polling_match, inep_schools, viirs_annual, mapbiomas_coverage_national and ibge_boundaries_2024, split by half
+    licence: as inep_schools, viirs_annual and mapbiomas_coverage_national (MapBiomas CC BY 4.0, with attribution)
+    derived: data/derived/place_outcomes/
+    sealed: sealed/outcomes/place_outcomes/
+    status: planned
+    notes: >
+      Decisions 0003 and 0011 and idea 0006: per polling place, election and
+      outcome year, the facility counts of the matched municipal and state
+      schools, night lights within 1 km, built-up share within 1 km and
+      native-vegetation share within 10 km (cells of the place's own
+      municipality only). Exploration-half rows (both exploration lists) in
+      derived, confirmation-half rows only in sealed, like cell_outcomes.
+      Name, derived and sealed are fixed by the campaign 0005 PR (the sealed
+      line is pinned in tests/test_split.py); the build task of campaign
+      0005 (step s10) adds the contract and the rest.
+
   - name: funai_indigenous_lands
     source: FUNAI indigenous land boundaries
     licence: public

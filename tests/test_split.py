@@ -221,6 +221,7 @@ def test_seal_split_legal_amazon_mode_still_refuses_once_sealed(sealing):
 SEALED = {
     "cell_outcomes": "sealed/outcomes/cell_outcomes/",
     "cell_enforcement": "sealed/outcomes/cell_enforcement/",
+    "place_outcomes": "sealed/outcomes/place_outcomes/",
 }
 
 
