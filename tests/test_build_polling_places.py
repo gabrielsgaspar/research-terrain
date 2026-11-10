@@ -1,6 +1,7 @@
 import gzip
 import hashlib
 import io
+import json
 import re
 import zipfile
 from pathlib import Path
@@ -14,7 +15,7 @@ from terrain.builds.polling_places import (
     build,
     check_coverage,
     check_key,
-    check_legal_amazon,
+    check_municipalities,
     collapse_places,
     input_hash,
     read_hidalgo,
@@ -40,7 +41,7 @@ YEARS = (2008, 2024)
 FIXED_TIME = (2024, 1, 1, 0, 0, 0)
 
 # Field positions in a TSE polling-place row (split on ";").
-F_ZONE, F_PLACE, F_PHONE, F_LAT, F_LONG = 9, 14, 21, 22, 23
+F_UF, F_MUNICIPALITY, F_ZONE, F_PLACE, F_CEP, F_PHONE, F_LAT, F_LONG = 6, 7, 9, 14, 20, 21, 22, 23
 
 
 # --- Inputs made from the fixtures
@@ -90,16 +91,17 @@ def municipalities_bytes(path: Path) -> bytes:
         ("1507979", "04367", True),
         ("1506351", "04243", True),
         ("2905602", "34118", False),
+        ("3550308", "71072", False),
     ]
     pl.DataFrame(
         {
             "cd_ibge": [r[0] for r in rows],
             "cd_tse": [r[1] for r in rows],
-            "uf": ["PA", "PA", "PA", "BA"],
-            "name_ibge": ["a", "b", "c", "d"],
-            "name_tse": ["a", "b", "c", "d"],
+            "uf": ["PA", "PA", "PA", "BA", "SP"],
+            "name_ibge": ["a", "b", "c", "d", "e"],
+            "name_tse": ["a", "b", "c", "d", "e"],
             "legal_amazon": [r[2] for r in rows],
-            "name_check": ["exact"] * 4,
+            "name_check": ["exact"] * 5,
         }
     ).write_parquet(path)
     return path.read_bytes()
@@ -226,10 +228,14 @@ def test_2008_comes_from_hidalgo_and_never_reads_tse(tmp_path):
     hidalgo = pl.concat(
         [
             hidalgo_frame(),
-            # A 2008 station in a municipality outside the Legal Amazon.
+            # A 2008 station in a municipality outside the Legal Amazon: kept now.
             hidalgo_frame()
             .filter(pl.col("cd_localidade_tse") == "34118")
             .with_columns(pl.lit("2008").alias("ano"), pl.lit("999999").alias("local_id")),
+            # A 2008 station in a municipality that is not in the table: dropped.
+            hidalgo_frame()
+            .filter(pl.col("cd_localidade_tse") == "36765")
+            .with_columns(pl.lit("2008").alias("ano"), pl.lit("999998").alias("local_id")),
         ]
     )
     store = MemoryStore()
@@ -240,10 +246,10 @@ def test_2008_comes_from_hidalgo_and_never_reads_tse(tmp_path):
     expected = hidalgo_frame().filter(
         (pl.col("ano") == "2008") & pl.col("cd_localidade_tse").is_in(["5533", "4367"])
     )
-    assert out.height == expected.height > 0
+    assert out.height == expected.height + 1
     assert out["coord_source"].unique().to_list() == ["hidalgo"]
     assert out["ano"].unique().to_list() == [2008]
-    assert set(out["cd_ibge"]) == {"1507706", "1507979"}
+    assert set(out["cd_ibge"]) == {"1507706", "1507979", "2905602"}
     assert not manifest["files"][0]["path"].endswith("_2024.parquet")
 
 
@@ -297,12 +303,36 @@ def test_collapse_places_counts_only_places_with_several_pairs():
         "nm_bairro": [None] * 5,
         "lat": [1.0, 2.0, 2.0, None, 3.0],
         "long": [1.0, 2.0, 2.0, None, 3.0],
+        "nr_cep": ["00000002", "00000001", "00000002", None, None],
     }
-    places, several = collapse_places(pl.DataFrame(base))
+    places, several, several_cep = collapse_places(pl.DataFrame(base))
     assert several == 1
+    assert several_cep == 1
     one = places.filter(pl.col("cd_municipio") == "00001")
     assert one["lat"].to_list() == [2.0]
     assert one["nm_local_votacao"].to_list() == ["A"]
+    assert one["nr_cep"].to_list() == ["00000002"]
+    assert places.filter(pl.col("cd_municipio") == "00002")["nr_cep"].to_list() == [None]
+
+
+def test_collapse_places_cep_tie_goes_to_the_smallest():
+    rows = pl.DataFrame(
+        {
+            "cd_municipio": ["00001"] * 4,
+            "nr_zona": [1] * 4,
+            "nr_local_votacao": [1] * 4,
+            "nm_local_votacao": [None] * 4,
+            "ds_endereco": [None] * 4,
+            "nm_bairro": [None] * 4,
+            "lat": [None] * 4,
+            "long": [None] * 4,
+            "nr_cep": ["00000009", "00000003", "00000009", "00000003"],
+        },
+        schema_overrides={"lat": pl.Float64, "long": pl.Float64},
+    )
+    places, _, several_cep = collapse_places(rows)
+    assert places["nr_cep"].to_list() == ["00000003"]
+    assert several_cep == 1
 
 
 # --- Done when 4: no phone numbers
@@ -376,12 +406,21 @@ def test_key_check_raises_on_a_repeated_key():
         check_key(table(nr_local_votacao=[1023, 1023]))
 
 
-def test_legal_amazon_check_raises_outside_the_legal_amazon():
-    check_legal_amazon(table(), {"1507706"})
-    with pytest.raises(BuildError, match="Legal Amazon"):
-        check_legal_amazon(table(cd_ibge=["1507706", "2905602"]), {"1507706"})
-    with pytest.raises(BuildError, match="Legal Amazon"):
-        check_legal_amazon(table(cd_ibge=["1507706", None]), {"1507706"})
+def test_municipality_check_raises_for_a_code_missing_from_the_table():
+    check_municipalities(table(), {"1507706"})
+    check_municipalities(table(cd_ibge=["1507706", "2905602"]), {"1507706", "2905602"})
+    with pytest.raises(BuildError, match="municipalities table"):
+        check_municipalities(table(cd_ibge=["1507706", "2905602"]), {"1507706"})
+    with pytest.raises(BuildError, match="municipalities table"):
+        check_municipalities(table(cd_ibge=["1507706", None]), {"1507706"})
+
+
+def test_a_repeated_cd_tse_in_the_municipalities_table_raises():
+    municipalities = pl.DataFrame(
+        {"cd_ibge": ["1507706", "1507979"], "cd_tse": ["05533", "05533"], "uf": ["PA", "PA"]}
+    )
+    with pytest.raises(BuildError, match="repeats a cd_tse"):
+        pp.place_table(2008, pl.DataFrame(), None, municipalities)
 
 
 def test_coverage_check_raises_at_five_percent():
@@ -551,3 +590,172 @@ def test_rows_of_another_election_year_are_dropped_and_counted(tmp_path):
     assert "tse_other_election_year_rows=1" in note_for(manifest, 2024)
     out = read_year(store, manifest, 2024)
     assert 9999 not in out["nr_local_votacao"].to_list()
+
+
+# --- National scope: a Legal Amazon state (PA) and one outside it (SP)
+
+SP_TSE = "71072"
+SP_IBGE = "3550308"
+PA_IBGE = ["1507706", "1507979"]
+
+
+def with_sp_tse(data: bytes) -> bytes:
+    """Every Pará municipality-5533 row repeated as a São Paulo municipality's."""
+
+    def add_sp(fields):
+        sp = list(fields)
+        sp[F_UF], sp[F_MUNICIPALITY] = b'"SP"', f'"{SP_TSE}"'.encode()
+        return [fields, sp] if fields[F_MUNICIPALITY] == b'"05533"' else [fields]
+
+    return edit_rows(data, add_sp)
+
+
+def with_sp_hidalgo(df: pl.DataFrame) -> pl.DataFrame:
+    sp = df.filter(
+        pl.col("ano").is_in(["2008", "2024"]) & (pl.col("cd_localidade_tse") == "5533")
+    ).with_columns(
+        pl.lit(SP_TSE).alias("cd_localidade_tse"),
+        pl.lit("SP").alias("sg_uf"),
+        (pl.col("local_id") + "0").alias("local_id"),
+    )
+    return pl.concat([df, sp])
+
+
+def test_two_states_are_kept_and_the_legal_amazon_rows_do_not_change(tmp_path):
+    (tmp_path / "base").mkdir()
+    base_store, base_manifest = built(tmp_path / "base")
+
+    (tmp_path / "two").mkdir()
+    store, manifest = built(
+        tmp_path / "two",
+        tse=with_sp_tse(tse_bytes()),
+        hidalgo=with_sp_hidalgo(hidalgo_frame()),
+    )
+    for year in YEARS:
+        base = read_year(base_store, base_manifest, year)
+        out = read_year(store, manifest, year)
+        pa = out.filter(pl.col("cd_ibge").is_in(PA_IBGE))
+        sp = out.filter(pl.col("cd_ibge") == SP_IBGE)
+        assert base.height > 0
+        # Pará: every column but the new nr_cep is what the build gave before.
+        assert pa.drop("nr_cep").equals(base.drop("nr_cep"))
+        assert pa["nr_cep"].to_list() == base["nr_cep"].to_list()
+        # São Paulo: one place per place of municipality 5533.
+        n_5533 = base.filter(pl.col("sg_ue") == "05533").height
+        assert sp.height == n_5533 > 0
+        assert set(sp["sg_ue"]) == {SP_TSE}
+        assert out.height == base.height + n_5533
+        assert not out.select(pp.KEY).is_duplicated().any()
+        assert f"SP:{n_5533}" in note_for(manifest, year)
+        assert f"PA:{pa.height}" in note_for(manifest, year)
+        assert "BA" not in note_for(manifest, year)
+
+
+# --- nr_cep
+
+
+def test_cep_text_is_padded_and_bad_values_become_null():
+    df = pl.DataFrame(
+        {"c": ["01310100", "1310100", " 1310100 ", "-1", "", "ABC", "123456789", None]}
+    )
+    assert df.select(pp._cep("c"))["c"].to_list() == [
+        "01310100",
+        "01310100",
+        "01310100",
+        None,
+        None,
+        None,
+        None,
+        None,
+    ]
+
+
+def test_read_tse_year_gives_nr_cep_without_the_phone_column(tmp_path):
+    def vary(fields):
+        values = {b"1236": b'"1310100"', b"1210": b'"-1"', b"1058": b'""', b"1023": b'"ABC"'}
+        if fields[F_PLACE] in values:
+            fields[F_CEP] = values[fields[F_PLACE]]
+        return [fields]
+
+    path = tmp_path / "tse.zip"
+    path.write_bytes(make_zip(2024, edit_rows(tse_bytes(), vary)))
+    df = pp.read_tse_year(path)
+    assert "nr_cep" in df.columns
+    assert not [c for c in df.columns if "telefone" in c]
+    by_place = {
+        n: df.filter(pl.col("nr_local_votacao") == n)["nr_cep"].unique().to_list()
+        for n in (1236, 1210, 1058, 1023, 1155)
+    }
+    assert by_place[1236] == ["01310100"]
+    assert by_place[1210] == [None]
+    assert by_place[1058] == [None]
+    assert by_place[1023] == [None]
+    assert by_place[1155] == ["68820000"]
+
+
+def test_2008_nr_cep_comes_from_hidalgo_padded(tmp_path):
+    hidalgo = set_hidalgo(hidalgo_frame(), "2008", "5533", "1023", nr_cep="1310100")
+    hidalgo = set_hidalgo(hidalgo, "2008", "5533", "1031", nr_cep="ABC")
+    store = MemoryStore()
+    manifests = stage(store, tmp_path, hidalgo=hidalgo, with_tse=False)
+    out = read_year(store, run(store, manifests, tmp_path, years=(2008,)), 2008)
+    pa = out.filter(pl.col("sg_ue") == "05533")
+    cep = dict(zip(pa["nr_local_votacao"].to_list(), pa["nr_cep"].to_list(), strict=True))
+    assert cep[1023] == "01310100"
+    assert cep[1031] is None
+    assert cep[1015] == "68820000"
+
+
+def test_a_tse_row_without_a_cep_falls_back_to_hidalgo_and_two_ceps_take_the_most_frequent(
+    tmp_path,
+):
+    seen = {"n": 0, "tie": 0}
+
+    def edit(fields):
+        place = fields[F_PLACE]
+        if place == b"1058":  # no CEP in the TSE file: Hidalgo's is used
+            fields[F_CEP] = b'"-1"'
+        if place == b"1236":  # no CEP in either file: null
+            fields[F_CEP] = b'"ABC"'
+        if place == b"1023":  # seven sections: two carry another code, so the majority wins
+            seen["n"] += 1
+            if seen["n"] <= 2:
+                fields[F_CEP] = b'"22222222"'
+        if place == b"1147":  # two sections, one code each: a tie goes to the smallest
+            seen["tie"] += 1
+            fields[F_CEP] = b'"30000000"' if seen["tie"] == 1 else b'"20000000"'
+        return [fields]
+
+    hidalgo = set_hidalgo(hidalgo_frame(), "2024", "5533", "1058", nr_cep="12345678")
+    hidalgo = set_hidalgo(hidalgo, "2024", "5533", "1236", nr_cep="")
+    store, manifest = built(tmp_path, tse=edit_rows(tse_bytes(), edit), hidalgo=hidalgo)
+    out = read_year(store, manifest, 2024)
+
+    def cep(place):
+        return out.filter(pl.col("nr_local_votacao") == place)["nr_cep"].to_list()
+
+    assert cep(1058) == ["12345678"]
+    assert cep(1236) == [None]
+    assert cep(1023) == ["68820000"]
+    assert cep(1147) == ["20000000"]
+    note = note_for(manifest, 2024)
+    assert "two_cep_places=2" in note
+    share = out["nr_cep"].null_count() / out.height
+    assert f"cep_missing_share={share:.4f}" in note
+    assert share > 0
+    assert "cep_missing_share=0.0000" in note_for(manifest, 2008)
+
+
+def test_the_phone_value_is_in_neither_the_parquet_nor_the_manifest(tmp_path):
+    phone = "97654321"
+
+    def set_phone(fields):
+        fields[F_PHONE] = f'"{phone}"'.encode()
+        return [fields]
+
+    store, manifest = built(tmp_path, tse=edit_rows(tse_bytes(), set_phone))
+    assert phone not in json.dumps(manifest)
+    for f in manifest["files"]:
+        assert phone.encode() not in store.read_bytes(f["path"])
+    out = read_year(store, manifest, 2024)
+    assert phone not in {str(x) for c in out.columns for x in out[c].to_list()}

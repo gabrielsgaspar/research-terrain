@@ -1,4 +1,4 @@
-"""Build section votes of the Legal Amazon linked to candidacies, one Parquet per state-year.
+"""Build section votes of Brazil linked to candidacies, one Parquet per state-year.
 
 Contract of the output: data/contracts/section_votes.md. Pitfalls of the source
 files: data/fixtures/tse/README.md.
@@ -7,14 +7,15 @@ Section votes are votes cast; the results file counts votes counted. Votes for a
 candidacy whose votes were annulled stay in the output, flagged
 `annulled_in_results`: analyses of vote margins must use counted votes.
 
-Memory: one state-year file is held at a time (Pará 2024 alone has 1.6 million
-rows). Everything is written locally first and uploaded only when every check
+Memory: one state-year file is held at a time. The largest, São Paulo 2020, is a
+527 MB zip and several GB of CSV, so the reader streams: it decodes the member
+into a temporary UTF-8 file in chunks and reads only the needed columns from
+it. Everything is written locally first and uploaded only when every check
 has passed. Errors and notes carry counts only.
 """
 
 from __future__ import annotations
 
-import io
 import json
 import re
 import zipfile
@@ -35,12 +36,19 @@ SKIPPED_YEARS = (2000,)
 FILE_SQ_FROM = 2024
 # Share of candidates with votes in the results whose section sums must equal them.
 MIN_AGREE_SHARE = 0.99
-# Share of the year's Legal Amazon municipalities (those in the results) that
-# must have section data. The TSE's 2004 section files are incomplete (AP 3 of
-# 16 municipalities, RR 1 of 15, MT 83 of 141, MA 170 of 181: 675 of 772
-# overall, 87%); 2008-2024 are complete. Agreement is measured only over
-# municipalities with section data, and coverage is reported per state.
+# Share of the year's municipalities (those in the results) that must have
+# section data: the floor for 2008-2024, which are complete in the Legal Amazon.
+# The TSE's 2004 section files are incomplete (in the Legal Amazon AP 3 of 16
+# municipalities, RR 1 of 15, MT 83 of 141, MA 170 of 181: 675 of 772 overall,
+# 87%), and the national coverage is unknown. 2004 is not used by idea 0006, so
+# its coverage is only reported per state and never raises
+# (COVERAGE_REPORT_ONLY_YEARS). Agreement is measured only over municipalities
+# with section data.
 MIN_COVERAGE_SHARE = 0.8
+COVERAGE_REPORT_ONLY_YEARS = (2004,)
+# The member is copied to a UTF-8 file in chunks of this many bytes. Latin-1 is
+# one byte per character, so a chunk edge never splits a character.
+CHUNK_BYTES = 64 * 1024 * 1024
 # Share of distinct candidate numbers that may be left without a candidacy.
 # Candidate numbers voted for in the sections that match no candidacy at all,
 # neither in the results (counted votes) nor in the candidate file. Numbers
@@ -101,22 +109,33 @@ def read_section_zip(zip_path: Path) -> pl.DataFrame:
     A missing column, an empty key or a value that is not an integer stops the
     build. `sq_file` is the file's own `SQ_CANDIDATO` (null if absent or coded
     as missing).
+
+    The member is never held whole in memory: it is decoded (Latin-1) into a
+    temporary UTF-8 file next to the zip in chunks of `CHUNK_BYTES`, and only
+    the needed columns are read from that file. The file is deleted before
+    returning, also on an error.
     """
     with zipfile.ZipFile(zip_path) as zf:
         members = [n for n in zf.namelist() if re.fullmatch(r"votacao_secao_.*\.csv", n.lower())]
         if len(members) != 1:
             raise BuildError(f"expected one {MEMBER} member, found {len(members)}")
-        raw = zf.read(members[0]).decode("latin-1")
-    df = pl.read_csv(io.BytesIO(raw.encode("utf-8")), separator=";", infer_schema=False)
-    del raw
-    df = df.rename({c: c.strip().lower() for c in df.columns})
-    needed = [*TEXT_KEYS, *INT_KEYS, "nr_votavel", "nr_local_votacao", "qt_votos"]
-    absent = [c for c in needed if c not in df.columns]
-    if absent:
-        raise BuildError(f"the section file lacks {len(absent)} needed columns")
-    if "sq_candidato" not in df.columns:
-        df = df.with_columns(pl.lit(None, dtype=pl.String).alias("sq_candidato"))
-    df = df.select(_text(c) for c in [*needed, "sq_candidato"])
+        utf8_path = zip_path.with_name(zip_path.name + ".utf8.csv")
+        try:
+            with zf.open(members[0]) as src, utf8_path.open("wb") as dst:
+                while chunk := src.read(CHUNK_BYTES):
+                    dst.write(chunk.decode("latin-1").encode("utf-8"))
+            lazy = pl.scan_csv(utf8_path, separator=";", infer_schema=False)
+            lazy = lazy.rename({c: c.strip().lower() for c in lazy.collect_schema().names()})
+            names = lazy.collect_schema().names()
+            needed = [*TEXT_KEYS, *INT_KEYS, "nr_votavel", "nr_local_votacao", "qt_votos"]
+            absent = [c for c in needed if c not in names]
+            if absent:
+                raise BuildError(f"the section file lacks {len(absent)} needed columns")
+            if "sq_candidato" not in names:
+                lazy = lazy.with_columns(pl.lit(None, dtype=pl.String).alias("sq_candidato"))
+            df = lazy.select(_text(c) for c in [*needed, "sq_candidato"]).collect()
+        finally:
+            utf8_path.unlink(missing_ok=True)
     try:
         df = df.with_columns(
             pl.col(c).cast(pl.Int32) for c in [*INT_KEYS, "nr_local_votacao"]
@@ -296,7 +315,13 @@ def check_agreement(year: int, agree: int, total: int, min_share: float) -> None
 
 
 def check_coverage(year: int, covered: int, total: int, min_share: float) -> None:
-    """Stop when too few municipalities with results have section data."""
+    """Stop when too few municipalities with results have section data.
+
+    Years in `COVERAGE_REPORT_ONLY_YEARS` (2004) never stop the build; their
+    coverage is only reported in the notes.
+    """
+    if year in COVERAGE_REPORT_ONLY_YEARS:
+        return
     if total == 0:
         raise BuildError(f"{year}: no municipalities with results")
     if covered / total < min_share:
@@ -323,16 +348,17 @@ def process_file(
     year: int,
     cand: pl.DataFrame,
     pick: pl.DataFrame,
-    legal: pl.DataFrame,
+    municipalities: pl.DataFrame,
     registered: pl.DataFrame | None = None,
 ) -> tuple[pl.DataFrame, pl.DataFrame, dict[str, int]]:
     """Classify, link and check one state-year; return rows, candidacy sums and counts.
 
-    `legal` has `cd_ibge` and `sg_ue` of the Legal Amazon municipalities.
+    `municipalities` has `cd_ibge` and `sg_ue` of every municipality with a TSE
+    code. Rows whose `sg_ue` is not in it are dropped and counted (`outside`).
     """
     other_year = raw.filter(pl.col("ano_eleicao") != year).height
     df = raw.filter(pl.col("ano_eleicao") == year)
-    inside = df.join(legal, on="sg_ue", how="inner")
+    inside = df.join(municipalities, on="sg_ue", how="inner")
     outside = df.height - inside.height
     df = inside.with_columns(vote_type())
     numbers = df.filter(pl.col("vote_type") == "candidate").select(NUMBER).unique().height
@@ -412,7 +438,7 @@ def _note(year: int, s: dict[str, int]) -> str:
         f"({s['agree'] / s['total']:.4f}), annulled_in_results_candidacies={s['annulled']}, "
         f"unmatched_candidate_numbers={s['unmatched']}/{s['numbers']}, "
         f"numbers_with_several_voted_candidacies={s['several']}, "
-        f"rows_outside_legal_amazon={s['outside']}, other_election_year_rows={s['other_year']}"
+        f"rows_without_municipality={s['outside']},other_election_year_rows={s['other_year']}"
     )
 
 
@@ -460,9 +486,9 @@ def build(
         return existing
 
     municipalities = pl.read_parquet(
-        _fetch(store, mun_entry, tmp_dir), columns=["cd_ibge", "cd_tse", "legal_amazon"]
+        _fetch(store, mun_entry, tmp_dir), columns=["cd_ibge", "cd_tse"]
     )
-    legal = municipalities.filter(pl.col("legal_amazon") & pl.col("cd_tse").is_not_null()).select(
+    legal = municipalities.filter(pl.col("cd_tse").is_not_null()).select(
         "cd_ibge", pl.col("cd_tse").alias("sg_ue")
     )
     if legal["sg_ue"].is_duplicated().any():

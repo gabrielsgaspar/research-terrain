@@ -1,11 +1,12 @@
-"""Build located polling places of the Legal Amazon, one Parquet per election year.
+"""Build located polling places of Brazil, one Parquet per election year.
 
 Contract of the output: data/contracts/polling_places.md. Pitfalls of the source
 files: data/fixtures/tse/README.md and data/fixtures/hidalgo/README.md.
 
 Coordinates come from the TSE polling-place files (2012 onward) where they are
 not -1, and from Hidalgo's geocoded stations otherwise. 2008 uses Hidalgo only.
-Phone numbers are never selected, so they cannot reach the output.
+The postal code (`nr_cep`) follows the same order. Phone numbers are never
+selected, so they cannot reach the output.
 """
 
 from __future__ import annotations
@@ -49,6 +50,7 @@ TSE_COLUMNS = (
     "nm_local_votacao",
     "ds_endereco",
     "nm_bairro",
+    "nr_cep",
     "nr_latitude",
     "nr_longitude",
 )
@@ -68,6 +70,7 @@ OUTPUT_COLUMNS = [
     "nm_local_votacao",
     "ds_endereco",
     "nm_bairro",
+    "nr_cep",
 ]
 
 
@@ -111,10 +114,26 @@ def read_tse_year(zip_path: Path) -> pl.DataFrame:
         pl.col("cd_municipio").str.zfill(5),
         pl.col("nr_zona").cast(pl.Int32),
         pl.col("nr_local_votacao").cast(pl.Int32),
+        _cep("nr_cep"),
         _coordinate("nr_latitude").alias("lat"),
         _coordinate("nr_longitude").alias("long"),
         (_unparsed("nr_latitude") | _unparsed("nr_longitude")).alias("coord_unparsed"),
     ).drop("nr_latitude", "nr_longitude")
+
+
+def _cep(column: str) -> pl.Expr:
+    """Postal code as 8 digits with leading zeros; null unless 1-8 digits once stripped.
+
+    `-1` (the TSE's "none"), empty text and anything else that is not 1-8 digits
+    become null. The original text is not kept.
+    """
+    text = pl.col(column).str.strip_chars()
+    return (
+        pl.when(text.str.contains(r"^[0-9]{1,8}$"))
+        .then(text.str.zfill(8))
+        .otherwise(None)
+        .alias(column)
+    )
 
 
 def _coordinate(column: str) -> pl.Expr:
@@ -147,6 +166,7 @@ def read_hidalgo(geocoded_gz: Path, panel_gz: Path) -> pl.DataFrame:
             "nm_locvot",
             "ds_endereco",
             "ds_bairro",
+            "nr_cep",
             "lat",
             "long",
             "conf_dist_km",
@@ -161,6 +181,7 @@ def read_hidalgo(geocoded_gz: Path, panel_gz: Path) -> pl.DataFrame:
         pl.col("nm_locvot").alias("nm_local_votacao"),
         pl.col("ds_endereco"),
         pl.col("ds_bairro").alias("nm_bairro"),
+        _cep("nr_cep"),
         pl.col("lat").cast(pl.Float64, strict=False),
         pl.col("long").cast(pl.Float64, strict=False),
         pl.col("conf_dist_km").cast(pl.Float64, strict=False),
@@ -183,13 +204,15 @@ def read_hidalgo(geocoded_gz: Path, panel_gz: Path) -> pl.DataFrame:
 # --- Collapse and combine
 
 
-def collapse_places(rows: pl.DataFrame) -> tuple[pl.DataFrame, int]:
+def collapse_places(rows: pl.DataFrame) -> tuple[pl.DataFrame, int, int]:
     """One row per (`cd_municipio`, `nr_zona`, `nr_local_votacao`).
 
-    `rows` has one row per section; `lat` and `long` are null where missing. The
-    place's coordinate is the most frequent non-missing pair; ties go to the
-    smallest (`lat`, `long`). Also returns how many places have more than one
-    distinct pair. Names and address are the smallest value among the rows.
+    `rows` has one row per section; `lat`, `long` and `nr_cep` are null where
+    missing. The place's coordinate is the most frequent non-missing pair; ties
+    go to the smallest (`lat`, `long`). The place's `nr_cep` is the most frequent
+    non-missing code, ties to the smallest. Also returns how many places have
+    more than one distinct pair, and how many more than one distinct CEP. Names
+    and address are the smallest value among the rows.
     """
     meta = rows.group_by(PLACE).agg(
         pl.col("nm_local_votacao").drop_nulls().min(),
@@ -204,7 +227,16 @@ def collapse_places(rows: pl.DataFrame) -> tuple[pl.DataFrame, int]:
     several = pairs.group_by(PLACE).agg(pl.len().alias("k")).filter(pl.col("k") > 1).height
     best = pairs.sort(PLACE + ["n", "lat", "long"], descending=[False] * 3 + [True, False, False])
     best = best.unique(subset=PLACE, keep="first", maintain_order=True).drop("n")
-    return meta.join(best, on=PLACE, how="left"), several
+    codes = (
+        rows.filter(pl.col("nr_cep").is_not_null())
+        .group_by(PLACE + ["nr_cep"])
+        .agg(pl.len().alias("n"))
+    )
+    several_cep = codes.group_by(PLACE).agg(pl.len().alias("k")).filter(pl.col("k") > 1).height
+    best_cep = codes.sort(PLACE + ["n", "nr_cep"], descending=[False] * 3 + [True, False])
+    best_cep = best_cep.unique(subset=PLACE, keep="first", maintain_order=True).drop("n")
+    places = meta.join(best, on=PLACE, how="left").join(best_cep, on=PLACE, how="left")
+    return places, several, several_cep
 
 
 def place_table(
@@ -212,16 +244,19 @@ def place_table(
     hidalgo: pl.DataFrame,
     tse_rows: pl.DataFrame | None,
     municipalities: pl.DataFrame,
-) -> tuple[pl.DataFrame, dict[str, int]]:
-    """The polling places of one year, Legal Amazon only, and counts for the notes.
+) -> tuple[pl.DataFrame, dict[str, Any]]:
+    """The polling places of one year, every municipality with a TSE code, and counts.
 
-    `tse_rows` is the section-level TSE frame (`read_tse_year`); it is not used,
-    and may be None, for the years in HIDALGO_ONLY_YEARS.
+    `municipalities` has `cd_ibge`, `cd_tse` and `uf`. `tse_rows` is the
+    section-level TSE frame (`read_tse_year`); it is not used, and may be None,
+    for the years in HIDALGO_ONLY_YEARS.
     """
-    legal = municipalities.filter(pl.col("legal_amazon") & pl.col("cd_tse").is_not_null()).select(
-        "cd_ibge", pl.col("cd_tse").alias("sg_ue")
+    legal = municipalities.filter(pl.col("cd_tse").is_not_null()).select(
+        "cd_ibge", pl.col("cd_tse").alias("sg_ue"), "uf"
     )
-    stations = hidalgo.filter(pl.col("ano") == year).join(legal, on="sg_ue", how="inner")
+    if legal["sg_ue"].is_duplicated().any():
+        raise BuildError("the municipalities table repeats a cd_tse")
+    stations = hidalgo.filter(pl.col("ano") == year).join(legal.drop("uf"), on="sg_ue", how="inner")
     stations = stations.select(
         "cd_ibge",
         "sg_ue",
@@ -234,8 +269,9 @@ def place_table(
         pl.col("nm_local_votacao").alias("h_name"),
         pl.col("ds_endereco").alias("h_address"),
         pl.col("nm_bairro").alias("h_bairro"),
+        pl.col("nr_cep").alias("h_cep"),
     )
-    two_pair = 0
+    two_pair = two_cep = 0
     unmatched = 0
     if year in HIDALGO_ONLY_YEARS:
         table = stations.with_columns(
@@ -244,16 +280,19 @@ def place_table(
             pl.col("h_bairro").alias("nm_bairro"),
             pl.lit(None, dtype=pl.Float64).alias("t_lat"),
             pl.lit(None, dtype=pl.Float64).alias("t_long"),
+            pl.lit(None, dtype=pl.String).alias("t_cep"),
         )
     else:
         if tse_rows is None:
             raise BuildError(f"{year}: the TSE polling-place file is needed")
-        legal_tse = tse_rows.filter(pl.col("cd_municipio").is_in(legal["sg_ue"].to_list()))
-        places, two_pair = collapse_places(legal_tse)
-        places = places.rename({"lat": "t_lat", "long": "t_long", "cd_municipio": "sg_ue"})
+        known_tse = tse_rows.filter(pl.col("cd_municipio").is_in(legal["sg_ue"].to_list()))
+        places, two_pair, two_cep = collapse_places(known_tse)
+        places = places.rename(
+            {"lat": "t_lat", "long": "t_long", "nr_cep": "t_cep", "cd_municipio": "sg_ue"}
+        )
         keys = ["sg_ue", "nr_zona", "nr_local_votacao"]
         unmatched = stations.join(places.select(keys), on=keys, how="anti").height
-        table = places.join(legal, on="sg_ue", how="inner")
+        table = places.join(legal.drop("uf"), on="sg_ue", how="inner")
         table = table.join(
             stations.drop("cd_ibge"), on=keys, how="left", validate="1:1"
         ).with_columns(
@@ -278,6 +317,8 @@ def place_table(
         "nm_local_votacao",
         "ds_endereco",
         "nm_bairro",
+        # The TSE's code where it has one, otherwise Hidalgo's (all of 2008).
+        pl.coalesce("t_cep", "h_cep").alias("nr_cep"),
     )
     # The conf_dist_km of a place without any coordinate means nothing.
     out = out.with_columns(
@@ -286,7 +327,17 @@ def place_table(
         .otherwise(pl.col("conf_dist_km"))
         .alias("conf_dist_km")
     ).sort(KEY)
-    stats = {
+    per_state = (
+        out.join(legal.select("cd_ibge", "uf"), on="cd_ibge", how="left")
+        .with_columns(pl.col("uf").fill_null("??"))
+        .group_by("uf")
+        .len()
+        .sort("uf")
+    )
+    stats: dict[str, Any] = {
+        "by_state": dict(zip(per_state["uf"].to_list(), per_state["len"].to_list(), strict=True)),
+        "cep_missing": out["nr_cep"].null_count(),
+        "two_cep": two_cep,
         "rows": out.height,
         "missing": out.filter(pl.col("coord_source").is_null()).height,
         "tse": out.filter(pl.col("coord_source") == "tse").height,
@@ -307,10 +358,10 @@ def check_key(df: pl.DataFrame) -> None:
         raise BuildError(f"{repeated} rows repeat (ano, cd_ibge, sg_ue, nr_zona, nr_local_votacao)")
 
 
-def check_legal_amazon(df: pl.DataFrame, legal_codes: set[str]) -> None:
-    bad = df.filter(pl.col("cd_ibge").is_null() | ~pl.col("cd_ibge").is_in(list(legal_codes)))
+def check_municipalities(df: pl.DataFrame, codes: set[str]) -> None:
+    bad = df.filter(pl.col("cd_ibge").is_null() | ~pl.col("cd_ibge").is_in(list(codes)))
     if bad.height:
-        raise BuildError(f"{bad.height} rows have a cd_ibge outside the Legal Amazon")
+        raise BuildError(f"{bad.height} rows have a cd_ibge missing from the municipalities table")
 
 
 def check_unparsed(year: int, source: str, rows: int, unparsed: int, max_share: float) -> None:
@@ -376,8 +427,9 @@ def _fetch(store: Store, entry: dict[str, Any], tmp_dir: Path) -> Path:
     return target
 
 
-def _note(year: int, s: dict[str, int]) -> str:
+def _note(year: int, s: dict[str, Any]) -> str:
     rows = s["rows"]
+    by_state = " ".join(f"{u}:{n}" for u, n in sorted(s["by_state"].items()))
     return (
         f"{year}: rows={rows}, missing_coord_share={s['missing'] / rows:.4f}, "
         f"tse={s['tse']}, hidalgo={s['hidalgo']}, two_pair_places={s['two_pair']}, "
@@ -385,7 +437,9 @@ def _note(year: int, s: dict[str, int]) -> str:
         f"hidalgo_stations_not_in_tse={s['hidalgo_not_in_tse']}, "
         f"tse_unparsed={s.get('tse_unparsed', 0)}, "
         f"hidalgo_unparsed={s.get('hidalgo_unparsed', 0)}, "
-        f"tse_other_election_year_rows={s.get('tse_other_year', 0)}"
+        f"tse_other_election_year_rows={s.get('tse_other_year', 0)}, "
+        f"cep_missing_share={s['cep_missing'] / rows:.4f}, two_cep_places={s['two_cep']}, "
+        f"places_by_state=[{by_state}]"
     )
 
 
@@ -425,9 +479,9 @@ def build(
         _fetch(store, geocoded_entry, tmp_dir), _fetch(store, panel_entry, tmp_dir)
     )
     municipalities = pl.read_parquet(
-        _fetch(store, mun_entry, tmp_dir), columns=["cd_ibge", "cd_tse", "legal_amazon"]
+        _fetch(store, mun_entry, tmp_dir), columns=["cd_ibge", "cd_tse", "uf"]
     )
-    legal_codes = set(municipalities.filter(pl.col("legal_amazon"))["cd_ibge"].to_list())
+    codes = set(municipalities.filter(pl.col("cd_tse").is_not_null())["cd_ibge"].to_list())
 
     # Every year is built and checked locally first; nothing reaches the store
     # unless all of them pass, so a failed run leaves no partial output.
@@ -456,7 +510,7 @@ def build(
         )
         del tse_rows
         check_key(table)
-        check_legal_amazon(table, legal_codes)
+        check_municipalities(table, codes)
         check_coverage(y, stats["rows"], stats["missing"], max_missing_share)
         path = tmp_dir / output_name(y)
         table.select(OUTPUT_COLUMNS).write_parquet(path)

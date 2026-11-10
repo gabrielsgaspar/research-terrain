@@ -88,12 +88,13 @@ def municipalities_bytes(path: Path) -> bytes:
         ("1507706", "05533", True),
         ("1507979", "04367", True),
         ("2905602", "34118", False),
+        ("3550308", "71072", False),
     ]
     pl.DataFrame(
         {
             "cd_ibge": [r[0] for r in rows],
             "cd_tse": [r[1] for r in rows],
-            "uf": ["PA", "PA", "BA"],
+            "uf": ["PA", "PA", "BA", "SP"],
             "legal_amazon": [r[2] for r in rows],
         }
     ).write_parquet(path)
@@ -455,3 +456,160 @@ def test_coverage_below_the_share_stops_the_build(tmp_path):
     manifests = stage(store, tmp_path, sections=sections, results={2008: pl.concat([cv, extra])})
     with pytest.raises(BuildError, match="have section data"):
         run_staged(store, tmp_path, manifests, min_coverage_share=0.8)
+
+
+def test_2004_coverage_is_reported_and_never_raises(tmp_path):
+    # The 2008 fixture relabelled as 2004 (the year column is the unquoted field).
+    lines = fixture_bytes(2008).split(b"\r\n")
+    data = b"\r\n".join([lines[0], *(x.replace(b";2008;2;", b";2004;2;", 1) for x in lines[1:])])
+    cv = results_from_sections(data)
+    # 05533 has results but no section file, as in the TSE's incomplete 2004 files.
+    extra = cv.with_columns(pl.lit("05533").alias("sg_ue"), (pl.col("sq_candidato") + "9"))
+
+    store = MemoryStore()
+    manifests = stage(
+        store, tmp_path, sections={(2004, "PA"): data}, results={2004: pl.concat([cv, extra])}
+    )
+    out = run_staged(store, tmp_path, manifests, min_coverage_share=0.8)
+    assert "municipalities_with_sections=1/2" in out["notes"]
+    assert "(by state: PA=1)" in out["notes"]
+
+
+def test_check_coverage_floor_and_report_only_year():
+    sv.check_coverage(2008, 8, 10, 0.8)
+    with pytest.raises(BuildError, match="only 7 of 10"):
+        sv.check_coverage(2008, 7, 10, 0.8)
+    sv.check_coverage(2004, 1, 10, 0.8)
+    sv.check_coverage(2004, 0, 0, 0.8)
+    assert sv.COVERAGE_REPORT_ONLY_YEARS == (2004,)
+
+
+# --- National scope: a Legal Amazon state (PA) and one outside it (SP)
+
+
+def as_state(data: bytes, uf: str, sg_ue: str) -> bytes:
+    return data.replace(b';"PA";"04367"', f';"{uf}";"{sg_ue}"'.encode())
+
+
+def test_two_states_are_kept_and_the_legal_amazon_rows_do_not_change(tmp_path):
+    pa_data = fixture_bytes(2008)
+    sp_data = as_state(pa_data, "SP", "71072")
+    assert sp_data != pa_data
+    pa_results = results_from_sections(pa_data)
+    sp_results = results_from_sections(sp_data)
+
+    pa_store = MemoryStore()
+    only_pa = run(pa_store, tmp_path / "pa", {(2008, "PA"): pa_data}, {2008: pa_results})
+    store = MemoryStore()
+    both = run(
+        store,
+        tmp_path / "both",
+        {(2008, "PA"): pa_data, (2008, "SP"): sp_data},
+        {2008: pl.concat([pa_results, sp_results])},
+    )
+    assert [f["path"].rsplit("/", 1)[-1] for f in both["files"]] == [
+        "section_votes_2008_PA.parquet",
+        "section_votes_2008_SP.parquet",
+    ]
+    pa = read_output(store, both, "section_votes_2008_PA.parquet")
+    sp = read_output(store, both, "section_votes_2008_SP.parquet")
+    # Pará rows are what the Pará-only build gives.
+    assert pa.equals(read_output(pa_store, only_pa, "section_votes_2008_PA.parquet"))
+    assert sp.height == pa.height > 0
+    assert set(sp["sg_ue"]) == {"71072"}
+    assert set(sp["cd_ibge"]) == {"3550308"}
+    assert sp.drop("sg_ue", "cd_ibge").equals(pa.drop("sg_ue", "cd_ibge"))
+    assert "rows_without_municipality=0" in both["notes"]
+    assert "rows_outside_legal_amazon" not in both["notes"]
+    assert "municipalities_with_sections=2/2" in both["notes"]
+    assert "(by state: PA=1, SP=1)" in both["notes"]
+
+
+def test_a_row_without_a_municipality_is_dropped_and_counted(tmp_path):
+    data = fixture_bytes(2008)
+    stray = as_state(data, "SP", "99999")
+    lines = data.split(b"\r\n")
+    mixed = b"\r\n".join([*lines[:-1], stray.split(b"\r\n")[1], b""])
+    sections, results = {(2008, "PA"): mixed}, {2008: results_from_sections(data)}
+    m = run(MemoryStore(), tmp_path, sections, results)
+    assert "rows_without_municipality=1," in m["notes"]
+
+
+# --- The streaming reader gives what the old whole-member reader gave
+
+
+def old_read_section_zip(zip_path: Path) -> pl.DataFrame:
+    """A copy of the reader before it streamed: the reference for the new one."""
+    import re
+
+    with zipfile.ZipFile(zip_path) as zf:
+        members = [n for n in zf.namelist() if re.fullmatch(r"votacao_secao_.*\.csv", n.lower())]
+        assert len(members) == 1
+        raw = zf.read(members[0]).decode("latin-1")
+    df = pl.read_csv(io.BytesIO(raw.encode("utf-8")), separator=";", infer_schema=False)
+    df = df.rename({c: c.strip().lower() for c in df.columns})
+    needed = [*sv.TEXT_KEYS, *sv.INT_KEYS, "nr_votavel", "nr_local_votacao", "qt_votos"]
+    if "sq_candidato" not in df.columns:
+        df = df.with_columns(pl.lit(None, dtype=pl.String).alias("sq_candidato"))
+    df = df.select(sv._text(c) for c in [*needed, "sq_candidato"])
+    df = df.with_columns(
+        pl.col(c).cast(pl.Int32) for c in [*sv.INT_KEYS, "nr_local_votacao"]
+    ).with_columns(pl.col("nr_votavel").cast(pl.Int64), pl.col("qt_votos").cast(pl.Int64))
+    sq = pl.col("sq_candidato")
+    return df.with_columns(
+        pl.when(sq.is_in(list(sv.MISSING_SQ))).then(None).otherwise(sq).alias("sq_file")
+    ).drop("sq_candidato")
+
+
+@pytest.mark.parametrize("year", [2008, 2024])
+def test_the_streaming_reader_equals_the_old_reader_on_the_fixtures(tmp_path, year):
+    path = tmp_path / f"votacao_secao_{year}_PA.zip"
+    path.write_bytes(make_zip(year, "PA", fixture_bytes(year)))
+    new = read_section_zip(path)
+    old = old_read_section_zip(path)
+    assert new.height > 0
+    assert new.schema == old.schema
+    assert new.equals(old)
+    # The fixture's Latin-1 accents are decoded, not mangled.
+    assert not any("�" in str(v) for v in new["sg_ue"].to_list())
+    assert list(tmp_path.glob("*.utf8.csv")) == []
+
+
+def test_a_member_larger_than_one_chunk_gives_every_row(tmp_path, monkeypatch):
+    lines = fixture_bytes(2008).split(b"\r\n")
+    header, body = lines[0], [line for line in lines[1:] if line]
+    repeats = 40
+    data = b"\r\n".join([header, *(body * repeats), b""])
+    path = tmp_path / "votacao_secao_2008_PA.zip"
+    path.write_bytes(make_zip(2008, "PA", data))
+
+    monkeypatch.setattr(sv, "CHUNK_BYTES", 4096)
+    assert len(data) > 5 * sv.CHUNK_BYTES
+    chunked = read_section_zip(path)
+    assert chunked.height == len(body) * repeats
+    monkeypatch.undo()
+    assert chunked.equals(old_read_section_zip(path))
+    assert list(tmp_path.glob("*.utf8.csv")) == []
+
+
+def test_the_reader_raises_on_a_missing_column_an_empty_key_and_a_bad_vote(tmp_path):
+    base = fixture_bytes(2008)
+
+    def zipped(name: str, data: bytes) -> Path:
+        path = tmp_path / name
+        path.write_bytes(make_zip(2008, "PA", data))
+        return path
+
+    no_column = base.replace(b'"QT_VOTOS"', b'"QT_VOTOS_X"', 1)
+    with pytest.raises(BuildError, match="lacks 1 needed columns"):
+        read_section_zip(zipped("no_column.zip", no_column))
+
+    assert b'"04367"' in base
+    empty_key = base.replace(b'"04367"', b'""', 1)
+    with pytest.raises(BuildError, match="needed columns have empty values"):
+        read_section_zip(zipped("empty_key.zip", empty_key))
+
+    bad_vote = base.replace(b";3;1015;", b";x;1015;", 1)
+    with pytest.raises(BuildError, match="not an integer"):
+        read_section_zip(zipped("bad_vote.zip", bad_vote))
+    assert list(tmp_path.glob("*.utf8.csv")) == []

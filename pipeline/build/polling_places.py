@@ -1,4 +1,4 @@
-"""Build the located polling places of the Legal Amazon.
+"""Build the located polling places of Brazil (every municipality with a TSE code).
 
 Contract: data/contracts/polling_places.md. Logic: terrain.builds.polling_places.
 """
