@@ -823,3 +823,15 @@ datasets:
       columns: [id_escola, id_municipio, sigla_uf, latitude, longitude]
       order_by: [id_escola]
       states: [AC, AL, AM, AP, BA, CE, DF, ES, GO, MA, MG, MS, MT, PA, PB, PE, PI, PR, RJ, RN, RO, RR, RS, SC, SE, SP, TO]
+
+  - name: school_polling_match
+    source: built from polling_places and inep_school_catalogue
+    licence: as inep_school_catalogue
+    derived: data/derived/school_polling_match/
+    contract: data/contracts/school_polling_match.md
+    status: planned
+    notes: >
+      Each polling place of 2008-2024 matched to at most one INEP school in
+      the same municipality, with a confidence level (high, medium, low,
+      none). Keys, scores and rede only; no names or addresses. Idea 0006,
+      decision 0011, campaign 0006 step s9.
