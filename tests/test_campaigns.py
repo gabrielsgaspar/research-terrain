@@ -209,6 +209,17 @@ def test_protected_and_owned_paths_are_refused(tmp_path):
     assert any("owned in CODEOWNERS" in p for p in problems)
 
 
+def test_owned_paths_are_allowed_in_closed_campaigns(tmp_path):
+    for status in ("done", "stopped"):
+        text = (
+            campaign_text(status=status)
+            .replace("type: explore", "type: build")
+            .replace("- tests/test_explore_count.py", "- src/terrain/campaigns/gate.py")
+        )
+        problems = validate(make_repo(tmp_path / status, text))
+        assert not any("owned in CODEOWNERS" in p for p in problems), problems
+
+
 def test_explore_task_paths_are_limited(tmp_path):
     text = campaign_text().replace("- tests/test_explore_count.py", "- src/terrain/count.py")
     problems = validate(make_repo(tmp_path, text))
@@ -311,10 +322,13 @@ def test_repo_codeowners_protect_the_gate():
         "scripts/gcp/setup_gcs.sh",
         "src/terrain/split.py",
         "src/terrain/builds/cell_outcomes.py",
+        "src/terrain/builds/cell_enforcement.py",
         "pipeline/build/cell_outcomes.py",
+        "pipeline/build/cell_enforcement.py",
         "tests/test_split.py",
         "tests/test_explore.py",
         "tests/test_build_cell_outcomes.py",
+        "tests/test_build_cell_enforcement.py",
         "tests/test_repo_rules.py",
     ):
         assert owners.owned(path), path

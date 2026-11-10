@@ -335,8 +335,11 @@ def _check_against_repo(c: Campaign, root: Path, owners: CodeOwners, problems: l
                     )
                 if "## Done when" not in text:
                     problems.append(f"{s.draft}: needs a '## Done when' section")
+            # A done or stopped campaign's tasks have merged or never will, so
+            # a path that became owned after the campaign closed is fine.
+            closed = c.status in ("done", "stopped")
             for p in s.allowed_paths:
-                if owners.owned(p):
+                if owners.owned(p) and not closed:
                     problems.append(
                         f"{where}: allowed path '{p}' is owned in CODEOWNERS; "
                         "the gate cannot merge it"
