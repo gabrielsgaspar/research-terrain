@@ -591,3 +591,108 @@ datasets:
       and the Acervo Fundiario redirects to INCRA's home page (2026-11-04).
       Settlements are taken from cnfp_public_forests 2025 instead (PA, PAE,
       PDS, PAF, PE and other settlement categories, dated by anocriacao).
+
+  - name: ibama_autos
+    source: "IBAMA, Fiscalização - Auto de Infração (open-data portal); fallback: Base dos Dados, basedosdados.br_ibama_fiscalizacao.auto_infracao"
+    licence: "IBAMA enforcement records published under Brazil's federal open-data policy; IBAMA's portal lists 'Outra (Aberta)', Base dos Dados lists 'Desconhecida'. Accepted by Gabriel on 2026-11-09 for research use; only cell-level counts are published."
+    gcs: data/raw/ibama/autos/
+    status: planned
+    contract: data/contracts/ibama_autos.md
+    notes: >
+      IBAMA fines (autos de infração), Legal Amazon states, 2000-2025. Two
+      sources: IBAMA's open-data portal first, Base dos Dados on BigQuery as
+      the fallback in the same run. The portal mapping (portal.columns) is
+      dormant until someone profiles the files: a column is null until its
+      name is confirmed, and the portal path runs only when the mapping is
+      complete. Names, CPF/CNPJ and geometries are never stored and, on the
+      BigQuery path, never selected. Campaign 0004 step s1.
+    portal:
+      page: https://dadosabertos.ibama.gov.br/dataset/fiscalizacao-auto-de-infracao
+      files:
+        - name: auto_infracao_csv.zip
+          role: main
+          url: https://dadosabertos.ibama.gov.br/dados/SIFISC/auto_infracao/auto_infracao/auto_infracao_csv.zip
+        - name: coordenada_csv.zip
+          role: coordinates
+          url: https://dadosabertos.ibama.gov.br/dados/SIFISC/auto_infracao/coordenada/coordenada_csv.zip
+      delimiter: null
+      encoding: null
+      columns:
+        id_auto: SEQ_AUTO_INFRACAO
+        data_auto: DAT_HORA_AUTO_INFRACAO
+        ano: null
+        id_municipio: null
+        sigla_uf: null
+        latitude: NUM_LATITUDE_AUTO
+        longitude: null
+        tipo_infracao: null
+        tipo_auto: null
+        situacao_auto: null
+        indicador_cancelado: null
+        gravidade: null
+        indicador_coordenada_valida: null
+        data_extracao: null
+      coordinates:
+        key: SEQ_AUTO_INFRACAO
+        latitude: LATITUDE
+        longitude: LONGITUDE
+        order: SEQ_PONTO_POLIGONO
+    bigquery:
+      endpoint: https://bigquery.googleapis.com/bigquery/v2/
+      scope: https://www.googleapis.com/auth/bigquery
+      page: https://basedosdados.org/dataset/7e01700d-1f9a-4be6-8ec6-85b7c2c6cf15
+      table: basedosdados.br_ibama_fiscalizacao.auto_infracao
+      location: US
+      maximum_bytes_billed: 20000000000
+      columns: [ano, data_auto, id_auto, id_municipio, sigla_uf, latitude, longitude, tipo_infracao, tipo_auto, situacao_auto, indicador_cancelado, gravidade, indicador_coordenada_valida, data_extracao]
+      order_by: [ano, id_auto]
+      states: [AC, AM, AP, MA, MT, PA, RO, RR, TO]
+      years: [2000, 2025]
+
+  - name: ibama_embargos
+    source: "IBAMA, Fiscalização - Termo de Embargo (open-data portal); fallback: Base dos Dados, basedosdados.br_ibama_fiscalizacao.area_embargada"
+    licence: "IBAMA enforcement records published under Brazil's federal open-data policy; IBAMA's portal lists 'Outra (Aberta)', Base dos Dados lists 'Desconhecida'. Accepted by Gabriel on 2026-11-09 for research use; only cell-level counts are published."
+    gcs: data/raw/ibama/embargos/
+    status: planned
+    contract: data/contracts/ibama_embargos.md
+    notes: >
+      IBAMA embargoes (termos de embargo), Legal Amazon states, 2000-2025.
+      Two sources: IBAMA's open-data portal first, Base dos Dados on BigQuery
+      as the fallback in the same run. The portal download URL is not known,
+      so the mapping is incomplete and every run uses BigQuery until someone
+      profiles the portal. Names, CPF/CNPJ, property names and geometries are
+      never stored and, on the BigQuery path, never selected. Campaign 0004
+      step s1.
+    portal:
+      page: https://dadosabertos.ibama.gov.br/dataset/fiscalizacao-termo-de-embargo
+      files:
+        - name: termo_embargo_csv.zip
+          role: main
+          url: null
+      delimiter: null
+      encoding: null
+      columns:
+        id_embargo: SEQ_TAD
+        id_auto: null
+        data_embargo: DAT_EMBARGO
+        ano: null
+        id_municipio: null
+        sigla_uf: null
+        latitude: NUM_LATITUDE_TAD
+        longitude: NUM_LONGITUDE_TAD
+        area_ha: null
+        tipo_area: TIPO_AREA
+        indicador_desembargado: null
+        indicador_coordenada_valida: null
+        data_extracao: null
+    bigquery:
+      endpoint: https://bigquery.googleapis.com/bigquery/v2/
+      scope: https://www.googleapis.com/auth/bigquery
+      page: https://basedosdados.org/dataset/7e01700d-1f9a-4be6-8ec6-85b7c2c6cf15
+      table: basedosdados.br_ibama_fiscalizacao.area_embargada
+      location: US
+      maximum_bytes_billed: 20000000000
+      columns: [ano, data_embargo, id_embargo, id_auto, id_municipio, sigla_uf, latitude, longitude, area_ha, tipo_area, indicador_desembargado, indicador_coordenada_valida, data_extracao]
+      order_by: [ano, id_embargo]
+      states: [AC, AM, AP, MA, MT, PA, RO, RR, TO]
+      years: [2000, 2025]
