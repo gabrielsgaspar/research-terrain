@@ -8,7 +8,9 @@ import copy
 import hashlib
 import io
 import json
+import socket
 import ssl
+import urllib.error
 import zipfile
 from datetime import date
 from pathlib import Path
@@ -677,3 +679,113 @@ def test_catalogue_refuses_contact_columns_in_the_catalog(cadata, tmp_path):
     entry["microdata"]["columns"] = [*entry["microdata"]["columns"], "NU_TELEFONE"]
     with pytest.raises(AcquireError):
         run_catalogue(tmp_path, entry=entry)
+
+
+# --- download errors and retries (run 42861990498: "failed (URLError)") --------
+
+
+def _cert_error():
+    err = ssl.SSLCertVerificationError(1, "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify")
+    err.verify_message = "unable to get local issuer certificate"
+    return err
+
+
+@pytest.mark.parametrize(
+    "err, words",
+    [
+        (
+            urllib.error.HTTPError("u", 503, "Service Unavailable", None, None),
+            "HTTP 503 Service Unavailable",
+        ),
+        (
+            urllib.error.URLError(_cert_error()),
+            "TLS certificate verification failed: unable to get local issuer certificate",
+        ),
+        (urllib.error.URLError(ssl.SSLError(1, "wrong version number")), "TLS error:"),
+        (urllib.error.URLError(TimeoutError("timed out")), "timeout (no answer within 180 s)"),
+        (TimeoutError("The read operation timed out"), "timeout"),
+        (
+            urllib.error.URLError(socket.gaierror(-2, "Name or service not known")),
+            "DNS lookup failed: Name or service not known",
+        ),
+        (
+            urllib.error.URLError(ConnectionRefusedError(111, "Connection refused")),
+            "connection failed: ConnectionRefusedError (Connection refused)",
+        ),
+        (
+            urllib.error.URLError(ConnectionResetError(104, "Connection reset by peer")),
+            "connection failed: ConnectionResetError (Connection reset by peer)",
+        ),
+        (urllib.error.URLError("no host given"), "no host given"),
+    ],
+)
+def test_describe_error_names_the_underlying_reason(err, words):
+    assert words in inep.describe_error(err)
+
+
+class FlakyOpener(FakeOpener):
+    """Raises `failures` (in order) for the microdata URL before serving it."""
+
+    def __init__(self, files, micro_url, failures):
+        super().__init__(files)
+        self.micro_url = micro_url
+        self.failures = list(failures)
+
+    def __call__(self, url, context=None):
+        if url == self.micro_url and self.failures:
+            self.requests.append((url, context))
+            raise self.failures.pop(0)
+        return super().__call__(url, context)
+
+
+def flaky_catalogue(tmp_path, failures):
+    entry = catalogue_entry()
+    micro = entry["microdata"]
+    opener = FlakyOpener(
+        {micro["extra_ca_url"]: CERT, micro["url"]: build_zip(CATALOGUE_ROWS)},
+        micro["url"],
+        failures,
+    )
+    store, sleeps = RecordingStore(), []
+    run = lambda: acquire_catalogue(  # noqa: E731
+        "inep_school_catalogue",
+        store,
+        opener,
+        lambda: Session(coords=COORDS),
+        "proj",
+        TODAY,
+        tmp_path / "work",
+        "abc123",
+        entry,
+        sleep=sleeps.append,
+    )
+    return run, opener, store, sleeps, micro
+
+
+def test_download_is_retried_60_s_apart_and_then_succeeds(cadata, tmp_path):
+    failures = [urllib.error.URLError(ConnectionResetError(104, "reset")), TimeoutError("t")]
+    run, opener, _, sleeps, micro = flaky_catalogue(tmp_path, failures)
+    manifest = run()
+    assert manifest["status"] == "created"
+    assert sleeps == [60, 60]
+    assert opener.urls().count(micro["url"]) == 3
+    assert opener.urls().count(micro["extra_ca_url"]) == 1
+
+
+def test_download_gives_up_after_three_retries_with_every_reason(cadata, tmp_path):
+    failures = [urllib.error.URLError(_cert_error()) for _ in range(5)]
+    run, opener, store, sleeps, micro = flaky_catalogue(tmp_path, failures)
+    with pytest.raises(AcquireError) as info:
+        run()
+    message = str(info.value)
+    assert "from download.inep.gov.br failed 4 times, 60 s apart" in message
+    assert message.count("unable to get local issuer certificate") == 4
+    assert sleeps == [60, 60, 60]
+    assert opener.urls().count(micro["url"]) == 4
+    assert store.created == []
+
+
+def test_failed_certificate_download_names_its_reason(cadata, tmp_path):
+    micro = catalogue_entry()["microdata"]
+    with pytest.raises(AcquireError, match=r"could not be downloaded \(OSError: unreachable\)"):
+        certificate_context(micro, FakeOpener({}))

@@ -510,3 +510,85 @@ def test_module_source_avoids_forbidden_prefixes():
     split = "data/derived/" + "split"
     sealed = "sealed" + "/"
     assert split not in text and sealed not in text
+
+
+# --- asset info: images have a size, collections do not (run 42862268510) ------
+
+
+class FakeAssets:
+    """Stands in for the `ee` module: only `ee.data.getAsset`."""
+
+    def __init__(self, infos):
+        self.infos = infos
+        self.data = self
+
+    def getAsset(self, asset):  # noqa: N802 (Earth Engine's name)
+        return self.infos[asset]
+
+
+def real_ee(infos):
+    real = object.__new__(earthengine.RealEarthEngine)  # skips ee.Initialize
+    real._ee = FakeAssets(infos)
+    real._bucket = "bucket"
+    return real
+
+
+def test_real_asset_info_of_an_image_and_a_collection():
+    real = real_ee(
+        {
+            "img": {"type": "IMAGE", "updateTime": "2025-08-09T18:24:56Z", "sizeBytes": "123"},
+            # what getAsset gives for NOAA/VIIRS/DNB/ANNUAL_V21: no sizeBytes
+            "coll": {"type": "IMAGE_COLLECTION", "updateTime": "2024-03-01T00:00:00Z"},
+        }
+    )
+    assert real.asset_info("img") == {"updateTime": "2025-08-09T18:24:56Z", "sizeBytes": 123}
+    assert real.asset_info("coll") == {"updateTime": "2024-03-01T00:00:00Z", "sizeBytes": None}
+
+
+@pytest.mark.parametrize(
+    "info, words",
+    [
+        ({"type": "IMAGE", "updateTime": "t"}, "no sizeBytes"),
+        ({"type": "IMAGE_COLLECTION"}, "no updateTime"),
+    ],
+)
+def test_real_asset_info_missing_fields_raise(info, words):
+    with pytest.raises(EarthEngineError, match=words):
+        real_ee({"a": info}).asset_info("a")
+
+
+class CollectionEE(FakeEE):
+    """Every asset is a collection: an update time per asset, no size."""
+
+    times = {"NOAA/V21": "2024-03-01T00:00:00Z", "NOAA/V22": "2025-06-01T00:00:00Z"}
+
+    def asset_info(self, asset):
+        return {"updateTime": self.times[asset], "sizeBytes": None}
+
+
+def test_log1p_run_over_collections_records_update_time_and_no_size(tmp_path):
+    store = MemoryStore()
+    arrays = {2021: log_array(), 2022: log_array()}
+    entry = log_entry()
+    m = run(store, CollectionEE(store, arrays=arrays), entry, tmp_path)
+    assert m["status"] == "created"
+    src = m["sources"][0]
+    assert src["last_modified"] == "2025-06-01T00:00:00Z" and src["bytes"] is None
+    assert validate_manifest(m, stage="acquire", dataset="viirs_annual") == []
+    write_manifest(m, store, tmp_path / "m.json")
+
+    same = CollectionEE(store, arrays=arrays)
+    again = run(store, same, entry, tmp_path)
+    assert again["status"] == "unchanged" and same.started == []
+
+    newer = CollectionEE(store, arrays=arrays)
+    newer.times = {**CollectionEE.times, "NOAA/V22": "2026-01-01T00:00:00Z"}
+    assert run(store, newer, entry, tmp_path)["status"] == "created"
+
+
+def test_mapbiomas_image_source_keeps_its_size(tmp_path):
+    store = MemoryStore()
+    m = run(store, FakeEE(store), small_entry(), tmp_path)
+    assert m["sources"][0]["bytes"] == 123
+    src = earthengine.source(dataset(NAME), {"updateTime": "t", "sizeBytes": 7})
+    assert src["bytes"] == 7 and src["etag"] == "995bac2efc56b887"
