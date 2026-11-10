@@ -35,12 +35,12 @@ datasets:
     identifiers: none
   - name: inep_schools
     source: "INEP Censo Escolar via Base dos Dados on BigQuery, table basedosdados.br_inep_censo_escolar.escola, 2007-2024 (table id and columns in data/catalog.yaml)"
-    licence: "INEP publishes its open data under CC BY-ND 3.0 (a site-wide statement at gov.br/inep); Base dos Dados states no licence for the table and refers to the source's terms. Only aggregate statistics are published."
+    licence: "INEP publishes its open data under CC BY-ND 3.0 (a site-wide statement at gov.br/inep); Base dos Dados states no licence for the table and refers to the source's terms. Estimates can be published; school-level derived tables may not be shareable."
     max_size_gb: 2
     identifiers: none
   - name: inep_school_catalogue
     source: "INEP, Microdados do Censo Escolar 2024 (download.inep.gov.br), with coordinates from INEP's Catálogo de Escolas via Base dos Dados, table basedosdados.br_bd_diretorios_brasil.escola"
-    licence: "INEP publishes its open data under CC BY-ND 3.0 (a site-wide statement at gov.br/inep); Base dos Dados states no licence for the table and refers to the source's terms. Only aggregate statistics are published."
+    licence: "INEP publishes its open data under CC BY-ND 3.0 (a site-wide statement at gov.br/inep); Base dos Dados states no licence for the table and refers to the source's terms. Estimates can be published; school-level derived tables may not be shareable."
     max_size_gb: 1
     identifiers: none
   - name: school_polling_match

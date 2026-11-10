@@ -3,7 +3,7 @@ id: "0005"
 title: "Enforcement shielding around council winners' strongholds"
 status: proposed
 created: 2026-11-09
-updated: 2026-11-09
+updated: 2026-11-10
 datasets:
   - cell_enforcement
   - cell_exposure
@@ -88,6 +88,8 @@ the TSE tables, `ibge_municipalities` and `ibge_boundaries_2024`.
   the minimum detectable effect at 0.25% is 0.77 of the pre-election baseline,
   against a bar of 0.25 (`research/explore-runs/0005/42796832006.md`). No
   post-election year was read. Status is unchanged; Gabriel decides it.
+- 2026-11-10: parked after campaign 0004 (power gate k3: MDE 0.77 vs
+  0.25); may return as a secondary outcome of idea 0006.
 
 ## Log
 
