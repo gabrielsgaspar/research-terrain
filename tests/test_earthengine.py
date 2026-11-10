@@ -51,11 +51,25 @@ class FakeEE:
         self.started = []
         self.write_files = True
 
+    bands = None  # None: every band exists; else the list of existing bands
+    images = None  # year -> list of image ids; None: one image per year
+
     def asset_info(self, asset):
         return {"updateTime": self.update_time, "sizeBytes": 123}
 
+    def band_names(self, asset):
+        if self.bands is None:
+            return [f"classification_{y}" for y in range(1985, 2025)] + ["average_masked"]
+        return list(self.bands)
+
+    def year_images(self, collection, year):
+        if self.images is not None:
+            return self.images.get(year, [])
+        return [f"{collection}/{year}"]
+
     def start_export(self, year, params, bucket_prefix):
         self.started.append((year, bucket_prefix))
+        self.params = params
         if self.write_files:
             arr = self.arrays.get(year, good_array())
             self.store.create(bucket_prefix + params["files"][year], tif_bytes(arr))
@@ -295,6 +309,200 @@ def test_check_file_rejects_unreadable(tmp_path):
     path.write_bytes(b"not a tiff")
     with pytest.raises(EarthEngineError, match="cannot be read"):
         check_file(path, SHAPE, 10000)
+
+
+def test_deforestation_params_and_source_are_pinned():
+    entry = dataset(NAME)
+    p = export_params(entry)
+    assert p["asset"] == (
+        "projects/mapbiomas-public/assets/brazil/lulc/collection10/"
+        "mapbiomas_brazil_collection10_deforestation_secondary_vegetation_v2"
+    )
+    assert p["mode"] == "shares"
+    assert p["crs_transform"] == [1000, 0, 2823000, 0, -1000, 11902000]
+    assert p["dimensions"] == "3350x2580"
+    assert p["file_dimensions"] == [3584, 2816]
+    assert p["min_share_with_data"] == 0.5
+    assert p["shard_size"] == 128
+    assert p["codes"] == [1, 2, 3, 4, 5, 6, 7]
+    assert p["scale"] == 10000
+    assert p["shape"] == (2580, 3350, 7)
+    assert p["bands"][2004] == "classification_2004"
+    assert p["files"][2024] == "mapbiomas_shares_2024.tif"
+    src = earthengine.source(entry, {"updateTime": "t", "sizeBytes": 1})
+    assert src["url"] == p["asset"]
+    assert src["etag"] == "995bac2efc56b887"
+
+
+def groups_entry():
+    entry = small_entry()
+    block = entry["earthengine"]
+    del block["codes"]
+    block.update(
+        mode="groups",
+        groups={"urban": [24], "native": [3, 4, 5]},
+        file_dimensions=[256, 128],
+        min_share_with_data=0.35,
+    )
+    return entry
+
+
+def log_entry():
+    entry = copy.deepcopy(dataset("viirs_annual"))
+    block = entry["earthengine"]
+    block["years"] = [2021, 2022]
+    block["grid_km"] = {"x0": 10, "x1": 10 + COLS, "y0": 20, "y1": 20 + ROWS}
+    block["collections"] = [
+        {"asset": "NOAA/V21", "years": [2021]},
+        {"asset": "NOAA/V22", "years": [2022]},
+    ]
+    return entry
+
+
+def log_array(value=500, empty_cells=0):
+    arr = np.full((ROWS, COLS), value, dtype=np.uint16)
+    arr.reshape(-1)[:empty_cells] = 0
+    return arr
+
+
+def test_groups_params_and_run(tmp_path):
+    p = export_params(groups_entry())
+    assert p["mode"] == "groups" and p["groups"] == {"urban": [24], "native": [3, 4, 5]}
+    assert p["shape"] == (ROWS, COLS, 2)
+    assert p["file_dimensions"] == [256, 128] and p["min_share_with_data"] == 0.35
+    store = MemoryStore()
+    arrays = {y: np.full((ROWS, COLS, 2), 3000, dtype=np.uint16) for y in (2004, 2005)}
+    ee = FakeEE(store, arrays=arrays)
+    m = run(store, ee, groups_entry(), tmp_path)
+    assert m["status"] == "created" and [y for y, _ in ee.started] == [2004, 2005]
+    assert ee.params["mode"] == "groups"
+
+
+def test_missing_band_raises_before_any_export(tmp_path):
+    store = MemoryStore()
+    ee = FakeEE(store)
+    ee.bands = ["classification_2004"]
+    with pytest.raises(EarthEngineError, match="missing bands"):
+        run(store, ee, small_entry(), tmp_path)
+    assert ee.started == [] and store.list("") == []
+
+
+def test_log1p_params():
+    p = export_params(log_entry())
+    assert p["mode"] == "log1p_mean" and p["shape"] == (ROWS, COLS, 1)
+    assert p["year_assets"] == {2021: "NOAA/V21", 2022: "NOAA/V22"}
+    assert p["bands"][2021] == "average_masked" and p["scale"] == 1000
+    assert p["files"][2022] == "viirs_log1p_2022.tif" and p["min_share_with_data"] == 0.01
+    full = export_params(dataset("viirs_annual"))
+    assert full["years"] == list(range(2013, 2025))
+    assert full["year_assets"][2021] == "NOAA/VIIRS/DNB/ANNUAL_V21"
+    assert full["year_assets"][2022] == "NOAA/VIIRS/DNB/ANNUAL_V22"
+
+
+def test_log1p_run_records_images(tmp_path):
+    store = MemoryStore()
+    arrays = {2021: log_array(), 2022: log_array()}
+    ee = FakeEE(store, arrays=arrays)
+    entry = log_entry()
+    m = run(store, ee, entry, tmp_path)
+    assert m["status"] == "created"
+    assert ee.params["images"] == {2021: "NOAA/V21/2021", 2022: "NOAA/V22/2022"}
+    assert "2021=NOAA/V21/2021, 2022=NOAA/V22/2022" in m["notes"]
+    src = m["sources"][0]
+    assert src["url"] == "NOAA/V21, NOAA/V22" and src["bytes"] == 246
+    assert validate_manifest(m, stage="acquire", dataset="viirs_annual") == []
+
+
+@pytest.mark.parametrize("found", [[], ["a", "b"]])
+def test_log1p_year_without_exactly_one_image_raises(tmp_path, found):
+    store = MemoryStore()
+    ee = FakeEE(store)
+    ee.images = {2021: ["NOAA/V21/2021"], 2022: found}
+    with pytest.raises(EarthEngineError, match="expected 1"):
+        run(store, ee, log_entry(), tmp_path)
+    assert ee.started == [] and store.list("") == []
+
+
+def test_log1p_missing_band_raises_before_any_export(tmp_path):
+    store = MemoryStore()
+    ee = FakeEE(store)
+    ee.bands = ["avg_rad"]
+    with pytest.raises(EarthEngineError, match="missing band"):
+        run(store, ee, log_entry(), tmp_path)
+    assert ee.started == [] and store.list("") == []
+
+
+@pytest.mark.parametrize("collections", ["none", "twice"])
+def test_log1p_year_collections_raise(collections):
+    entry = log_entry()
+    colls = entry["earthengine"]["collections"]
+    if collections == "none":
+        colls[1]["years"] = []
+    else:
+        colls[1]["years"] = [2021, 2022]
+    with pytest.raises(EarthEngineError, match="no collection|two collections"):
+        export_params(entry)
+
+
+def test_unknown_mode_raises():
+    entry = small_entry()
+    entry["earthengine"]["mode"] = "mean"
+    with pytest.raises(EarthEngineError, match="unknown export mode"):
+        export_params(entry)
+
+
+def write_tif(tmp_path, arr):
+    path = tmp_path / "a.tif"
+    tifffile.imwrite(path, arr)
+    return path
+
+
+def test_check_file_groups(tmp_path):
+    arr = np.full((ROWS, COLS, 2), 3000, dtype=np.uint16)
+    assert check_file(write_tif(tmp_path, arr), (ROWS, COLS, 2), 10000, "groups") == (12, 12)
+    arr[0, 0] = [6000, 4100]
+    with pytest.raises(EarthEngineError, match="sum to more"):
+        check_file(write_tif(tmp_path, arr), (ROWS, COLS, 2), 10000, "groups")
+    arr = np.zeros((ROWS, COLS, 2), dtype=np.uint16)
+    arr[0, :2] = 100  # 2 of 12 cells have data: 17%
+    path = write_tif(tmp_path, arr)
+    assert check_file(path, (ROWS, COLS, 2), 10000, "groups", 0.15)[0] == 2
+    with pytest.raises(EarthEngineError, match="only 2 of 12"):
+        check_file(path, (ROWS, COLS, 2), 10000, "groups", 0.35)
+
+
+def test_check_file_log1p_mean(tmp_path):
+    shape = (ROWS, COLS, 1)
+    # tifffile returns a one-band file as a 2-D array
+    assert check_file(write_tif(tmp_path, log_array()), shape, 1000, "log1p_mean") == (12, 0)
+    assert check_file(write_tif(tmp_path, log_array(11000)), shape, 1000, "log1p_mean")[0] == 12
+    with pytest.raises(EarthEngineError, match="above 11"):
+        check_file(write_tif(tmp_path, log_array(11001)), shape, 1000, "log1p_mean")
+    with pytest.raises(EarthEngineError, match="dtype"):
+        check_file(write_tif(tmp_path, log_array().astype(np.uint8)), shape, 1000, "log1p_mean")
+    with pytest.raises(EarthEngineError, match="shape"):
+        check_file(write_tif(tmp_path, log_array()[:2]), shape, 1000, "log1p_mean")
+    sparse = write_tif(tmp_path, log_array(empty_cells=11))
+    assert check_file(sparse, shape, 1000, "log1p_mean", 0.01)[0] == 1
+    with pytest.raises(EarthEngineError, match="only 1 of 12"):
+        check_file(sparse, shape, 1000, "log1p_mean", 0.5)
+
+
+def test_new_catalog_entries_load():
+    viirs = dataset("viirs_annual")
+    assert viirs["gcs"] == "data/raw/viirs/annual/"
+    assert viirs["earthengine"]["band"] == "average_masked"
+    cov = dataset("mapbiomas_coverage_national")
+    assert cov["gcs"] == "data/raw/mapbiomas/coverage/"
+    p = export_params(cov)
+    assert p["mode"] == "groups" and list(p["groups"]) == ["urban", "native"]
+    assert p["groups"]["native"] == [3, 4, 5, 6, 49, 11, 12, 32, 29, 50]
+    assert p["years"] == list(range(2004, 2025)) and p["scale"] == 10000
+    assert p["file_dimensions"] == [4608, 4352] and p["min_share_with_data"] == 0.35
+    assert p["dimensions"] == "4587x4312" and p["shape"] == (4312, 4587, 2)
+    assert all(d % p["shard_size"] == 0 for d in p["file_dimensions"])
+    pv = export_params(viirs)
+    assert pv["dimensions"] == "4587x4312" and pv["file_dimensions"] == [4608, 4352]
 
 
 def test_module_source_avoids_forbidden_prefixes():

@@ -535,6 +535,81 @@ datasets:
       grid_km: {x0: 2823, x1: 6173, y0: 9322, y1: 11902}
       file: mapbiomas_shares_<year>.tif
 
+  - name: mapbiomas_coverage_national
+    source: MapBiomas Brasil Collection 10, land use and land cover (coverage), Earth Engine asset below
+    licence: >-
+      CC BY 4.0 (MapBiomas: Earth Engine catalog, the MapBiomas site and its
+      Dataverse); cite as 'MapBiomas – Coleção 10 da série anual de Mapas de
+      Cobertura e Uso da Terra do Brasil, acessado em <date> através do link:
+      <link>'
+    gcs: data/raw/mapbiomas/coverage/
+    status: planned
+    notes: >
+      Idea 0006, campaign 0006 step s11. Two bands per year, each the share of
+      the 30 m pixels of an IBGE 1 km cell (x 10,000, uint16): urban (code 24,
+      Area Urbanizada) and native (codes 3, 4, 5, 6, 49, 11, 12, 32, 29, 50, the
+      level 1 classes Floresta and Vegetacao Herbacea e Arbustiva, all marked
+      natural cover in the Collection 10 ATBD, Table 3). "Native" is MapBiomas'
+      natural vegetation: water and beaches are excluded, and rocky outcrop
+      (code 29) is included as a natural non-forest class. One GeoTIFF per
+      year 2004-2024 on the project's Albers 1 km grid over all of Brazil
+      (x 2813-7400 km, y 7600-11912 km: the extreme points plus 10 km; Brazil
+      is about 43% of the box). The older mapbiomas_deforestation entry says
+      CC-BY-SA 4.0; this entry states what MapBiomas states today. Outcome
+      data: raw holds both halves and no exploration account can read raw
+      (decisions 0003, 0011).
+    earthengine:
+      asset: projects/mapbiomas-public/assets/brazil/lulc/collection10/mapbiomas_brazil_collection10_coverage_v2
+      band: classification_<year>
+      mode: groups
+      groups:
+        urban: [24]
+        native: [3, 4, 5, 6, 49, 11, 12, 32, 29, 50]
+      years: [2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024]
+      scale: 10000
+      grid_km: {x0: 2813, x1: 7400, y0: 7600, y1: 11912}
+      file_dimensions: [4608, 4352]
+      min_share_with_data: 0.35
+      file: coverage_shares_<year>.tif
+
+  - name: viirs_annual
+    source: NOAA / Earth Observation Group, VIIRS Nighttime Lights annual composites (VNL V2.1 and V2.2), Earth Engine collections below
+    licence: >-
+      Public domain per the Earth Engine catalog ('not subject to copyright and
+      carry no restrictions'); EOG states that many of its VIIRS Nighttime
+      Lights data are under CC BY 4.0. Cite Elvidge et al. (2021), Remote
+      Sensing 13(5), 922, and EOG as the source.
+    gcs: data/raw/viirs/annual/
+    status: planned
+    notes: >
+      Idea 0006, campaign 0006 step s11. One band per file: the mean over the
+      1 km cell of log(1 + max(radiance, 0)) of the band average_masked
+      (average monthly radiance with background masked, nW/sr/cm2; 463.83 m
+      pixels), x 1,000, uint16. One GeoTIFF per year 2013-2024 on the same
+      grid and extent as mapbiomas_coverage_national. V2.1 covers 2013-2021;
+      V2.2 covers 2022-2024. EOG documents a method change between V2.1 and
+      V2.2 (mixed satellites in 2022; months with more than one cloud-free
+      observation kept), so a level shift at 2021/2022 may be method, not
+      light. There is no 2012 image (V2.1 excludes it because it was processed
+      differently), so idea 0006's lights outcome for the 2016 election uses the
+      pre-election years that exist, 2013-2015. Whether 2023 and 2024 exist in
+      V2.2 is unconfirmed; the run fails unless each listed year has exactly one
+      image, and the manifest records each year's image id. Outcome data: raw
+      holds both halves and no exploration account can read raw (decisions
+      0003, 0011).
+    earthengine:
+      mode: log1p_mean
+      band: average_masked
+      collections:
+        - {asset: NOAA/VIIRS/DNB/ANNUAL_V21, years: [2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021]}
+        - {asset: NOAA/VIIRS/DNB/ANNUAL_V22, years: [2022, 2023, 2024]}
+      years: [2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024]
+      scale: 1000
+      grid_km: {x0: 2813, x1: 7400, y0: 7600, y1: 11912}
+      file_dimensions: [4608, 4352]
+      min_share_with_data: 0.01
+      file: viirs_log1p_<year>.tif
+
   - name: cell_outcomes
     source: built from mapbiomas_deforestation and grid_cells, split by half
     licence: CC-BY-SA 4.0 (MapBiomas)
