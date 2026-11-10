@@ -84,6 +84,10 @@ the TSE tables, `ibge_municipalities` and `ibge_boundaries_2024`.
   builds `cell_enforcement`, checks coverage, power and the placebo on
   pre-election years, and only then estimates the post-election effect at
   0.50%.
+- 2026-11-10: campaign 0004 stopped at its power gate. Kill rule k3 was met:
+  the minimum detectable effect at 0.25% is 0.77 of the pre-election baseline,
+  against a bar of 0.25 (`research/explore-runs/0005/42796832006.md`). No
+  post-election year was read. Status is unchanged; Gabriel decides it.
 
 ## Log
 
