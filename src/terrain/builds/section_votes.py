@@ -438,7 +438,7 @@ def _note(year: int, s: dict[str, int]) -> str:
         f"({s['agree'] / s['total']:.4f}), annulled_in_results_candidacies={s['annulled']}, "
         f"unmatched_candidate_numbers={s['unmatched']}/{s['numbers']}, "
         f"numbers_with_several_voted_candidacies={s['several']}, "
-        f"rows_without_municipality={s['outside']},other_election_year_rows={s['other_year']}"
+        f"rows_without_municipality={s['outside']}, other_election_year_rows={s['other_year']}"
     )
 
 

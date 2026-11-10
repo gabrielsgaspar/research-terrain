@@ -532,7 +532,7 @@ def test_a_row_without_a_municipality_is_dropped_and_counted(tmp_path):
     mixed = b"\r\n".join([*lines[:-1], stray.split(b"\r\n")[1], b""])
     sections, results = {(2008, "PA"): mixed}, {2008: results_from_sections(data)}
     m = run(MemoryStore(), tmp_path, sections, results)
-    assert "rows_without_municipality=1," in m["notes"]
+    assert "rows_without_municipality=1, other_election_year_rows=" in m["notes"]
 
 
 # --- The streaming reader gives what the old whole-member reader gave
