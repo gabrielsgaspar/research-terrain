@@ -1,0 +1,79 @@
+{
+  "dataset": "viirs_annual",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/viirs/annual/2026-11-10/",
+  "created_at": "2026-11-10T22:53:01.866479+00:00",
+  "code_commit": "d2c7ce1c32f3c1f60419f85cb110b315d0b35956",
+  "sources": [
+    {
+      "url": "NOAA/VIIRS/DNB/ANNUAL_V21, NOAA/VIIRS/DNB/ANNUAL_V22",
+      "last_modified": "2026-04-11T00:13:58.934420Z",
+      "etag": "58e91e1a62dcd058",
+      "bytes": null
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/viirs/annual/2026-11-10/viirs_log1p_2013.tif",
+      "sha256": "9859ea39c2d0bf02de012531b332fc92301043a826bec3ff0d61b9f587f785e2",
+      "bytes": 2581974
+    },
+    {
+      "path": "data/raw/viirs/annual/2026-11-10/viirs_log1p_2014.tif",
+      "sha256": "be6a22835d2511fcc8db45255ce6d4a796b355988f33010a9e9874a1543d04b5",
+      "bytes": 2626329
+    },
+    {
+      "path": "data/raw/viirs/annual/2026-11-10/viirs_log1p_2015.tif",
+      "sha256": "8cb59763f25e22ce0b7860acfb0a6e5ffb0ebdfdafc834c09e0786cfa92233a0",
+      "bytes": 2691493
+    },
+    {
+      "path": "data/raw/viirs/annual/2026-11-10/viirs_log1p_2016.tif",
+      "sha256": "663b401375679acb62aa48050b079cfc57ad67b9aa285146adeb73627eb0862f",
+      "bytes": 2681188
+    },
+    {
+      "path": "data/raw/viirs/annual/2026-11-10/viirs_log1p_2017.tif",
+      "sha256": "d93dedb98fc61eeb20ba4c817acf35921763d7cafc27eeab0af61b40ef288c19",
+      "bytes": 2909134
+    },
+    {
+      "path": "data/raw/viirs/annual/2026-11-10/viirs_log1p_2018.tif",
+      "sha256": "11423605bffa1e199d412eeb008e9da99090712eb967db70326608753de67c38",
+      "bytes": 2959573
+    },
+    {
+      "path": "data/raw/viirs/annual/2026-11-10/viirs_log1p_2019.tif",
+      "sha256": "9761630d3e32852243244682711e7191e45bd53c84d1bc807d6a148f0796a02b",
+      "bytes": 2954772
+    },
+    {
+      "path": "data/raw/viirs/annual/2026-11-10/viirs_log1p_2020.tif",
+      "sha256": "7c6fdc822f6be3d3484ffe1c32244fef284f5f09f15ebe39b2e18a94f4c04c0c",
+      "bytes": 3020618
+    },
+    {
+      "path": "data/raw/viirs/annual/2026-11-10/viirs_log1p_2021.tif",
+      "sha256": "d0f2406a4f3afa8cc4e7efeb9051f43d2342448c2a017a8d2b69f3ecac0b109b",
+      "bytes": 3165228
+    },
+    {
+      "path": "data/raw/viirs/annual/2026-11-10/viirs_log1p_2022.tif",
+      "sha256": "b5f26bdb2760ad02960a6a6894738682efc92c48cfd9d67676ac2dbde15dd073",
+      "bytes": 3200467
+    },
+    {
+      "path": "data/raw/viirs/annual/2026-11-10/viirs_log1p_2023.tif",
+      "sha256": "539cdee0a2610afbf614ed43a0516675b36d401f7920a044c2650823ac3ddba5",
+      "bytes": 3542139
+    },
+    {
+      "path": "data/raw/viirs/annual/2026-11-10/viirs_log1p_2024.tif",
+      "sha256": "c026e034d895f498b69c3ac571c8b1d23b0605ce17d04cdb1dbbb0119eeaa695",
+      "bytes": 3609905
+    }
+  ],
+  "notes": "cells with data per year: 2013=1133532, 2014=1155861, 2015=1190518, 2016=1190773, 2017=1264264, 2018=1291954, 2019=1295791, 2020=1310502, 2021=1380684, 2022=1390429, 2023=1557597, 2024=1581699; image per year: 2013=NOAA/VIIRS/DNB/ANNUAL_V21/20130101, 2014=NOAA/VIIRS/DNB/ANNUAL_V21/20140101, 2015=NOAA/VIIRS/DNB/ANNUAL_V21/20150101, 2016=NOAA/VIIRS/DNB/ANNUAL_V21/20160101, 2017=NOAA/VIIRS/DNB/ANNUAL_V21/20170101, 2018=NOAA/VIIRS/DNB/ANNUAL_V21/20180101, 2019=NOAA/VIIRS/DNB/ANNUAL_V21/20190101, 2020=NOAA/VIIRS/DNB/ANNUAL_V21/20200101, 2021=NOAA/VIIRS/DNB/ANNUAL_V21/20210101, 2022=NOAA/VIIRS/DNB/ANNUAL_V22/20220101, 2023=NOAA/VIIRS/DNB/ANNUAL_V22/20230101, 2024=NOAA/VIIRS/DNB/ANNUAL_V22/20240101"
+}
