@@ -1,7 +1,7 @@
 ---
 id: "0005"
 title: "Do narrow council winners' voters' places get more of the state?"
-status: active
+status: stopped
 idea: "0006"
 owner: gabrielsgaspar
 created: 2026-11-10
@@ -540,6 +540,12 @@ When a number runs out, no new step starts and the close-out reports why.
   or imports `terrain.registered`: stop everything.
 
 ## Provenance
+
+- 2026-11-10: **stopped** by Gabriel before any work: step s1's
+  `allowed_paths` missed `tests/test_acquire.py`, whose URL count for
+  `tse_votes_by_section` (63) s1 must change to 182, so s1 could not be
+  planned (#292). No step merged and no run started. Replaced by campaign
+  0006 (`research/campaigns/0006-geography-of-representation/`).
 
 Stated by Gabriel on 2026-11-10:
 
