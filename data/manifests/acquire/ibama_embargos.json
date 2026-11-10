@@ -1,0 +1,29 @@
+{
+  "dataset": "ibama_embargos",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/ibama/embargos/2026-11-10/",
+  "created_at": "2026-11-10T04:24:26.212004+00:00",
+  "code_commit": "f69a905f790162bdb9eeb68534e8c299dc8e04e0",
+  "sources": [
+    {
+      "fonte": "basedosdados",
+      "url": "https://basedosdados.org/dataset/7e01700d-1f9a-4be6-8ec6-85b7c2c6cf15",
+      "table": "basedosdados.br_ibama_fiscalizacao.area_embargada",
+      "query": "SELECT ano, data_embargo, id_embargo, id_auto, id_municipio, sigla_uf, latitude, longitude, area_ha, tipo_area, indicador_desembargado, indicador_coordenada_valida, data_extracao FROM `basedosdados.br_ibama_fiscalizacao.area_embargada` WHERE sigla_uf IN ('AC', 'AM', 'AP', 'MA', 'MT', 'PA', 'RO', 'RR', 'TO') AND ano BETWEEN 2000 AND 2025 ORDER BY ano, id_embargo",
+      "location": "US",
+      "max_data_extracao": "2026-09-23",
+      "rows": 67795,
+      "total_bytes_processed": 9078897,
+      "job_id": "job_3csok_fLNMr9LFX37uWX5n3WM4kz"
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/ibama/embargos/2026-11-10/ibama_embargos.parquet",
+      "sha256": "a84f22c4e54be83c5c2645e9ae463e4f928526f8837f0c852ca629994aa14ae0",
+      "bytes": 1349236
+    }
+  ],
+  "notes": "source used: basedosdados\nportal probe: HTTP 403\nportal skipped: mapping incomplete\nrows: 67795\ndistinct tipo_area: Atividade, Desmatamento, Desmatamento e Queimada, N\u00e3o se Aplica, N\u00e3o se aplica, Outro(s), Outros, Queimada, null\ndistinct indicador_desembargado: S, null\ndistinct indicador_coordenada_valida: nao, null, sim"
+}
