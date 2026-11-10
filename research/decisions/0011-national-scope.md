@@ -1,16 +1,17 @@
 ---
 id: "0011"
 title: "The geography of representation: national scope and split"
-status: proposed
+status: accepted
 date: 2026-11-10
 supersedes: null
 ---
 
 # 0011: The geography of representation: national scope and split
 
-Date: 2026-11-10. Status: proposed. Drafted by Claude for Gabriel from his
-instructions of 2026-11-10. It takes effect when he changes the status to
-accepted and merges it.
+Date: 2026-11-10. Status: accepted (Gabriel, 2026-11-10, with the four
+choices in PR #280: 2010 population on 2022 boundaries, terciles within each
+state, the 5,571-row DTB 2024 list, and the note on raw data below). Drafted
+by Claude for Gabriel from his instructions of 2026-11-10.
 
 ## The question
 
