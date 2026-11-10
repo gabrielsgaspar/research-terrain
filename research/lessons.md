@@ -16,6 +16,22 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-10: Enforcement near strongholds cannot be detected at 0.25%: MDE is 0.77 of baseline (idea 0005, issue #271)
+- Tried: campaign 0004 ran `explore/0005_enforcement_power.py` on the
+  exploration half, pre-election years only, run 42796832006
+  (`research/explore-runs/0005/42796832006.md`): location coverage, counts of
+  located actions near close-pair strongholds, power at 0.25% and 0.50%, and
+  a 0.50% placebo.
+- Result: kill rule k3 was met. The MDE is 0.77 of the baseline mean at 0.25%
+  and 0.67 at 0.50%, against a bar of 0.25. The other rules were not met:
+  3 of 4 elections have at least half located (2008 is 0.339), 20,296 located
+  actions in exposed cells, placebo p 0.124.
+- Why: enforcement counts per 1 km cell are sparse and noisy, so the
+  re-flip SD of the slope is large relative to the baseline mean.
+- Implication: the campaign stopped before any post-election year was read, so
+  there is no estimate. Idea 0005 needs a different outcome or unit before it
+  can be powered; Gabriel decides its status.
+
 ## 2026-11-09: The one-incumbent fallback has 813 close pairs at 0.25% (idea 0001, issue #262)
 - Tried: campaign 0003 ran `explore/0001_one_incumbent_pairs.py` on the
   exploration half at the 0.25% window, run 42681937536

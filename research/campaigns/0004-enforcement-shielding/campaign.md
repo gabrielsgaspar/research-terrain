@@ -1,7 +1,7 @@
 ---
 id: "0004"
 title: "Does IBAMA enforcement fall less near a close council winner's stronghold?"
-status: active
+status: done
 idea: "0005"
 owner: gabrielsgaspar
 created: 2026-11-09
