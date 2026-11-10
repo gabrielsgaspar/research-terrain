@@ -1,0 +1,540 @@
+{
+  "dataset": "cell_enforcement",
+  "stage": "build",
+  "status": "created",
+  "gcs_prefix": "data/derived/cell_enforcement/debc49e9c1af8330/",
+  "created_at": "2026-11-10T09:40:59.756481+00:00",
+  "code_commit": "b24ae70059d8f5929cb6948e75328028bcaef1b7",
+  "sources": [],
+  "files": [
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2000.parquet",
+      "sha256": "8084f1c3e71e533627dabd1ee610e0fa300a54f911355b77346fd236cff7f592",
+      "bytes": 2436
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2000.parquet",
+      "sha256": "3942a86924ac103ed09f8cabe24dd5ec4b036f2f3269ce13f360f9cbccce81cf",
+      "bytes": 4099
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2001.parquet",
+      "sha256": "b788150d6d01b003c578b72df5576d2151b93a9296f2aac3f6f38ca83bd13e7a",
+      "bytes": 2668
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2001.parquet",
+      "sha256": "ffa0d789dc14ef89374c6c7a4418b59485a2883c48e6a239b3315881e41a4f83",
+      "bytes": 4171
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2002.parquet",
+      "sha256": "0f7bdc1e367b217cbb3cf767f7b8f49532ac09aa03d88899b22b152fb43d0901",
+      "bytes": 2883
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2002.parquet",
+      "sha256": "3e2da13825639016fda7d239ea7525d0672e71ddae8210245359d8e016939cf9",
+      "bytes": 4192
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2003.parquet",
+      "sha256": "64a9ae862c2b65b90d75df20c5477f5539e91f68c7b65fcc8d6b0e023ecb7a1c",
+      "bytes": 3261
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2003.parquet",
+      "sha256": "b51c893fa7f38bd92a05e8cb94f7ef2974c28f88103f4edf49197545b67c9a15",
+      "bytes": 4271
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2004.parquet",
+      "sha256": "a02d612823dee0646b55de0e2379b76304c12663fd496c50db89de109a2ca48a",
+      "bytes": 3624
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2004.parquet",
+      "sha256": "d46428268be814ea697c6e61d42c094f07bc1157397c4ab9ace310174002300c",
+      "bytes": 4311
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2005.parquet",
+      "sha256": "ec317ec8056c7fd20f19ccbd7cb945eccc2258425aaf78ccc72028e0412e3254",
+      "bytes": 5290
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2005.parquet",
+      "sha256": "2c171877f3368154b4e9221e0221e49bcca83033d7e542808ebb0ba74f3611f9",
+      "bytes": 4565
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2006.parquet",
+      "sha256": "035021da63b743ad7db0348af17e4eb5e3048623b7bd33f83f9fc5272ce57d66",
+      "bytes": 7572
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2006.parquet",
+      "sha256": "fc68aa9b0c4ce4a54db58559bd6c7b5af2af81b62eca09cf7da6646e1036387d",
+      "bytes": 4701
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2007.parquet",
+      "sha256": "ca7bf0e275bb8a63f99d60d53891904cc44cac56b98833b75b6b41ffdd708ee1",
+      "bytes": 10574
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2007.parquet",
+      "sha256": "4ab125c4dbd0e612dcd03cf7c587512cfc76368402ce6827e7e55c86e9870033",
+      "bytes": 4831
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2008.parquet",
+      "sha256": "11c1592667e53c1e08e4fd3350a1517cef204ccd2582c00a6c06464ca2cfcf8c",
+      "bytes": 11655
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2008.parquet",
+      "sha256": "8ab1b488c5c714c6cf9a06773203e4fc7250d0fedebc7ce1ae6af3888f824e06",
+      "bytes": 4849
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2009.parquet",
+      "sha256": "a447fd00690a02914f64fb73cc5ed36ce6d84bb018d38559c55b922ceba6aa33",
+      "bytes": 10133
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2009.parquet",
+      "sha256": "f8620fbda9cd0c31b4bbce8e6d37c61f75018f01ab23e84d222374aa7692e5e0",
+      "bytes": 4787
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2010.parquet",
+      "sha256": "1490ce3836e8b974a5e707659c942f605e7bc4b7108218ef0095eff383f2668b",
+      "bytes": 10591
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2010.parquet",
+      "sha256": "5aea8af02eba606b18b14bf269d68719f8587cdc5e691a4ebf4e36d989875a7e",
+      "bytes": 4744
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2011.parquet",
+      "sha256": "94fd2685ef3c8bf1dec724137463ab6b077f2d3df7670c30035282aa45c03931",
+      "bytes": 11475
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2011.parquet",
+      "sha256": "33e0294cb0efd0135fb429134cd0b93255a40c929d9f9e6e5b3ab6d47375fe20",
+      "bytes": 4789
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2012.parquet",
+      "sha256": "f27acadef56a5feee804ea68fbf895f2707596ffc1520573a881279e304a1a10",
+      "bytes": 11365
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2012.parquet",
+      "sha256": "73f2bc3112bcab10dae6a8738a305d2731b03cdf48ebb28dff5e561b8e092e01",
+      "bytes": 4672
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2013.parquet",
+      "sha256": "5f9a8c7be7be3aac9c2e1a5b15c8083cd53a8832dc16c97869623c11d970836d",
+      "bytes": 12564
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2013.parquet",
+      "sha256": "4d2909616f9efd675418fd1c1bcc030928e06cb06199b81fd5ed95730deff2d3",
+      "bytes": 4719
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2014.parquet",
+      "sha256": "d2b16f5f8bb932546a87491d3676dd005012197e30deeb7b356481309a7343bb",
+      "bytes": 12907
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2014.parquet",
+      "sha256": "9d31139be87b011efed79ab4f24affaf00aba4c4d6ad2747ea7e44e152cf4052",
+      "bytes": 4771
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2015.parquet",
+      "sha256": "82a87a7281437e69e32c1c0a54d9dd6f0defd2bcfa2e0c89e8b5e0c1bd225e65",
+      "bytes": 13256
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2015.parquet",
+      "sha256": "286a463ab7f6de7f3e5bd7a30999c36d0d91e9cf3c0d92e4e8cd688ce1aba08d",
+      "bytes": 4843
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2016.parquet",
+      "sha256": "c4b1aa368ce1be898f7e2519736bec2b9aa37925095182cca7a9a7cf58712c4e",
+      "bytes": 11660
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2016.parquet",
+      "sha256": "86abd213930f5ed8bfc56d541bd4f80023b33c215ac3d291975fd1c4df35a39b",
+      "bytes": 4760
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2017.parquet",
+      "sha256": "51a8c3fab496f9f6160e1fad3a483081e6aaa446b3220768376a21fd87d1b476",
+      "bytes": 10524
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2017.parquet",
+      "sha256": "0e63af55c8a831346a873469a60ef3aa566e43482de1ab6708eb30b2f606e695",
+      "bytes": 4684
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2018.parquet",
+      "sha256": "12a2ca2cd0b96ddfe49cd247a33214de85e09e7fa1ee153d293e829a55fe90df",
+      "bytes": 10497
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2018.parquet",
+      "sha256": "064646662c4585956575d822493c9a3aae67d3270aaf56ce0a7d3f489ef50ef3",
+      "bytes": 4765
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2019.parquet",
+      "sha256": "96cf7d11c10111fedd9a7d69cebedf71772ecd1968e32826b8468b1ddb56f0f2",
+      "bytes": 10452
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2019.parquet",
+      "sha256": "d0c36f3ab626ffb5918a16d94b8bf39cbe8f83178898e0f07e4e65a3f3bfd7dc",
+      "bytes": 4682
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2020.parquet",
+      "sha256": "4fc587620af2aa13a123677d10f18364027d7480a90e5680c58ff248924660d4",
+      "bytes": 7450
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2020.parquet",
+      "sha256": "2481ed005770035d2106943954980a7e504ba643287bd9b8225dbd521a5023c7",
+      "bytes": 4488
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2021.parquet",
+      "sha256": "35aa6d02e49b82cac498850469f90115c299e02360c34fb5c052d3fd9aea4101",
+      "bytes": 8726
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2021.parquet",
+      "sha256": "00072e04c9262c5d2388c0a2641097b00e4943af27e6bde8deaf9037c4636589",
+      "bytes": 4546
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2022.parquet",
+      "sha256": "7c0e8abcbf283a2d24bc2262aeb69123373472d55cca828d89c4b7ef6054380e",
+      "bytes": 10191
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2022.parquet",
+      "sha256": "a423e061cafff8722df43d1866bc4c2a12e92e7e85b80e429b3c4876547b0d2a",
+      "bytes": 4641
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2023.parquet",
+      "sha256": "f260302702a7fa3072599f44c78b9c955efcd7ff77552bb65c6a382bb7603975",
+      "bytes": 13629
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2023.parquet",
+      "sha256": "b4eeec7f9551001267ea47e614361edfb02ff4bf78b8227710017d6be40ceece",
+      "bytes": 4773
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2024.parquet",
+      "sha256": "d5b4d894310c416d3e10c8f490ca391673cfc70eb8711d477a794179b53515f8",
+      "bytes": 10909
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2024.parquet",
+      "sha256": "e77cf83e500060350c336c8ecd67035112f5a17a324432d95f1369ec34cb2f25",
+      "bytes": 4670
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/cell_enforcement_2025.parquet",
+      "sha256": "56f7295b4860033bc99eb9395ee6de7a734d1c602449c92a088538c470e076f4",
+      "bytes": 10799
+    },
+    {
+      "path": "data/derived/cell_enforcement/debc49e9c1af8330/muni_enforcement_2025.parquet",
+      "sha256": "1c9850ccfe6da37a694abcf101c617795059b92c3cfb3c53558e282967762cb7",
+      "bytes": 4701
+    }
+  ],
+  "notes": "fonte ibama_autos=basedosdados; fonte ibama_embargos=basedosdados; ibama_autos: not_legal_amazon=1356, no_date_no_year=0, outside_2000_2025=0; ibama_autos 2000: no_coordinates=844, outside_own_polygon=22, cell_in_another_municipality_or_not_in_grid=0; ibama_autos 2001: no_coordinates=1150, outside_own_polygon=31, cell_in_another_municipality_or_not_in_grid=0; ibama_autos 2002: no_coordinates=1367, outside_own_polygon=54, cell_in_another_municipality_or_not_in_grid=0; ibama_autos 2003: no_coordinates=1255, outside_own_polygon=86, cell_in_another_municipality_or_not_in_grid=0; ibama_autos 2004: no_coordinates=1422, outside_own_polygon=141, cell_in_another_municipality_or_not_in_grid=1; ibama_autos 2005: no_coordinates=2559, outside_own_polygon=240, cell_in_another_municipality_or_not_in_grid=2; ibama_autos 2006: no_coordinates=2221, outside_own_polygon=183, cell_in_another_municipality_or_not_in_grid=6; ibama_autos 2007: no_coordinates=1676, outside_own_polygon=297, cell_in_another_municipality_or_not_in_grid=4; ibama_autos 2008: no_coordinates=1394, outside_own_polygon=289, cell_in_another_municipality_or_not_in_grid=10; ibama_autos 2009: no_coordinates=1098, outside_own_polygon=165, cell_in_another_municipality_or_not_in_grid=6; ibama_autos 2010: no_coordinates=704, outside_own_polygon=429, cell_in_another_municipality_or_not_in_grid=5; ibama_autos 2011: no_coordinates=2, outside_own_polygon=999, cell_in_another_municipality_or_not_in_grid=8; ibama_autos 2012: no_coordinates=1, outside_own_polygon=551, cell_in_another_municipality_or_not_in_grid=7; ibama_autos 2013: no_coordinates=2, outside_own_polygon=425, cell_in_another_municipality_or_not_in_grid=3; ibama_autos 2014: no_coordinates=0, outside_own_polygon=116, cell_in_another_municipality_or_not_in_grid=6; ibama_autos 2015: no_coordinates=0, outside_own_polygon=153, cell_in_another_municipality_or_not_in_grid=10; ibama_autos 2016: no_coordinates=0, outside_own_polygon=195, cell_in_another_municipality_or_not_in_grid=7; ibama_autos 2017: no_coordinates=0, outside_own_polygon=267, cell_in_another_municipality_or_not_in_grid=4; ibama_autos 2018: no_coordinates=2, outside_own_polygon=307, cell_in_another_municipality_or_not_in_grid=18; ibama_autos 2019: no_coordinates=11, outside_own_polygon=257, cell_in_another_municipality_or_not_in_grid=10; ibama_autos 2020: no_coordinates=14, outside_own_polygon=112, cell_in_another_municipality_or_not_in_grid=6; ibama_autos 2021: no_coordinates=30, outside_own_polygon=150, cell_in_another_municipality_or_not_in_grid=7; ibama_autos 2022: no_coordinates=71, outside_own_polygon=308, cell_in_another_municipality_or_not_in_grid=18; ibama_autos 2023: no_coordinates=34, outside_own_polygon=300, cell_in_another_municipality_or_not_in_grid=15; ibama_autos 2024: no_coordinates=13, outside_own_polygon=84, cell_in_another_municipality_or_not_in_grid=10; ibama_autos 2025: no_coordinates=9, outside_own_polygon=90, cell_in_another_municipality_or_not_in_grid=9; ibama_embargos: not_legal_amazon=253, no_date_no_year=0, outside_2000_2025=0; ibama_embargos 2000: no_coordinates=5, outside_own_polygon=15, cell_in_another_municipality_or_not_in_grid=0; ibama_embargos 2001: no_coordinates=28, outside_own_polygon=20, cell_in_another_municipality_or_not_in_grid=0; ibama_embargos 2002: no_coordinates=18, outside_own_polygon=30, cell_in_another_municipality_or_not_in_grid=0; ibama_embargos 2003: no_coordinates=18, outside_own_polygon=39, cell_in_another_municipality_or_not_in_grid=2; ibama_embargos 2004: no_coordinates=18, outside_own_polygon=39, cell_in_another_municipality_or_not_in_grid=1; ibama_embargos 2005: no_coordinates=79, outside_own_polygon=188, cell_in_another_municipality_or_not_in_grid=5; ibama_embargos 2006: no_coordinates=282, outside_own_polygon=171, cell_in_another_municipality_or_not_in_grid=7; ibama_embargos 2007: no_coordinates=282, outside_own_polygon=209, cell_in_another_municipality_or_not_in_grid=7; ibama_embargos 2008: no_coordinates=641, outside_own_polygon=163, cell_in_another_municipality_or_not_in_grid=13; ibama_embargos 2009: no_coordinates=163, outside_own_polygon=114, cell_in_another_municipality_or_not_in_grid=5; ibama_embargos 2010: no_coordinates=230, outside_own_polygon=141, cell_in_another_municipality_or_not_in_grid=12; ibama_embargos 2011: no_coordinates=266, outside_own_polygon=153, cell_in_another_municipality_or_not_in_grid=7; ibama_embargos 2012: no_coordinates=333, outside_own_polygon=150, cell_in_another_municipality_or_not_in_grid=4; ibama_embargos 2013: no_coordinates=7, outside_own_polygon=250, cell_in_another_municipality_or_not_in_grid=4; ibama_embargos 2014: no_coordinates=46, outside_own_polygon=165, cell_in_another_municipality_or_not_in_grid=5; ibama_embargos 2015: no_coordinates=32, outside_own_polygon=151, cell_in_another_municipality_or_not_in_grid=7; ibama_embargos 2016: no_coordinates=10, outside_own_polygon=190, cell_in_another_municipality_or_not_in_grid=5; ibama_embargos 2017: no_coordinates=8, outside_own_polygon=159, cell_in_another_municipality_or_not_in_grid=1; ibama_embargos 2018: no_coordinates=3, outside_own_polygon=152, cell_in_another_municipality_or_not_in_grid=1; ibama_embargos 2019: no_coordinates=12, outside_own_polygon=198, cell_in_another_municipality_or_not_in_grid=6; ibama_embargos 2020: no_coordinates=2, outside_own_polygon=123, cell_in_another_municipality_or_not_in_grid=5; ibama_embargos 2021: no_coordinates=2, outside_own_polygon=125, cell_in_another_municipality_or_not_in_grid=7; ibama_embargos 2022: no_coordinates=0, outside_own_polygon=144, cell_in_another_municipality_or_not_in_grid=11; ibama_embargos 2023: no_coordinates=0, outside_own_polygon=124, cell_in_another_municipality_or_not_in_grid=12; ibama_embargos 2024: no_coordinates=2, outside_own_polygon=67, cell_in_another_municipality_or_not_in_grid=7; ibama_embargos 2025: no_coordinates=0, outside_own_polygon=63, cell_in_another_municipality_or_not_in_grid=7; agreement with indicador_coordenada_valida (basedosdados, exploration half, records with coordinates): agree=0.9912 (73153), disagree=0.0088 (648), not_comparable=0.0000 (0)",
+  "inputs": [
+    "data/raw/ibama/autos/2026-11-10/_MANIFEST.json",
+    "data/raw/ibama/embargos/2026-11-10/_MANIFEST.json",
+    "data/raw/ibge/boundaries_2024/2026-11-04/_MANIFEST.json",
+    "data/derived/grid_cells/2ec824f4da3d3f60/_MANIFEST.json"
+  ],
+  "sealed_files": [
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2000.parquet",
+      "sha256": "83869ece585e4c9b7ca102b1c197b8c655240cd7a303646a2ee6cd72f05aeea8",
+      "bytes": 2354
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2000.parquet",
+      "sha256": "49437d346eeefa87107e5ca66490d9e43e49c77cbc9d91b2a4bb12f8430888ed",
+      "bytes": 4028
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2001.parquet",
+      "sha256": "6c7860e76969158b76833b33a1d587bbcbdaf151078112875712158d297a9f6e",
+      "bytes": 2476
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2001.parquet",
+      "sha256": "80645b4428fad988397846d81dbc6ebbfcce35a325661dd8e83a8d192e1694c0",
+      "bytes": 4087
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2002.parquet",
+      "sha256": "60f0cea20888374ec84a4c1b79189ec7302f05f5ca2144c4fe5ccecad9029491",
+      "bytes": 2853
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2002.parquet",
+      "sha256": "53fb17f330b50b466bc80c006adf27791209a4adf476528541d4896ee3ae1d61",
+      "bytes": 4148
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2003.parquet",
+      "sha256": "acdbb4f8137b08383c24e9919d21dca8be3685d4613c384d938b2f2ec2c0050e",
+      "bytes": 3204
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2003.parquet",
+      "sha256": "04772d3bb29c1bdcd8905955794451ae7f70e5b08e64058b7f7e249efa8e2ae1",
+      "bytes": 4193
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2004.parquet",
+      "sha256": "b4f3f4498e2290eda1ad6826e5039822b373955628ebc3a47c2bfea46e6d634a",
+      "bytes": 3541
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2004.parquet",
+      "sha256": "98de94368897087b48586f319ae233c3c8fc613d0dc22951eb23c4a0be40294a",
+      "bytes": 4240
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2005.parquet",
+      "sha256": "4b87a7aa797acfdb09fd735e16a4020af2ce93ca634741bdaf52f37a1a971087",
+      "bytes": 5055
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2005.parquet",
+      "sha256": "eaa1e1406db0259c4a2f65c4c274b36c8f35123b14a6950dc391999dc0ce8a32",
+      "bytes": 4459
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2006.parquet",
+      "sha256": "b17ce8c6415c0313d228c7c0b2422ddcc7fe806ceb826fed235b84a2782b7351",
+      "bytes": 6968
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2006.parquet",
+      "sha256": "f9d14d7d91e317f12a66d99f597bdb3decf61bee0ae70125577e5bbde884e570",
+      "bytes": 4623
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2007.parquet",
+      "sha256": "f0e43ae4e4a7a00ba4b1583a81aae6e5488e3bacc94b2c0e1039da2bbfc8424a",
+      "bytes": 10604
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2007.parquet",
+      "sha256": "c812c48569f29d7c6aeab79bdd33acf34d44c7fa679d6560f28d58c08852666f",
+      "bytes": 4802
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2008.parquet",
+      "sha256": "f14349ac8e1c8e36a1052eb72de53448c2e7ab34892607eaeaedcf1f20b305f1",
+      "bytes": 11128
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2008.parquet",
+      "sha256": "5e32a81d4eef9ef2138ba8701685378fe096e0493cfb88cb44386ea7e4654b26",
+      "bytes": 4811
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2009.parquet",
+      "sha256": "6780b40561d082fbd514d9e62cbd2fc1bbd79aa19c14ec622a3906d2f40848e8",
+      "bytes": 10084
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2009.parquet",
+      "sha256": "9855300e277826222330c4a7c3d150bb6df371a9c710505b1dd63100fd9fd9db",
+      "bytes": 4715
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2010.parquet",
+      "sha256": "2c335bcec799d275d16e137210a8794f3142a2345d64b1b7d520aa767637ee94",
+      "bytes": 9481
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2010.parquet",
+      "sha256": "0cdcf10b9d1ff369dfa6ba4baadf12b0411c37dc310a8fc250efc8cf98c893ee",
+      "bytes": 4671
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2011.parquet",
+      "sha256": "0a0fbfadb2f52f37d7af7e259890a1a3b087aaf93d922da1ce3caf67d91cb7ca",
+      "bytes": 10188
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2011.parquet",
+      "sha256": "ad10952f5953125b323324355067fef247c7766843fa85a3513d2111c428ad30",
+      "bytes": 4707
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2012.parquet",
+      "sha256": "b9a1fd7424cf0b42841527f8a06f375a654bcb223c5fd582333328baccbe8a9d",
+      "bytes": 10196
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2012.parquet",
+      "sha256": "d5da8911975d59ef15c8a370d16d8c3d80ef0deb97a05c3249596e5a678a8f71",
+      "bytes": 4671
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2013.parquet",
+      "sha256": "7c6cdf9c5b02825d28075b9bd10f17256e68a7d567e1b81d497e32c6c7429648",
+      "bytes": 11367
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2013.parquet",
+      "sha256": "d526c4a0c226d79dd1d007751713dd8b4ffad878da65d90562a5aed71f2e7561",
+      "bytes": 4654
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2014.parquet",
+      "sha256": "e5825f6f20226a594cb746cf7143fb87d5a4f94e5309994e61256f6ad7ce393c",
+      "bytes": 11892
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2014.parquet",
+      "sha256": "5ceb109c382f43c36c690399e252a5c1aa449e9663502a8e3b318052578992bc",
+      "bytes": 4803
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2015.parquet",
+      "sha256": "b872be1443d8c6fa39b1b00810d55697afd398fcfe7bcf8c5cc6f030596253ae",
+      "bytes": 12088
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2015.parquet",
+      "sha256": "a6e5d2c6adc84d6201a59ba7ba3421b43ee0d4935db5f767385169861d34d668",
+      "bytes": 4657
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2016.parquet",
+      "sha256": "bd080251084518db0c8b9075e3c9afb58da8d594f9140614d4bf0496cc3f2fd7",
+      "bytes": 11420
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2016.parquet",
+      "sha256": "e85a3d4ce5ae6a5270a4313cfad4170c8fb7960e0964627358fc5054fd90dece",
+      "bytes": 4725
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2017.parquet",
+      "sha256": "fc082fa00ea088d7ece70f60b845d9dc7f2cf6eaa43c0111fcbaef4c41ad7bb5",
+      "bytes": 11454
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2017.parquet",
+      "sha256": "76304ca2e90cc15ce35ff594fe5e725a5a8277b71b1c1e907be1692fbc049699",
+      "bytes": 4697
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2018.parquet",
+      "sha256": "63d68205a0aa490649b251b26b03f1288aab4fad51f758784cb058adf5dfe1b8",
+      "bytes": 9204
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2018.parquet",
+      "sha256": "6cbcea914771e1ecdf5d10e60e18c36322fe78b15f3551fa8cef3514f2f09330",
+      "bytes": 4615
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2019.parquet",
+      "sha256": "fc5823927d007cd41a89a48f7fb2db1c7727bb6c4160790153f68cc524dd2bb4",
+      "bytes": 9496
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2019.parquet",
+      "sha256": "350eb14196657eb321ab392aafdbbadd7c0eec38ce472e3381be407314892cf3",
+      "bytes": 4626
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2020.parquet",
+      "sha256": "66282fb47d21f469e9591888d9b93b271aae5452cf277f06558cdc76bbb5ff29",
+      "bytes": 7446
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2020.parquet",
+      "sha256": "899b922514aeb3acc0c127492b22c6c16d63edd93e00940f285f9b17ff5965e9",
+      "bytes": 4422
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2021.parquet",
+      "sha256": "a45a2e67186a119cbf1f08b7d9fd3a2e1d936618df2c0857ea7795510284c4e7",
+      "bytes": 7674
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2021.parquet",
+      "sha256": "78c4a6b6f7e9e2515347edd165dc0ffa0f599b3bfa9e5648e71e0458069a53f4",
+      "bytes": 4437
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2022.parquet",
+      "sha256": "4e3b2b5aaf08e7597783296c3b7c556ba1d2833448a3fa099ad69141b511a87a",
+      "bytes": 9898
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2022.parquet",
+      "sha256": "bf8ffe8eaee8363b70c9030376da6d2917d06d8de3f3f6049e5e5586fa0224f9",
+      "bytes": 4511
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2023.parquet",
+      "sha256": "51afca3687b96a39be75d3534f78de9090c8e97ba81c6771ff8d3a079ee0f3cd",
+      "bytes": 12573
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2023.parquet",
+      "sha256": "0cd2f4f5037f31ae7fdd5847a3f97fc7d8626745b9fc40087e249df624507687",
+      "bytes": 4722
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2024.parquet",
+      "sha256": "610101a2a667cfcedc3c91304af1376a88995500f4d4d1520ffa5b26e2fbdc3a",
+      "bytes": 10119
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2024.parquet",
+      "sha256": "a1c1f5d33e91e0b166ab2b390dad765b9e721a3b3c872ea72e5a8ec99ff03b49",
+      "bytes": 4619
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/cell_enforcement_2025.parquet",
+      "sha256": "c35415fd40fc19e731f8d81f5e688c04614ec7852ea86663baf89c01623d2292",
+      "bytes": 11932
+    },
+    {
+      "path": "sealed/outcomes/cell_enforcement/debc49e9c1af8330/muni_enforcement_2025.parquet",
+      "sha256": "1e8d1c1ac5a5f6121867a77c9d54e694bde82060add168bedb36fdee672f1207",
+      "bytes": 4664
+    }
+  ]
+}
