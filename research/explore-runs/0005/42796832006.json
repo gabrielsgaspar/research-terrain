@@ -1,0 +1,27 @@
+{
+  "counts": {
+    "pre_reach_actions": 20296
+  },
+  "coverage": {
+    "e2008": {
+      "share_geolocated": 0.33929981574098445
+    },
+    "e2012": {
+      "share_geolocated": 0.5998745509494212
+    },
+    "e2016": {
+      "share_geolocated": 0.8668640675549707
+    },
+    "e2020": {
+      "share_geolocated": 0.8854611711485297
+    },
+    "elections_ok": 3
+  },
+  "placebo": {
+    "ri_p_050": 0.12443778110944528
+  },
+  "power": {
+    "mde_share_025": 0.770152469390949,
+    "mde_share_050": 0.6697988681013538
+  }
+}
