@@ -2,41 +2,37 @@
 
 Shared by `pipeline/acquire/inep_schools.py` and `inep_school_catalogue.py`.
 Contracts: `data/contracts/inep_schools.md` and `inep_school_catalogue.md`.
-Every URL, table, column list and fingerprint comes from the catalog entry.
+Every table and column list comes from the catalog entry.
 
-`inep_schools` reads Base dos Dados on BigQuery, as `terrain.ibama` does.
-`inep_school_catalogue` reads one year of INEP's Censo Escolar microdata and
-joins school coordinates from BigQuery. INEP's server does not send its
-intermediate certificate, so before any request to INEP the run downloads that
-certificate from the address in the catalog, checks its SHA-256 against the
-catalog, and adds it to a copy of the system trust store. Verification stays
-on and the chain must still end at a root the system trusts. The certificate
-is kept in memory: it is never stored, logged or put in a manifest.
+Both read Base dos Dados on BigQuery, as `terrain.ibama` does:
 
-Phone numbers, emails and personal names are never selected, and nothing here
-logs a row value or a header.
+- `inep_schools`: INEP's Censo Escolar school table, facilities by year;
+- `inep_school_catalogue`: INEP's Catálogo de Escolas as copied by Base dos
+  Dados (`basedosdados.br_bd_diretorios_brasil.escola`). Its address is one
+  text field; the postcode, street number and neighbourhood are parsed from it.
+
+The catalogue was first read from INEP's Censo Escolar microdata at
+download.inep.gov.br, but INEP resets every connection from GitHub's servers
+(campaign 0006 s8, runs 42861990498 and 42900676058), so it is read from
+BigQuery instead.
+
+Phone numbers, emails and personal names are never selected. The one name
+selected is `nome` of the catalogue table, which is a school's name (see
+`terrain.bigquery.ALLOWED_BY_TABLE`). Nothing here logs a row value or a header.
 """
 
 from __future__ import annotations
 
 import argparse
-import codecs
-import fnmatch
-import hashlib
 import json
 import os
-import socket
-import ssl
+import re
 import tempfile
-import time
-import urllib.error
-import urllib.request
-import zipfile
+import unicodedata
 from collections.abc import Callable
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlsplit
 
 import polars as pl
 
@@ -46,12 +42,7 @@ from terrain.catalog import dataset
 from terrain.manifest import build_manifest, latest_manifest, write_manifest
 from terrain.storage import GCSStore, Store
 
-CHUNK = 1 << 20
 MAX_BYTES = 2 * 1024**3
-MAX_CERT_BYTES = 1 << 16
-REQUEST_TIMEOUT = 180  # seconds
-DOWNLOAD_RETRIES = 3  # the microdata download is retried up to this many times
-RETRY_WAIT_S = 60  # seconds between attempts
 
 FACILITIES = [
     "agua_rede_publica",
@@ -75,38 +66,46 @@ SCHOOLS_SCHEMA: dict[str, Any] = {
     **{c: pl.Int8 for c in FACILITIES},
 }
 
-# catalogue column <- microdata column
-CATALOGUE_SOURCE = {
-    "ano": "NU_ANO_CENSO",
-    "id_escola": "CO_ENTIDADE",
-    "nome_escola": "NO_ENTIDADE",
-    "id_municipio": "CO_MUNICIPIO",
-    "sigla_uf": "SG_UF",
-    "rede": "TP_DEPENDENCIA",
-    "tipo_localizacao": "TP_LOCALIZACAO",
-    "endereco": "DS_ENDERECO",
-    "numero": "NU_ENDERECO",
-    "complemento": "DS_COMPLEMENTO",
-    "bairro": "NO_BAIRRO",
-    "cep": "CO_CEP",
-}
+# The Base dos Dados columns the catalogue needs (all STRING in BigQuery).
+CATALOGUE_COLUMNS = [
+    "id_escola",
+    "id_municipio",
+    "sigla_uf",
+    "nome",
+    "endereco",
+    "latitude",
+    "longitude",
+    "dependencia_administrativa",
+    "localizacao",
+    "situacao_catalogo",
+]
 CATALOGUE_SCHEMA: dict[str, Any] = {
     "ano": pl.Int64,
-    **{c: pl.Utf8 for c in CATALOGUE_SOURCE if c != "ano"},
+    "id_escola": pl.Utf8,
+    "nome_escola": pl.Utf8,
+    "id_municipio": pl.Utf8,
+    "sigla_uf": pl.Utf8,
+    "rede": pl.Utf8,
+    "tipo_localizacao": pl.Utf8,
+    "endereco": pl.Utf8,
+    "numero": pl.Utf8,
+    "complemento": pl.Utf8,
+    "bairro": pl.Utf8,
+    "cep": pl.Utf8,
     "latitude": pl.Float64,
     "longitude": pl.Float64,
 }
-FORBIDDEN_MICRODATA = ("NU_DDD", "NU_TELEFONE")
+# INEP's codes (TP_DEPENDENCIA, TP_LOCALIZACAO) for the catalogue's labels; a
+# value that is already a code is kept.
+REDE_CODES = {"FEDERAL": "1", "ESTADUAL": "2", "MUNICIPAL": "3", "PRIVADA": "4"}
+LOCALIZACAO_CODES = {"URBANA": "1", "RURAL": "2"}
+MAX_UNKNOWN_SHARE = 0.01  # above this share of unknown labels in a column, the run stops
 LAT_RANGE = (-34.0, 6.0)
 LON_RANGE = (-74.0, -28.0)
 
-Opener = Callable[..., Any]
-
-
-def _urlopen(url: str, context: ssl.SSLContext | None = None) -> Any:
-    if urlsplit(url).scheme not in ("http", "https"):
-        raise AcquireError("a download address is not an http address")
-    return urllib.request.urlopen(url, timeout=REQUEST_TIMEOUT, context=context)  # noqa: S310
+CEP = re.compile(r"(?<!\d)(\d{5})-?(\d{3})(?!\d)")
+NUMBER = re.compile(r"(S/N|SN|\d+[A-Z]?)(?=$|[\s.,;-])[\s.,;-]*(.*)$", re.IGNORECASE)
+CITY_TAIL = re.compile(r"\.\s+[^.,]+\s-\s[A-Z]{2}\.?$")
 
 
 def _frame_from(result: Any, schema: dict[str, Any]) -> pl.DataFrame:
@@ -168,6 +167,43 @@ def _finish_manifest(
     )
 
 
+def _count(session: Any, bq: dict[str, Any], project: str, summary_query: str) -> Any:
+    summary = run_query(
+        session,
+        bq["endpoint"],
+        project,
+        summary_query,
+        bq["location"],
+        int(bq["maximum_bytes_billed"]),
+        allowed_columns=["n"],
+    )
+    if len(summary.rows) != 1:
+        raise AcquireError("bigquery: the summary query did not return one row")
+    return summary.rows[0][0]
+
+
+def _unchanged(
+    store: Store, root: str, name: str, query: str, count: Any, code_commit: str
+) -> dict[str, Any] | None:
+    """The `unchanged` manifest when the latest one has the same query and row count."""
+    old = latest_manifest(store, root)
+    if old is None:
+        return None
+    for s in old.get("sources", []):
+        if s.get("fonte") == "basedosdados" and s.get("query") == query and s.get("rows") == count:
+            return build_manifest(
+                dataset=name,
+                stage="acquire",
+                status="unchanged",
+                gcs_prefix=old["gcs_prefix"],
+                files=old["files"],
+                sources=old["sources"],
+                notes=old.get("notes", ""),
+                code_commit=code_commit,
+            )
+    return None
+
+
 # --- inep_schools --------------------------------------------------------------
 
 
@@ -209,40 +245,11 @@ def acquire_schools(
     if not project:
         raise AcquireError("GOOGLE_CLOUD_PROJECT is not set")
     query = build_query(bq)
-    summary_query = build_summary_query(bq)
     session = session_factory()
-    max_bytes = int(bq["maximum_bytes_billed"])
-    summary = run_query(
-        session,
-        bq["endpoint"],
-        project,
-        summary_query,
-        bq["location"],
-        max_bytes,
-        allowed_columns=["n"],
-    )
-    if len(summary.rows) != 1:
-        raise AcquireError("bigquery: the summary query did not return one row")
-    count = summary.rows[0][0]
-
-    old = latest_manifest(store, root)
+    count = _count(session, bq, project, build_summary_query(bq))
+    old = _unchanged(store, root, name, query, count, code_commit)
     if old is not None:
-        for s in old.get("sources", []):
-            if (
-                s.get("fonte") == "basedosdados"
-                and s.get("query") == query
-                and s.get("rows") == count
-            ):
-                return build_manifest(
-                    dataset=name,
-                    stage="acquire",
-                    status="unchanged",
-                    gcs_prefix=old["gcs_prefix"],
-                    files=old["files"],
-                    sources=old["sources"],
-                    notes=old.get("notes", ""),
-                    code_commit=code_commit,
-                )
+        return old
 
     result = run_query(
         session,
@@ -250,7 +257,7 @@ def acquire_schools(
         project,
         query,
         bq["location"],
-        max_bytes,
+        int(bq["maximum_bytes_billed"]),
         allowed_columns=bq["columns"],
     )
     frame = _frame_from(result, SCHOOLS_SCHEMA)
@@ -270,235 +277,174 @@ def acquire_schools(
     )
 
 
-# --- TLS for INEP --------------------------------------------------------------
-
-
-def fetch_certificate(microdata: dict[str, Any], opener: Opener) -> bytes:
-    """Download the intermediate certificate and check its SHA-256 against the catalog."""
-    expected = str(microdata["extra_ca_sha256"]).lower()
-    try:
-        with opener(microdata["extra_ca_url"]) as response:
-            der = response.read(MAX_CERT_BYTES + 1)
-    except Exception as err:
-        raise AcquireError(
-            f"the intermediate certificate could not be downloaded ({describe_error(err)})"
-        ) from err
-    if not der or len(der) > MAX_CERT_BYTES:
-        raise AcquireError("the intermediate certificate download has an unusable size")
-    if hashlib.sha256(der).hexdigest() != expected:
-        raise AcquireError("the intermediate certificate does not match extra_ca_sha256")
-    return der
-
-
-def certificate_context(microdata: dict[str, Any], opener: Opener) -> ssl.SSLContext:
-    """A verifying context: the system trust store plus the checked certificate.
-
-    Raises before any request to INEP when the download or the fingerprint fails.
-    `VERIFY_X509_PARTIAL_CHAIN` is never set.
-    """
-    der = fetch_certificate(microdata, opener)
-    context = ssl.create_default_context()
-    # Python 3.13 turns this flag on by default; the chain must end at a trusted root.
-    context.verify_flags &= ~ssl.VERIFY_X509_PARTIAL_CHAIN
-    try:
-        context.load_verify_locations(cadata=der)
-    except ssl.SSLError as err:
-        raise AcquireError("the intermediate certificate could not be loaded") from err
-    return context
-
-
 # --- inep_school_catalogue -----------------------------------------------------
 
 
-def describe_error(err: BaseException) -> str:
-    """The reason a request failed, in words: HTTP status, TLS, timeout, DNS or connection.
+def parse_endereco(text: str | None) -> tuple[str | None, str | None, str | None, str | None]:
+    """`(street, number, neighbourhood, cep)` from the catalogue's one address field.
 
-    `urllib` wraps most failures in a `URLError` whose `reason` holds the real one.
+    The postcode is the last run of 8 digits, with or without the dash
+    (`76801-000` or `76801000`); the text after it (the city) is dropped. Of
+    what is before it, `<street>, <number> <neighbourhood>` gives all three
+    parts; anything else is kept whole as the street, with no number and no
+    neighbourhood. A part that cannot be found is None.
     """
-    if isinstance(err, urllib.error.HTTPError):  # before URLError: it is a subclass
-        return f"HTTP {err.code} {err.reason}".strip()
-    reason: object = err.reason if isinstance(err, urllib.error.URLError) else err
-    if isinstance(reason, ssl.SSLCertVerificationError):
-        detail = getattr(reason, "verify_message", None) or reason
-        text = f"TLS certificate verification failed: {detail}"
-    elif isinstance(reason, ssl.SSLError):
-        text = f"TLS error: {getattr(reason, 'reason', None) or reason}"
-    elif isinstance(reason, socket.gaierror):
-        text = f"DNS lookup failed: {reason.strerror or reason}"
-    elif isinstance(reason, TimeoutError):
-        text = f"timeout (no answer within {REQUEST_TIMEOUT} s)"
-    elif isinstance(reason, ConnectionError):  # refused, reset, aborted
-        text = f"connection failed: {type(reason).__name__} ({reason.strerror or reason})"
-    elif isinstance(reason, OSError):
-        text = f"{type(reason).__name__}: {reason.strerror or reason}"
-    elif isinstance(reason, str):
-        text = reason
+    if text is None:
+        return None, None, None, None
+    s = " ".join(text.split())
+    if not s:
+        return None, None, None, None
+    cep = None
+    matches = list(CEP.finditer(s))
+    if matches:
+        last = matches[-1]
+        cep = last.group(1) + last.group(2)
+        head = s[: last.start()]
     else:
-        text = f"{type(reason).__name__}: {reason}"
-    return text[:300]
+        head = CITY_TAIL.sub("", s)
+    head = head.strip(" .,;-")
+    street, number, bairro = head or None, None, None
+    if "," in head:
+        before, after = head.split(",", 1)
+        m = NUMBER.match(after.strip())
+        if m and before.strip():
+            street = before.strip()
+            number = m.group(1).upper()
+            bairro = m.group(2).strip(" .,;-") or None
+    return street, number, bairro, cep
 
 
-def _download(
-    opener: Opener,
-    url: str,
-    context: ssl.SSLContext,
-    dest: Path,
-    sleep: Callable[[float], None] = time.sleep,
-) -> int:
-    """Download `url` to `dest`, retrying up to `DOWNLOAD_RETRIES` times, `RETRY_WAIT_S` apart."""
-    reasons: list[str] = []
-    for attempt in range(1 + DOWNLOAD_RETRIES):
-        if attempt:
-            sleep(RETRY_WAIT_S)
-        try:
-            with opener(url, context=context) as response, open(dest, "wb") as out:
-                for chunk in iter(lambda: response.read(CHUNK), b""):
-                    out.write(chunk)
-            return dest.stat().st_size
-        except Exception as err:
-            reasons.append(f"{attempt + 1}: {describe_error(err)}")
-            last = err
-    host = urlsplit(url).hostname
-    raise AcquireError(
-        f"the microdata download from {host} failed {len(reasons)} times, "
-        f"{RETRY_WAIT_S} s apart ({'; '.join(reasons)})"
-    ) from last
+def _label(value: str | None) -> str | None:
+    """Upper case without accents, trimmed; None when empty."""
+    if value is None or not value.strip():
+        return None
+    plain = unicodedata.normalize("NFKD", value.strip())
+    return "".join(c for c in plain if not unicodedata.combining(c)).upper()
 
 
-def _member_to_utf8(zip_path: Path, pattern: str, encoding: str, dest: Path) -> None:
-    """Check the zip, then stream its one matching member to `dest` as UTF-8."""
-    try:
-        with zipfile.ZipFile(zip_path) as zf:
-            if zf.testzip() is not None:
-                raise AcquireError("the microdata zip has a corrupt member")
-            members = [n for n in zf.namelist() if fnmatch.fnmatch(n, pattern)]
-            if len(members) != 1:
-                raise AcquireError("the microdata zip does not hold exactly one matching member")
-            decoder = codecs.getincrementaldecoder(encoding)()
-            with zf.open(members[0]) as raw, open(dest, "w", encoding="utf-8", newline="") as out:
-                for chunk in iter(lambda: raw.read(CHUNK), b""):
-                    out.write(decoder.decode(chunk))
-                out.write(decoder.decode(b"", final=True))
-    except zipfile.BadZipFile as err:
-        raise AcquireError("the microdata download is not a valid zip") from err
-    except UnicodeError as err:
+def _codes(values: list[str | None], codes: dict[str, str], column: str) -> tuple[list, dict]:
+    """INEP codes for the labels of `column`. Unknown labels become None and are counted."""
+    known = {**codes, **{v: v for v in codes.values()}}
+    out: list[str | None] = []
+    unknown: dict[str, int] = {}
+    for v in values:
+        label = _label(v)
+        if label is None:
+            out.append(None)
+        elif label in known:
+            out.append(known[label])
+        else:
+            out.append(None)
+            unknown[label[:40]] = unknown.get(label[:40], 0) + 1
+    if values and sum(unknown.values()) / len(values) > MAX_UNKNOWN_SHARE:
+        listed = ", ".join(f"{k}={n}" for k, n in sorted(unknown.items())[:10])
         raise AcquireError(
-            "the microdata member does not decode with the catalog encoding"
-        ) from err
-
-
-def _read_microdata(csv_path: Path, microdata: dict[str, Any]) -> pl.DataFrame:
-    wanted = list(microdata["columns"])
-    if any(c in FORBIDDEN_MICRODATA or "EMAIL" in c for c in wanted):
-        raise AcquireError("the catalog lists a contact column of the microdata")
-    lazy = pl.scan_csv(csv_path, separator=microdata["delimiter"], infer_schema=False)
-    header = lazy.collect_schema().names()
-    if any(c not in header for c in wanted):
-        raise AcquireError("a listed microdata column is missing from the file header")
-    return lazy.select(wanted).collect()
-
-
-def _text(col: str) -> pl.Expr:
-    """A text column, trimmed, with empty text as null."""
-    trimmed = pl.col(col).str.strip_chars()
-    return pl.when(trimmed == "").then(None).otherwise(trimmed)
-
-
-def _catalogue_frame(micro: pl.DataFrame) -> tuple[pl.DataFrame, int]:
-    """Type the microdata columns. Returns the frame and the count of unusable CEPs."""
-    try:
-        frame = micro.select(
-            pl.col("NU_ANO_CENSO").str.strip_chars().cast(pl.Int64).alias("ano"),
-            *[_text(src).alias(dst) for dst, src in CATALOGUE_SOURCE.items() if dst != "ano"],
+            f"{column}: {sum(unknown.values())} of {len(values)} values are not a known "
+            f"label ({listed})"
         )
-    except Exception as err:
-        raise AcquireError("the survey year does not fit its column type") from err
-    if frame["id_escola"].null_count() or frame["id_escola"].n_unique() != frame.height:
-        raise AcquireError("CO_ENTIDADE is not a unique key")
-    ok = frame["id_municipio"].str.contains(r"^\d{7}$")
-    if not ok.all():
-        raise AcquireError("CO_MUNICIPIO has a value that is not 7 digits")
-    valid_cep = pl.col("cep").str.contains(r"^\d{1,8}$")
-    bad_ceps = frame.filter(pl.col("cep").is_not_null() & ~valid_cep).height
-    frame = frame.with_columns(
-        pl.when(valid_cep).then(pl.col("cep").str.zfill(8)).otherwise(None).alias("cep")
-    )
-    return frame, bad_ceps
+    return out, unknown
 
 
-def _coordinates(
-    entry: dict[str, Any], session_factory: Callable[[], Any], project: str | None
-) -> tuple[pl.DataFrame, dict[str, Any]]:
-    bq = entry["bigquery"]
-    if not project:
-        raise AcquireError("GOOGLE_CLOUD_PROJECT is not set")
-    query = build_query(bq)
-    result = run_query(
-        session_factory(),
-        bq["endpoint"],
-        project,
-        query,
-        bq["location"],
-        int(bq["maximum_bytes_billed"]),
-        allowed_columns=bq["columns"],
-    )
-    schema = {
-        "id_escola": pl.Utf8,
-        "id_municipio": pl.Utf8,
-        "sigla_uf": pl.Utf8,
-        "latitude": pl.Float64,
-        "longitude": pl.Float64,
+def _number(col: str) -> pl.Expr:
+    """A coordinate text as Float64 (a decimal comma is read as a point); None if not one."""
+    return pl.col(col).str.replace(",", ".", literal=True).cast(pl.Float64, strict=False)
+
+
+def _text_frame(result: Any, columns: list[str]) -> pl.DataFrame:
+    """The result as text columns, trimmed, empty text as null."""
+    missing = [c for c in columns if c not in result.columns]
+    if missing:
+        raise AcquireError("bigquery: a column of the contract is missing from the result")
+    index = {c: i for i, c in enumerate(result.columns)}
+    data = {
+        c: [None if row[index[c]] is None else str(row[index[c]]) for row in result.rows]
+        for c in columns
     }
-    frame = _frame_from(result, schema).select(["id_escola", "latitude", "longitude"])
-    if frame["id_escola"].null_count() or frame["id_escola"].n_unique() != frame.height:
-        raise AcquireError("bigquery: id_escola is not a unique key in the coordinates table")
-    return frame, _source(bq, query, result)
-
-
-def _join_coordinates(frame: pl.DataFrame, coords: pl.DataFrame) -> tuple[pl.DataFrame, int, int]:
-    """Left-join coordinates. Returns the frame, microdata rows with no coordinate row,
-    and coordinate rows with no microdata row."""
-    only_coords = coords.join(frame.select("id_escola"), on="id_escola", how="anti").height
-    marked = coords.with_columns(pl.lit(True).alias("_found"))
-    joined = frame.join(marked, on="id_escola", how="left")
-    no_row = joined.filter(pl.col("_found").is_null()).height
-    lat, lon = pl.col("latitude"), pl.col("longitude")
-    usable = (
-        lat.is_not_null()
-        & lon.is_not_null()
-        & (lat != 0)
-        & (lon != 0)
-        & lat.is_between(*LAT_RANGE)
-        & lon.is_between(*LON_RANGE)
+    frame = pl.DataFrame(data, schema={c: pl.Utf8 for c in columns})
+    trimmed = {c: pl.col(c).str.strip_chars() for c in columns}
+    return frame.select(
+        [pl.when(t == "").then(None).otherwise(t).alias(c) for c, t in trimmed.items()]
     )
-    joined = joined.with_columns(
-        pl.when(usable).then(lat).otherwise(None).alias("latitude"),
-        pl.when(usable).then(lon).otherwise(None).alias("longitude"),
-    ).drop("_found")
-    return joined, no_row, only_coords
 
 
-def _catalogue_notes(
-    frame: pl.DataFrame,
-    bad_ceps: int,
-    no_coord_row: int,
-    no_microdata_row: int,
-    microdata: dict[str, Any],
-) -> str:
+def catalogue_frame(raw: pl.DataFrame) -> tuple[pl.DataFrame, dict[str, Any]]:
+    """The contract's columns from the Base dos Dados rows, and counts for the notes."""
+    if raw["id_escola"].null_count() or raw["id_escola"].n_unique() != raw.height:
+        raise AcquireError("id_escola is not a unique key")
+    if not raw["id_municipio"].str.contains(r"^\d{7}$").fill_null(False).all():
+        raise AcquireError("id_municipio has a value that is not 7 digits")
+
+    parts = [parse_endereco(v) for v in raw["endereco"].to_list()]
+    rede, rede_unknown = _codes(
+        raw["dependencia_administrativa"].to_list(), REDE_CODES, "dependencia_administrativa"
+    )
+    loc, loc_unknown = _codes(raw["localizacao"].to_list(), LOCALIZACAO_CODES, "localizacao")
+
+    lat, lon = _number("latitude"), _number("longitude")
+    typed = raw.with_columns(lat.alias("lat_n"), lon.alias("lon_n"))
+    not_numbers = typed.filter(
+        (pl.col("latitude").is_not_null() & pl.col("lat_n").is_null())
+        | (pl.col("longitude").is_not_null() & pl.col("lon_n").is_null())
+    ).height
+    la, lo = pl.col("lat_n"), pl.col("lon_n")
+    both = la.is_not_null() & lo.is_not_null()
+    usable = both & (la != 0) & (lo != 0) & la.is_between(*LAT_RANGE) & lo.is_between(*LON_RANGE)
+    outside = typed.filter(both & ~usable).height
+
+    frame = typed.select(
+        pl.lit(None, dtype=pl.Int64).alias("ano"),
+        pl.col("id_escola"),
+        pl.col("nome").alias("nome_escola"),
+        pl.col("id_municipio"),
+        pl.col("sigla_uf"),
+        pl.Series("rede", rede, dtype=pl.Utf8),
+        pl.Series("tipo_localizacao", loc, dtype=pl.Utf8),
+        pl.Series("endereco", [p[0] for p in parts], dtype=pl.Utf8),
+        pl.Series("numero", [p[1] for p in parts], dtype=pl.Utf8),
+        pl.lit(None, dtype=pl.Utf8).alias("complemento"),
+        pl.Series("bairro", [p[2] for p in parts], dtype=pl.Utf8),
+        pl.Series("cep", [p[3] for p in parts], dtype=pl.Utf8),
+        pl.when(usable).then(la).otherwise(None).alias("latitude"),
+        pl.when(usable).then(lo).otherwise(None).alias("longitude"),
+    )
+    frame = frame.select(list(CATALOGUE_SCHEMA)).cast(CATALOGUE_SCHEMA).sort("id_escola")
+    situacao = raw.group_by("situacao_catalogo").len().sort("situacao_catalogo", nulls_last=True)
+    stats = {
+        "with_endereco": raw["endereco"].is_not_null().sum(),
+        "rede_unknown": rede_unknown,
+        "loc_unknown": loc_unknown,
+        "not_numbers": not_numbers,
+        "outside": outside,
+        "situacao": [("null" if s is None else s[:40], n) for s, n in situacao.iter_rows()],
+    }
+    return frame, stats
+
+
+def _catalogue_notes(frame: pl.DataFrame, stats: dict[str, Any]) -> str:
     n = frame.height
+
+    def share(col: str) -> str:
+        return f"{frame[col].is_not_null().sum() / n:.4f}" if n else "0.0000"
+
+    def unknown(counts: dict[str, int]) -> str:
+        return ", ".join(f"{k}={c}" for k, c in sorted(counts.items())) or "none"
+
     per_state = frame.group_by("sigla_uf").len().sort("sigla_uf")
-    share_cep = frame["cep"].is_not_null().sum() / n if n else 0.0
-    share_coord = frame["latitude"].is_not_null().sum() / n if n else 0.0
     lines = [
         f"rows: {n}",
         "rows per state: " + ", ".join(f"{s}={c}" for s, c in per_state.iter_rows()),
-        f"share with a cep: {share_cep:.4f}",
-        f"share with coordinates: {share_coord:.4f}",
-        f"cep values not 1-8 digits (set to null): {bad_ceps}",
-        f"microdata rows with no coordinate row: {no_coord_row}",
-        f"coordinate rows with no microdata row: {no_microdata_row}",
-        f"intermediate certificate: {microdata['extra_ca_url']}",
-        f"intermediate certificate sha256: {microdata['extra_ca_sha256']}",
+        f"rows with an endereco: {stats['with_endereco']}",
+        f"share with a cep parsed from endereco: {share('cep')}",
+        f"share with a street number parsed from endereco: {share('numero')}",
+        f"share with a neighbourhood parsed from endereco: {share('bairro')}",
+        f"share with coordinates: {share('latitude')}",
+        f"coordinates that are not numbers (set to null): {stats['not_numbers']}",
+        f"coordinates at 0 or outside Brazil (set to null): {stats['outside']}",
+        f"dependencia_administrativa labels not known (rede null): "
+        f"{unknown(stats['rede_unknown'])}",
+        f"localizacao labels not known (tipo_localizacao null): {unknown(stats['loc_unknown'])}",
+        "rows per situacao_catalogo: " + ", ".join(f"{s}={c}" for s, c in stats["situacao"]),
+        "ano is null: the catalogue has no census year",
     ]
     return "\n".join(lines)
 
@@ -506,49 +452,50 @@ def _catalogue_notes(
 def acquire_catalogue(
     name: str,
     store: Store,
-    opener: Opener,
     session_factory: Callable[[], Any],
     project: str | None,
     today: date,
     tmp_dir: Path,
     code_commit: str,
     entry: dict[str, Any] | None = None,
-    sleep: Callable[[float], None] = time.sleep,
 ) -> dict[str, Any]:
-    """Run the `inep_school_catalogue` acquire. Nothing is uploaded until every check passed."""
+    """Run the `inep_school_catalogue` acquire. Uploads the Parquet only when `created`."""
     entry = entry or dataset(name)
-    micro = entry["microdata"]
+    bq = entry["bigquery"]
+    root = entry["gcs"]
+    if list(bq["columns"]) != CATALOGUE_COLUMNS:
+        raise AcquireError("the catalog's columns for the school catalogue are not the expected")
+    if not project:
+        raise AcquireError("GOOGLE_CLOUD_PROJECT is not set")
+    query = build_query(bq)
+    session = session_factory()
+    count = _count(session, bq, project, build_summary_query(bq))
+    old = _unchanged(store, root, name, query, count, code_commit)
+    if old is not None:
+        return old
+
+    result = run_query(
+        session,
+        bq["endpoint"],
+        project,
+        query,
+        bq["location"],
+        int(bq["maximum_bytes_billed"]),
+        allowed_columns=bq["columns"],
+    )
+    frame, stats = catalogue_frame(_text_frame(result, CATALOGUE_COLUMNS))
     tmp_dir.mkdir(parents=True, exist_ok=True)
-
-    context = certificate_context(micro, opener)  # before any request to INEP
-    zip_path = tmp_dir / "microdata.zip"
-    csv_path = tmp_dir / "microdata.csv"
-    zip_bytes = _download(opener, micro["url"], context, zip_path, sleep)
-    zip_sha = _sha256(zip_path)
-    _member_to_utf8(zip_path, micro["member"], micro["encoding"], csv_path)
-    zip_path.unlink()
-    frame, bad_ceps = _catalogue_frame(_read_microdata(csv_path, micro))
-    csv_path.unlink()
-
-    coords, bq_source = _coordinates(entry, session_factory, project)
-    frame, no_coord_row, no_microdata_row = _join_coordinates(frame, coords)
-    frame = frame.select(list(CATALOGUE_SCHEMA)).cast(CATALOGUE_SCHEMA).sort("id_escola")
-
     out, size = _write_parquet(name, frame, tmp_dir)
-    sources = [
-        {
-            "fonte": "inep",
-            "url": micro["url"],
-            "bytes": zip_bytes,
-            "sha256": zip_sha,
-            "extra_ca_url": micro["extra_ca_url"],
-            "extra_ca_sha256": micro["extra_ca_sha256"],
-        },
-        bq_source,
-    ]
-    notes = _catalogue_notes(frame, bad_ceps, no_coord_row, no_microdata_row, micro)
     return _finish_manifest(
-        name, store, entry["gcs"], today, out, size, sources, notes, code_commit
+        name,
+        store,
+        root,
+        today,
+        out,
+        size,
+        [_source(bq, query, result)],
+        _catalogue_notes(frame, stats),
+        code_commit,
     )
 
 
@@ -558,7 +505,6 @@ def acquire_catalogue(
 def execute(
     name: str,
     store: Store,
-    opener: Opener,
     session_factory: Callable[[], Any],
     project: str | None,
     today: date,
@@ -569,15 +515,12 @@ def execute(
 ) -> dict[str, Any]:
     """Run one acquire, then write the manifest last (a created one goes to the store too)."""
     if name == "inep_schools":
-        manifest = acquire_schools(
-            name, store, session_factory, project, today, tmp_dir, code_commit, entry
-        )
+        acquire = acquire_schools
     elif name == "inep_school_catalogue":
-        manifest = acquire_catalogue(
-            name, store, opener, session_factory, project, today, tmp_dir, code_commit, entry
-        )
+        acquire = acquire_catalogue
     else:
         raise AcquireError(f"{name} is not an INEP dataset")
+    manifest = acquire(name, store, session_factory, project, today, tmp_dir, code_commit, entry)
     if manifest["status"] == "created":
         write_manifest(manifest, store, manifest_out)
     else:
@@ -599,7 +542,6 @@ def run(name: str) -> None:
             manifest = execute(
                 name,
                 store,
-                _urlopen,
                 lambda: default_session(scope),
                 os.environ.get("GOOGLE_CLOUD_PROJECT"),
                 datetime.now(UTC).date(),
