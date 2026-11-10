@@ -22,7 +22,7 @@ kill_criteria:
   - "Too few schools found: less than 50% of polling places are matched to an INEP school at high or medium confidence (stated by Gabriel, 2026-11-10)."
   - "Unbalanced baselines: the joint randomisation-inference test of the baseline school facility count, night lights and built-up share on D_p has p below 0.05 (stated by Gabriel, 2026-11-10)."
   - "A non-flat placebo: D_p predicts the t-4 to t change in the municipal-school facility count with randomisation-inference p below 0.10 (stated by Gabriel, 2026-11-10)."
-  - "Underpowered: the minimum detectable effect on the municipal-school facility count at 80% power (5%, two-sided) is above 0.05 standard deviations of the pre-election change (stated by Gabriel, 2026-11-10)."
+  - "Underpowered: the minimum detectable effect on the municipal-school facility count at 80% power (5%, two-sided) is above 0.10 standard deviations of the pre-election change (stated by Gabriel, 2026-11-10; changed by him from 0.05 to 0.10 the same day, before any data was seen)."
 related: ["0001", "0004"]
 ---
 

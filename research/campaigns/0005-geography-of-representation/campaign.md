@@ -7,10 +7,10 @@ owner: gabrielsgaspar
 created: 2026-11-10
 end_by: 2026-12-11
 budget:
-  max_tasks: 5
+  max_tasks: 7
   max_explore_runs: 2
   max_pipeline_runs: 12
-  max_model_jobs: 40
+  max_model_jobs: 45
 referee_not_applicable_ok: [R5]
 datasets:
   - name: tse_votes_by_section
@@ -113,14 +113,9 @@ steps:
       - src/terrain/inep.py
       - pipeline/acquire/inep_schools.py
       - pipeline/acquire/inep_school_catalogue.py
-      - src/terrain/builds/school_polling_match.py
-      - pipeline/build/school_polling_match.py
       - data/contracts/inep_schools.md
       - data/contracts/inep_school_catalogue.md
-      - data/contracts/school_polling_match.md
-      - tests/test_bigquery.py
       - tests/test_acquire_inep.py
-      - tests/test_build_school_polling_match.py
     after: [s1]
   - id: s7
     kind: pipeline_run
@@ -135,56 +130,74 @@ steps:
     dataset: inep_school_catalogue
     after: [s6]
   - id: s9
+    kind: task
+    type: build
+    draft: drafts/s9.md
+    allowed_paths:
+      - data/catalog.yaml
+      - src/terrain/builds/school_polling_match.py
+      - pipeline/build/school_polling_match.py
+      - data/contracts/school_polling_match.md
+      - tests/test_build_school_polling_match.py
+    after: [s6]
+  - id: s10
     kind: pipeline_run
     stage: build
     target: school_polling_match
     dataset: school_polling_match
-    after: [s4, s8]
-  - id: s10
+    after: [s4, s8, s9]
+  - id: s11
     kind: task
     type: build
-    draft: drafts/s10.md
+    draft: drafts/s11.md
     allowed_paths:
       - data/catalog.yaml
       - src/terrain/earthengine.py
       - tests/test_earthengine.py
       - pipeline/acquire/viirs_annual.py
       - pipeline/acquire/mapbiomas_coverage_national.py
-      - src/terrain/builds/place_outcomes.py
-      - pipeline/build/place_outcomes.py
-      - data/contracts/place_outcomes.md
-      - tests/test_build_place_outcomes.py
-    after: [s6]
-  - id: s11
+    after: [s9]
+  - id: s12
     kind: pipeline_run
     stage: acquire
     target: viirs_annual
     dataset: viirs_annual
-    after: [s10]
-  - id: s12
+    after: [s11]
+  - id: s13
     kind: pipeline_run
     stage: acquire
     target: mapbiomas_coverage_national
     dataset: mapbiomas_coverage_national
-    after: [s10]
-  - id: s13
+    after: [s11]
+  - id: s14
+    kind: task
+    type: build
+    draft: drafts/s14.md
+    allowed_paths:
+      - data/catalog.yaml
+      - src/terrain/builds/place_outcomes.py
+      - pipeline/build/place_outcomes.py
+      - data/contracts/place_outcomes.md
+      - tests/test_build_place_outcomes.py
+    after: [s11]
+  - id: s15
     kind: pipeline_run
     stage: build
     target: place_outcomes
     dataset: place_outcomes
-    after: [s4, s7, s9, s11, s12]
-  - id: s14
+    after: [s4, s7, s10, s12, s13, s14]
+  - id: s16
     kind: task
     type: explore
-    draft: drafts/s14.md
+    draft: drafts/s16.md
     allowed_paths:
       - explore/0006_feasibility.py
       - tests/test_explore_representation_feasibility.py
-    after: [s5, s13]
-  - id: s15
+    after: [s5, s15]
+  - id: s17
     kind: explore_run
     script: 0006_feasibility
-    after: [s14]
+    after: [s16]
     kill_rules:
       - id: k1
         says: "Fewer than 10,000 close council pairs at the 0.50% window, pooled 2008-2020, in the exploration half"
@@ -217,24 +230,24 @@ steps:
         value: 0.10
         confirmed: true
       - id: k6
-        says: "The minimum detectable effect on the municipal-school facility count at 80% power (5%, two-sided) is above 0.05 standard deviations of the pre-election change"
+        says: "The minimum detectable effect on the municipal-school facility count at 80% power (5%, two-sided) is above 0.10 standard deviations of the pre-election change"
         field: power.mde_sd_school
         op: ">"
-        value: 0.05
+        value: 0.10
         confirmed: true
     on_kill: stop
-  - id: s16
+  - id: s18
     kind: task
     type: explore
-    draft: drafts/s16.md
+    draft: drafts/s18.md
     allowed_paths:
       - explore/0006_effects.py
       - tests/test_explore_representation_effects.py
-    after: [s15]
-  - id: s17
+    after: [s17]
+  - id: s19
     kind: explore_run
     script: 0006_effects
-    after: [s16]
+    after: [s18]
     kill_rules:
       - id: k1
         says: "Some estimate, standard error, effect in SD or adjusted p-value of the post-election effects is not a finite number"
@@ -296,14 +309,28 @@ Gabriel may want to add Cooperman et al. (2025) and Chin (2021) to
 
 ## Steps and why
 
-The steps are Gabriel's, numbered so that ids do not repeat: s14/s15 are
-the feasibility task and run, s16/s17 the effects task and run.
+The steps are Gabriel's. On 2026-11-10 he split his s6 and s10 into two
+tasks each, so that no task changes more than about 8 files. The steps
+are numbered so that ids do not repeat.
+
+| Brief | Here | What | Files |
+| --- | --- | --- | --- |
+| s1 | s1 | national TSE tables (task) | 9 (two pipeline scripts are docstring-only) |
+| s2-s5 | s2-s5 | acquire votes, acquire polling places, build polling places, build section votes | |
+| s6 | s6 | INEP acquires (task) | 8 |
+| | s9 | school match (task) | 5 |
+| s7-s9 | s7, s8, s10 | the two INEP acquires, then the match build | |
+| s10 | s11 | Earth Engine exports (task) | 5 |
+| | s14 | `place_outcomes` (task) | 5 |
+| s11-s13 | s12, s13, s15 | the two exports, then `place_outcomes` | |
+| s14 + run | s16, s17 | feasibility task and run | 2 |
+| task + run | s18, s19 | effects task and run | 2 |
 
 - **s1** (build task, `drafts/s1.md`). Makes the four TSE tables national.
   - The votes catalog lists **26 states, not 27**: DF elects no council, and
     the TSE answers `votacao_secao_<year>_DF.zip` with a 1-byte file, which
     would fail the whole acquire (checked 2026-11-10).
-  - The 182 zips are about 6.35 GB; SP 2020 alone is a 527 MB zip of
+  - The 182 zips are about 6.35 GB. SP 2020 alone is a 527 MB zip of
     roughly 6-8 GB of CSV, so the section reader is made to stream.
   - Polling places gain `nr_cep` for the school match.
   - Legal Amazon rows must come out unchanged.
@@ -312,63 +339,72 @@ the feasibility task and run, s16/s17 the effects task and run.
     new folder, because the generic acquirer stores every listed file in
     one folder.
   - s3 acquires polling places. The TSE file is already national, so s3 is
-    expected to report "unchanged" and finish an hour later at no cost but
+    expected to report "unchanged" and finish an hour later, at no cost but
     one run.
   - s4 and s5 are the two national builds.
-- **s6** (build task, `drafts/s6.md`). Three datasets:
-  - `inep_schools` (Base dos Dados, nine facility columns, 2007-2024);
-  - `inep_school_catalogue`: names, addresses and postcodes from INEP's
-    official 2024 microdata, plus coordinates from INEP's school catalogue
-    as copied by Base dos Dados. INEP's own catalogue is an interactive app,
-    and its microdata have no coordinates;
-  - `school_polling_match`, with fixed rules and thresholds.
-  
-  INEP's server omits its intermediate certificate. This PR pins it in
-  `data/reference/certs/` (base64 DER; see its README), and verification
-  stays on.
-- **s7-s9** (pipeline runs): the two acquires, then the match on the
-  national polling places (after s4).
-- **s10** (build task, `drafts/s10.md`):
-  - `viirs_annual` and `mapbiomas_coverage_national`, as national Earth
-    Engine exports on the project's 1 km grid. This needs two new export
-    modes and per-dataset file sizes.
-  - `place_outcomes`, sealed like `cell_outcomes`. Its 1 km and 10 km rings
-    use only cells inside the place's own municipality, so a ring can never
-    read a cell of a municipality in the other half.
-- **s11-s13** (pipeline runs): the two exports, then `place_outcomes`.
-- **s14, s15** (explore task and run, `drafts/s14.md`): feasibility on
-  **pre-election years only** (schools at t-4 and t, built-up at t, lights at
-  t-4..t-1). This is the gate. If any of k1-k6 fires, the campaign stops
+- **s6** (build task, `drafts/s6.md`): the acquirers of `inep_schools` (Base
+  dos Dados, nine facility columns, 2007-2024) and `inep_school_catalogue`.
+  - The catalogue's names, addresses and postcodes come from INEP's official
+    2024 microdata.
+  - Its coordinates come from INEP's school catalogue as copied by Base dos
+    Dados. INEP's own catalogue is an interactive app, and its microdata
+    have no coordinates.
+  - INEP's server omits its intermediate certificate. **No certificate is
+    stored.** At run time the acquirer downloads it from its issuer's public
+    address, checks its SHA-256 against the fingerprint in the catalog, and
+    only then adds it to the system trust store. TLS verification stays on.
+- **s7, s8** (pipeline runs): the two acquires.
+- **s9** (build task, `drafts/s9.md`): `school_polling_match`, with fixed
+  rules and thresholds.
+- **s10** (pipeline run): the match, on the national polling places (after
+  s4) and the catalogue (after s8).
+- **s11** (build task, `drafts/s11.md`): `viirs_annual` and
+  `mapbiomas_coverage_national`. These are national Earth Engine exports on
+  the project's 1 km grid, needing two new export modes and per-dataset
+  file sizes.
+- **s12, s13** (pipeline runs): the two exports.
+- **s14** (build task, `drafts/s14.md`): `place_outcomes`, sealed like
+  `cell_outcomes`. Its 1 km and 10 km rings use only cells inside the
+  place's own municipality, so a ring can never read a cell of a
+  municipality in the other half.
+- **s15** (pipeline run): `place_outcomes`.
+- **s16, s17** (explore task and run, `drafts/s16.md`): feasibility on
+  **pre-election years only** (schools at t-4 and t, built-up at t, lights
+  at t-4..t-1). This is the gate. If any of k1-k6 fires, the campaign stops
   before any post-election year is read.
-- **s16, s17** (explore task and run, `drafts/s16.md`), written only after
-  s15 survives:
+- **s18, s19** (explore task and run, `drafts/s18.md`), written only after
+  s17 survives:
   - the primary at 0.50% (main), 0.25% and 1.00%;
-  - the falsification on state schools, the three secondaries with
-    Benjamini-Hochberg, and the alignment heterogeneity, all at 0.50%.
+  - at 0.50% only: the falsification on state schools, the three
+    secondaries with Benjamini-Hochberg, and the alignment heterogeneity.
 
-No other variant runs. Ideas for variants go in the close-out report.
+One task is in flight per campaign, so the tasks run in this order: s1,
+s6, s9, s11, s14, s16, s18. Each task's runs can go while the next task is
+planned. No other variant runs. Ideas for variants go in the close-out
+report.
 
 ### Definitions fixed in the drafts that Gabriel's brief left open
 
-These are Claude's suggestions, listed in "Provenance". Gabriel can change
-any of them before merging. Once merged, the drafts are frozen.
+Claude suggested these; they are listed in "Provenance". Gabriel accepted
+them as drafted on 2026-11-10. Once merged, the drafts are frozen.
 
-- **Accessibility.** INEP changed the question in 2019: `dependencia_pne`
-  up to 2018, then `1 - acessibilidade_inexistente` (any of the new items).
-  The break falls inside the 2016 election's t to t+4. It is common to all
-  schools, so the municipality-by-election fixed effects absorb its mean.
-- **Lights years.** VIIRS V2.1 starts in 2013; there is no 2012 image. The
-  2016 election's pre-window is therefore 2013-2015. V2.2 (2022-2024) has a
+- **Accessibility.** INEP changed the question in 2019. The count uses
+  `dependencia_pne` up to 2018, then `1 - acessibilidade_inexistente` (any
+  of the new items). The break falls inside the 2016 election's t to t+4.
+  It is common to all schools, so the municipality-by-election fixed
+  effects absorb its mean.
+- **Lights years.** VIIRS V2.1 starts in 2013, and there is no 2012 image,
+  so the 2016 election's pre-window is 2013-2015. V2.2 (2022-2024) has a
   documented method change from V2.1, also common to all places in a year.
 - **Rings stay inside the municipality**, as `cell_exposure` does
   (decision 0004), for the split.
-- **The match** uses the rules and thresholds in `drafts/s6.md`. No
+- **The match** uses the rules and thresholds in `drafts/s9.md`. No
   distance is used where INEP gives no coordinates.
 - **The joint balance test** is the sum of three squared RI-studentised
   slopes, with p from the same draws.
 - **The MDE** follows decision 0007's method: 2.8 × the RI SD of the
   placebo slope, times mean |D_p|, over the SD of the pre-election change.
-  So "0.05 SD" means the effect of a mean-sized D.
+  So "0.10 SD" means the effect of a mean-sized D.
 - **The placebo** uses elections 2012-2020. INEP's data start in 2007, so
   2008 has no t-4.
 - **Robustness windows** apply to the primary outcome only.
@@ -377,26 +413,28 @@ any of them before merging. Once merged, the drafts are frozen.
 
 ## Kill rules and why
 
-All stated by Gabriel on 2026-11-10 ("I confirm all; on_kill: stop"). The
-thresholds come from his brief. None was set after seeing any number of
-this campaign's data: none exists yet.
+All stated by Gabriel on 2026-11-10 ("I confirm all; on_kill: stop"), with
+k6 changed by him to 0.10 the same day. The thresholds come from his
+brief. None was set after seeing any number of this campaign's data: none
+exists yet.
 
-- **s15 k1** (`counts.pairs_050 < 10000`): too few close pairs. A design
+- **s17 k1** (`counts.pairs_050 < 10000`): too few close pairs. A design
   count. The Legal Amazon alone gave 813 one-incumbent pairs at 0.25%
   (lessons, 2026-11-09); national counts are unknown.
-- **s15 k2** (`coverage.located_share < 0.85`): polling places too poorly
+- **s17 k2** (`coverage.located_share < 0.85`): polling places too poorly
   located for 1 km rings. A data count.
-- **s15 k3** (`schools.match_share < 0.50`): too few polling places
+- **s17 k3** (`schools.match_share < 0.50`): too few polling places
   matched to a school. Polling places that are not schools (churches,
   clubs) count against it. That is intended: the share is of all places.
-- **s15 k4** (`balance.ri_p_joint < 0.05`): baselines unbalanced on D.
-- **s15 k5** (`placebo.ri_p_school < 0.10`): a non-flat placebo, with idea
+- **s17 k4** (`balance.ri_p_joint < 0.05`): baselines unbalanced on D.
+- **s17 k5** (`placebo.ri_p_school < 0.10`): a non-flat placebo, with idea
   0001's bar for placebos (as in campaign 0004).
-- **s15 k6** (`power.mde_sd_school > 0.05`): underpowered. 0.05 SD is
-  strict: it is a tenth of Fiva and Halse's 0.56 SD
-  (`fivaLocalFavoritismAtlarge2016`), which is at municipality level. It
-  may well fire. If it does, the campaign stops with the MDE recorded.
-- **s17 k1** (`estimates.finite != true`): plausibility only. A sign or a
+- **s17 k6** (`power.mde_sd_school > 0.10`): underpowered. Gabriel set 0.10
+  on 2026-11-10, in place of the 0.05 of his first brief, before any data
+  of this campaign existed or had been seen. 0.10 SD is about a fifth of
+  Fiva and Halse's 0.56 SD (`fivaLocalFavoritismAtlarge2016`), which is at
+  municipality level.
+- **s19 k1** (`estimates.finite != true`): plausibility only. A sign or a
   size kills nothing; the estimates are reported.
 
 Every field is written by the script its draft describes, at that dotted
@@ -406,20 +444,22 @@ path, and no key contains a dot. A missing field stops the step as
 ## Budget and why
 
 `budget.py` (23 recent agent tasks: median 3 model jobs, 90th percentile 4)
-suggests 5 tasks, 2 explore runs, 10 pipeline runs, 25 model jobs and 17
-days. Gabriel stated:
+suggested 5 tasks, 2 explore runs, 10 pipeline runs, 25 model jobs and 17
+days for the first draft. After the split:
 
-- **max_tasks 5:** s1, s6, s10, s14 and s16.
-- **max_pipeline_runs 12:** the ten runs s2-s5, s7-s9 and s11-s13, plus
-  two spare. A failed run is not retried by the tick. The spares let
-  Gabriel restart one by hand, for example a national Earth Engine export
-  that outlasts the 160-minute wait and must be resumed.
-- **max_explore_runs 2:** s15 and s17.
-- **max_model_jobs 40:** five tasks at about 7 each (tasks that read new
-  data), plus 5 for the two large build tasks' extra fix rounds.
-- **end_by 2026-12-11:** 31 days, the maximum. The 17 steps take about 12
-  to 15 days at 4 to 6 ticks per task and run, plus the close-out and room
-  for two 24-hour blocks.
+- **max_tasks 7:** s1, s6, s9, s11, s14, s16 and s18.
+- **max_pipeline_runs 12** (unchanged): the ten runs s2-s5, s7, s8, s10,
+  s12, s13 and s15, plus two spare. A failed run is not retried by the
+  tick. The spares let Gabriel restart one by hand, for example a national
+  Earth Engine export that outlasts the 160-minute wait and must be
+  resumed.
+- **max_explore_runs 2** (unchanged): s17 and s19.
+- **max_model_jobs 45:** the seven tasks at about 6 each (3 for a clean
+  task plus a fix round or so; the split tasks are smaller than the old
+  ones), plus 3 for one extra fix round.
+- **end_by 2026-12-11** (unchanged): 31 days, the maximum. The 19 steps take
+  about 13 to 16 days at 4 to 6 ticks per task and run, plus the close-out
+  and room for two 24-hour blocks.
 
 When a number runs out, no new step starts and the close-out reports why.
 
@@ -432,17 +472,23 @@ When a number runs out, no new step starts and the close-out reports why.
   (`polling_places` does not select the column).
 - **polling_places, section_votes** (national builds): treatment-side,
   whole sample (decision 0003).
-- **inep_schools:** about 4 million school-years, 16 columns, from Base dos
-  Dados (the table is 7.06 GB uncompressed for all 455 columns; billing is
-  capped at 50 GB). Facilities are outcomes for both halves: stored in raw,
-  read only by `place_outcomes`. No personal identifiers.
-- **inep_school_catalogue:** 215,545 schools (2024). School names and
-  addresses are public buildings. Phone (`NU_DDD`, `NU_TELEFONE`) is never
-  read, and the 2024 file has no email column. Coordinates come from Base
-  dos Dados' copy of INEP's catalogue, selecting only id, municipality,
-  state, latitude and longitude.
-- **school_polling_match:** one row per polling place and year. No names
-  or addresses.
+- **inep_schools:** about 4 million school-years and 16 columns, from Base
+  dos Dados. The table is 7.06 GB uncompressed for all 455 columns, and
+  billing is capped at 50 GB. Facilities are outcomes for both halves:
+  they stay in raw and only `place_outcomes` reads them. No personal
+  identifiers.
+- **inep_school_catalogue:** 215,545 schools (2024).
+  - School names and addresses belong to public buildings.
+  - Phone (`NU_DDD`, `NU_TELEFONE`) is never read, and the 2024 file has no
+    email column.
+  - Coordinates come from Base dos Dados' copy of INEP's catalogue,
+    selecting only id, municipality, state, latitude and longitude.
+  - The intermediate certificate INEP omits is fetched at run time from
+    its issuer and checked against its SHA-256 fingerprint
+    (`e10747d4da7bab09cba9952f019d3534cb9fba070bf13d8791b1699cd2ff59dd`, in
+    the catalog). Only the fingerprint is in the repository.
+- **school_polling_match:** one row per polling place and year, with no
+  names or addresses.
 - **viirs_annual, mapbiomas_coverage_national:** national rasters on the
   1 km grid. Both raw and both halves; no exploration account reads raw.
 - **place_outcomes:** sealed like `cell_outcomes`. This PR adds its
@@ -452,37 +498,45 @@ When a number runs out, no new step starts and the close-out reports why.
   creates in all of `sealed/outcomes/`.
 - **Licences, as each source states them:**
   - TSE: "public", the catalog's existing statement, not re-checked here.
-  - INEP: CC BY-ND 3.0, site-wide. "No derivatives" may matter for
-    published derived tables; only aggregate statistics are published.
   - Base dos Dados: none stated.
   - VIIRS: public domain per Earth Engine, CC BY 4.0 per EOG.
   - MapBiomas: **CC BY 4.0**, not CC BY-SA. The brief said CC BY-SA, and so
     does the older `mapbiomas_deforestation` entry; MapBiomas today states
     CC BY 4.0.
-- **Also in this PR (owned):**
-  - `terrain.explore.exploration_municipalities(store, national=True)`
-    reads both exploration lists (decision 0011). A test checks that every
-    `explore/0006_*.py` uses it.
-  - The pinned INEP certificate.
+- **INEP's licence: CC BY-ND 3.0** (Creative Commons
+  Atribuição-SemDerivações, a site-wide statement at gov.br/inep). Gabriel's
+  reading, 2026-11-10:
+  - **estimates can be published**: regression coefficients, p-values and
+    other aggregate statistics computed from INEP data;
+  - **school-level derived tables may not be shareable**: `inep_schools`,
+    `inep_school_catalogue`, `school_polling_match` and the school columns
+    of `place_outcomes` stay in the bucket. They are not published or
+    shared outside the project without a check of INEP's terms.
+  
+  The close-out report and any summary state only aggregates.
+- **Also in this PR (owned):** `terrain.explore.exploration_municipalities(store,
+  national=True)` reads both exploration lists (decision 0011). A test
+  checks that every `explore/0006_*.py` uses it.
 
 ## What would change the plan
 
 - s2 or s5 runs out of memory or disk on SP: the streaming reader needs
   another look before s5 is restarted.
-- s8 fails on TLS although the pin loads: INEP has changed its certificate
-  chain; refresh the pin (a person's change in `data/reference/certs/`).
-- The s9 notes show a high+medium match rate below 0.5 in most states: k3
-  will likely fire, and the match rules (frozen in `drafts/s6.md`) are the
-  thing to revisit in a new campaign, not this one.
-- VIIRS 2023 or 2024 is missing (s11 fails by design): lights for the 2020
-  election lose post years; Gabriel decides whether to drop those years in
-  a new campaign.
+- s8 fails the fingerprint check: INEP or its issuer has changed the
+  certificate. A person checks the new chain and updates `extra_ca_url` and
+  `extra_ca_sha256` in the catalog.
+- The s10 notes show a high+medium match rate below 0.5 in most states: k3
+  will likely fire. The match rules (frozen in `drafts/s9.md`) are then the
+  thing to revisit, in a new campaign rather than this one.
+- VIIRS 2023 or 2024 is missing (s12 fails by design): lights for the 2020
+  election lose post years, and Gabriel decides whether to drop those years
+  in a new campaign.
 - Any of k1-k6 fires: the campaign stops before a post-election year is
   read. The close-out says which rule fired and by how much.
-- s17 gives a clear primary effect with a near-zero falsification. That is
+- s19 gives a clear primary effect with a near-zero falsification. That is
   not a finding on this half; it argues for registering the design, after
   Gabriel's review.
-- Any run reads `sealed/`, `confirm/` or a post-election year before s16,
+- Any run reads `sealed/`, `confirm/` or a post-election year before s18,
   or imports `terrain.registered`: stop everything.
 
 ## Provenance
@@ -490,7 +544,7 @@ When a number runs out, no new step starts and the close-out reports why.
 Stated by Gabriel on 2026-11-10:
 
 - The idea, the question, the new idea file (status proposed), and its kill
-  criteria (the s15 rules, his).
+  criteria (the s17 rules, his).
 - The design:
   - close pairs from `terrain.strongholds`;
   - council elections 2008-2020; windows 0.50%, 0.25% and 1.00%;
@@ -511,27 +565,40 @@ Stated by Gabriel on 2026-11-10:
   - licences as each source states them.
 - All steps and their order; no other variants.
 - Every kill rule, threshold and `on_kill: stop`, confirmed.
+- **k6 at 0.10** (`power.mde_sd_school > 0.10`). Gabriel changed it from
+  0.05 and confirmed it on 2026-11-10, before #290 was merged. He set it
+  before any data of this campaign existed or had been seen: no acquire,
+  build or run of the campaign had started.
+- **The split of his s6 and s10 into two tasks each** (s6/s9 and s11/s14),
+  so that no task changes more than about 8 files, and the budget updated
+  to match (`max_tasks` 7, `max_model_jobs` 45; the rest unchanged).
+- **No stored certificate.** Only the SHA-256 fingerprint is kept; the
+  intermediate is downloaded at run time from its issuer's public URL and
+  checked against it, with TLS verification on.
+- **INEP's CC BY-ND 3.0:** estimates can be published; school-level derived
+  tables may not be shareable.
 - The budget, `end_by` 31 days from 2026-11-10, and
   `referee_not_applicable_ok: [R5]`.
 - Status: `active` if no campaign listing `data/catalog.yaml` is active.
   Campaign 0004 closed as `done` on main (PR #286) before this PR, so the
   status is `active`.
 - The novelty check: repo, Zotero and web, with the citations he named.
-- The `terrain.explore` change in this PR (2026-11-10).
+- The `terrain.explore` change in this PR.
 
-Suggested by Claude in this PR, not yet confirmed by Gabriel (each is
-fixed in a draft; he confirms by merging, or changes it first):
+Suggested by Claude in this PR; Gabriel accepted all of them as drafted on
+2026-11-10 ("Accept everything else as drafted"):
 
 - **26 states for the votes**, not 27 (DF has no council election and no
   valid file).
 - **Coordinates from Base dos Dados' copy of INEP's catalogue** (id,
   municipality, state, latitude, longitude only). INEP's own catalogue is
   not downloadable by script, and its microdata have no coordinates.
-- **The pinned intermediate certificate** for `download.inep.gov.br`.
+- **Fetching INEP's intermediate certificate at run time** from the issuer
+  address in INEP's certificate, with the fingerprint taken on 2026-11-10.
 - **`nr_cep` added to `polling_places`** for the postcode criterion.
 - **Streaming the section reader** for SP's file size, and **2004 coverage
   reported, not enforced**.
-- **The match rules and thresholds** (`drafts/s6.md`).
+- **The match rules and thresholds** (`drafts/s9.md`).
 - **Accessibility across INEP's 2019 change**, the **2013 start of
   VIIRS**, and the **V2.1/V2.2 join**.
 - **Rings inside the place's own municipality.**
@@ -544,5 +611,5 @@ fixed in a draft; he confirms by merging, or changes it first):
   elections** (2012-2020).
 - **Robustness windows for the primary only**, and **unknown alignment** as
   a third D term.
-- **Step dependencies:** s6 after s1 and s10 after s6 (one task in flight
-  per campaign anyway).
+- **Step dependencies:** s6 after s1, s9 after s6, s11 after s9, s14 after
+  s11 (one task in flight per campaign anyway).
