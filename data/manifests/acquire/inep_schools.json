@@ -1,0 +1,28 @@
+{
+  "dataset": "inep_schools",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/inep/schools/2026-11-10/",
+  "created_at": "2026-11-10T17:05:01.979760+00:00",
+  "code_commit": "d3d8b88c21261a5e7116aeac9cb3ec3d98084cc9",
+  "sources": [
+    {
+      "fonte": "basedosdados",
+      "url": "https://basedosdados.org/dataset/dae21af4-4b6a-42f4-b94a-4c2061ea9de5",
+      "table": "basedosdados.br_inep_censo_escolar.escola",
+      "query": "SELECT ano, id_escola, id_municipio, sigla_uf, rede, tipo_localizacao, agua_rede_publica, esgoto_rede_publica, energia_rede_publica, internet, biblioteca_sala_leitura, laboratorio_ciencias, laboratorio_informatica, quadra_esportes, dependencia_pne, acessibilidade_inexistente FROM `basedosdados.br_inep_censo_escolar.escola` WHERE sigla_uf IN ('AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MG', 'MS', 'MT', 'PA', 'PB', 'PE', 'PI', 'PR', 'RJ', 'RN', 'RO', 'RR', 'RS', 'SC', 'SE', 'SP', 'TO') AND ano BETWEEN 2007 AND 2024 ORDER BY ano, id_escola",
+      "location": "US",
+      "rows": 4058464,
+      "total_bytes_processed": 395452496,
+      "job_id": "job_Mjuu1KhP60BBNAfNeMVK6pIFo7Yx"
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/inep/schools/2026-11-10/inep_schools.parquet",
+      "sha256": "1726c4c33a6e93b1c9175bce5b2a91853bc6e7f653fd4d89c7cb4d81ecb990ce",
+      "bytes": 22228723
+    }
+  ],
+  "notes": "rows: 4058464\nrows per year: 2007=198507, 2008=205699, 2009=203455, 2010=200876, 2011=242147, 2012=242136, 2013=242680, 2014=242929, 2015=237879, 2016=237506, 2017=236481, 2018=236460, 2019=228521, 2020=224229, 2021=221140, 2022=224649, 2023=217625, 2024=215545\nyears all null agua_rede_publica: none\nyears all null esgoto_rede_publica: none\nyears all null energia_rede_publica: none\nyears all null internet: none\nyears all null biblioteca_sala_leitura: none\nyears all null laboratorio_ciencias: none\nyears all null laboratorio_informatica: none\nyears all null quadra_esportes: none\nyears all null dependencia_pne: 2019, 2020, 2021, 2022, 2023, 2024\nyears all null acessibilidade_inexistente: 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018\ndistinct rede: 1, 2, 3, 4\ndistinct tipo_localizacao: 1, 2"
+}
