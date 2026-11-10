@@ -2,38 +2,38 @@
   "dataset": "polling_places",
   "stage": "build",
   "status": "created",
-  "gcs_prefix": "data/derived/polling_places/697e4a75d8bc2b89/",
-  "created_at": "2026-11-02T22:08:54.129686+00:00",
-  "code_commit": "ff3d1e484a0053ca553569fa5a889e0423dc9fdd",
+  "gcs_prefix": "data/derived/polling_places/d6415bca8080aaa9/",
+  "created_at": "2026-11-10T16:40:56.082407+00:00",
+  "code_commit": "0196ef28c7f3a7abb112528c63744a9f140509fd",
   "sources": [],
   "files": [
     {
-      "path": "data/derived/polling_places/697e4a75d8bc2b89/polling_places_2008.parquet",
-      "sha256": "3227e2c6213fcd356318482bab57ed02910dec023f8bffb1dc3e1f41217a6df3",
-      "bytes": 683478
+      "path": "data/derived/polling_places/d6415bca8080aaa9/polling_places_2008.parquet",
+      "sha256": "e4aea3b2fe6f10b006a6a365ab49e85f025ec2d229a333085bed0880f42f8ad4",
+      "bytes": 4431730
     },
     {
-      "path": "data/derived/polling_places/697e4a75d8bc2b89/polling_places_2012.parquet",
-      "sha256": "d034155b2e1c51d9bf63676c8d9fae14e5ba67a06de3f8777d25f8c24ace7c9e",
-      "bytes": 662952
+      "path": "data/derived/polling_places/d6415bca8080aaa9/polling_places_2012.parquet",
+      "sha256": "e46bf165ca3c927441a54964ce6cd0d52e91a3fb33d854e3198a222ee1602ac2",
+      "bytes": 4275631
     },
     {
-      "path": "data/derived/polling_places/697e4a75d8bc2b89/polling_places_2016.parquet",
-      "sha256": "cd9595d4efd00796b3bb8a96d4aa96a936e906a8b0228b06c062de2159df4e70",
-      "bytes": 685659
+      "path": "data/derived/polling_places/d6415bca8080aaa9/polling_places_2016.parquet",
+      "sha256": "299a89c9138328c59aadee9277c6c0dc11e0c0f2f5937195706bcfc730d94454",
+      "bytes": 4323708
     },
     {
-      "path": "data/derived/polling_places/697e4a75d8bc2b89/polling_places_2020.parquet",
-      "sha256": "25826b08e3fc536f6b980826f9bc95dda3da9c7f294efb40984dd1c68076b417",
-      "bytes": 695241
+      "path": "data/derived/polling_places/d6415bca8080aaa9/polling_places_2020.parquet",
+      "sha256": "49219abad3b508fc6b67d5ae7a5eb233c25ba8946cd3045a79ecd05aadcfe3d9",
+      "bytes": 4288086
     },
     {
-      "path": "data/derived/polling_places/697e4a75d8bc2b89/polling_places_2024.parquet",
-      "sha256": "eae82c25e34a8a0b1d27044486c9e3096a12a62cec094dc83dd116ba72063d4f",
-      "bytes": 719858
+      "path": "data/derived/polling_places/d6415bca8080aaa9/polling_places_2024.parquet",
+      "sha256": "79e673ed183a77c0bc3703d5b3f5cf0423900af21b5c77ec67b033cf89cd3bb7",
+      "bytes": 4301918
     }
   ],
-  "notes": "2008: rows=14641, missing_coord_share=0.0000, tse=0, hidalgo=14641, two_pair_places=0, panel_id_share=0.9884, hidalgo_stations_not_in_tse=0, tse_unparsed=0, hidalgo_unparsed=0, tse_other_election_year_rows=0; 2012: rows=15409, missing_coord_share=0.0046, tse=12389, hidalgo=2949, two_pair_places=0, panel_id_share=0.9666, hidalgo_stations_not_in_tse=439, tse_unparsed=0, hidalgo_unparsed=0, tse_other_election_year_rows=0; 2016: rows=15744, missing_coord_share=0.0015, tse=13540, hidalgo=2180, two_pair_places=0, panel_id_share=0.9799, hidalgo_stations_not_in_tse=24, tse_unparsed=0, hidalgo_unparsed=0, tse_other_election_year_rows=0; 2020: rows=16016, missing_coord_share=0.0042, tse=15155, hidalgo=794, two_pair_places=0, panel_id_share=0.9785, hidalgo_stations_not_in_tse=105, tse_unparsed=0, hidalgo_unparsed=0, tse_other_election_year_rows=0; 2024: rows=16312, missing_coord_share=0.0000, tse=15590, hidalgo=722, two_pair_places=0, panel_id_share=0.9324, hidalgo_stations_not_in_tse=0, tse_unparsed=0, hidalgo_unparsed=0, tse_other_election_year_rows=0",
+  "notes": "2008: rows=93460, missing_coord_share=0.0000, tse=0, hidalgo=93460, two_pair_places=0, panel_id_share=0.9848, hidalgo_stations_not_in_tse=0, tse_unparsed=0, hidalgo_unparsed=0, tse_other_election_year_rows=0, cep_missing_share=0.0415, two_cep_places=0, places_by_state=[AC:584 AL:868 AM:1416 AP:274 BA:9841 CE:7398 DF:523 ES:1633 GO:2521 MA:5161 MG:10187 MS:998 MT:1568 PA:4838 PB:1763 PE:3186 PI:3450 PR:5757 RJ:4948 RN:1561 RO:588 RR:290 RS:9099 SC:4002 SE:1011 SP:9111 TO:884]; 2012: rows=95200, missing_coord_share=0.0055, tse=68384, hidalgo=26295, two_pair_places=0, panel_id_share=0.9708, hidalgo_stations_not_in_tse=3001, tse_unparsed=0, hidalgo_unparsed=0, tse_other_election_year_rows=0, cep_missing_share=0.0000, two_cep_places=3, places_by_state=[AC:665 AL:973 AM:1457 AP:301 BA:10016 CE:7329 ES:1687 GO:2485 MA:5561 MG:10429 MS:995 MT:1540 PA:5063 PB:1773 PE:3233 PI:3586 PR:5526 RJ:5037 RN:1583 RO:658 RR:308 RS:8964 SC:3962 SE:1076 SP:10064 TO:929]; 2016: rows=94962, missing_coord_share=0.0026, tse=71770, hidalgo=22941, two_pair_places=0, panel_id_share=0.9780, hidalgo_stations_not_in_tse=187, tse_unparsed=0, hidalgo_unparsed=0, tse_other_election_year_rows=0, cep_missing_share=0.0000, two_cep_places=6, places_by_state=[AC:737 AL:982 AM:1501 AP:337 BA:10089 CE:7053 ES:1675 GO:2474 MA:5723 MG:10265 MS:1013 MT:1493 PA:5234 PB:1798 PE:3293 PI:3627 PR:5199 RJ:5050 RN:1571 RO:647 RR:336 RS:8604 SC:3851 SE:1116 SP:10416 TO:878]; 2020: rows=94288, missing_coord_share=0.0040, tse=83588, hidalgo=10323, two_pair_places=0, panel_id_share=0.9724, hidalgo_stations_not_in_tse=765, tse_unparsed=0, hidalgo_unparsed=0, tse_other_election_year_rows=0, cep_missing_share=0.0000, two_cep_places=4, places_by_state=[AC:739 AL:1038 AM:1546 AP:365 BA:9781 CE:6844 ES:1726 GO:2456 MA:5856 MG:10242 MS:1038 MT:1475 PA:5343 PB:1810 PE:3284 PI:3623 PR:4827 RJ:4892 RN:1572 RO:639 RR:346 RS:8299 SC:3615 SE:1189 SP:10869 TO:874]; 2024: rows=93337, missing_coord_share=0.0000, tse=87358, hidalgo=5979, two_pair_places=0, panel_id_share=0.9450, hidalgo_stations_not_in_tse=0, tse_unparsed=0, hidalgo_unparsed=0, tse_other_election_year_rows=0, cep_missing_share=0.0000, two_cep_places=9, places_by_state=[AC:670 AL:1059 AM:1573 AP:368 BA:9300 CE:6734 ES:1745 GO:2482 MA:5814 MG:10065 MS:1029 MT:1478 PA:5708 PB:1812 PE:3339 PI:3405 PR:4785 RJ:4971 RN:1528 RO:656 RR:340 RS:7926 SC:3422 SE:1215 SP:11015 TO:898]",
   "inputs": [
     "data/raw/tse/polling_places/2026-11-02/_MANIFEST.json",
     "data/raw/geocodes/hidalgo/2026-11-02/_MANIFEST.json",
