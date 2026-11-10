@@ -1,7 +1,8 @@
 # section_votes
 
-Votes by section for the Legal Amazon, linked to candidacies, one Parquet per
-state and year: `section_votes_<year>_<uf>.parquet`, 2004 to 2024. Built by
+Votes by section for Brazil (every municipality with a TSE code; treatment
+side, so not split by half, decision 0003), linked to candidacies, one Parquet
+per state and year: `section_votes_<year>_<uf>.parquet`, 2004 to 2024. Built by
 `src/terrain/builds/section_votes.py`; written to
 `data/derived/section_votes/<hash>/`, where `<hash>` is `content_hash` of the
 sorted input SHA-256s (the section zips, the `candidate_votes` Parquets of
@@ -17,14 +18,18 @@ analysis of vote margins must use counted votes (`tse_results`
 ## Sources
 
 - `votacao_secao_<year>_<uf>.zip` from the `tse_votes_by_section` acquire
-  manifest, read one state-year at a time. Only the columns below are read.
+  manifest (26 states, DF excluded: Brasília elects no council), read one
+  state-year at a time. Only the columns below are read. The reader streams:
+  it decodes the member (Latin-1) into a temporary UTF-8 file in chunks of at
+  most 64 MB, reads only the needed columns from it, and deletes the file, so
+  the largest file (SP 2020, 527 MB zipped) fits in memory.
   2000 is skipped and named in the manifest notes: it has no polling-place IDs
   and covers 93 of 143 municipalities in Pará.
 - `candidate_votes_<year>.parquet` of the `tse_results` build: counted votes per
   candidacy, used to find `sq_candidato` before 2024 and to flag annulled votes.
-- The built `municipalities` table: `cd_ibge`, `cd_tse` and `legal_amazon`. Rows
-  of municipalities outside the Legal Amazon (parts of MA, MT and TO) are
-  dropped and counted in the notes.
+- The built `municipalities` table: `cd_ibge` and `cd_tse`. Rows whose `sg_ue`
+  is not in it are dropped and counted in the notes
+  (`rows_without_municipality`); the count should be 0.
 
 ## Columns
 
@@ -76,6 +81,11 @@ Each raises `BuildError` with counts only, before anything is uploaded.
   section sums equal to them (parameter `min_agree_share`).
 - Per year, candidate numbers left without a candidacy are under 0.5% of
   distinct candidate numbers, not rows (parameter `max_unmatched_share`).
+- Per year from 2008, at least 80% of the municipalities with results have
+  section data (parameter `min_coverage_share`). For 2004 coverage is only
+  reported per state and never stops the build: the TSE's 2004 files are
+  incomplete (87% in the Legal Amazon), national coverage is unknown, and idea
+  0006 does not use 2004.
 - Every key column is non-empty; years, round, polling-place number, candidate
   number and votes are integers.
 - Each downloaded file matches the SHA-256 in its manifest, and
@@ -89,5 +99,6 @@ is flagged and counted.
 The manifest `notes` give, per year: rows, the share of candidacies whose
 section sums equal the counted votes (`agree/total`), annulled candidacies,
 unmatched candidate numbers over all numbers, numbers with several voted
-candidacies, rows outside the Legal Amazon and rows of other election years,
-plus the skipped years.
+candidacies, rows without a municipality (`rows_without_municipality`) and rows
+of other election years, the municipalities with section data over those with
+results, in total and by state, plus the skipped years.

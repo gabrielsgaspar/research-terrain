@@ -67,7 +67,15 @@ datasets:
     gcs: data/raw/tse/sections/
     status: available
     notes: >
-      One zip per state and year; the nine Legal Amazon states, about 740 MB.
+      One zip per state and year; the 26 states that elect councils (all but
+      DF), 182 zips, about 6.35 GB (HEAD requests of 2026-11-10: 2000 0.23
+      GB, 2004 0.28, 2008 0.39, 2012 0.33, 2016 1.40, 2020 1.93, 2024 1.79);
+      the largest zip is SP 2020 at 527 MB. DF is left out on purpose:
+      Brasilia elects no council, and for every municipal year the TSE answers
+      votacao_secao_<year>_DF.zip with HTTP 200 and a 1-byte body, so the zip
+      check would fail the whole acquire. The acquire re-downloads the nine
+      Legal Amazon states into the new dated folder, because the generic
+      acquirer stores every listed file in one folder.
       2000 is unusable for geography (no polling-place IDs, and in PA only 93
       of 143 municipalities). From 2004 every row has a polling-place ID;
       from 2024 also SQ_CANDIDATO. In PA, section sums equal the results file
@@ -76,7 +84,7 @@ datasets:
       files:
         - url: https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_<year>_<uf>.zip
           years: [2000, 2004, 2008, 2012, 2016, 2020, 2024]
-          ufs: [AC, AM, AP, MA, MT, PA, RO, RR, TO]
+          ufs: [AC, AL, AM, AP, BA, CE, ES, GO, MA, MG, MS, MT, PA, PB, PE, PI, PR, RJ, RN, RO, RR, RS, SC, SE, SP, TO]
           check: {type: zip, member: "votacao_secao_*.csv"}
 
   - name: tse_polling_places
@@ -88,7 +96,8 @@ datasets:
       Polling place for every section, with TSE coordinates for 77% (2012) to
       96% (2024) of rows. Not published before 2010; use
       polling_stations_geocoded for 2008. Contains school phone numbers:
-      never print them.
+      never print them. National: one file per year for all states; the
+      acquire of campaign 0006 step s3 is expected to report unchanged.
     acquire:
       files:
         - url: https://cdn.tse.jus.br/estatistica/sead/odsele/eleitorado_locais_votacao/eleitorado_local_votacao_<year>.zip
@@ -214,10 +223,11 @@ datasets:
     contract: data/contracts/polling_places.md
     status: available
     notes: >
-      Located polling places of the Legal Amazon, one Parquet per election
+      Located polling places of Brazil, one Parquet per election
       year (2008, 2012, 2016, 2020, 2024). TSE coordinates where present,
-      otherwise Hidalgo's; 2008 from Hidalgo only. Carries panel_id and an
-      error bound (conf_dist_km). Phone numbers are never kept.
+      otherwise Hidalgo's; 2008 from Hidalgo only. Carries panel_id, an
+      error bound (conf_dist_km) and the 8-digit postal code (nr_cep).
+      Phone numbers are never kept.
 
   - name: section_votes
     source: built from tse_votes_by_section, tse_results and municipalities
@@ -226,7 +236,7 @@ datasets:
     contract: data/contracts/section_votes.md
     status: available
     notes: >
-      Votes by section for the Legal Amazon, 2004-2024 (2000 skipped), one
+      Votes by section for Brazil, 2004-2024 (2000 skipped), one
       Parquet per state and year, with the polling-place number and, for
       candidate votes, the candidacy key. Votes are votes cast: candidacies
       annulled in the results are flagged, and margins must use counted votes.

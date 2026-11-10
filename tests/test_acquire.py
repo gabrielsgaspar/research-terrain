@@ -149,7 +149,7 @@ def test_expansion_of_the_synthetic_entry():
         ("ibge_municipalities", 2),
         ("polling_stations_geocoded", 3),
         ("tse_results", 28),
-        ("tse_votes_by_section", 63),
+        ("tse_votes_by_section", 182),
         ("tse_polling_places", 4),
         ("cnfp_public_forests", 6),
         ("ibge_grid_2022", 1),

@@ -1,4 +1,4 @@
-"""Build the section votes of the Legal Amazon, linked to candidacies.
+"""Build the section votes of Brazil (every municipality with a TSE code), linked to candidacies.
 
 Contract: data/contracts/section_votes.md. Logic: terrain.builds.section_votes.
 """
