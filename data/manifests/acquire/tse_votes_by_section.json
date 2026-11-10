@@ -2,15 +2,21 @@
   "dataset": "tse_votes_by_section",
   "stage": "acquire",
   "status": "created",
-  "gcs_prefix": "data/raw/tse/sections/2026-11-02/",
-  "created_at": "2026-11-02T17:38:43.084447+00:00",
-  "code_commit": "168cf09b079265e08156ab1b0f927f6d22919cb4",
+  "gcs_prefix": "data/raw/tse/sections/2026-11-10/",
+  "created_at": "2026-11-10T15:32:22.237377+00:00",
+  "code_commit": "c4762be18ab986122c7d40e2f21e3c0fcf1d8d4b",
   "sources": [
     {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2000_AC.zip",
       "last_modified": "Mon, 31 Jan 2022 19:57:39 GMT",
       "etag": "\"b2ac7-5d6e63257f2c0\"",
       "bytes": 731847
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2000_AL.zip",
+      "last_modified": "Mon, 31 Jan 2022 19:56:25 GMT",
+      "etag": "\"275bf9-5d6e62deecc40\"",
+      "bytes": 2579449
     },
     {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2000_AM.zip",
@@ -25,10 +31,46 @@
       "bytes": 715841
     },
     {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2000_BA.zip",
+      "last_modified": "Mon, 31 Jan 2022 19:56:02 GMT",
+      "etag": "\"d5deff-5d6e62c8fd880\"",
+      "bytes": 14016255
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2000_CE.zip",
+      "last_modified": "Mon, 31 Jan 2022 19:55:55 GMT",
+      "etag": "\"845db0-5d6e62c2508c0\"",
+      "bytes": 8674736
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2000_ES.zip",
+      "last_modified": "Mon, 31 Jan 2022 19:56:15 GMT",
+      "etag": "\"449208-5d6e62d5635c0\"",
+      "bytes": 4493832
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2000_GO.zip",
+      "last_modified": "Mon, 31 Jan 2022 19:55:43 GMT",
+      "etag": "\"6d76cc-5d6e62b6dedc0\"",
+      "bytes": 7173836
+    },
+    {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2000_MA.zip",
       "last_modified": "Mon, 31 Jan 2022 19:55:43 GMT",
       "etag": "\"1b7a23-5d6e62b6dedc0\"",
       "bytes": 1800739
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2000_MG.zip",
+      "last_modified": "Mon, 31 Jan 2022 19:56:39 GMT",
+      "etag": "\"1a7d1e6-5d6e62ec46bc0\"",
+      "bytes": 27775462
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2000_MS.zip",
+      "last_modified": "Mon, 31 Jan 2022 19:56:45 GMT",
+      "etag": "\"324780-5d6e62f1ff940\"",
+      "bytes": 3295104
     },
     {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2000_MT.zip",
@@ -43,6 +85,42 @@
       "bytes": 6452951
     },
     {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2000_PB.zip",
+      "last_modified": "Mon, 31 Jan 2022 19:57:05 GMT",
+      "etag": "\"3863b6-5d6e630512640\"",
+      "bytes": 3695542
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2000_PE.zip",
+      "last_modified": "Mon, 31 Jan 2022 19:57:04 GMT",
+      "etag": "\"990224-5d6e63041e400\"",
+      "bytes": 10027556
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2000_PI.zip",
+      "last_modified": "Mon, 31 Jan 2022 19:57:19 GMT",
+      "etag": "\"2821f4-5d6e63126c5c0\"",
+      "bytes": 2630132
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2000_PR.zip",
+      "last_modified": "Mon, 31 Jan 2022 19:57:31 GMT",
+      "etag": "\"d2ef08-5d6e631dde0c0\"",
+      "bytes": 13823752
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2000_RJ.zip",
+      "last_modified": "Mon, 31 Jan 2022 19:57:32 GMT",
+      "etag": "\"1d54856-5d6e631ed2300\"",
+      "bytes": 30754902
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2000_RN.zip",
+      "last_modified": "Mon, 31 Jan 2022 19:57:50 GMT",
+      "etag": "\"2843fd-5d6e632ffcb80\"",
+      "bytes": 2638845
+    },
+    {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2000_RO.zip",
       "last_modified": "Mon, 31 Jan 2022 19:57:49 GMT",
       "etag": "\"21a52b-5d6e632f08940\"",
@@ -53,6 +131,30 @@
       "last_modified": "Mon, 31 Jan 2022 19:58:00 GMT",
       "etag": "\"ab06e-5d6e633986200\"",
       "bytes": 700526
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2000_RS.zip",
+      "last_modified": "Mon, 31 Jan 2022 19:58:09 GMT",
+      "etag": "\"ef97cb-5d6e63421b640\"",
+      "bytes": 15701963
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2000_SC.zip",
+      "last_modified": "Mon, 31 Jan 2022 19:58:10 GMT",
+      "etag": "\"5e14a7-5d6e63430f880\"",
+      "bytes": 6165671
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2000_SE.zip",
+      "last_modified": "Mon, 31 Jan 2022 19:58:23 GMT",
+      "etag": "\"14b087-5d6e634f755c0\"",
+      "bytes": 1355911
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2000_SP.zip",
+      "last_modified": "Mon, 31 Jan 2022 19:58:35 GMT",
+      "etag": "\"3739e41-5d6e635ae70c0\"",
+      "bytes": 57908801
     },
     {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2000_TO.zip",
@@ -67,6 +169,12 @@
       "bytes": 950497
     },
     {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2004_AL.zip",
+      "last_modified": "Thu, 04 Nov 2021 22:15:56 GMT",
+      "etag": "\"2da22b-5cffdded91f00\"",
+      "bytes": 2990635
+    },
+    {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2004_AM.zip",
       "last_modified": "Thu, 04 Nov 2021 22:15:52 GMT",
       "etag": "\"6462b0-5cffdde9c1600\"",
@@ -79,10 +187,46 @@
       "bytes": 835128
     },
     {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2004_BA.zip",
+      "last_modified": "Thu, 04 Nov 2021 22:15:46 GMT",
+      "etag": "\"114d1cf-5cffdde408880\"",
+      "bytes": 18141647
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2004_CE.zip",
+      "last_modified": "Thu, 04 Nov 2021 22:15:39 GMT",
+      "etag": "\"c2bcbe-5cffdddd5b8c0\"",
+      "bytes": 12762302
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2004_ES.zip",
+      "last_modified": "Thu, 04 Nov 2021 22:15:36 GMT",
+      "etag": "\"47f099-5cffddda7f200\"",
+      "bytes": 4714649
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2004_GO.zip",
+      "last_modified": "Thu, 04 Nov 2021 22:15:26 GMT",
+      "etag": "\"909cff-5cffddd0f5b80\"",
+      "bytes": 9477375
+    },
+    {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2004_MA.zip",
       "last_modified": "Thu, 04 Nov 2021 22:15:18 GMT",
       "etag": "\"65acfc-5cffddc954980\"",
       "bytes": 6663420
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2004_MG.zip",
+      "last_modified": "Thu, 04 Nov 2021 22:15:16 GMT",
+      "etag": "\"1d19922-5cffddc76c500\"",
+      "bytes": 30513442
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2004_MS.zip",
+      "last_modified": "Thu, 04 Nov 2021 22:14:06 GMT",
+      "etag": "\"317c9d-5cffdd84aa780\"",
+      "bytes": 3243165
     },
     {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2004_MT.zip",
@@ -97,6 +241,42 @@
       "bytes": 9538078
     },
     {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2004_PB.zip",
+      "last_modified": "Thu, 04 Nov 2021 22:14:54 GMT",
+      "etag": "\"45a8eb-5cffddb271380\"",
+      "bytes": 4565227
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2004_PE.zip",
+      "last_modified": "Thu, 04 Nov 2021 22:14:47 GMT",
+      "etag": "\"b6efe3-5cffddabc43c0\"",
+      "bytes": 11988963
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2004_PI.zip",
+      "last_modified": "Thu, 04 Nov 2021 22:13:56 GMT",
+      "etag": "\"33f518-5cffdd7b21100\"",
+      "bytes": 3405080
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2004_PR.zip",
+      "last_modified": "Thu, 04 Nov 2021 22:14:21 GMT",
+      "etag": "\"e086c9-5cffdd92f8940\"",
+      "bytes": 14714569
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2004_RJ.zip",
+      "last_modified": "Thu, 04 Nov 2021 22:14:48 GMT",
+      "etag": "\"2059e40-5cffddacb8600\"",
+      "bytes": 33922624
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2004_RN.zip",
+      "last_modified": "Thu, 04 Nov 2021 22:13:24 GMT",
+      "etag": "\"312480-5cffdd5c9c900\"",
+      "bytes": 3220608
+    },
+    {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2004_RO.zip",
       "last_modified": "Thu, 04 Nov 2021 22:13:40 GMT",
       "etag": "\"23e958-5cffdd6bded00\"",
@@ -107,6 +287,30 @@
       "last_modified": "Thu, 04 Nov 2021 22:14:11 GMT",
       "etag": "\"b8b9f-5cffdd896f2c0\"",
       "bytes": 756639
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2004_RS.zip",
+      "last_modified": "Thu, 04 Nov 2021 22:13:51 GMT",
+      "etag": "\"f601cc-5cffdd765c5c0\"",
+      "bytes": 16122316
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2004_SC.zip",
+      "last_modified": "Thu, 04 Nov 2021 22:14:27 GMT",
+      "etag": "\"5af765-5cffdd98b16c0\"",
+      "bytes": 5961573
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2004_SE.zip",
+      "last_modified": "Thu, 04 Nov 2021 22:14:41 GMT",
+      "etag": "\"2254b7-5cffdda60b640\"",
+      "bytes": 2249911
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2004_SP.zip",
+      "last_modified": "Thu, 04 Nov 2021 22:14:21 GMT",
+      "etag": "\"4269f8e-5cffdd92f8940\"",
+      "bytes": 69640078
     },
     {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2004_TO.zip",
@@ -121,6 +325,12 @@
       "bytes": 1181036
     },
     {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2008_AL.zip",
+      "last_modified": "Tue, 25 Jun 2024 14:54:26 GMT",
+      "etag": "\"3b9960-61bb812f14c80\"",
+      "bytes": 3905888
+    },
+    {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2008_AM.zip",
       "last_modified": "Tue, 25 Jun 2024 14:54:01 GMT",
       "etag": "\"9ae128-61bb81173d440\"",
@@ -133,10 +343,46 @@
       "bytes": 1313066
     },
     {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2008_BA.zip",
+      "last_modified": "Tue, 25 Jun 2024 14:53:28 GMT",
+      "etag": "\"1991d0f-61bb80f7c4a00\"",
+      "bytes": 26811663
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2008_CE.zip",
+      "last_modified": "Tue, 25 Jun 2024 14:54:11 GMT",
+      "etag": "\"108bb8b-61bb8120c6ac0\"",
+      "bytes": 17349515
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2008_ES.zip",
+      "last_modified": "Tue, 25 Jun 2024 14:54:21 GMT",
+      "etag": "\"5d7367-61bb812a50140\"",
+      "bytes": 6124391
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2008_GO.zip",
+      "last_modified": "Tue, 25 Jun 2024 14:54:16 GMT",
+      "etag": "\"b0f6fc-61bb81258b600\"",
+      "bytes": 11597564
+    },
+    {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2008_MA.zip",
       "last_modified": "Tue, 25 Jun 2024 14:54:29 GMT",
       "etag": "\"a6b279-61bb8131f1340\"",
       "bytes": 10924665
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2008_MG.zip",
+      "last_modified": "Tue, 25 Jun 2024 14:53:40 GMT",
+      "etag": "\"27f6b5d-61bb810336500\"",
+      "bytes": 41904989
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2008_MS.zip",
+      "last_modified": "Tue, 25 Jun 2024 14:53:56 GMT",
+      "etag": "\"3c179f-61bb811278900\"",
+      "bytes": 3938207
     },
     {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2008_MT.zip",
@@ -151,6 +397,42 @@
       "bytes": 13957664
     },
     {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2008_PB.zip",
+      "last_modified": "Tue, 25 Jun 2024 14:47:04 GMT",
+      "etag": "\"5a8429-61bb7f898ea00\"",
+      "bytes": 5932073
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2008_PE.zip",
+      "last_modified": "Tue, 25 Jun 2024 14:46:58 GMT",
+      "etag": "\"fd9b4f-61bb7f83d5c80\"",
+      "bytes": 16620367
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2008_PI.zip",
+      "last_modified": "Tue, 25 Jun 2024 14:47:10 GMT",
+      "etag": "\"3f92aa-61bb7f8f47780\"",
+      "bytes": 4166314
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2008_PR.zip",
+      "last_modified": "Tue, 25 Jun 2024 14:46:52 GMT",
+      "etag": "\"1577bf1-61bb7f7e1cf00\"",
+      "bytes": 22510577
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2008_RJ.zip",
+      "last_modified": "Tue, 25 Jun 2024 14:46:42 GMT",
+      "etag": "\"29af16f-61bb7f7493880\"",
+      "bytes": 43708783
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2008_RN.zip",
+      "last_modified": "Tue, 25 Jun 2024 14:47:18 GMT",
+      "etag": "\"3ec73f-61bb7f96e8980\"",
+      "bytes": 4114239
+    },
+    {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2008_RO.zip",
       "last_modified": "Tue, 25 Jun 2024 14:46:35 GMT",
       "etag": "\"332e2f-61bb7f6de68c0\"",
@@ -161,6 +443,30 @@
       "last_modified": "Tue, 25 Jun 2024 14:46:25 GMT",
       "etag": "\"10f27e-61bb7f645d240\"",
       "bytes": 1110654
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2008_RS.zip",
+      "last_modified": "Tue, 25 Jun 2024 14:46:18 GMT",
+      "etag": "\"13f4317-61bb7f5db0280\"",
+      "bytes": 20923159
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2008_SC.zip",
+      "last_modified": "Tue, 25 Jun 2024 14:46:09 GMT",
+      "etag": "\"8d33a6-61bb7f551ae40\"",
+      "bytes": 9253798
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2008_SE.zip",
+      "last_modified": "Tue, 25 Jun 2024 14:45:57 GMT",
+      "etag": "\"2c6f2d-61bb7f49a9340\"",
+      "bytes": 2912045
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2008_SP.zip",
+      "last_modified": "Tue, 25 Jun 2024 14:45:53 GMT",
+      "etag": "\"5ad5d52-61bb7f45d8a40\"",
+      "bytes": 95247698
     },
     {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2008_TO.zip",
@@ -175,6 +481,12 @@
       "bytes": 1550223
     },
     {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2012_AL.zip",
+      "last_modified": "Fri, 03 Sep 2021 20:14:06 GMT",
+      "etag": "\"394273-5cb1cf0fa1f80\"",
+      "bytes": 3752563
+    },
+    {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2012_AM.zip",
       "last_modified": "Fri, 03 Sep 2021 20:14:07 GMT",
       "etag": "\"82d875-5cb1cf10961c0\"",
@@ -187,10 +499,46 @@
       "bytes": 1514511
     },
     {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2012_BA.zip",
+      "last_modified": "Fri, 03 Sep 2021 20:14:07 GMT",
+      "etag": "\"13f1bf3-5cb1cf10961c0\"",
+      "bytes": 20913139
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2012_CE.zip",
+      "last_modified": "Fri, 03 Sep 2021 20:14:07 GMT",
+      "etag": "\"c53e56-5cb1cf10961c0\"",
+      "bytes": 12926550
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2012_ES.zip",
+      "last_modified": "Fri, 03 Sep 2021 20:14:07 GMT",
+      "etag": "\"5a9977-5cb1cf10961c0\"",
+      "bytes": 5937527
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2012_GO.zip",
+      "last_modified": "Fri, 03 Sep 2021 20:14:08 GMT",
+      "etag": "\"9c5585-5cb1cf118a400\"",
+      "bytes": 10245509
+    },
+    {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2012_MA.zip",
       "last_modified": "Fri, 03 Sep 2021 20:14:08 GMT",
       "etag": "\"89f15a-5cb1cf118a400\"",
       "bytes": 9040218
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2012_MG.zip",
+      "last_modified": "Fri, 03 Sep 2021 20:14:09 GMT",
+      "etag": "\"2120eee-5cb1cf127e640\"",
+      "bytes": 34737902
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2012_MS.zip",
+      "last_modified": "Fri, 03 Sep 2021 20:14:08 GMT",
+      "etag": "\"420996-5cb1cf118a400\"",
+      "bytes": 4327830
     },
     {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2012_MT.zip",
@@ -205,6 +553,42 @@
       "bytes": 12885452
     },
     {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2012_PB.zip",
+      "last_modified": "Fri, 03 Sep 2021 20:14:09 GMT",
+      "etag": "\"56aa3b-5cb1cf127e640\"",
+      "bytes": 5679675
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2012_PE.zip",
+      "last_modified": "Fri, 03 Sep 2021 20:14:09 GMT",
+      "etag": "\"c9ec94-5cb1cf127e640\"",
+      "bytes": 13233300
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2012_PI.zip",
+      "last_modified": "Fri, 03 Sep 2021 20:14:09 GMT",
+      "etag": "\"3eff02-5cb1cf127e640\"",
+      "bytes": 4128514
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2012_PR.zip",
+      "last_modified": "Fri, 03 Sep 2021 20:14:10 GMT",
+      "etag": "\"118ae55-5cb1cf1372880\"",
+      "bytes": 18394709
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2012_RJ.zip",
+      "last_modified": "Fri, 03 Sep 2021 20:14:10 GMT",
+      "etag": "\"23665ff-5cb1cf1372880\"",
+      "bytes": 37119487
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2012_RN.zip",
+      "last_modified": "Fri, 03 Sep 2021 20:14:10 GMT",
+      "etag": "\"3b10aa-5cb1cf1372880\"",
+      "bytes": 3870890
+    },
+    {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2012_RO.zip",
       "last_modified": "Fri, 03 Sep 2021 20:14:10 GMT",
       "etag": "\"2d830f-5cb1cf1372880\"",
@@ -215,6 +599,30 @@
       "last_modified": "Fri, 03 Sep 2021 20:14:10 GMT",
       "etag": "\"1199e2-5cb1cf1372880\"",
       "bytes": 1153506
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2012_RS.zip",
+      "last_modified": "Fri, 03 Sep 2021 20:14:11 GMT",
+      "etag": "\"10971ba-5cb1cf1466ac0\"",
+      "bytes": 17396154
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2012_SC.zip",
+      "last_modified": "Fri, 03 Sep 2021 20:14:11 GMT",
+      "etag": "\"7ea194-5cb1cf1466ac0\"",
+      "bytes": 8298900
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2012_SE.zip",
+      "last_modified": "Fri, 03 Sep 2021 20:14:11 GMT",
+      "etag": "\"2cd2ed-5cb1cf1466ac0\"",
+      "bytes": 2937581
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2012_SP.zip",
+      "last_modified": "Fri, 03 Sep 2021 20:14:13 GMT",
+      "etag": "\"5172e58-5cb1cf164ef40\"",
+      "bytes": 85405272
     },
     {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2012_TO.zip",
@@ -229,6 +637,12 @@
       "bytes": 3406402
     },
     {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2016_AL.zip",
+      "last_modified": "Mon, 11 Dec 2023 14:55:36 GMT",
+      "etag": "\"96368d-60c3d20608a00\"",
+      "bytes": 9844365
+    },
+    {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2016_AM.zip",
       "last_modified": "Mon, 11 Dec 2023 14:55:38 GMT",
       "etag": "\"11d8e69-60c3d207f0e80\"",
@@ -241,10 +655,46 @@
       "bytes": 3459486
     },
     {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2016_BA.zip",
+      "last_modified": "Mon, 11 Dec 2023 14:55:44 GMT",
+      "etag": "\"41e3409-60c3d20da9c00\"",
+      "bytes": 69088265
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2016_CE.zip",
+      "last_modified": "Mon, 11 Dec 2023 14:55:48 GMT",
+      "etag": "\"243f101-60c3d2117a500\"",
+      "bytes": 38007041
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2016_ES.zip",
+      "last_modified": "Mon, 11 Dec 2023 14:55:49 GMT",
+      "etag": "\"10bce50-60c3d2126e740\"",
+      "bytes": 17550928
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2016_GO.zip",
+      "last_modified": "Mon, 11 Dec 2023 14:55:53 GMT",
+      "etag": "\"1de6443-60c3d2163f040\"",
+      "bytes": 31351875
+    },
+    {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2016_MA.zip",
       "last_modified": "Mon, 11 Dec 2023 14:55:56 GMT",
       "etag": "\"1a7d29c-60c3d2191b700\"",
       "bytes": 27775644
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2016_MG.zip",
+      "last_modified": "Mon, 11 Dec 2023 14:56:09 GMT",
+      "etag": "\"8429713-60c3d22581440\"",
+      "bytes": 138581779
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2016_MS.zip",
+      "last_modified": "Mon, 11 Dec 2023 14:56:10 GMT",
+      "etag": "\"c30856-60c3d22675680\"",
+      "bytes": 12781654
     },
     {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2016_MT.zip",
@@ -259,6 +709,42 @@
       "bytes": 56812256
     },
     {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2016_PB.zip",
+      "last_modified": "Mon, 11 Dec 2023 14:56:18 GMT",
+      "etag": "\"1599876-60c3d22e16880\"",
+      "bytes": 22648950
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2016_PE.zip",
+      "last_modified": "Mon, 11 Dec 2023 14:56:23 GMT",
+      "etag": "\"3af5980-60c3d232db3c0\"",
+      "bytes": 61823360
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2016_PI.zip",
+      "last_modified": "Mon, 11 Dec 2023 14:56:24 GMT",
+      "etag": "\"f3d86f-60c3d233cf600\"",
+      "bytes": 15980655
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2016_PR.zip",
+      "last_modified": "Mon, 11 Dec 2023 14:56:31 GMT",
+      "etag": "\"56bbc39-60c3d23a7c5c0\"",
+      "bytes": 90946617
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2016_RJ.zip",
+      "last_modified": "Mon, 11 Dec 2023 14:56:44 GMT",
+      "etag": "\"8ce03f0-60c3d246e2300\"",
+      "bytes": 147719152
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2016_RN.zip",
+      "last_modified": "Mon, 11 Dec 2023 14:56:46 GMT",
+      "etag": "\"f29760-60c3d248ca780\"",
+      "bytes": 15898464
+    },
+    {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2016_RO.zip",
       "last_modified": "Mon, 11 Dec 2023 14:56:47 GMT",
       "etag": "\"90d89e-60c3d249be9c0\"",
@@ -269,6 +755,30 @@
       "last_modified": "Mon, 11 Dec 2023 14:56:47 GMT",
       "etag": "\"297551-60c3d249be9c0\"",
       "bytes": 2717009
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2016_RS.zip",
+      "last_modified": "Mon, 11 Dec 2023 14:56:54 GMT",
+      "etag": "\"551307d-60c3d2506b980\"",
+      "bytes": 89206909
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2016_SC.zip",
+      "last_modified": "Mon, 11 Dec 2023 14:56:58 GMT",
+      "etag": "\"281813a-60c3d2543c280\"",
+      "bytes": 42041658
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2016_SE.zip",
+      "last_modified": "Mon, 11 Dec 2023 14:56:59 GMT",
+      "etag": "\"9f6396-60c3d255304c0\"",
+      "bytes": 10445718
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2016_SP.zip",
+      "last_modified": "Mon, 11 Dec 2023 14:57:33 GMT",
+      "etag": "\"1a8f31ca-60c3d2759d140\"",
+      "bytes": 445592010
     },
     {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2016_TO.zip",
@@ -283,6 +793,12 @@
       "bytes": 6505612
     },
     {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2020_AL.zip",
+      "last_modified": "Fri, 06 Dec 2024 18:25:21 GMT",
+      "etag": "\"1188fc1-6289e233b3941\"",
+      "bytes": 18386881
+    },
+    {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2020_AM.zip",
       "last_modified": "Fri, 06 Dec 2024 18:25:21 GMT",
       "etag": "\"22e120f-6289e23418692\"",
@@ -295,10 +811,46 @@
       "bytes": 4400927
     },
     {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2020_BA.zip",
+      "last_modified": "Fri, 06 Dec 2024 18:25:05 GMT",
+      "etag": "\"6ef49b0-6289e22487383\"",
+      "bytes": 116345264
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2020_CE.zip",
+      "last_modified": "Fri, 06 Dec 2024 18:25:27 GMT",
+      "etag": "\"440d2c5-6289e239b091d\"",
+      "bytes": 71357125
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2020_ES.zip",
+      "last_modified": "Fri, 06 Dec 2024 18:25:23 GMT",
+      "etag": "\"1ec664d-6289e235e3a61\"",
+      "bytes": 32269901
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2020_GO.zip",
+      "last_modified": "Fri, 06 Dec 2024 18:25:27 GMT",
+      "etag": "\"3e20204-6289e239b479d\"",
+      "bytes": 65143300
+    },
+    {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2020_MA.zip",
       "last_modified": "Fri, 06 Dec 2024 18:25:25 GMT",
       "etag": "\"2f92ac7-6289e237df78d\"",
       "bytes": 49883847
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2020_MG.zip",
+      "last_modified": "Fri, 06 Dec 2024 18:30:12 GMT",
+      "etag": "\"d06dd19-6289e34939fda\"",
+      "bytes": 218553625
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2020_MS.zip",
+      "last_modified": "Fri, 06 Dec 2024 18:25:17 GMT",
+      "etag": "\"1880f42-6289e22fb3e01\"",
+      "bytes": 25694018
     },
     {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2020_MT.zip",
@@ -313,6 +865,42 @@
       "bytes": 79917609
     },
     {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2020_PB.zip",
+      "last_modified": "Fri, 06 Dec 2024 18:25:29 GMT",
+      "etag": "\"1bb7fab-6289e23b95ee7\"",
+      "bytes": 29065131
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2020_PE.zip",
+      "last_modified": "Fri, 06 Dec 2024 18:29:11 GMT",
+      "etag": "\"4b76ef7-6289e30f774dc\"",
+      "bytes": 79130359
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2020_PI.zip",
+      "last_modified": "Fri, 06 Dec 2024 18:25:37 GMT",
+      "etag": "\"159d0b8-6289e24306c1a\"",
+      "bytes": 22663352
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2020_PR.zip",
+      "last_modified": "Fri, 06 Dec 2024 18:31:25 GMT",
+      "etag": "\"6635ed8-6289e38eb3855\"",
+      "bytes": 107175640
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2020_RJ.zip",
+      "last_modified": "Fri, 06 Dec 2024 18:28:04 GMT",
+      "etag": "\"a95d813-6289e2cfb52f1\"",
+      "bytes": 177592339
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2020_RN.zip",
+      "last_modified": "Fri, 06 Dec 2024 18:25:33 GMT",
+      "etag": "\"15815e3-6289e23fb947a\"",
+      "bytes": 22549987
+    },
+    {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2020_RO.zip",
       "last_modified": "Fri, 06 Dec 2024 18:25:34 GMT",
       "etag": "\"c54789-6289e2407e0fb\"",
@@ -323,6 +911,30 @@
       "last_modified": "Fri, 06 Dec 2024 18:25:11 GMT",
       "etag": "\"3f46c1-6289e22a02d04\"",
       "bytes": 4146881
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2020_RS.zip",
+      "last_modified": "Fri, 06 Dec 2024 18:25:41 GMT",
+      "etag": "\"66d5999-6289e246dd717\"",
+      "bytes": 107829657
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2020_SC.zip",
+      "last_modified": "Fri, 06 Dec 2024 18:25:11 GMT",
+      "etag": "\"3751467-6289e22a902c8\"",
+      "bytes": 58004583
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2020_SE.zip",
+      "last_modified": "Fri, 06 Dec 2024 18:25:32 GMT",
+      "etag": "\"f3e4a3-6289e23e2a96f\"",
+      "bytes": 15983779
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2020_SP.zip",
+      "last_modified": "Fri, 06 Dec 2024 18:48:57 GMT",
+      "etag": "\"1f68fdfc-6289e779ff8cc\"",
+      "bytes": 526974460
     },
     {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2020_TO.zip",
@@ -337,6 +949,12 @@
       "bytes": 5583839
     },
     {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2024_AL.zip",
+      "last_modified": "Thu, 29 Oct 2026 14:22:20 GMT",
+      "etag": "\"1095444-65efb68507226\"",
+      "bytes": 17388612
+    },
+    {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2024_AM.zip",
       "last_modified": "Thu, 29 Oct 2026 14:22:20 GMT",
       "etag": "\"2084f1e-65efb6851c9e5\"",
@@ -349,10 +967,46 @@
       "bytes": 5157540
     },
     {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2024_BA.zip",
+      "last_modified": "Thu, 29 Oct 2026 14:22:20 GMT",
+      "etag": "\"6cb0e60-65efb685bb106\"",
+      "bytes": 113970784
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2024_CE.zip",
+      "last_modified": "Thu, 29 Oct 2026 14:22:43 GMT",
+      "etag": "\"42411d9-65efb69b61b9d\"",
+      "bytes": 69472729
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2024_ES.zip",
+      "last_modified": "Thu, 29 Oct 2026 14:22:28 GMT",
+      "etag": "\"1e5fbbd-65efb68cf13c0\"",
+      "bytes": 31849405
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2024_GO.zip",
+      "last_modified": "Thu, 29 Oct 2026 14:22:26 GMT",
+      "etag": "\"3d72d90-65efb68b58cab\"",
+      "bytes": 64433552
+    },
+    {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2024_MA.zip",
       "last_modified": "Thu, 29 Oct 2026 14:22:28 GMT",
       "etag": "\"2ea3177-65efb68cbbc4b\"",
       "bytes": 48902519
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2024_MG.zip",
+      "last_modified": "Thu, 29 Oct 2026 14:26:23 GMT",
+      "etag": "\"c00f53e-65efb76d2e1ab\"",
+      "bytes": 201389374
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2024_MS.zip",
+      "last_modified": "Thu, 29 Oct 2026 14:22:26 GMT",
+      "etag": "\"162daa5-65efb68acb6fa\"",
+      "bytes": 23255717
     },
     {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2024_MT.zip",
@@ -367,6 +1021,42 @@
       "bytes": 71540526
     },
     {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2024_PB.zip",
+      "last_modified": "Thu, 29 Oct 2026 14:22:24 GMT",
+      "etag": "\"1acf446-65efb688c4e32\"",
+      "bytes": 28111942
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2024_PE.zip",
+      "last_modified": "Thu, 29 Oct 2026 14:22:35 GMT",
+      "etag": "\"3f93202-65efb6933017e\"",
+      "bytes": 66662914
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2024_PI.zip",
+      "last_modified": "Thu, 29 Oct 2026 14:22:31 GMT",
+      "etag": "\"162ae70-65efb68fcc2ee\"",
+      "bytes": 23244400
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2024_PR.zip",
+      "last_modified": "Thu, 29 Oct 2026 14:22:35 GMT",
+      "etag": "\"68fc46b-65efb693ebd5e\"",
+      "bytes": 110085227
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2024_RJ.zip",
+      "last_modified": "Thu, 29 Oct 2026 14:22:35 GMT",
+      "etag": "\"959bdc4-65efb69381a2b\"",
+      "bytes": 156876228
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2024_RN.zip",
+      "last_modified": "Thu, 29 Oct 2026 14:22:31 GMT",
+      "etag": "\"149d1f7-65efb68fb4bf0\"",
+      "bytes": 21615095
+    },
+    {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2024_RO.zip",
       "last_modified": "Thu, 29 Oct 2026 14:22:31 GMT",
       "etag": "\"c21e64-65efb68ff08f5\"",
@@ -379,6 +1069,30 @@
       "bytes": 4069939
     },
     {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2024_RS.zip",
+      "last_modified": "Thu, 29 Oct 2026 14:22:35 GMT",
+      "etag": "\"5baf2e1-65efb693cb5d7\"",
+      "bytes": 96137953
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2024_SC.zip",
+      "last_modified": "Thu, 29 Oct 2026 14:22:31 GMT",
+      "etag": "\"3353cda-65efb68ff4b5d\"",
+      "bytes": 53820634
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2024_SE.zip",
+      "last_modified": "Thu, 29 Oct 2026 14:22:22 GMT",
+      "etag": "\"ede482-65efb68730984\"",
+      "bytes": 15590530
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2024_SP.zip",
+      "last_modified": "Thu, 29 Oct 2026 14:36:48 GMT",
+      "etag": "\"1c5c6a41-65efb9c142377\"",
+      "bytes": 475818561
+    },
+    {
       "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2024_TO.zip",
       "last_modified": "Thu, 29 Oct 2026 14:22:22 GMT",
       "etag": "\"9b43b4-65efb68704a66\"",
@@ -387,317 +1101,912 @@
   ],
   "files": [
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2000_AC.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_AC.zip",
       "sha256": "07c3d6ace0e3b2029294768f0321945ee8420362cb366588e3e00db819fc450c",
       "bytes": 731847
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2000_AM.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_AL.zip",
+      "sha256": "cc2fc12529e51925bc46606e084512234fbbfda059118fda53ef487eefdb9238",
+      "bytes": 2579449
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_AM.zip",
       "sha256": "88bac412efe202711948b412f9f7c7f78c1e79a71d040077cfee99a8057e607c",
       "bytes": 4414325
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2000_AP.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_AP.zip",
       "sha256": "6f09d5c02c84d590cb262f6938e7a40157bdc39cc20d299330f84d683acdc9dc",
       "bytes": 715841
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2000_MA.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_BA.zip",
+      "sha256": "805493690dafd9cd37abaeb832a8abef874fa82cb758c77eadfb788f8c86de40",
+      "bytes": 14016255
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_CE.zip",
+      "sha256": "05fd968f35652853f40125a336c5accb179d0fb92ed24647db30ffb86fdb5bb6",
+      "bytes": 8674736
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_ES.zip",
+      "sha256": "1895c593b0bca44d65c81acd10fdf494635b4e83eb85e7f84fd58620caaa7f6f",
+      "bytes": 4493832
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_GO.zip",
+      "sha256": "10f093ee5bd6ca33e262838a9613bbbf722d1766e5320a898deaa0528451a4fe",
+      "bytes": 7173836
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_MA.zip",
       "sha256": "e1acb4bd832e5ab7ad1e848d348aebdd82e6c01399ce3be6bfac1031410b2ac8",
       "bytes": 1800739
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2000_MT.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_MG.zip",
+      "sha256": "01e4a57199fd2b770b2ea966137c73440f0aa2d283e8a60cd9f37cf5301fbbb6",
+      "bytes": 27775462
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_MS.zip",
+      "sha256": "805e8d0764ee34c5e86a584730b02b83568c5158050d1272f7a87921a92c2007",
+      "bytes": 3295104
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_MT.zip",
       "sha256": "600b033086d3bb9c33cf6b51b511c0fddae20d4aee3081e0b82c808981302b74",
       "bytes": 2432893
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2000_PA.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_PA.zip",
       "sha256": "cbb8fa3013fd04dc9b58cb66ef772cac9c5ea29e8cf85bf01f2a153109b0795d",
       "bytes": 6452951
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2000_RO.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_PB.zip",
+      "sha256": "97723e4d1d7e48613e2e7ac99f80ccc76290c6c92771c1713b642bedb8ecce95",
+      "bytes": 3695542
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_PE.zip",
+      "sha256": "660b272b356ba1442ad37c313fa4bf99bda953d53424a7ccd3e32a0bb0c38bb1",
+      "bytes": 10027556
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_PI.zip",
+      "sha256": "cf4b8dad281b81002138fdeeac9f153d088f760b201340c9f5b267fc7cbef361",
+      "bytes": 2630132
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_PR.zip",
+      "sha256": "0f43af173eaf43a63c8e4a36d8ac8f228af4c5ada3725cd0e17453456194379e",
+      "bytes": 13823752
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_RJ.zip",
+      "sha256": "c2f3cb799f80b319464f4c64155eb71814db78c489fa3c6b6b3d216d72ac56f2",
+      "bytes": 30754902
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_RN.zip",
+      "sha256": "d35f4c1319b3cbcd80895722147175f4c35ad64de4eb674fdf5a18e2df964950",
+      "bytes": 2638845
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_RO.zip",
       "sha256": "893d0609fc3cb5b1fea8052a3e85bfdd6d81e7a5b7bbf96ac5786948375621a2",
       "bytes": 2204971
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2000_RR.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_RR.zip",
       "sha256": "a0c5ebd196cc9aa9a8d93dcdb25e2716b8de45ed023bcc3e386c43d877f9f684",
       "bytes": 700526
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2000_TO.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_RS.zip",
+      "sha256": "49992780068928f32e66afa89d730da514bbbc9da4fdc56f9ec3a0cda3e199c7",
+      "bytes": 15701963
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_SC.zip",
+      "sha256": "780054094359dc6a383a006b0ca79ef5a811e5d79a8296116561065eb3532fdf",
+      "bytes": 6165671
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_SE.zip",
+      "sha256": "badf7c35b4fc52341b5e795b771b788a5123670ecad41f19d650e33e4183729b",
+      "bytes": 1355911
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_SP.zip",
+      "sha256": "c6127109f5396dbd7a02f8ff035ca752de188dc3f713761654170c5b26af514a",
+      "bytes": 57908801
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2000_TO.zip",
       "sha256": "4f7bbce4502e1cddeedea7ad8259a22291d04f40f5b99a0a8cac9d17176baebf",
       "bytes": 334743
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2004_AC.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_AC.zip",
       "sha256": "a93503404a6bbb986230a9fc20c1d1c436834996028a0f69f721ad2442102c18",
       "bytes": 950497
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2004_AM.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_AL.zip",
+      "sha256": "733fa278c40feba10aa6db624baecbcdb33fa14b9a92a133e2f3e8f63efd18dc",
+      "bytes": 2990635
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_AM.zip",
       "sha256": "92aa47dd02e562e5e2c82b05a89118f6fa19185a95ac9dcf2fa7458f023b890e",
       "bytes": 6578864
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2004_AP.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_AP.zip",
       "sha256": "49c686b25e0c0f805f47cf70a546c912baf5841c5279284cfc66c8e1bf4d24d4",
       "bytes": 835128
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2004_MA.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_BA.zip",
+      "sha256": "833afab1fc3b34f4d1eaac7711506a61cbd516deeb0e9612d1d3a2b92f83e38b",
+      "bytes": 18141647
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_CE.zip",
+      "sha256": "a6421e893734630ab0c9f09749440da526e671134799b451c9c2d72b0904de57",
+      "bytes": 12762302
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_ES.zip",
+      "sha256": "785dac5b1c14ba08376f753afeb525f3fed1f02c80b2cbfbf12da3c7ae51ae46",
+      "bytes": 4714649
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_GO.zip",
+      "sha256": "5840a08e572314819669016f4fe27c7f22edaf71d0334ad9f41bd5465dee9555",
+      "bytes": 9477375
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_MA.zip",
       "sha256": "8c49e635f65c5be4e2e32f98e6ea106e574da92240889b0a539c615c31013163",
       "bytes": 6663420
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2004_MT.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_MG.zip",
+      "sha256": "90462e80673e06407c6f204f2b7617194bbc1e19e7cb14c688b17fa3d9bd531e",
+      "bytes": 30513442
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_MS.zip",
+      "sha256": "8929cee435c1566049ebbee083ecbd60af1a9a69175155d5712d7756c5686749",
+      "bytes": 3243165
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_MT.zip",
       "sha256": "7701fe47d94016ef75206c56043a67a28ac278280c41d696e5fd410490f4366a",
       "bytes": 1572382
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2004_PA.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_PA.zip",
       "sha256": "4e8a4bfca7e86574f56ce88707cd2a2ccd20e3e7d18d394ab9c1e142773f8b35",
       "bytes": 9538078
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2004_RO.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_PB.zip",
+      "sha256": "a8fadf472f45dfd31c74e0ef13c2470ad7a7c90c11ece0418a6e1936f3a55769",
+      "bytes": 4565227
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_PE.zip",
+      "sha256": "bcaf3c74d4d41347d4417869f9ecbe95a14db5be894b85a96f6a6a95279019b6",
+      "bytes": 11988963
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_PI.zip",
+      "sha256": "9d3b585a114d3587729d589deb8849e37c4f3388ec591da0fbe06a0e62ce992c",
+      "bytes": 3405080
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_PR.zip",
+      "sha256": "eeee845b0fe908947eb64a31b4113bd1e724eebd6d1e7ee0b61e1823bb8e1e5e",
+      "bytes": 14714569
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_RJ.zip",
+      "sha256": "f690734b648560e5cd35d82158a88a61e8008c742b54c0f93ac7a4954cbbf267",
+      "bytes": 33922624
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_RN.zip",
+      "sha256": "05f23f9846293f09f6f9279bfdc00bc9312912f87dab34ce17092674b2a3f096",
+      "bytes": 3220608
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_RO.zip",
       "sha256": "44e8003a67bc26e139343175a54c1e933c2e596843055118a6d43ae74de3f485",
       "bytes": 2353496
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2004_RR.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_RR.zip",
       "sha256": "1bfbc9cfea71deece3befb103b3293bd311b71c53be4de9b274c359c8387a7bb",
       "bytes": 756639
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2004_TO.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_RS.zip",
+      "sha256": "29520f93404bb2a71bfcf0ebe2802d1378e762f99c93bd324bb8d8ab558d487e",
+      "bytes": 16122316
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_SC.zip",
+      "sha256": "0e786c7f763ecf0b50f208c5cb802a0a18ebc4f17e9f6946ccff0d0ce92c62fb",
+      "bytes": 5961573
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_SE.zip",
+      "sha256": "0f01741d44ba2cbab896cf739cae737f2194a5e20209d679ffde70294c01acfc",
+      "bytes": 2249911
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_SP.zip",
+      "sha256": "ee868e03a24d04caa57641dfe9f3228dfae7d8c644658bd815bf31ffe1cd0483",
+      "bytes": 69640078
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2004_TO.zip",
       "sha256": "1dd7181a1b51d5f827005f947c364ca45d6b40d31b3baf31a53601343b9d3a2f",
       "bytes": 1463507
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2008_AC.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_AC.zip",
       "sha256": "2d9aec408c3e85b86f3991cc9abe6a1a4f731070a9bc96dffe7ec1f094f261d0",
       "bytes": 1181036
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2008_AM.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_AL.zip",
+      "sha256": "a0e2ae2468f2f452cff4dbd5432b64f61bd07a42abbf709a1d6b7918afb373ad",
+      "bytes": 3905888
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_AM.zip",
       "sha256": "b93e8e7853d15b5b36dcad6438cfcef5750133f0bd1e03ed9134e6a0c83c02b1",
       "bytes": 10150184
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2008_AP.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_AP.zip",
       "sha256": "f3f924499debc0ec80231f9b38b1d68132a2f5f4478aee7b1b1a9f6e518d02fb",
       "bytes": 1313066
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2008_MA.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_BA.zip",
+      "sha256": "d87dbed43abf28cb660bdd189d30695e52e11588baaab94362f5c54dfcfeffa7",
+      "bytes": 26811663
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_CE.zip",
+      "sha256": "c51d1a0605631a807189089cee430adfeb11d29d1d0073104e0cd3e865542649",
+      "bytes": 17349515
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_ES.zip",
+      "sha256": "05dbd7bca1e8127c698343a7b9ef1aa6c70cac9d18f0c35ebffa9febf3976881",
+      "bytes": 6124391
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_GO.zip",
+      "sha256": "0329e7a93d21c1a3a01225ea6b9bd7ed7e97e2daff4410f73538073c6c3bd97b",
+      "bytes": 11597564
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_MA.zip",
       "sha256": "54cdbe0ac12847e9bb83167812a802e2cf4a2e0557cd0e2e46c09c1e0b20852e",
       "bytes": 10924665
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2008_MT.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_MG.zip",
+      "sha256": "8ed26561e44dcf50ef1855b5efde555969a1a4960396dacff256080d36ed3804",
+      "bytes": 41904989
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_MS.zip",
+      "sha256": "8ccbb38a2beb732b7ad7636c9072051decc08a52670a77a4b7f44a84b06c5b04",
+      "bytes": 3938207
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_MT.zip",
       "sha256": "d289aa1879c87548a4b06639526740f7a66af9a7168d91eaadbece1855f04c0e",
       "bytes": 4814814
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2008_PA.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_PA.zip",
       "sha256": "c223755e6f0a65fc616543b74d71610d0f40e5729b9e321bc2415729cd7d120b",
       "bytes": 13957664
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2008_RO.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_PB.zip",
+      "sha256": "62f2b69522b0cc62d4f610f72df661492ce959bacf403ae55a6a9186116bdfd8",
+      "bytes": 5932073
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_PE.zip",
+      "sha256": "442eb024706f878ad9abbea70c606d2a56c98fc9962051ee67832547a31b4d1b",
+      "bytes": 16620367
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_PI.zip",
+      "sha256": "f10d0841943b6e745d78d4018118b7e87a6841c3018deb388b3310843511f0ab",
+      "bytes": 4166314
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_PR.zip",
+      "sha256": "9a1c92e78e0168f70bac0ab3cf55d290e931ab11d5372b5fbe9ccbb830d87959",
+      "bytes": 22510577
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_RJ.zip",
+      "sha256": "049813d7be3df8e4ebcc4d74a039d996a98c4b14c36d6486c6f0d19dc4492bb0",
+      "bytes": 43708783
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_RN.zip",
+      "sha256": "8e3d2f367672c4126ee5c220120a8c125787ad2915d24ee9158da8c3e4365ac6",
+      "bytes": 4114239
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_RO.zip",
       "sha256": "dfdd39eb60aee61291604f8530e17ba9969c6f378f65fde43311d7bd90999359",
       "bytes": 3354159
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2008_RR.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_RR.zip",
       "sha256": "cafb529e8bb3525f19cc04ec28483641c1be0c0252787c5ce8f9ceb7e23faa91",
       "bytes": 1110654
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2008_TO.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_RS.zip",
+      "sha256": "b86c0ee2b8cf028db8479d26e5d785755d098fa2d6df3b7653cf913a99e683e0",
+      "bytes": 20923159
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_SC.zip",
+      "sha256": "56c1d5f435b14d240b0180892eec69eeb912df9d0029c21c9ca12b909df6e4b6",
+      "bytes": 9253798
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_SE.zip",
+      "sha256": "5ebad5ceb5dfefb459a2e78610fd7fba3eb39c7ee87f1f479fcbc7775f29dc72",
+      "bytes": 2912045
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_SP.zip",
+      "sha256": "9ee0c2317dd1af5a68fb307da48eb4ab11662f961f76c0da23e4fa4fbd8b7301",
+      "bytes": 95247698
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2008_TO.zip",
       "sha256": "34a31e3b4ea28d8e3329ec67819ac5f03ca22f660c5e274cfe35b7a90dc2a996",
       "bytes": 2002462
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2012_AC.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_AC.zip",
       "sha256": "e3a04c928997255fcf8a680e7a5bb59c03b9480e1d69604e634c9999b65bc8ec",
       "bytes": 1550223
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2012_AM.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_AL.zip",
+      "sha256": "6f2622ed9d7303175cb7f29c24490cfacba7e5740d4a3f30b8e2f368da306758",
+      "bytes": 3752563
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_AM.zip",
       "sha256": "55cc28e464b5a2d95beb05cc568360394f056d5b85f92da4eda97247d1a7ed81",
       "bytes": 8575093
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2012_AP.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_AP.zip",
       "sha256": "11cb98bd5e0c612dd35a3ad25a29ffddd6bdc72e1a35a5ba79d27a58871043cd",
       "bytes": 1514511
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2012_MA.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_BA.zip",
+      "sha256": "ff25fc279c14593c7c538d7f452e69046c9daacbe0f4d157d58ae8c8be17b1b4",
+      "bytes": 20913139
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_CE.zip",
+      "sha256": "0b9d1734463e4cdff1a3638c18a32e58895f79cedee8b7498f8d7ab4b42188a1",
+      "bytes": 12926550
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_ES.zip",
+      "sha256": "ad48c753612bf79c213395e2f7e4b7c77405a10160e32e32d800d3a2e601005d",
+      "bytes": 5937527
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_GO.zip",
+      "sha256": "f7963d7e8d0964d035523b611f97db0d37dbec0b302a6a19946e8280cf1e99bb",
+      "bytes": 10245509
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_MA.zip",
       "sha256": "0d4671b2ea2721d1e91d84fe5bb36cf76a164dcd9fbe54ba0e2c608fd96d144f",
       "bytes": 9040218
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2012_MT.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_MG.zip",
+      "sha256": "6720b716c0dae1cce5d39584fc3c6ce6e26074edd99d68d47982f87d8bbfad41",
+      "bytes": 34737902
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_MS.zip",
+      "sha256": "f287cee3c17b10aac4834eac1e85ceae13687fd4577b57e0f2396418f07b3423",
+      "bytes": 4327830
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_MT.zip",
       "sha256": "d08c6b573a1110d0d220cf6c3ec606f39c1202af4b802078d3c1474c5bdfdb3b",
       "bytes": 4685841
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2012_PA.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_PA.zip",
       "sha256": "bb57e55963bb5228dabc21785185e2bb2461698b6a02a4caf2e20832adb39ded",
       "bytes": 12885452
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2012_RO.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_PB.zip",
+      "sha256": "c61cd9de78372445eceb5864943bb0e7729c340d449af45e2ca25dbc897ccd23",
+      "bytes": 5679675
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_PE.zip",
+      "sha256": "c3ea61255f0087094ea2deb4f3a795246e7dd3c4d8fce115ceb8198754449c98",
+      "bytes": 13233300
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_PI.zip",
+      "sha256": "c1ae68ce37397451ebf48333f89de3427da7675ec21f8f8cbbf9fa66a5cb9e85",
+      "bytes": 4128514
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_PR.zip",
+      "sha256": "c678df7ad2874112b74ab8685ff34ef392202aaead69df8c211b0d5c160d2bb5",
+      "bytes": 18394709
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_RJ.zip",
+      "sha256": "8fe3517977a331d2337ceb077be65af8331483165f23a1334c1ab9fc3856082a",
+      "bytes": 37119487
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_RN.zip",
+      "sha256": "8b0c2331a112f92425910a542b819537c0d3a0eb8f569c3b3980e9979a93c857",
+      "bytes": 3870890
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_RO.zip",
       "sha256": "4446ffcf8c64060691593164d958a73b7e7205e794572bbe2a2430f2b27b8975",
       "bytes": 2982671
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2012_RR.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_RR.zip",
       "sha256": "6acd1d23ea092fa3e3f3a2205a5f8a2f6a90d53cec42e1aea02cf8aa68a7f177",
       "bytes": 1153506
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2012_TO.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_RS.zip",
+      "sha256": "5e33e7e983aec9b61ea5eacf9fa98bb194d3dc490522d3650555d7f1993e69ea",
+      "bytes": 17396154
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_SC.zip",
+      "sha256": "46c891ffb7c225c5fc0be3ed15d38dd2741e4c5af683beca62aae7c20cd92f03",
+      "bytes": 8298900
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_SE.zip",
+      "sha256": "5e9a8236479f8a122985e78cc036e102504d892cd0d9def44128d867aa2524a7",
+      "bytes": 2937581
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_SP.zip",
+      "sha256": "68e31939f28553a91aba4b716b0e9e4826495cbc56c38cd0ad6c0d6b5e871a52",
+      "bytes": 85405272
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2012_TO.zip",
       "sha256": "ff92f1ee2f5a8ca7e315e6f76637b9dd43ebe7de9cc3588b62a164ee8bfc9b63",
       "bytes": 2079486
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2016_AC.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_AC.zip",
       "sha256": "da7fd81674206389b1e6bbced3d9eaf77fbb37fa29769063d5dfdbc701eb5892",
       "bytes": 3406402
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2016_AM.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_AL.zip",
+      "sha256": "e5dc1529dc449c60ee75afe77f1c80dd6e3417c5bd3540d092dd3bed1b3da5b4",
+      "bytes": 9844365
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_AM.zip",
       "sha256": "08072595b417b65d8ff448abb6ab5bc24d19a77d73d582a2d349e99b44b4d198",
       "bytes": 18714217
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2016_AP.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_AP.zip",
       "sha256": "35aef04927b33a6d78c5f97fc7a35eac0c4fb79c288d07f5004f910035d52d87",
       "bytes": 3459486
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2016_MA.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_BA.zip",
+      "sha256": "80315a1c99bf7a03b630d4b093a4a835b5111281f9683e75efe090622d3a2043",
+      "bytes": 69088265
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_CE.zip",
+      "sha256": "9a606beb8c60b5a3eb6980bc255d3f979cac93b5a9d11e1620c8379ae1fff71f",
+      "bytes": 38007041
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_ES.zip",
+      "sha256": "1d1cec72f884a5ae8599626fdd52545392388682716727660fffe3896cb24d8b",
+      "bytes": 17550928
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_GO.zip",
+      "sha256": "c0a7a376e8657d55bb9e067d04034795896e9a4449c2c9499a07d17e5fcdca01",
+      "bytes": 31351875
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_MA.zip",
       "sha256": "71e56aaa71cbe5b41d61b0725879986112deac1ca829a10e8660b966267b7e06",
       "bytes": 27775644
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2016_MT.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_MG.zip",
+      "sha256": "48dc7ce890ad5d226bfbfe74e071461a33e69c58dff6ea46a6683efa42dda31e",
+      "bytes": 138581779
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_MS.zip",
+      "sha256": "2ea07d5f05cbc9224d25388764eceaf9886552240475a0a39683fd61ec302a01",
+      "bytes": 12781654
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_MT.zip",
       "sha256": "48784d8c91d366dd63c58e3f4452ca69c5b08375a573513fe57a864731ac0f82",
       "bytes": 13091945
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2016_PA.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_PA.zip",
       "sha256": "fc404b99c6fecb981e7a1b14f093bf42418ca47154d90e8bdcaef7dbd3949fba",
       "bytes": 56812256
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2016_RO.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_PB.zip",
+      "sha256": "f4c642db3f86725a30bdf766bd2e1c83a73b8b1dd7b20bbe466bc7129c0c136c",
+      "bytes": 22648950
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_PE.zip",
+      "sha256": "1fc0040bc42f212a1dc3263519f159a4363a861bb5261643ccd576c9f5087aad",
+      "bytes": 61823360
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_PI.zip",
+      "sha256": "c8678969fba90cf703a88d997fef8da28bfea2bba138adbcbe53b9cedc4b1302",
+      "bytes": 15980655
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_PR.zip",
+      "sha256": "0f762a711973604a5420b22e4c380e9edf636994617b70c9d6032af5e3f66970",
+      "bytes": 90946617
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_RJ.zip",
+      "sha256": "5e9dbbc3cb23f0454a32f560cc880adb30125e3df5f2fa87dbb07f443ef7d089",
+      "bytes": 147719152
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_RN.zip",
+      "sha256": "37729acd48d41c7d70dd7c86c1de1cfddf8ee622d60adf2253a053e02ca1c4ec",
+      "bytes": 15898464
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_RO.zip",
       "sha256": "2dd0d95ced8da5fb1cee40edad7457ba06864678d022a5b3342bc23b55b6f5f8",
       "bytes": 9492638
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2016_RR.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_RR.zip",
       "sha256": "b75ff74b1385690ae511dae0b48e3af982c6d9b9d4e6e90afdd6f0deabce5142",
       "bytes": 2717009
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2016_TO.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_RS.zip",
+      "sha256": "59dc4d6f6f168f13545b4edc06e437e11016da0e4db1323aafdbf9c8e54425e4",
+      "bytes": 89206909
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_SC.zip",
+      "sha256": "12e5b36b630b3c418643242f8cbca5431d3274d99b91a6d321182723c52a10ea",
+      "bytes": 42041658
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_SE.zip",
+      "sha256": "2625e98ac3d303505baab592ffb906d3dabf766a8a4732b316f55bd5d8a064d4",
+      "bytes": 10445718
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_SP.zip",
+      "sha256": "0eae5ebd5dc72ed28772dc8d3c3fd7b77789068d5955601f10a80e10cbe57fe9",
+      "bytes": 445592010
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2016_TO.zip",
       "sha256": "41b5b0433056ca7669cb0bbe1876f495e9a9cfa8ef8868395afcb7ded313ca74",
       "bytes": 7411670
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2020_AC.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_AC.zip",
       "sha256": "8509bae9d42ec824f24e1d275aa74d5be0f1f5d12b6f0adcb1fcb0fd5d14d9b8",
       "bytes": 6505612
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2020_AM.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_AL.zip",
+      "sha256": "8458a14d39bf6fc18cffd0f9a40b0e134c3a082a441030b25b0f248fe2400a14",
+      "bytes": 18386881
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_AM.zip",
       "sha256": "537f6afc236e13afec805d85f2cd83ef0e57a1a48b13d61704fa9cc06ccb65e4",
       "bytes": 36573711
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2020_AP.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_AP.zip",
       "sha256": "3a84a1a15b24f280862cb8567a79b535fd591da879b88d00bb23d277e7dedff3",
       "bytes": 4400927
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2020_MA.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_BA.zip",
+      "sha256": "8dde52f34311d2a9591c3cae9e6942520d0fdc7572f64a29384c6aa42400e31d",
+      "bytes": 116345264
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_CE.zip",
+      "sha256": "9fe68d704aa69f6fc289d97e12459635a34e43e0b728a61bc723bfbeea035173",
+      "bytes": 71357125
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_ES.zip",
+      "sha256": "37f24a39afa9bcc522eb79ff4dc1156fb8b5cd2817d03984635458bc2555770a",
+      "bytes": 32269901
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_GO.zip",
+      "sha256": "1916401af4ae569d335245855c2902d75b5d9ac356f0b0e477d091b0d7c5de45",
+      "bytes": 65143300
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_MA.zip",
       "sha256": "179b2b1541c7d8cbb3e5a5e50957d44e693e1dde18c927811874a029edd140c6",
       "bytes": 49883847
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2020_MT.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_MG.zip",
+      "sha256": "ee5f6253407665178bad9d4e1f6f48371094e20c76652b93dbb48ad7503199dd",
+      "bytes": 218553625
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_MS.zip",
+      "sha256": "2b933ab0cdfa970f259cae75243adf058498c81845856300650104a2bb822727",
+      "bytes": 25694018
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_MT.zip",
       "sha256": "c6d8415317693b970a72a252cf7071d2312efd8e7bf5fccc895304e045115d94",
       "bytes": 27996996
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2020_PA.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_PA.zip",
       "sha256": "a288aaa281a2a8af599d0c408811d9ba13ff4fcef8395ce3352b92b9a6bf44d6",
       "bytes": 79917609
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2020_RO.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_PB.zip",
+      "sha256": "f2ee18275c812ce42a43aa7c685848f6dfaa0b667475ce81d700a0b3ee32e4a5",
+      "bytes": 29065131
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_PE.zip",
+      "sha256": "5762dfa5cdf76843e53470eaea635e1486564837018a14dbf2278c2bae079311",
+      "bytes": 79130359
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_PI.zip",
+      "sha256": "fc7a3033351afebad28c49b8325ff470c65d8dcbb7409b856481d92f83f0b329",
+      "bytes": 22663352
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_PR.zip",
+      "sha256": "21781c3176a0ba53553021af2c593aa5271b442e2c7fc2c86d91121ef73a8a3f",
+      "bytes": 107175640
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_RJ.zip",
+      "sha256": "96c8236b37e91034feef36f69f7b58bfcae1a8dd56b9f8679226844a1daf68cd",
+      "bytes": 177592339
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_RN.zip",
+      "sha256": "1cc29249a301a7c92f66578a2e971fc66a3df79da60929ce12202d27ada962a6",
+      "bytes": 22549987
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_RO.zip",
       "sha256": "e1bdfe458b81b65e260fde46584e62838e4255b3c8c0bf6943ac839c4ca1e9cc",
       "bytes": 12928905
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2020_RR.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_RR.zip",
       "sha256": "6f46cb276bef8efebdc646d8fdadc25e1af92df7a814682e239bd90138bb6a66",
       "bytes": 4146881
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2020_TO.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_RS.zip",
+      "sha256": "170ab923830e8fc445e95dbad643c51dde3b36ca849f62e8e26f8de08119e26f",
+      "bytes": 107829657
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_SC.zip",
+      "sha256": "cb19a7aadf1397b5a69a2550e935570ec2721e3998b59470fa23f73953d6fa6e",
+      "bytes": 58004583
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_SE.zip",
+      "sha256": "f5324a1b99d9274442e6c792b3d4f38e3d30ce9c2db33b29441074fe534cb5ec",
+      "bytes": 15983779
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_SP.zip",
+      "sha256": "79dbc252f6d6187f351ceaf1bbf2a0d3fba5043a90df1e2af9c4e8bae7244fc8",
+      "bytes": 526974460
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2020_TO.zip",
       "sha256": "f34a04edb07a67ffd487da7a7e9025e4606236fa1c42bc6d4f62c673eb3ce3cf",
       "bytes": 10870608
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2024_AC.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_AC.zip",
       "sha256": "7ff403c86d8374b17fb2023b85d5a0a5d6d433121803d1afddc9c472a996431d",
       "bytes": 5583839
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2024_AM.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_AL.zip",
+      "sha256": "39240cf522a803f99dff7ccea9a366c742564f02340c7a8b86f8732cdb3110eb",
+      "bytes": 17388612
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_AM.zip",
       "sha256": "45b546fd26560ad06b3dbd3816ea4d67dd3cdc2e20136da9e2fb546813920ecd",
       "bytes": 34098974
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2024_AP.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_AP.zip",
       "sha256": "0faccd7c3e37ba759a1f890acceceeb9f0803000e70f67d40b9ee30859ff96ee",
       "bytes": 5157540
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2024_MA.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_BA.zip",
+      "sha256": "b07bf43421801da5efda39810332e221ac5e8c3dd8ece87f93ada98a27c4b00e",
+      "bytes": 113970784
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_CE.zip",
+      "sha256": "14f96957ca6eff35b327665f781c5a839f7b3de7a98c02a9526ed911d320a08e",
+      "bytes": 69472729
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_ES.zip",
+      "sha256": "5e6bfc7aa9f48fc8d972812c9d63ecb2d1227ead44831491be0319222de5c28a",
+      "bytes": 31849405
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_GO.zip",
+      "sha256": "dbdb7833151748427dc1f6fde70dda4e112ceebc355e3deb580bafb17bdf3eef",
+      "bytes": 64433552
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_MA.zip",
       "sha256": "49d4272152fe988f1d6758a854c2f8e2e3ccecedf5bcccdec5f75747ef68d791",
       "bytes": 48902519
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2024_MT.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_MG.zip",
+      "sha256": "895b8b93ec633d0aff6c734150f3fc12f27b388710f308b03ad51b92b8c6859d",
+      "bytes": 201389374
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_MS.zip",
+      "sha256": "39fb2b1f86cd81c91c1471a0e41e6100545a8fd53a948b0b15a03ba61cf61ef2",
+      "bytes": 23255717
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_MT.zip",
       "sha256": "474ad880b866ca4f996ae48c9a6c8dd2b9e6618913d6cf7503d940d4a226b381",
       "bytes": 26098926
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2024_PA.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_PA.zip",
       "sha256": "71aa2546098a7b2a4d856121ec941d37ca50ac1204dae869067718df8574fcf1",
       "bytes": 71540526
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2024_RO.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_PB.zip",
+      "sha256": "73d07922a5c4fb2bebd31625fa44977c14800f8a4b65da7cdc3a731d309ea500",
+      "bytes": 28111942
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_PE.zip",
+      "sha256": "49c4a506fb91fc54d96ce1d8d8b1aa8db78c5db6a064c64728ae9e798e7ad3bf",
+      "bytes": 66662914
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_PI.zip",
+      "sha256": "a594fbaf34bb1ad03e30650f7db59fdd856e0ba807ea0b0fd35a5594db993e89",
+      "bytes": 23244400
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_PR.zip",
+      "sha256": "f8838e1a79a8b02730da1408ca20c6615a651e22f559ffaa9b9012b48329659d",
+      "bytes": 110085227
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_RJ.zip",
+      "sha256": "ac990be96d9919769da039bb029c1a0ed7e28c29d6414bbb361a9b1a682efd9b",
+      "bytes": 156876228
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_RN.zip",
+      "sha256": "b95f8d1c40ef6e4ac3fd077988f67b80cc4c75b74c0c306aec150cf03d086f63",
+      "bytes": 21615095
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_RO.zip",
       "sha256": "f1af7e441bff8552b45d043b4c5bee6636015e1aab6c95c26ef319e868dc8525",
       "bytes": 12721764
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2024_RR.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_RR.zip",
       "sha256": "2635f0b7affe178ad8bb4c5ee9cd51aba9e89dd85402499c0c18fbeca885acb1",
       "bytes": 4069939
     },
     {
-      "path": "data/raw/tse/sections/2026-11-02/votacao_secao_2024_TO.zip",
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_RS.zip",
+      "sha256": "a0fb26360917e32c7d18f806e3b6f3b8ac97378ce3127e1fecb6a2bfe0581a05",
+      "bytes": 96137953
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_SC.zip",
+      "sha256": "c539c9748a6c5e2e19f9083db936c105920056862c0f4f557daa22a5a1fc3d0f",
+      "bytes": 53820634
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_SE.zip",
+      "sha256": "3debad0acb3472cb027e12e6dd9eb82dbff4617b495827eff8723ef1cbe1e73b",
+      "bytes": 15590530
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_SP.zip",
+      "sha256": "c3a1d45149e576a20403822c392f5d8e50efb0888a86d3c6e36cdbb26fb2dcca",
+      "bytes": 475818561
+    },
+    {
+      "path": "data/raw/tse/sections/2026-11-10/votacao_secao_2024_TO.zip",
       "sha256": "d3fbf5c927a189d53f2f7ef7cb6df52c60b83598cad34ba49f43487d01888cf9",
       "bytes": 10175412
     }
