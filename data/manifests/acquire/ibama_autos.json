@@ -1,0 +1,29 @@
+{
+  "dataset": "ibama_autos",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/ibama/autos/2026-11-10/",
+  "created_at": "2026-11-10T04:21:07.858372+00:00",
+  "code_commit": "4043386e27dc21a18dfa99b8a5fa7e477381a049",
+  "sources": [
+    {
+      "fonte": "basedosdados",
+      "url": "https://basedosdados.org/dataset/7e01700d-1f9a-4be6-8ec6-85b7c2c6cf15",
+      "table": "basedosdados.br_ibama_fiscalizacao.auto_infracao",
+      "query": "SELECT ano, data_auto, id_auto, id_municipio, sigla_uf, latitude, longitude, tipo_infracao, tipo_auto, situacao_auto, indicador_cancelado, gravidade, indicador_coordenada_valida, data_extracao FROM `basedosdados.br_ibama_fiscalizacao.auto_infracao` WHERE sigla_uf IN ('AC', 'AM', 'AP', 'MA', 'MT', 'PA', 'RO', 'RR', 'TO') AND ano BETWEEN 2000 AND 2025 ORDER BY ano, id_auto",
+      "location": "US",
+      "max_data_extracao": "2026-09-23",
+      "rows": 198431,
+      "total_bytes_processed": 49432718,
+      "job_id": "job_-UbOyqOWWhDCXhHmHY4U7qzpUEx0"
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/ibama/autos/2026-11-10/ibama_autos.parquet",
+      "sha256": "f17fcedda686e8287016efc735b2cefb833de0fb9b9cf13a155837b70f0c5a31",
+      "bytes": 1984086
+    }
+  ],
+  "notes": "source used: basedosdados\nportal probe: HTTP 403\nportal skipped: mapping incomplete\nrows: 198431\ndistinct tipo_infracao: Administra\u00e7\u00e3o Ambiental, Cadastro T\u00e9cnico Federal, Controle Ambiental, Fauna, Flora, Licenciamento, Ord. Urbano e Patr. Cultural, Org. Gen. Modific. e Biopirataria, Outras, Pesca, Qualidade Ambiental, Unidade de Conserva\u00e7\u00e3o, null\ndistinct tipo_auto: Advert\u00eancia, Multa di\u00e1ria, Multa simples, null\ndistinct situacao_auto: Cancelado, Exclu\u00eddo, Lavrado, Substitu\u00eddo por outro, null\ndistinct indicador_cancelado: N, S\ndistinct indicador_coordenada_valida: nao, null, sim"
+}
