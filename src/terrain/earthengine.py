@@ -66,13 +66,39 @@ class EarthEngine(Protocol):
         """`{"updateTime": str, "sizeBytes": int}` of the asset."""
         ...
 
+    def band_names(self, asset: str) -> list[str]:
+        """Band names of the image `asset` (or of the first image of a collection)."""
+        ...
+
+    def year_images(self, collection: str, year: int) -> list[str]:
+        """Ids of the images of `collection` whose start date is in `year`."""
+        ...
+
     def start_export(self, year: int, params: dict[str, Any], bucket_prefix: str) -> str:
-        """Start the batch export of `year` into `bucket_prefix`; return the task id."""
+        """Start the batch export of `year` into `bucket_prefix`; return the task id.
+
+        For `log1p_mean`, `params["images"][year]` is the year's single image id.
+        """
         ...
 
     def task_state(self, task_id: str) -> tuple[str, str]:
         """`(state, error_message)` of the task."""
         ...
+
+
+def _collections(block: dict[str, Any], years: list[int]) -> dict[int, str]:
+    """Year -> collection asset for `log1p_mean`; each year in exactly one collection."""
+    owner: dict[int, str] = {}
+    for coll in block["collections"]:
+        for y in coll["years"]:
+            y = int(y)
+            if y in owner:
+                raise EarthEngineError(f"year {y} is in two collections")
+            owner[y] = str(coll["asset"])
+    missing = [y for y in years if y not in owner]
+    if missing:
+        raise EarthEngineError(f"years {missing} are in no collection")
+    return {y: owner[y] for y in years}
 
 
 def export_params(entry: dict[str, Any]) -> dict[str, Any]:
@@ -81,40 +107,75 @@ def export_params(entry: dict[str, Any]) -> dict[str, Any]:
     g = block["grid_km"]
     x0, x1, y0, y1 = g["x0"], g["x1"], g["y0"], g["y1"]
     years = [int(y) for y in block["years"]]
-    codes = [int(c) for c in block["codes"]]
-    return {
-        "asset": block["asset"],
+    mode = str(block.get("mode", "shares"))
+    params: dict[str, Any] = {
+        "mode": mode,
         "crs": pyproj.CRS.from_proj4(ALBERS).to_wkt(version="WKT1_GDAL"),
         "crs_transform": [1000, 0, x0 * 1000, 0, -1000, y1 * 1000],
         "dimensions": f"{x1 - x0}x{y1 - y0}",
-        "file_dimensions": list(FILE_DIMENSIONS),
+        "file_dimensions": [int(d) for d in block.get("file_dimensions", FILE_DIMENSIONS)],
+        "min_share_with_data": float(block.get("min_share_with_data", MIN_SHARE_WITH_DATA)),
         "shard_size": SHARD_SIZE,
         "years": years,
-        "codes": codes,
         "scale": int(block["scale"]),
         "bands": {y: str(block["band"]).replace("<year>", str(y)) for y in years},
         "files": {y: str(block["file"]).replace("<year>", str(y)) for y in years},
-        "shape": (y1 - y0, x1 - x0, len(codes)),
     }
+    if mode == "shares":
+        codes = [int(c) for c in block["codes"]]
+        params.update(asset=block["asset"], codes=codes, shape=(y1 - y0, x1 - x0, len(codes)))
+    elif mode == "groups":
+        groups = {str(k): [int(c) for c in v] for k, v in block["groups"].items()}
+        params.update(asset=block["asset"], groups=groups)
+        params["shape"] = (y1 - y0, x1 - x0, len(groups))
+    elif mode == "log1p_mean":
+        params.update(year_assets=_collections(block, years), shape=(y1 - y0, x1 - x0, 1))
+    else:
+        raise EarthEngineError(f"unknown export mode {mode!r}")
+    return params
+
+
+def _assets(params: dict[str, Any]) -> list[str]:
+    """The assets a run reads, in a stable order without repeats."""
+    if params["mode"] == "log1p_mean":
+        return list(dict.fromkeys(params["year_assets"].values()))
+    return [params["asset"]]
 
 
 def source(entry: dict[str, Any], info: dict[str, Any]) -> dict[str, Any]:
-    """The manifest source: the asset version plus a hash of the export block."""
+    """The manifest source: the asset version plus a hash of the export block.
+
+    `info` is the asset's info; for `log1p_mean` it is one combined info over the
+    collections (newest update time, summed size).
+    """
     block = json.dumps(entry["earthengine"], sort_keys=True, default=str)
+    eb = entry["earthengine"]
+    if "asset" in eb:
+        url = eb["asset"]
+    else:
+        url = ", ".join(str(c["asset"]) for c in eb["collections"])
     return {
-        "url": entry["earthengine"]["asset"],
+        "url": url,
         "last_modified": str(info["updateTime"]),
         "etag": content_hash(block),
         "bytes": int(info["sizeBytes"]),
     }
 
 
-def check_file(path: Path, shape: tuple[int, ...], scale: int) -> tuple[int, int]:
-    """Raise `EarthEngineError` unless `path` is a valid share file.
+def check_file(
+    path: Path,
+    shape: tuple[int, ...],
+    scale: int,
+    mode: str = "shares",
+    min_share_with_data: float = MIN_SHARE_WITH_DATA,
+) -> tuple[int, int]:
+    """Raise `EarthEngineError` unless `path` is a valid export file.
 
     Returns (cells with data, of them cells whose shares sum to less than `scale`).
-    Some 30 m pixels carry no code 1-7, so a cell's shares may sum to less than
-    `scale` (the rest is unclassified; 0.4% of cells in 2004), never to more.
+    For `shares` and `groups`, some 30 m pixels carry no listed code, so a cell's
+    shares may sum to less than `scale` (the rest is unclassified; 0.4% of cells
+    in 2004), never to more. For `log1p_mean` there is no sum; every value must
+    be at most `11 * scale` and the second count is 0.
     """
     try:
         with warnings.catch_warnings():
@@ -124,16 +185,24 @@ def check_file(path: Path, shape: tuple[int, ...], scale: int) -> tuple[int, int
         raise EarthEngineError(f"{path.name}: cannot be read as a GeoTIFF ({err})") from err
     if arr.dtype != np.uint16:
         raise EarthEngineError(f"{path.name}: dtype {arr.dtype}, expected uint16")
+    if arr.ndim == 2 and len(shape) == 3 and shape[2] == 1:
+        arr = arr[:, :, np.newaxis]  # tifffile drops a single band's axis
     if arr.shape != tuple(shape):
         raise EarthEngineError(f"{path.name}: shape {arr.shape}, expected {tuple(shape)}")
     has = arr.any(axis=2)
-    sums = arr.sum(axis=2, dtype=np.int64)[has]
-    if sums.size and bool((sums > scale + shape[2]).any()):
-        raise EarthEngineError(f"{path.name}: shares of some cell sum to more than {scale}")
     n = int(has.sum())
-    if n < MIN_SHARE_WITH_DATA * has.size:
+    short = 0
+    if mode == "log1p_mean":
+        if int(arr.max(initial=0)) > 11 * scale:
+            raise EarthEngineError(f"{path.name}: a value is above 11 * {scale}")
+    else:
+        sums = arr.sum(axis=2, dtype=np.int64)[has]
+        if sums.size and bool((sums > scale + shape[2]).any()):
+            raise EarthEngineError(f"{path.name}: shares of some cell sum to more than {scale}")
+        short = int((sums < scale - shape[2]).sum())
+    if n < min_share_with_data * has.size:
         raise EarthEngineError(f"{path.name}: only {n} of {has.size} cells have data")
-    return n, int((sums < scale - shape[2]).sum())
+    return n, short
 
 
 def _write_pending(
@@ -202,6 +271,31 @@ def _wait(
         sleep(poll_s)
 
 
+def _check_inputs(ee: EarthEngine, params: dict[str, Any]) -> dict[int, str]:
+    """Check bands and images exist; return year -> image id (`log1p_mean` only).
+
+    Raises before any export starts.
+    """
+    if params["mode"] != "log1p_mean":
+        have = set(ee.band_names(params["asset"]))
+        missing = sorted({b for b in params["bands"].values() if b not in have})
+        if missing:
+            raise EarthEngineError(f"{params['asset']}: missing bands {missing}")
+        return {}
+    images: dict[int, str] = {}
+    for year in params["years"]:
+        found = ee.year_images(params["year_assets"][year], year)
+        if len(found) != 1:
+            raise EarthEngineError(
+                f"{params['year_assets'][year]}: {len(found)} images for {year}, expected 1"
+            )
+        images[year] = found[0]
+    for year, image in images.items():
+        if params["bands"][year] not in ee.band_names(image):
+            raise EarthEngineError(f"{image}: missing band {params['bands'][year]}")
+    return images
+
+
 def acquire_mapbiomas(
     store: Store,
     ee: EarthEngine,
@@ -217,7 +311,14 @@ def acquire_mapbiomas(
     """Run one acquire. Returns the manifest; the caller writes it when `created`."""
     root = entry["gcs"]
     params = export_params(entry)
-    current = source(entry, ee.asset_info(params["asset"]))
+    infos = [ee.asset_info(a) for a in _assets(params)]
+    current = source(
+        entry,
+        {
+            "updateTime": max(str(i["updateTime"]) for i in infos),
+            "sizeBytes": sum(int(i["sizeBytes"]) for i in infos),
+        },
+    )
 
     old = latest_manifest(store, root)
     if old is not None and _unchanged(old, [current]):
@@ -233,6 +334,8 @@ def acquire_mapbiomas(
         )
 
     resumed = _pending(store, ee, root, current)
+    images = _check_inputs(ee, params)  # before any export starts
+    params["images"] = images
     if resumed is not None:
         prefix, tasks = resumed
     else:
@@ -250,9 +353,21 @@ def acquire_mapbiomas(
             raise EarthEngineError(f"{remote}: export finished but the file is missing")
         local = tmp_dir / params["files"][year]
         store.download(remote, local)
-        n, short = check_file(local, params["shape"], params["scale"])
+        n, short = check_file(
+            local,
+            params["shape"],
+            params["scale"],
+            params["mode"],
+            params["min_share_with_data"],
+        )
         files.append({"path": remote, "sha256": sha256_file(local), "bytes": local.stat().st_size})
-        cells.append(f"{year}={n} ({short} partly unclassified)")
+        if params["mode"] == "log1p_mean":
+            cells.append(f"{year}={n}")
+        else:
+            cells.append(f"{year}={n} ({short} partly unclassified)")
+    notes = "cells with data per year: " + ", ".join(cells)
+    if params["mode"] == "log1p_mean":
+        notes += "; image per year: " + ", ".join(f"{y}={i}" for y, i in images.items())
     return build_manifest(
         dataset=entry["name"],
         stage="acquire",
@@ -260,7 +375,7 @@ def acquire_mapbiomas(
         gcs_prefix=prefix,
         files=files,
         sources=[current],
-        notes="cells with data per year: " + ", ".join(cells),
+        notes=notes,
         code_commit=code_commit,
     )
 
@@ -281,16 +396,54 @@ class RealEarthEngine:
         info = self._ee.data.getAsset(asset)
         return {"updateTime": info["updateTime"], "sizeBytes": int(info["sizeBytes"])}
 
-    def start_export(self, year: int, params: dict[str, Any], bucket_prefix: str) -> str:
+    def band_names(self, asset: str) -> list[str]:
         ee = self._ee
-        img = ee.Image(params["asset"]).select(params["bands"][year])
-        shares = (
-            ee.Image.cat([img.eq(c).rename(f"c{c}") for c in params["codes"]])
+        if self._is_collection(asset):
+            return list(ee.ImageCollection(asset).first().bandNames().getInfo())
+        return list(ee.Image(asset).bandNames().getInfo())
+
+    def _is_collection(self, asset: str) -> bool:
+        return str(self._ee.data.getAsset(asset).get("type", "")) == "IMAGE_COLLECTION"
+
+    def year_images(self, collection: str, year: int) -> list[str]:
+        ee = self._ee
+        coll = ee.ImageCollection(collection).filterDate(f"{year}-01-01", f"{year + 1}-01-01")
+        return [str(i) for i in coll.aggregate_array("system:id").getInfo()]
+
+    def _image(self, year: int, params: dict[str, Any]) -> Any:
+        ee = self._ee
+        band = params["bands"][year]
+        if params["mode"] == "log1p_mean":
+            img = ee.Image(params["images"][year]).select(band)
+            # log(1 + max(radiance, 0)), then the mean over the 1 km cell
+            return (
+                img.max(0)
+                .add(1)
+                .log()
+                .reduceResolution(ee.Reducer.mean(), maxPixels=2048)
+                .multiply(params["scale"])
+                .round()
+                .toUint16()
+            )
+        img = ee.Image(params["asset"]).select(band)
+        if params["mode"] == "groups":
+            parts = [
+                img.remap(codes, [1] * len(codes), 0).rename(name)
+                for name, codes in params["groups"].items()
+            ]
+        else:
+            parts = [img.eq(c).rename(f"c{c}") for c in params["codes"]]
+        return (
+            ee.Image.cat(parts)
             .reduceResolution(ee.Reducer.mean(), maxPixels=2048)
             .multiply(params["scale"])
             .round()
             .toUint16()
         )
+
+    def start_export(self, year: int, params: dict[str, Any], bucket_prefix: str) -> str:
+        ee = self._ee
+        shares = self._image(year, params)
         name = params["files"][year].removesuffix(".tif")
         task = ee.batch.Export.image.toCloudStorage(
             image=shares,
