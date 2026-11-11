@@ -3,9 +3,11 @@
 The body is generated from the campaign file and what the tick saw, so the
 builder gets every fact it needs (steps, verdicts, runs, budget used, and the
 friction facts: blocks, extra plans and fix rounds, repeated runs, long gaps)
-as data. The report proposes harness changes but never makes them.
-The close-out PR touches owned paths (the idea file, campaign.md), so the
-owner always merges it: it is where he reads the report and decides.
+as data. From those facts the close-out adds at most three notes of advice
+to `research/agent-notes.md`, which every agent reads (decision 0013), and
+one Scoreboard row; checks in code it only proposes, in the report.
+The close-out PR touches owned paths (the idea file, campaign.md, the notes),
+so the owner always approves it: it is where he reads the report and decides.
 """
 
 from __future__ import annotations
@@ -13,7 +15,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from terrain.campaigns import markers
-from terrain.campaigns.spec import Campaign
+from terrain.campaigns.spec import NOTES_PATH, Campaign
 
 REPORT_SECTIONS = (
     "Summary",
@@ -30,6 +32,36 @@ REPORT_SECTIONS = (
 
 # The lines the report opens with, before `## Summary`, one sentence each.
 REPORT_OPENING = ("What we tested:", "What happened:", "What it means:", "Decisions for you:")
+
+# The notes file (decision 0013). scripts/validate_records.py enforces these.
+NOTE_ROLES = ("design", "planner", "builder", "reviewer", "closeout")
+MAX_NOTES = 30  # in the file
+MAX_NEW_NOTES = 3  # per close-out
+MAX_ADVICE_CHARS = 200
+# A note that contains any of these, in any letter case, is refused: notes are
+# advice on how to work, never a way to loosen a rule or what a task may touch.
+NOTE_BANNED = (
+    "skip",
+    "ignore",
+    "disable",
+    "bypass",
+    "sealed",
+    "confirm/",
+    "kill rule",
+    "threshold",
+    "needs-human",
+    "CODEOWNERS",
+    ".github",
+)
+SCOREBOARD_HEADER = (
+    "Campaign",
+    "Steps",
+    "Blocks",
+    "Fix rounds",
+    "Retries",
+    "Hours from start to finish",
+    "Notes added",
+)
 
 _WORDS = ("zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten")
 
@@ -78,6 +110,14 @@ def closeout_issue(
     opening = "\n".join(f"   - `{line}`" for line in REPORT_OPENING)
     n_sections = number_word(len(REPORT_SECTIONS))
     rules = "\n".join(f"- {line}" for line in (applied or [])) or "- No kill rule was applied."
+    roles = ", ".join(NOTE_ROLES)
+    banned = ", ".join(f"`{w}`" for w in NOTE_BANNED)
+    score_header = " | ".join(SCOREBOARD_HEADER)
+    note_shape = (
+        f"- [N001] (role) Advice in one sentence. From: campaign {c.id}, "
+        "the friction fact in a few words. Added YYYY-MM-DD."
+    )
+    score_row = f"| {c.id} | {len(c.steps)} | blocks | fix rounds | retries | hours | notes added |"
     title = f"Task: close out campaign {c.id} ({c.title})"
     body = f"""## Goal
 
@@ -127,15 +167,40 @@ round is one agent review after the first.
   - "Stops and blocks" copies the friction facts above as they are, and lists
     every row of their Blocks table. It may say "none" only when that table
     says "None.".
-  - "Proposed harness changes (at most three)": for each proposal, the
-    friction fact it answers, the change in one sentence, the file it would
-    touch, and whether it is a check in code or a change of wording. Prefer a
-    check in code. If the friction facts show no friction, the section says
-    "None". These are proposals only: Gabriel picks which become tasks.
+  - "Proposed harness changes (at most three)" has two parts:
+    `### Notes added`: the id and full text of each note this task added to
+    `{NOTES_PATH}`, and which old notes it merged or removed, if any; or
+    "None" if it added none.
+    `### Checks in code proposed`: at most three, each with the friction fact
+    it answers, the check in one sentence and the file it would touch; or
+    "None". These are not applied: Gabriel batches them into tasks later.
   - "Decisions for Gabriel": at most three. Each must change what happens
     next in the repository: the idea's status, whether to register a design
     for the confirmation half, or whether to open a follow-up campaign or
     task. No question about unused budget.
+- `{NOTES_PATH}`: advice for later campaigns, which every agent reads.
+  - Add at most {number_word(MAX_NEW_NOTES)} notes under `## Notes`. Each answers one row
+    of the friction facts above (a row of a table, or the wall-clock line)
+    and is for one role: {roles}. Use exactly this shape, one line each,
+    with the next free id (never reuse one):
+    `{note_shape}`
+  - A note is advice about how to do the work, at most {MAX_ADVICE_CHARS} characters
+    of advice. It must not restate or soften a rule, and it must not tell
+    an agent to change what a task may touch (files, allowed paths, plans'
+    file lists). The validator refuses a note that contains any of these,
+    in any letter case, so word the friction fact without them too:
+    {banned}.
+  - Add one row to the `## Scoreboard` table, copied from the friction facts
+    and the ledger: `{score_row}`.
+    Blocks is the number of rows in the Blocks table; fix rounds the sum of
+    its Fix rounds column; retries the sum of Runs minus one over the run
+    steps table; hours the wall-clock hours, as written; notes added the
+    number of notes this task added. Columns: {score_header}.
+  - If the facts show no friction (every group says "None."), add no note
+    and still add the row.
+  - The file holds at most {MAX_NOTES} notes. If the new ones would pass that,
+    first merge or remove the oldest notes, and say which in the report.
+    Change nothing else in the file.
 - `research/lessons.md`: one dated entry for the campaign, in the file's
   existing style, citing the run records by path.
 - `{idea_file}`: one dated line under `## Status` saying what the campaign
@@ -150,8 +215,9 @@ round is one agent review after the first.
 - Any code, any data, any new analysis, any change to kill rules or
   decisions. Suggestions in the report are suggestions: they are not run.
 - The harness: `src/terrain/campaigns/`, `harness/`, the workflows in
-  `.github/`, `AGENTS.md` and the skills in `.claude/skills/`. Proposed
-  harness changes are written in the report and nowhere else.
+  `.github/`, `AGENTS.md` and the skills in `.claude/skills/`. Checks in
+  code are proposed in the report and nowhere else; notes go only in
+  `{NOTES_PATH}`.
 
 ## Done when
 
@@ -166,10 +232,9 @@ round is one agent review after the first.
    "Unexplained differences" (both numbers and both paths, or "None found").
 5. "Stops and blocks" holds the friction facts unchanged and lists every row
    of their Blocks table; it says "none" only if that table says "None.".
-6. "Proposed harness changes (at most three)" has at most three proposals,
-   each with its friction fact, the change in one sentence, the file it would
-   touch, and check in code or change of wording; or "None" if the friction
-   facts show no friction.
+6. "Proposed harness changes (at most three)" has the parts "Notes added"
+   and "Checks in code proposed"; at most three checks, each with its
+   friction fact, the check in one sentence and the file it would touch.
 7. "Decisions for Gabriel" has at most three choices, each changing what
    happens next in the repository (the idea's status, registering, a
    follow-up), none about unused budget, each with options and one
@@ -178,9 +243,13 @@ round is one agent review after the first.
 8. `research/lessons.md` has one new dated entry and `{idea_file}` one new
    dated status line; nothing else in either file changes.
 9. `{c.folder}/campaign.md` differs only in `status: {final_status}`.
-10. Nothing outside the files under "In scope" changes: no harness file,
+10. In `{NOTES_PATH}`: at most {number_word(MAX_NEW_NOTES)} new notes, every one citing
+    campaign {c.id} and a row of the friction facts above; the Scoreboard
+    has exactly one new row, for campaign {c.id}; and
+    `uv run python scripts/validate_records.py` passes.
+11. Nothing outside the files under "In scope" changes: no harness file,
     workflow, `AGENTS.md` or skill.
-11. `uv run ruff check .`, `uv run ruff format --check .` and `uv run pytest` pass.
+12. `uv run ruff check .`, `uv run ruff format --check .` and `uv run pytest` pass.
 
 {markers.closeout_marker(c.id)}
 """

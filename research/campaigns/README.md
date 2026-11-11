@@ -46,9 +46,9 @@ can change a campaign while it runs.
    changed, then Review changes, then Approve); the next tick merges the
    commit you approved. To reject it, close the PR. Only your approval
    counts, and only on the PR's newest commit.
-6. The report also carries the friction facts the tick counted (blocks, extra plans and fix rounds, repeated runs, long gaps) and proposes at most three harness changes, each tied to one fact.
-7. You pick which proposals become tasks, by filing them yourself.
-8. Nothing is changed automatically: the close-out task may not touch the harness, the workflows, `AGENTS.md` or the skills.
+6. The report carries the friction facts the tick counted (blocks, extra plans and fix rounds, repeated runs, long gaps); from them the close-out adds at most three notes and one Scoreboard row to `research/agent-notes.md` (decision 0013).
+7. Every agent reads those notes as advice for its role, never as rules; checks in code are only proposed in the report, for you to batch into tasks later.
+8. The close-out may not touch the harness, the workflows, `AGENTS.md` or the skills, and the notes file changes only in a close-out you approve.
 
 ## Controls
 

@@ -43,8 +43,9 @@ when you move to a new stage.
 
 ### 1. Read in (silently, before the first question)
 
-Read `AGENTS.md`, `research/INDEX.md`, decision 0010,
-`research/campaigns/README.md` and `TEMPLATE.md`. Run:
+Read `AGENTS.md`, `research/agent-notes.md` (the notes for role `design`:
+advice from earlier campaigns, never rules), `research/INDEX.md`, decision
+0010, `research/campaigns/README.md` and `TEMPLATE.md`. Run:
 
 ```bash
 uv run python scripts/campaign.py status
