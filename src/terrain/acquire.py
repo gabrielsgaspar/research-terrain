@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 from terrain.catalog import dataset
-from terrain.http import Fetcher, Headers, UrllibFetcher
+from terrain.http import Fetcher, Headers, HTTPStatusError, UrllibFetcher
 from terrain.manifest import build_manifest, latest_manifest, write_manifest
 from terrain.storage import GCSStore, Store
 
@@ -208,6 +208,8 @@ def _download(
                 if expected is not None and dest.stat().st_size < expected:
                     raise _Short
             break
+        except HTTPStatusError as err:
+            fail(f"HTTP {err.status} {err.reason}".rstrip())
         except (OSError, IncompleteRead, _Short) as err:
             fail(type(err).__name__)
     return _sha256(dest)
@@ -332,6 +334,6 @@ def run_script(name: str) -> None:
                 args.manifest_out.write_text(
                     json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
                 )
-    except AcquireError as err:
+    except (AcquireError, HTTPStatusError) as err:
         raise SystemExit(f"acquire failed: {err}") from err
     print(json.dumps({"status": manifest["status"], "gcs_prefix": manifest["gcs_prefix"]}))

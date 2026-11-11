@@ -9,9 +9,10 @@ from pathlib import Path
 
 import pytest
 
-from terrain.acquire import AcquireError, acquire, check_file, expand_urls
+import terrain.acquire
+from terrain.acquire import AcquireError, acquire, check_file, expand_urls, run_script
 from terrain.catalog import dataset, load_catalog
-from terrain.http import Headers
+from terrain.http import Headers, HTTPStatusError
 from terrain.manifest import MANIFEST_NAME, validate_manifest, write_manifest
 from terrain.storage import MemoryStore
 
@@ -605,6 +606,56 @@ def test_nine_stalls_raise_and_leave_store_unchanged(tmp_path):
     with pytest.raises(AcquireError):
         mrun(store, f, tmp_path)
     assert store.list("") == []
+
+
+class _RefusingFetcher(FakeFetcher):
+    """Answers HEAD or GET of one URL with an HTTP error status."""
+
+    def __init__(self, url, method, status=403, reason="Forbidden") -> None:
+        super().__init__()
+        self.refuse = (url, method, status, reason)
+
+    def _check(self, url, method):
+        refused, m, status, reason = self.refuse
+        if url == refused and method == m:
+            raise HTTPStatusError(method, url, status, reason)
+
+    def head(self, url):
+        self._check(url, "HEAD")
+        return super().head(url)
+
+    @contextmanager
+    def get(self, url):
+        self._check(url, "GET")
+        with super().get(url) as response:
+            yield response
+
+
+def test_refused_head_names_url_and_status_and_leaves_store_unchanged(tmp_path):
+    store = MemoryStore()
+    with pytest.raises(HTTPStatusError, match=rf"HEAD {URLS[4]}: HTTP 403 Forbidden"):
+        run(store, _RefusingFetcher(URLS[4], "HEAD"), tmp_path)
+    assert store.list("") == []
+
+
+def test_refused_get_retries_then_names_url_and_status(tmp_path):
+    store = MemoryStore()
+    fetcher = _RefusingFetcher(URLS[4], "GET", 503, "Service Unavailable")
+    with pytest.raises(AcquireError) as caught:
+        run(store, fetcher, tmp_path)
+    assert str(caught.value) == f"{URLS[4]}: download failed 9 times (HTTP 503 Service Unavailable)"
+    assert store.list("") == []
+
+
+def test_run_script_reports_refused_url_and_status(tmp_path, monkeypatch):
+    monkeypatch.setenv("TERRAIN_BUCKET", "unused")
+    monkeypatch.setattr(terrain.acquire, "GCSStore", lambda bucket: MemoryStore())
+    monkeypatch.setattr(terrain.acquire, "dataset", lambda name: ENTRY)
+    monkeypatch.setattr(terrain.acquire, "UrllibFetcher", lambda: _RefusingFetcher(URLS[0], "HEAD"))
+    monkeypatch.setattr("sys.argv", ["acquire", "--manifest-out", str(tmp_path / "m.json")])
+    with pytest.raises(SystemExit) as caught:
+        run_script("test_ds")
+    assert str(caught.value) == f"acquire failed: HEAD {URLS[0]}: HTTP 403 Forbidden"
 
 
 def test_eight_stalls_still_finish(tmp_path):
