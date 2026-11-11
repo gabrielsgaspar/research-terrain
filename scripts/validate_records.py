@@ -1,5 +1,8 @@
 """Check the front matter of idea and decision records, and the agent notes.
 
+Also checks that each idea's status follows its campaigns
+(`check_ideas_follow_campaigns`).
+
 Usage: uv run python scripts/validate_records.py
 
 Prints one line per problem and exits 1 if there are any.
@@ -47,6 +50,16 @@ IDEA_KEYS = {
 }
 DECISION_KEYS = {"id", "title", "status", "date", "supersedes"}
 SKIP = {"README.md", "TEMPLATE.md"}
+
+# An idea's status follows its campaigns. With an active campaign it is
+# exploring; once its newest campaign has finished (and none is active), it is
+# no longer proposed or exploring: the close-out sets the report's
+# recommendation. Campaigns before FIRST_CHECKED_CAMPAIGN are not checked:
+# their close-outs left the status to Gabriel, and idea 0001 stays exploring
+# after campaigns 0002 and 0003, which checked it in passing.
+FIRST_CHECKED_CAMPAIGN = "0005"
+FINISHED = {"done", "stopped"}
+NOT_AFTER_FINISHED = {"proposed", "exploring"}
 NAME = re.compile(r"^(\d{4})-.+\.md$")
 ID = re.compile(r"^\d{4}$")
 
@@ -166,9 +179,55 @@ def validate(root: Path = REPO) -> list[str]:
             problems += check_idea(label, fm, catalog, ids)
         else:
             problems += check_decision(label, fm, decision_ids)
+    ideas = {str(fm["id"]): (label, fm) for label, k, fm in parsed if k == "ideas" and "id" in fm}
+    problems += check_ideas_follow_campaigns(root, ideas)
     if (root / NOTES_PATH).is_file():
         problems += check_agent_notes(root)
     return problems
+
+
+def campaign_records(root: Path) -> list[tuple[str, str, str]]:
+    """(campaign id, idea id, status) of each readable campaign file, by campaign id."""
+    out: list[tuple[str, str, str]] = []
+    for path in sorted((root / "research" / "campaigns").glob("*/campaign.md")):
+        fm = read_front_matter(path)
+        if isinstance(fm, str) or "id" not in fm or "idea" not in fm:
+            continue  # scripts/campaign.py validate reports a broken campaign file
+        out.append((str(fm["id"]), str(fm["idea"]), str(fm.get("status", ""))))
+    return sorted(out)
+
+
+def check_ideas_follow_campaigns(root: Path, ideas: dict[str, tuple[str, dict]]) -> list[str]:
+    """An idea's status follows its campaigns (see FIRST_CHECKED_CAMPAIGN)."""
+    out: list[str] = []
+    by_idea: dict[str, list[tuple[str, str]]] = {}
+    for cid, iid, status in campaign_records(root):
+        by_idea.setdefault(iid, []).append((cid, status))
+    for iid, campaigns in sorted(by_idea.items()):
+        if iid not in ideas:
+            continue
+        label, fm = ideas[iid]
+        status = fm.get("status")
+        active = [cid for cid, st in campaigns if st == "active"]
+        if active:
+            if status != "exploring":
+                out.append(
+                    f"{label}: idea {iid} has active campaign {active[0]}, so its status "
+                    f"must be 'exploring', not {status!r}"
+                )
+            continue
+        newest, newest_status = campaigns[-1]
+        if (
+            newest_status in FINISHED
+            and newest >= FIRST_CHECKED_CAMPAIGN
+            and status in NOT_AFTER_FINISHED
+        ):
+            out.append(
+                f"{label}: idea {iid}'s newest campaign {newest} is {newest_status} and none "
+                f"is active, so its status must be the close-out's recommendation "
+                f"(promising, parked or dead) or later, not {status!r}"
+            )
+    return out
 
 
 def _cells(line: str) -> list[str]:

@@ -110,6 +110,9 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
   must-fix item, so it goes back to the builder like any other.
 - Planners and reviewers read `research/INDEX.md` after this file, and cite
   by path the records (ideas, decisions, lessons) a plan or finding rests on.
+  The index is generated on demand and is not in git: their workflows build
+  it before the agent starts, and locally one command builds it,
+  `python3 scripts/build_index.py`. Never commit it.
   Touching the confirmation half outside the `confirm-run` workflow is a
   serious error.
 - Every exploration task updates its idea file in `research/ideas/` and adds a
@@ -223,7 +226,15 @@ workflow carries it out; the `campaign-gate` check decides what may merge.
   explore script writes every key a kill rule reads, at the dotted path the
   rule names. A rule that cannot be applied stops the step; it never passes.
 - At most two campaigns are active, never two on the same idea. One task is
-  in flight per campaign and one run across all campaigns.
+  in flight per campaign. Across all campaigns, at most three data-pipeline
+  runs and one explore run are in flight, and an explore run waits for its
+  own campaign's data-pipeline runs. Retries and the run after a repair
+  follow the same limits.
+- An idea's status follows its campaign. While a campaign is active, the
+  idea is `exploring`: the PR that makes the campaign active sets it. The
+  close-out sets it to the report's recommendation (`promising`, `parked` or
+  `dead`), and Gabriel accepts it by approving the close-out PR.
+  `scripts/validate_records.py` fails on any drift.
 - Self-repair (decision 0014), only with `self_repair: true`: a pipeline_run
   step still failing after both retries gets one repair task from a fixed
   template, limited to the allowed paths of the build tasks it comes after,

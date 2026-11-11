@@ -1,7 +1,7 @@
 ---
 id: "0006"
 title: "The geography of representation: do narrow council winners' voters' places get more of the state?"
-status: proposed
+status: parked
 created: 2026-11-10
 updated: 2026-11-11
 datasets:
@@ -108,6 +108,9 @@ the same size as on municipal schools.
   election cannot bias the null; the E+4 filter could, if a narrow win
   changed whether a school still reports at E+4. That is untested. Detail
   in `research/lessons.md` (2026-11-11).
+- 2026-11-11: parked, which campaign 0006's report recommended (decision 1,
+  option B, `research/campaigns/0006-geography-of-representation/report.md`).
+  Gabriel accepts it by merging this pull request.
 
 ## Log
 

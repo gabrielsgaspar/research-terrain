@@ -63,3 +63,6 @@ gha-creds-*.json
 .idea/
 .DS_Store
 Thumbs.db
+
+# Generated where it is read (python3 scripts/build_index.py), never committed.
+/research/INDEX.md

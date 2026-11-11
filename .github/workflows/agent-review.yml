@@ -459,6 +459,20 @@ jobs:
           cp "${RUNNER_TEMP}"/agent-review/data/* .agent-review/
           ls -l .agent-review
 
+      # research/INDEX.md is not in git: it is built where it is read, from
+      # the merge base's records, so the reviewer can read it. The builder
+      # uses the standard library only, so the runner's own python3 runs it.
+      # A merge base from before the index left git still has it committed
+      # (and an older builder that needs the project environment): keep that.
+      - name: Build research/INDEX.md
+        run: |
+          set -euo pipefail
+          if [ -f research/INDEX.md ]; then
+            echo "research/INDEX.md is committed at this merge base; using it."
+          else
+            python3 -I scripts/build_index.py
+          fi
+
       # The reviewer's instructions, model and turn limit now live in
       # harness/roles/reviewer.md; scripts/role.py checks and loads them.
       - name: Load the reviewer's instructions

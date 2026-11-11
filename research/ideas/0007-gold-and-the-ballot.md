@@ -1,7 +1,7 @@
 ---
 id: "0007"
 title: "Gold, crime and the ballot box: does the gold price reshape local democracy where gold lies?"
-status: proposed
+status: exploring
 created: 2026-11-11
 updated: 2026-11-11
 datasets:
