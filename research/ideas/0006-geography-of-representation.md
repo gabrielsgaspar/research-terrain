@@ -3,7 +3,7 @@ id: "0006"
 title: "The geography of representation: do narrow council winners' voters' places get more of the state?"
 status: proposed
 created: 2026-11-10
-updated: 2026-11-10
+updated: 2026-11-11
 datasets:
   - tse_votes_by_section
   - tse_polling_places
@@ -97,6 +97,17 @@ the same size as on municipal schools.
   minimum detectable effect of 0.00659 SD
   (`research/explore-runs/0006/42935501189.md`). Status is unchanged;
   Gabriel decides it.
+- 2026-11-11: the gap between 23,132 close pairs (feasibility) and 20,916
+  (0.50% primary) is a difference in what is counted; no pair was lost. Both
+  scripts build the same pair table. The effects run counts a pair only if
+  its municipality has at least one polling place in the primary sample: a
+  matched municipal school with a facility count at E and at E+4. The run
+  records show at most 38 of the 2,216 have no polling place with votes;
+  the rest (2,178 or more) have no such school place. Splitting those by
+  filter needs a count-only run, not done. The filters fixed before the
+  election cannot bias the null; the E+4 filter could, if a narrow win
+  changed whether a school still reports at E+4. That is untested. Detail
+  in `research/lessons.md` (2026-11-11).
 
 ## Log
 
