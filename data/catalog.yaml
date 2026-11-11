@@ -30,6 +30,11 @@
 #             neither may declare `count: {type: wfs_hits, url: ...}`
 #             instead: its data rows must equal the numberMatched of that
 #             WFS resultType=hits answer, on top of its csv check.
+#             A zip or ods served with neither may declare
+#             `complete_by: zip_directory`: the zip check (end record,
+#             directory, every member's CRC-32) fails on any cut file, so it
+#             stands in for the byte size. A Content-Length, when sent, is
+#             still enforced.
 
 datasets:
   - name: ibge_municipalities
@@ -991,10 +996,17 @@ datasets:
       (https://www.imf.org/-/media/files/research/commodityprices/monthly/external-data.xlsx,
       columns PGOLD and PSOYB). Checked from a local session on 2026-11-11:
       the xlsx is 588 KB, and the CSV runs from 1947-01 to 2026-10.
+      thedocs.worldbank.org (Adobe Experience Manager behind Cloudflare)
+      sends no Content-Length on HEAD or GET, from cache or not, answers a
+      Range request with the whole file, and gives Last-Modified but no ETag
+      (2026-11-11). So the xlsx declares complete_by: zip_directory: two
+      downloads gave the same 587,760 bytes, and each of its 587,760
+      possible cuts fails the zip check. FRED sends a Content-Length.
     acquire:
       files:
         - url: https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Historical-Data-Monthly.xlsx
           name: CMO-Historical-Data-Monthly.xlsx
+          complete_by: zip_directory
           check: {type: zip, member: "xl/workbook.xml"}
         - url: https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPIAUCSL
           name: CPIAUCSL.csv
