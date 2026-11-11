@@ -33,6 +33,11 @@ ON_KILL = {"stop", "skip_dependents", "continue"}
 IDENTIFIERS = {"none", "hashed"}
 REFEREE_IDS = ("R1", "R2", "R3", "R4", "R5", "R6", "R7")
 MAX_ACTIVE = 2
+# A campaign with more than MAX_STEPS steps needs `oversize_reason`, in the
+# owner's words. Only for campaigns created on or after OVERSIZE_FROM, so the
+# 19-step campaigns 0005 and 0006 still validate.
+MAX_STEPS = 8
+OVERSIZE_FROM = dt.date(2026, 11, 12)
 
 # Paths an agent may never change, whatever a campaign says (AGENTS.md,
 # "Scope", and the builder's protected list in agent-build.yml).
@@ -483,6 +488,13 @@ def parse_campaign(root: Path, folder: Path) -> Campaign:
         s = _step(raw, rel, i, problems)
         if s:
             steps.append(s)
+    reason = fm.get("oversize_reason")
+    oversize = created and created >= OVERSIZE_FROM and len(raw_steps) > MAX_STEPS
+    if oversize and not (isinstance(reason, str) and reason.strip()):
+        problems.append(
+            f"{where}: the campaign has {len(raw_steps)} steps, more than {MAX_STEPS}; "
+            "split it, or give 'oversize_reason' (why not, in the owner's words)"
+        )
     c = Campaign(
         id=cid,
         folder=rel,

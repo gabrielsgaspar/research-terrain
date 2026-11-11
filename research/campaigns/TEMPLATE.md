@@ -18,6 +18,7 @@ budget:
   max_pipeline_runs: 0   # data-pipeline dispatches (acquire or build)
   max_model_jobs: 16     # planner + builder + reviewer jobs, counted from their comments
 referee_not_applicable_ok: [R5]   # referee rows that may be "Not applicable" (R5 cannot be checked before a run)
+# oversize_reason: "..."  # needed when there are more than 8 steps: why it cannot be split, in the owner's words
 datasets: []             # new data this campaign may acquire or build; nothing else may be added
 #  - name: some_dataset          # its data/catalog.yaml name
 #    source: https://...         # where it comes from
@@ -58,6 +59,12 @@ What this campaign finds out, and why it matters for the idea. One paragraph.
 What the repository, the Zotero notes and the literature already say, with
 paths and citation keys (the skill's novelty check). Say what is explored,
 partly explored or new, and why this campaign is not a repeat.
+
+## Read before this runs
+
+The papers closest to the idea, from the novelty check (citation key, or
+authors, year and link for a web find). For each: whether Gabriel has read
+it, in his words ("read it; their design differs because ...", "not yet").
 
 ## Steps and why
 

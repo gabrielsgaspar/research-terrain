@@ -261,6 +261,44 @@ def test_template_parses(tmp_path):
     assert validate(root) == []
 
 
+def sized_campaign(n_steps: int, created: str, reason: str | None = None) -> str:
+    """A valid campaign of `n_steps` steps: one task, then explore runs of its script."""
+    extra = "".join(
+        f"  - id: s{i}\n    kind: explore_run\n    script: 0003_count\n    after: [s1]\n"
+        '    kill_rules:\n      - id: k1\n        says: "Fewer than 60 races at 1%"\n'
+        '        field: races.1pct\n        op: "<"\n        value: 60\n'
+        "        confirmed: true\n"
+        for i in range(3, n_steps + 1)
+    )
+    text = campaign_text(max_explore_runs=n_steps - 1, extra_steps=extra)
+    text = text.replace("created: 2026-11-08", f"created: {created}")
+    if reason is not None:
+        text = text.replace("datasets: []", f'oversize_reason: "{reason}"\ndatasets: []')
+    return text
+
+
+@pytest.mark.parametrize(
+    "n_steps, created, reason, flagged",
+    [
+        (9, "2026-11-12", None, True),
+        (9, "2026-11-12", "   ", True),
+        (9, "2026-11-12", "One acquire per year; splitting loses nothing but adds a PR", False),
+        (19, "2026-11-10", None, False),
+        (8, "2026-11-12", None, False),
+    ],
+)
+def test_more_than_eight_steps_needs_a_reason(tmp_path, n_steps, created, reason, flagged):
+    """From 2026-11-12, a campaign of more than 8 steps must say why in oversize_reason."""
+    root = make_repo(tmp_path, sized_campaign(n_steps, created, reason))
+    (c,) = load_campaigns(root)
+    assert len(c.steps) == n_steps
+    problems = validate(root)
+    if flagged:
+        assert any(f"{n_steps} steps" in p and "oversize_reason" in p for p in problems), problems
+    else:
+        assert problems == []
+
+
 def test_path_allowed():
     assert path_allowed("explore/0003_a.py", ("explore/0003_a.py",))
     assert path_allowed("tests/test_explore_a.py", ("tests/test_explore_*.py",))

@@ -73,3 +73,21 @@ Verdicts: **explored** (the repository or the literature already answers
 it), **partly explored** (answered for a neighbouring case or with a
 different method), **new**. Then recommend one of: go on; go on with a
 narrower question (say which); stop. Gabriel decides.
+
+## Read before this runs
+
+Name the paper closest to the idea, and any other close one. They go in
+the campaign file's "Read before this runs" section: citation key, or
+authors, year and link for a web find, and whether Gabriel has read each,
+in his words.
+
+If the closest paper is marked unverified, it must be listed there. Before
+setting `status: active` on a campaign of more than four steps, ask him:
+
+> The closest paper I found is (authors, year, link), unverified. Have you
+> read it?
+
+Record his answer in Provenance, in his words. If he has not, recommend
+`draft` (merge now, start once he has read it) or a probe (SKILL.md,
+"Probe first"), because a close paper can make most of the steps moot.
+He decides.
