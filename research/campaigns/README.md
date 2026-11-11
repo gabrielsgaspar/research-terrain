@@ -65,6 +65,33 @@ once."). At most one repair per step and two per campaign; their model jobs
 count against the budget, and the close-out lists each one. Explore runs
 are never repaired.
 
+## The status page
+
+One issue, titled "Research Terrain: status", shows on one page where every
+campaign stands. The tick keeps it up to date in plain code, with no model:
+it renders the page from the same facts it acts on and rewrites the issue
+only when the page changes, so a tick with nothing new leaves it alone. The
+page has five parts, in this order:
+
+1. Waiting on you: every step whose block still holds (its cause and what
+   to do), every close-out PR that is ready for your approval, and every
+   paused campaign. "Nothing" when nothing waits.
+2. Running: each active campaign, its steps done, what is in progress,
+   the last ledger event, model jobs used and the end date.
+3. Handled without you: the newest 10 automatic retries, repairs and
+   unblocked steps, across campaigns.
+4. Recently closed: the 5 campaigns that finished last, how each ended and
+   its report.
+5. Loose ends, from the files on main: ideas still `proposed` or
+   `exploring` after their campaigns finished, and decisions still
+   `proposed`.
+
+Times on the page are those of ledger comments. A list cut to keep the page
+under 20,000 characters ends with how many items were left out. Keep the
+issue open and its `campaign` label on; if it is closed, the tick files a
+new one. To read the page locally without waiting for a tick:
+`GH_TOKEN=$(gh auth token) uv run python scripts/campaign.py page`.
+
 ## Controls
 
 | To | Do |
@@ -75,4 +102,4 @@ are never repaired.
 | Unblock a step | Do what the block comment's "Needs you" says (for example remove `needs-human` or re-add `agent-plan`); the next tick picks it up and logs "unblocked". For a failed run: if the cause was outside the code (a server error, a timeout, an export still running), open the run and choose Re-run failed jobs. If a fix was merged since the run started, a re-run would use the old code: open the Actions tab, choose the workflow, choose Run workflow on main, and enter the values the block comment gives |
 | Accept the report | Approve the close-out PR (Files changed, then Review changes, then Approve); the next tick merges that commit |
 | Reject the report | Close the close-out PR |
-| See where it is | `uv run python scripts/campaign.py status`, and the tracking issue |
+| See where it is | The issue "Research Terrain: status"; for one campaign, its tracking issue and `uv run python scripts/campaign.py status` |

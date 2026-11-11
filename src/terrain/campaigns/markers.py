@@ -13,6 +13,7 @@ import re
 _STEP = re.compile(r"<!-- campaign-step: (\d{4})/(s\d{1,2}) -->")
 _TRACKING = re.compile(r"<!-- campaign-tracking: (\d{4}) -->")
 _CLOSEOUT = re.compile(r"<!-- campaign-closeout: (\d{4}) -->")
+_STATUS = re.compile(r"<!-- campaign-status: 0000 -->")
 _REPAIR = re.compile(r"<!-- campaign-repair: (\d{4})/(s\d{1,2})/(\d) -->")
 _LEDGER = re.compile(r"<!-- campaign-ledger: (\d{4}) (\[.*?\]) -->", re.S)
 _AGENT_FILES = re.compile(r"<!-- agent-files: (\[.*?\]) -->", re.S)
@@ -36,6 +37,11 @@ def repair_marker(cid: str, sid: str, n: int) -> str:
     return f"<!-- campaign-repair: {cid}/{sid}/{n} -->"
 
 
+def status_marker() -> str:
+    """The marker of the status page, the one issue that shows every campaign."""
+    return "<!-- campaign-status: 0000 -->"
+
+
 def ledger_marker(cid: str, events: list[str]) -> str:
     return f"<!-- campaign-ledger: {cid} {json.dumps(sorted(events), separators=(',', ':'))} -->"
 
@@ -53,6 +59,10 @@ def parse_tracking(body: str) -> str | None:
 def parse_closeout(body: str) -> str | None:
     m = _CLOSEOUT.search(body or "")
     return m.group(1) if m else None
+
+
+def parse_status(body: str) -> bool:
+    return bool(_STATUS.search(body or ""))
 
 
 def parse_repair(body: str) -> tuple[str, str, int] | None:

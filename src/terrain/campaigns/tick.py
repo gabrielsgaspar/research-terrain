@@ -846,14 +846,50 @@ def decide(
     gctx: GateContext,
     root: Path,
     ended: Sequence[Campaign] = (),
+    status_page: bool = False,
 ) -> list[dict]:
     """The actions for this tick, ledger comments first within each campaign.
 
     `campaigns` are the active ones. `ended` (done or stopped) only get their
     tracking issue closed once their close-out PR is merged (`close_tracking`).
+    With `status_page` (the workflow's tick), the last action creates or
+    rewrites the status issue, and only when its body would change
+    (`terrain.campaigns.status`).
     """
     if not snap.enabled:
         return []
+    actions, views = _advance(campaigns, snap, gctx, root)
+    for c in ended:
+        actions.extend(close_tracking(c, snap))
+    if status_page:
+        from terrain.campaigns import status  # status reads this module's views
+
+        actions.extend(status.page_actions(status.render(views, ended, snap, gctx, root), snap))
+    return actions
+
+
+def render_status_page(
+    campaigns: list[Campaign],
+    snap: Snapshot,
+    gctx: GateContext,
+    root: Path,
+    ended: Sequence[Campaign] = (),
+) -> str:
+    """The status page as this tick would write it, for reading it locally."""
+    from terrain.campaigns import status
+
+    _, views = _advance(campaigns, snap, gctx, root)
+    return status.render(views, ended, snap, gctx, root)
+
+
+def _advance(
+    campaigns: list[Campaign], snap: Snapshot, gctx: GateContext, root: Path
+) -> tuple[list[dict], list[CampaignView]]:
+    """Each active campaign's actions, and the views they were decided from.
+
+    The views carry the states this tick leaves the steps in (a retry or a
+    repair just started, for example), which is what the status page shows.
+    """
     actions: list[dict] = []
     views = [view(c, snap, gctx) for c in campaigns]
     runs_in_flight = sum(
@@ -1168,9 +1204,7 @@ def decide(
             body += "\n\n" + markers.ledger_marker(c.id, [e for e, _ in new]) + "\n"
             actions.append({"type": "comment", "issue": v.tracking.number, "body": body})
         actions.extend(doing)
-    for c in ended:
-        actions.extend(close_tracking(c, snap))
-    return actions
+    return actions, views
 
 
 def close_tracking(c: Campaign, snap: Snapshot) -> list[dict]:
