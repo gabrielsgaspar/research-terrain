@@ -1,7 +1,7 @@
 ---
 id: "0006"
 title: "Do narrow council winners' voters' places get more of the state?"
-status: active
+status: done
 idea: "0006"
 owner: gabrielsgaspar
 created: 2026-11-10

@@ -91,6 +91,12 @@ the same size as on municipal schools.
 
 - 2026-11-10: proposed. Campaign 0005 drafted
   (`research/campaigns/0005-geography-of-representation/`).
+- 2026-11-11: campaign 0006 finished with no kill rule met. On the exploration
+  half the 0.50% primary on municipal schools is null (slope -0.022, RI p
+  0.568, -0.00115 SD; `research/explore-runs/0006/42939196149.md`), with a
+  minimum detectable effect of 0.00659 SD
+  (`research/explore-runs/0006/42935501189.md`). Status is unchanged;
+  Gabriel decides it.
 
 ## Log
 

@@ -16,6 +16,21 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-11: Narrow council wins do not move municipal-school facilities at E+4 on the exploration half (idea 0006, issue #294)
+- Tried: campaign 0006 ran `explore/0006_feasibility.py` (run 42935501189,
+  `research/explore-runs/0006/42935501189.md`) and `explore/0006_effects.py`
+  (run 42939196149, `research/explore-runs/0006/42939196149.md`) on the
+  exploration half: feasibility on pre-election years, then the change in
+  school facilities from E to E+4 at 0.25%, 0.50% and 1.00% windows.
+- Result: no kill rule was met. Feasibility: 23,132 pairs at 0.50%, balance
+  p 0.315, placebo p 0.441, MDE 0.00659 SD. Effects: the 0.50% slope is
+  -0.022 (SE 0.0389, RI p 0.568); state schools 0.0522 (p 0.529); secondaries
+  all BH p 0.36 or above; aligned minus unaligned 0.101 (p 0.192).
+- Why: the best reading is that there is no detectable shift in this outcome
+  in the exploration half; this is not a finding.
+- Implication: a precise null on the exploration half. Whether to park,
+  reject or register idea 0006 is for Gabriel (see the campaign report).
+
 ## 2026-11-10: Enforcement near strongholds cannot be detected at 0.25%: MDE is 0.77 of baseline (idea 0005, issue #271)
 - Tried: campaign 0004 ran `explore/0005_enforcement_power.py` on the
   exploration half, pre-election years only, run 42796832006
