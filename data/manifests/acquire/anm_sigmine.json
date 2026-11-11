@@ -1,0 +1,54 @@
+{
+  "dataset": "anm_sigmine",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/anm/sigmine/2026-11-11/",
+  "created_at": "2026-11-11T17:33:36.949763+00:00",
+  "code_commit": "d8a26885df0773bcc9917a1b9373c3f2a5628f50",
+  "sources": [
+    {
+      "fonte": "anm_sigmine",
+      "layer": "https://geo.anm.gov.br/arcgis/rest/services/SIGMINE/dados_anm/FeatureServer/0",
+      "records": 270353,
+      "records_by_uf": {
+        "AC": 440,
+        "AL": 1380,
+        "AM": 3911,
+        "AP": 1316,
+        "BA": 31011,
+        "CE": 9106,
+        "DADO N\u00c3O CADASTRADO": 10426,
+        "DF": 302,
+        "ES": 8981,
+        "GO": 16588,
+        "MA": 2902,
+        "MG": 51247,
+        "MS": 3195,
+        "MT": 13550,
+        "PA": 24153,
+        "PB": 4474,
+        "PE": 4974,
+        "PI": 5820,
+        "PR": 9649,
+        "RJ": 6254,
+        "RN": 4817,
+        "RO": 6575,
+        "RR": 1769,
+        "RS": 13894,
+        "SC": 11543,
+        "SE": 1537,
+        "SP": 16016,
+        "TO": 4523
+      },
+      "intermediate_sha256": "6542d176bed50f193c0ce297ae44ecd8a0a86bec2ede682769344059b4e78530"
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/anm/sigmine/2026-11-11/sigmine_active.parquet",
+      "sha256": "dd943d3d10d7248213f0549ea945936e9faaaa3b89e2a76bc7f69349d0f75570",
+      "bytes": 101127457
+    }
+  ],
+  "notes": "records: 270353\nrecords by uf: AC=440, AL=1380, AM=3911, AP=1316, BA=31011, CE=9106, DADO N\u00c3O CADASTRADO=10426, DF=302, ES=8981, GO=16588, MA=2902, MG=51247, MS=3195, MT=13550, PA=24153, PB=4474, PE=4974, PI=5820, PR=9649, RJ=6254, RN=4817, RO=6575, RR=1769, RS=13894, SC=11543, SE=1537, SP=16016, TO=4523\ngold records: 42639\ngold records with ano < 2000: 10810\nrecords without ano: 0\ninvalid geometries (kept as given): 497\nrecords without geometry: 0\nintermediate certificate sha256: 6542d176bed50f193c0ce297ae44ecd8a0a86bec2ede682769344059b4e78530"
+}
