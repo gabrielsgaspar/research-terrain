@@ -1058,13 +1058,23 @@ jobs:
       # so it is never on a command line or in .git/config. Hooks are off.
       # A failed push is retried up to 3 times, 60 s apart, because GitHub
       # sometimes refuses one for a moment (run 42675991313 got a 403). The
-      # needs-human reason quotes git's own error line, since the same message
-      # covers a 403, an existing branch and a workflow change.
+      # needs-human reason quotes git's own refusal line, since the same
+      # "failed to push" covers a 403, an existing branch and a workflow change.
+      # A workflow refusal is final, so it is not retried, and the reason says
+      # whose workflow change it is. The app has no Workflows permission, and
+      # GitHub checks a new branch against main, not against the commit it
+      # started from. So if a merge changes .github/workflows/ on main while
+      # the build runs, the branch carries the older workflow files and the
+      # push is refused, though the builder changed none (#348, run
+      # 43101529338: the build started from 7cddbb8, #347 changed
+      # agent-build.yml on main 22 s later). verify has already proved the
+      # builder's commits stay inside the plan, which never lists a workflow.
       - name: Push the branch
         id: push
         env:
           PUSH_TOKEN: ${{ steps.app-token.outputs.token }}
           REPO: ${{ github.repository }}
+          BASE_SHA: ${{ needs.build.outputs.base_sha }}
         run: |
           set -euo pipefail
           fail() { printf 'reason=%s\n' "$1" >> "${GITHUB_OUTPUT}"; echo "::error::$1"; exit 1; }
@@ -1072,6 +1082,7 @@ jobs:
           # shellcheck disable=SC2016
           helper='!f() { echo username=x-access-token; echo "password=${PUSH_TOKEN}"; }; f'
           log="${RUNNER_TEMP}/push.log"
+          refused='refusing to allow a GitHub App to create or update workflow'
           for attempt in 1 2 3 4; do
             if git -c core.hooksPath=/dev/null -c credential.helper= -c "credential.helper=${helper}" \
               push "https://github.com/${REPO}.git" "refs/heads/${BRANCH}:refs/heads/${BRANCH}" > "${log}" 2>&1; then
@@ -1079,13 +1090,27 @@ jobs:
               exit 0
             fi
             cat "${log}"
+            if grep -qF "${refused}" "${log}"; then
+              break
+            fi
             if [ "${attempt}" -lt 4 ]; then
               echo "::warning::Push attempt ${attempt} failed; retrying in 60 s."
               sleep 60
             fi
           done
-          said="$(grep -E '^(fatal|error|remote): ' "${log}" | tail -n 1 | tr -d '\r' | cut -c 1-300 || true)"
-          fail "Pushing ${BRANCH} failed after 1 try and 3 retries, 60 s apart. Git said: ${said:-nothing}. Possible causes: a branch of that name already exists, or the change touches .github/workflows/, which the app cannot push."
+          if grep -qF "${refused}" "${log}"; then
+            own="$(git diff --name-only --no-renames "${BASE_SHA}" "refs/heads/${BRANCH}" -- .github/workflows/ | tr '\n' ' ' | cut -c 1-300)" \
+              || fail "GitHub refused to push ${BRANCH} as a workflow change, and the branch could not be compared with ${BASE_SHA}."
+            if [ -n "${own}" ]; then
+              fail "GitHub refused to push ${BRANCH}: the builder's commits change ${own}under .github/workflows/, and the app cannot push a workflow change."
+            fi
+            if [ -n "${FIX_ROUND}" ]; then
+              fail "GitHub refused to push fix round commits to ${BRANCH} as a workflow change, but the builder's commits change nothing under .github/workflows/. A person has to look at the branch."
+            fi
+            fail "GitHub refused to push ${BRANCH} as a workflow change, but the builder's commits change nothing under .github/workflows/. The build started from main at ${BASE_SHA:0:7}, and a merge changed main's workflow files while it ran. GitHub compares a new branch with the current main, so the branch's older workflow files look like a change. The build itself is fine. Start it again: remove needs-human and agent-build from the issue, then add agent-build."
+          fi
+          said="$(grep -E '^( ! \[|(fatal|error|remote): )' "${log}" | grep -vE '^error: failed to push' | tail -n 1 | tr -d '\r' | cut -c 1-300 || true)"
+          fail "Pushing ${BRANCH} failed after 1 try and 3 retries, 60 s apart. Git said: ${said:-nothing}. Possible causes: a branch of that name already exists, or GitHub refused the push for a moment on every try."
 
       - name: Open the pull request
         id: pr
