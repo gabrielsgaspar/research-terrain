@@ -33,22 +33,28 @@ and says so. Treat its output as a starting point to discuss.
 
 ## Pacing
 
-The tick runs every three hours and moves each campaign at most one step
-per tick. One task is in flight per campaign and one run across all
-campaigns. So, roughly:
+The tick runs after each workflow a step waits on ends (Explore run, Data
+pipeline, CI, Agent plan, Agent build and Agent review), with an hourly
+backup for a missed event (`.github/workflows/campaign-tick.yml`). It
+starts at most one new step per campaign per tick. One task is in flight
+per campaign and one run across all campaigns. So, roughly:
 
-| Stage | Ticks |
+| Stage | What starts the next tick |
 | --- | --- |
-| File the issue; the planner answers | 1 |
-| Move to build; build, CI and review | 1 to 2 |
-| Merge; start the run | 1 |
-| Run, record PR, CI; merge the record | 1 to 2 |
+| File the issue; the planner answers | Agent plan ends |
+| Move to build; build, CI and review | Agent build, CI, then Agent review end |
+| Merge; start the run | CI on main ends after the merge |
+| Run, record PR, CI; merge the record | Explore run or Data pipeline ends, then CI |
 | Apply the kill rules | same tick as the merge |
 
-A task and its run take about 4 to 6 ticks, so 12 to 18 hours. Add a day for
-the close-out, and a day of slack per three steps. Usage limits on the
-subscription can block a job; a blocked step waits 24 hours for Gabriel
-before the campaign closes out, so leave room for that too.
+A step therefore waits mostly on its own workflows, not on the clock. For
+how long those take, use the hours `scripts/budget.py` reports from recent
+issues and runs; do not guess. Its `end_by` estimate still counts six
+three-hour ticks per task and run, so it errs long: say so when you
+propose `end_by`. Add a day for the close-out (Gabriel reads and merges
+it) and a day of slack per three steps. Usage limits on the subscription
+can block a job; a blocked step waits 24 hours for Gabriel before the
+campaign closes out, so leave room for that too.
 
 ## Explaining the budget to Gabriel
 

@@ -30,8 +30,14 @@ comments out of the final file once each field is filled.
   the referee rightly marks it "Not applicable", and the gate stops on any
   "Not applicable" row not listed here (campaign 0003, PR #264). The field
   covers the whole campaign: if any script makes an estimate, keep `[R5]`.
+- `oversize_reason`: only when there are more than eight steps. Why the
+  campaign cannot be split, in Gabriel's words. The validator refuses a
+  campaign created on or after 2026-11-12 with more than eight steps and
+  no reason; older campaigns are not checked.
 - `datasets`: one entry per dataset the campaign may acquire or build.
-  Existing datasets are not listed.
+  Existing datasets are not listed. In the plan, each outside source has a
+  fallback source, and says whether a GitHub runner has fetched from it
+  before (SKILL.md, "Data").
 - `steps`: in order; a step's `after` may name only earlier steps.
 
 ### Step kinds
@@ -83,8 +89,9 @@ only the issue text and the repository, so write for a stranger.
 - "Done when": every item checkable on fixtures or inputs built inside the
   test, with no network, GCS or model. Include a test that the results
   carry every key the kill rules read.
-- At most about ten files. Only what the builder can do (AGENTS.md, "What
-  the builder can do").
+- Up to six files fits; seven or eight is tight; more than eight, split
+  the step ("Check the plan against the repo" below). Only what the
+  builder can do (AGENTS.md, "What the builder can do").
 - Once the campaign is merged, the draft is frozen: the tick files it word
   for word, and the gate checks the issue still matches it.
 
@@ -103,8 +110,55 @@ Never guess a column name.
 
 Fill every section of the template. Keep them short; they are what the
 close-out and Gabriel read later. "Already known" holds the novelty table.
-"Provenance" lists, for every step, rule and number, "stated by Gabriel" or
-"suggested by Claude, confirmed by Gabriel on <date>".
+"Read before this runs" lists the closest papers and whether Gabriel has
+read each, in his words (`novelty-check.md`). "Provenance" lists, for
+every step, rule and number, "stated by Gabriel" or "suggested by Claude,
+confirmed by Gabriel on <date>", and also his answers on the probe, on
+the closest paper, and the `oversize_reason` if any.
+
+## Check the plan against the repo
+
+A step whose `allowed_paths` miss a test it must change cannot be built:
+the planner may list only those paths, so it blocks. Campaign 0005
+stopped this way before any work: s1 changed the number of
+`tse_votes_by_section` URLs from 63 to 182, `tests/test_acquire.py` pins
+that count, and the file was not in s1's paths (#292). Drafts freeze on
+merge, so the fix was a new campaign (0006).
+
+Before writing the files, for each task step:
+
+1. List what the step changes: file names, dataset names, catalog entries
+   (`data/catalog.yaml` names and their fields, such as URL lists), and
+   counts (URLs, years, states, columns, rows).
+2. Search `tests/` for each of them:
+
+   ```bash
+   grep -rn "tse_votes_by_section" tests/
+   grep -rln "catalog" tests/
+   ```
+
+   Read every hit. Tests that load the real catalog or real files pin
+   things too: for example the URL counts in `tests/test_acquire.py`, the
+   sealed lines in `tests/test_split.py`, and the real-catalog checks in
+   `tests/test_bigquery.py` and `tests/test_acquire_ibama.py`.
+3. Every test that pins one of them goes into the step's `allowed_paths`.
+   If you leave one out, the draft says why (for example "the count it
+   pins does not change"). An explore task may change only
+   `tests/test_explore*`: if it would need another test, the change
+   belongs in a build task first.
+4. Count the step's files, the tests just added included.
+
+Then show Gabriel one line per task step:
+
+```
+s1  build    5 files  fits
+s3  build    8 files  tight
+s5  explore  2 files  fits
+```
+
+**fits** is up to 6 files, **tight** 7 or 8, **too big** more than 8: split
+that step into two tasks, each with its own tests, and say what the split
+costs in steps and model jobs.
 
 ## Checks before the PR
 

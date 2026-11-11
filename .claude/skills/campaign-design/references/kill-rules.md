@@ -33,12 +33,35 @@ Never from looking at outcomes. Good sources, as used in this repository:
   run on outcomes.
 - **Placebos.** A pre-election placebo with randomisation-inference p below
   0.10 (`placebo.ri_p < 0.10`) says the comparison is not balanced; idea
-  0001's kill criterion 2 is the model.
+  0001's kill criterion 2 is the model. See "False stops" below before
+  proposing one.
 - **Balance.** Covariate balance rules, as in task 35: a window fails if a
   balance test rejects at the stated level.
 - **Plausibility.** A magnitude no mechanism could produce (a share above
   1, an effect larger than baseline clearing) is a sign of a bug: a rule on
   it is fine, and cheap.
+
+## False stops
+
+A rule of the form "p below a level" (`placebo.ri_p < 0.10`, a balance
+test that rejects at 5%) stops a valid design that share of the time,
+because a balanced design still gives a small p by chance:
+
+- p below 0.05 stops 1 valid design in 20;
+- p below 0.10 stops 1 valid design in 10;
+- several such rules add up: three rules at 0.10 stop up to 3 valid
+  designs in 10 (at most the sum of the levels; a little less when the
+  tests are independent).
+
+When you propose such a rule, tell Gabriel this number for the step and,
+if the campaign has several, for the whole campaign. Then offer the
+alternative: a rule on the size of the imbalance, for example "the
+placebo slope is larger than a stated bound" (`placebo.slope_abs >` the
+bound), with the bound fixed before any run, such as a share of decision
+0007's effect size. A size rule stops a design when the imbalance is large
+enough to matter, not merely detectable; for a balanced design its chance
+of a false stop falls as the sample grows, while a p rule's stays at its
+level. Let him choose either, or both.
 
 ## Proposing rules to Gabriel
 
@@ -63,6 +86,10 @@ Then read the chosen rules back in plain words and ask for a clear yes.
 - A rule no plausible run could meet, or one every run will meet. Say
   which it is.
 - A rule on a field the script does not write.
+- Treating a passed rule as a result. A passed p-value rule is not
+  evidence of balance: with few units it passes a large imbalance. Never
+  write "balanced" because one passed; if balance matters to the next
+  step, add a rule on the size of the imbalance.
 - Two-sided ambiguity: say whether a sign is part of the rule.
 - A rule on post-election outcomes that is not in the step's stated scope
   (referee R2). Outcome rules are fine only when the draft says which

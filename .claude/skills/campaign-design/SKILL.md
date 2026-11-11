@@ -77,13 +77,42 @@ If it is fully explored, say so and recommend not running it, or a
 narrower variant that adds something. If partly, say exactly what the
 campaign would add. Let Gabriel decide whether to go on.
 
-### 4. Shape the steps
+Name the paper closest to the idea. If it is marked unverified, it goes
+under "Read before this runs" in the campaign file, with the other close
+papers. Before you set `status: active` on a campaign of more than four
+steps, ask Gabriel whether he has read it, and record his answer in
+Provenance, in his words. If he has not, recommend `draft` (merge now,
+start once he has read it) or a probe (stage 4).
+
+### 4. Probe first
+
+Before shaping a big build, ask: can data already listed in
+`data/manifests/` answer the feasibility questions (counts, coverage,
+power, a placebo) for part of the sample, such as one state, one election
+year, or the units the existing data covers?
+
+If yes, recommend a probe campaign first:
+
+- at most four steps;
+- no new datasets (`datasets: []`);
+- one `explore_run` that carries the feasibility kill rules (stage 7).
+
+The larger campaign is designed only after the probe survives, as a
+campaign of its own, using the probe's run record. Say what the probe
+cannot tell him: a part of the sample is not the whole. If no listed
+data can answer these questions, say which one needs new data, and go on.
+
+Gabriel may decline. Either way, record in Provenance what you
+recommended and his answer, in his words. If he takes the probe, the rest
+of the interview designs the probe.
+
+### 5. Shape the steps
 
 Turn the idea into the smallest set of steps that answers the question,
 usually two to six:
 
 - a `task` step for each piece of code (an explore script, or a build for
-  new data), each at most about ten files;
+  new data), each at most about six files (stage 9 checks);
 - an `explore_run` step for each run, after the task that writes its
   script;
 - a `pipeline_run` step for each acquire or build of listed data.
@@ -96,10 +125,29 @@ will run. Ask whether a killed step should skip what depends on it
 (`skip_dependents`, the default), stop the campaign (`stop`) or not matter
 (`continue`).
 
-Check the pacing: one task and one run move at a time, a tick every three
-hours. A task plus its run takes about a day.
+**Cheapest kill first.** Place each `explore_run` as early as its data
+allows: right after the task that writes its script and the data it reads,
+not at the end. If the kill rules of one gate need different data, split
+the gate into several explore runs, so that rules needing only counts run
+before expensive acquires and builds. Each run is its own step with its
+own rules; a run on data already in the bucket may need its own small
+script task, which is still cheaper than an acquire that turns out not to
+matter.
 
-### 5. Data
+**Size.** If the plan has more than eight steps, say so, with the count,
+and recommend a split (a probe, or two campaigns). If Gabriel keeps it
+whole, ask him for the `oversize_reason` in his words: the validator
+refuses a campaign created on or after 2026-11-12 with more than eight
+steps and no reason.
+
+Check the pacing: one task is in flight per campaign and one run across
+all campaigns. The tick runs after each workflow a step waits on (explore
+run, data pipeline, CI, agent plan, build and review), with an hourly
+backup (`.github/workflows/campaign-tick.yml`), and starts at most one new
+step per campaign per tick. So a step waits mostly on its own workflows,
+not on the clock; see `references/budget.md`.
+
+### 6. Data
 
 For every dataset a step reads, check `data/catalog.yaml` and
 `data/manifests/`. If it exists, use it. If it is new, it goes in
@@ -107,18 +155,33 @@ For every dataset a step reads, check `data/catalog.yaml` and
 and whether it holds CPFs or voter IDs (`hashed` needs the `ID_SALT`
 secret). Ask about licence and identifiers explicitly. A new dependency is
 a person's step (`uv add`), merged before the campaign starts: say so.
+
 Read `references/writing-the-files.md`, "Facts about real data", before
 writing a draft that reads data.
 
-### 6. Kill rules
+For every outside source, name a fallback source in the plan: another
+publisher or mirror of the same data (Base dos Dados already serves the
+IBAMA and INEP tables in `data/manifests/acquire/`), and what changes if
+the step falls back to it. If there is none, say so. Then say whether
+this source has been fetched from a GitHub runner before: look in
+`data/manifests/acquire/` for a manifest whose `sources` name the same
+host (manifests are written only by the `data-pipeline` workflow, so one
+there means a runner reached it). If none does, tell Gabriel this is a
+risk and propose that its acquire be the first step, before any work that
+needs the data.
+
+### 7. Kill rules
 
 Read `references/kill-rules.md`. For each `explore_run` step, propose two
 or three candidate rules with their trade-offs, each as a field of
 `results.json`, a comparison and a value, with where the value comes from.
-Make sure the step's task draft makes the script write that field. Ask
-Gabriel to choose, change or write his own. Then read each chosen rule back
-in plain words ("the step dies if fewer than 60 close races exist at the 1%
-window") and ask him to confirm. Only then set `confirmed: true`.
+Make sure the step's task draft makes the script write that field. For a
+rule of the form "p below a level", tell him how often it stops a valid
+design, and offer a rule on the size of the imbalance instead
+(`references/kill-rules.md`, "False stops"). Ask Gabriel to choose, change
+or write his own. Then read each chosen rule back in plain words ("the
+step dies if fewer than 60 close races exist at the 1% window") and ask
+him to confirm. Only then set `confirmed: true`.
 
 If the scripts make no estimate (counts or structural checks only),
 propose `referee_not_applicable_ok: [R4, R5]` and say why: the referee
@@ -126,14 +189,24 @@ rightly marks R4 "Level and inference" "Not applicable" when there is no
 estimate, and the gate stops on any "Not applicable" row not listed there
 (campaign 0003, PR #264). See `references/writing-the-files.md`.
 
-### 7. Budget and dates
+### 8. Budget and dates
 
 Read `references/budget.md` and run `scripts/budget.py` with the step
 counts. Propose `max_tasks`, `max_explore_runs`, `max_pipeline_runs`,
 `max_model_jobs` and `end_by`, and explain each in one line. Let him
 change them.
 
-### 8. Write, check, open the PR
+### 9. Check the plan against the repo
+
+Read `references/writing-the-files.md`, "Check the plan against the
+repo", and follow it. For each task step, search `tests/` for the file
+names, dataset names, catalog entries and counts the step changes. Every
+test that pins one of them goes into the step's `allowed_paths`, or the
+draft says why not. Then show Gabriel one line per task step: the number
+of files, and **fits** (up to 6), **tight** (7 or 8) or **too big** (more
+than 8: split it).
+
+### 10. Write, check, open the PR
 
 Read `references/writing-the-files.md`. Then:
 
@@ -147,7 +220,8 @@ Read `references/writing-the-files.md`. Then:
 4. Show Gabriel a summary table: steps, rules (in plain words), datasets,
    budget, end date, and what he stated versus confirmed.
 5. Ask: `draft` (merge now, start later) or `active` (starts on the first
-   tick after he merges)?
+   tick after he merges)? If the campaign has more than four steps and the
+   closest paper is unverified, first ask whether he has read it (stage 3).
 6. Create a branch `campaigns/NNNN-slug`, commit, push, and open a PR with
    `gh pr create`. Never merge it: Gabriel merges (`gh pr merge` is denied).
    The PR body lists what he must check before merging: the kill rules, the
@@ -164,8 +238,8 @@ label.
 - The idea needs the confirmation half, a registered spec, or a change to
   an accepted decision: that is Gabriel's work outside a campaign.
 - A threshold can only be set by looking at outcomes first.
-- The campaign would exceed 31 days, or need more than about eight steps:
-  split it.
+- The campaign would exceed 31 days: split it. More than eight steps:
+  recommend a split, and go on only with Gabriel's `oversize_reason`.
 - A step needs something the builder cannot do (network, a new package,
   generated data, a fixture): it becomes a person's step before the
   campaign, not a campaign step.
