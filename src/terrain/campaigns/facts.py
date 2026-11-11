@@ -125,3 +125,6 @@ class Snapshot:
     # failed data-pipeline run id -> the last lines its failed job printed, raw
     # (only for campaigns with self_repair; cleaned by terrain.campaigns.repair)
     run_logs: dict[int, str] = field(default_factory=dict)
+    # the repository's web address (server and owner/name), for links on the status
+    # page; "" gives plain paths instead of links
+    repo_url: str = ""

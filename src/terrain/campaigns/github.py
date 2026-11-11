@@ -242,6 +242,7 @@ class GitHub:
         since: str,
         root: Path,
         log_campaigns: frozenset[str] = frozenset(),
+        repo_url: str = "",
     ) -> Snapshot:
         issues: list[Issue] = []
         for raw in self.pages("/issues", state="all", labels="campaign"):
@@ -294,7 +295,9 @@ class GitHub:
             else frozenset()
         )
         logs = self.run_logs(runs, log_campaigns) if log_campaigns else {}
-        return Snapshot(now, enabled, app_bot, issues, runs, record_prs, results, on_main, logs)
+        return Snapshot(
+            now, enabled, app_bot, issues, runs, record_prs, results, on_main, logs, repo_url
+        )
 
 
 def safe_snapshot(gh: GitHub, **kw: Any) -> Snapshot:

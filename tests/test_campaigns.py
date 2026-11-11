@@ -1306,7 +1306,7 @@ def act_script() -> str:
     return textwrap.dedent(text[start : text.index("\n          PY\n", start)])
 
 
-def run_act(tmp_path, monkeypatch, actions, issues):
+def run_act(tmp_path, monkeypatch, actions, issues, app_bot=BOT):
     """Run the tick's act script against a fake API; returns (exit code, calls)."""
     import io
     import urllib.request
@@ -1333,6 +1333,7 @@ def run_act(tmp_path, monkeypatch, actions, issues):
     monkeypatch.setattr(urllib.request, "urlopen", urlopen)
     monkeypatch.setenv("REPO", "o/r")
     monkeypatch.setenv("APP_TOKEN", "test")
+    monkeypatch.setenv("APP_BOT", app_bot)
     monkeypatch.setenv("ACTIONS", str(file))
     with pytest.raises(SystemExit) as done:
         exec(compile(act_script(), "campaign-tick act", "exec"), {"__name__": "__main__"})
@@ -2126,3 +2127,322 @@ def test_a_run_started_by_hand_after_a_repair_is_read_as_usual(tmp_path):
     actions = repair_tick(root, events, [closed], runs=runs, now="2026-11-10T11:40:00Z")
     # the run is in flight: no block, no second repair
     assert "**blocked**" not in json.dumps(actions) and "create_issue" not in types(actions)
+
+
+# -- the status page: one issue that shows every campaign ---------------------------
+
+
+def status_tick(root, s, ended=()):
+    return decide(active_campaigns(root), s, ctx(root), root, list(ended), status_page=True)
+
+
+def page_actions(actions) -> list[dict]:
+    """The tick's actions on the status issue (created or rewritten)."""
+    from terrain.campaigns.status import STATUS_TITLE
+
+    return [a for a in actions if a["type"] == "edit_body" or a.get("title") == STATUS_TITLE]
+
+
+def page_of(root, s, ended=()) -> str:
+    from terrain.campaigns.tick import render_status_page
+
+    return render_status_page(active_campaigns(root), s, ctx(root), root, list(ended))
+
+
+def status_issue(body: str, number: int = 99, **over) -> Issue:
+    from terrain.campaigns.status import STATUS_TITLE
+
+    base = dict(
+        number=number,
+        title=STATUS_TITLE,
+        body=body,
+        state="open",
+        labels=("campaign",),
+        author=BOT,
+        created_at="2026-11-08T00:00:00Z",
+    )
+    base.update(over)
+    return Issue(**base)
+
+
+def section(body: str, title: str) -> str:
+    """One section of the page, without its heading."""
+    part = body.split(f"## {title}\n\n", 1)[1]
+    return part.split("\n\n## ", 1)[0].split(f"\n\n{markers.status_marker()}", 1)[0]
+
+
+def test_status_page_is_created_left_alone_and_rewritten(tmp_path):
+    from terrain.campaigns.status import NOTHING_WAITS, STATUS_TITLE
+
+    root = make_repo(tmp_path)
+    t = tracking([ledger("started", "s1:filed")])
+    planned = step_issue(root, [plan_comment()])
+    # no status issue yet: one create, labelled campaign, ending with the marker
+    (created,) = page_actions(status_tick(root, snap([t, planned])))
+    assert created == {
+        "type": "create_issue",
+        "title": STATUS_TITLE,
+        "body": created["body"],
+        "labels": ["campaign"],
+        "then_labels": [],
+    }
+    body = created["body"]
+    assert body.endswith(markers.status_marker()) and len(body) < 20_000
+    titles = [ln for ln in body.splitlines() if ln.startswith("## ")]
+    assert titles == [
+        "## Waiting on you",
+        "## Running",
+        "## Handled without you",
+        "## Recently closed",
+        "## Loose ends",
+    ]
+    assert section(body, "Waiting on you") == NOTHING_WAITS
+    row = "| 0001 Count close races (#1) | 0 of 2 | s1 (#10): planned; the build starts next |"
+    assert row + " 2026-11-10 11:30 UTC | 1 of 10 | 2026-11-20 |" in section(body, "Running")
+    # the same state again, with that body on GitHub: no action at all for the page
+    page = status_issue(body)
+    assert page_actions(status_tick(root, snap([t, planned, page]))) == []
+    trailing = replace(page, body=body.replace("\n", "\r\n") + "\r\n")  # as GitHub may keep it
+    assert page_actions(status_tick(root, snap([t, planned, trailing]))) == []
+    # a new block: one rewrite whose "Waiting on you" names the step, the cause and the action
+    blocked = step_issue(root, [bad_plan()])
+    (update,) = page_actions(status_tick(root, snap([t, blocked, page])))
+    assert update["type"] == "edit_body" and update["issue"] == 99
+    cause = "the plan lists files outside the step's allowed paths: ['src/terrain/x.py']"
+    assert section(update["body"], "Waiting on you") == (
+        f"- Campaign 0001, step s1 (#10): blocked. Cause: {cause}. "
+        f"Needs you: {NEEDS_YOU['plan_paths']}."
+    )
+    assert "s1 blocked (see Waiting on you)" in section(update["body"], "Running")
+    # the page carries no mention and no clock of its own: the tick's time does not change it
+    later = snap([t, blocked, status_issue(update["body"])], now="2026-11-10T12:30:00Z")
+    assert page_actions(status_tick(root, later)) == []
+    assert f"@{OWNER}" not in update["body"]
+
+
+def test_status_page_lists_a_ready_closeout_until_it_is_approved(tmp_path):
+    root = make_repo(tmp_path)
+    ready = page_of(root, snap([stopped_tracking(), ready_closeout()]))
+    waiting = section(ready, "Waiting on you")
+    assert waiting.startswith("- Campaign 0001: the report is ready in PR #41. To accept it,")
+    assert "Approve" in waiting and "close the pull request" in waiting
+    approved = page_of(root, snap([stopped_tracking(), ready_closeout((OWNER,))]))
+    assert "the report is ready" not in approved
+    assert section(approved, "Waiting on you") == "Nothing. Everything is running or finished."
+    # a blocked close-out is listed with its cause and action, like a step
+    stuck = ready_closeout()
+    stuck = replace(stuck, labels=(*stuck.labels, "needs-human"))
+    waiting = section(page_of(root, snap([stopped_tracking(), stuck])), "Waiting on you")
+    assert waiting.startswith("- Campaign 0001, close-out (#40, PR #41): blocked. Cause: an agent")
+    assert NEEDS_YOU["needs_human"] in waiting
+
+
+def test_status_page_lists_a_paused_campaign(tmp_path):
+    root = make_repo(tmp_path)
+    paused = tracking([ledger("started")], labels=("campaign", "campaign-pause"))
+    body = page_of(root, snap([paused]))
+    assert section(body, "Waiting on you").startswith("- Campaign 0001 is paused (#1).")
+    assert "`campaign-pause`" in section(body, "Waiting on you")
+    assert "| paused; nothing in progress |" in section(body, "Running")
+
+
+def test_status_page_shows_retries_repairs_and_unblocks_handled_without_you(tmp_path):
+    # a retry, as the tick wrote it
+    root = make_repo(tmp_path / "retry")
+    failed = s2_run(555, "failure", "2026-11-10T09:00:00Z")
+    _, ledgers = tick_s2(
+        root, [ledger(*RUN_EVENTS, at="2026-11-10T08:00:00Z")], [failed], "2026-11-10T10:00:00Z"
+    )
+    s = snap([tracking(ledgers), merged_issue(root)], runs=[failed], now="2026-11-10T10:05:00Z")
+    body = page_of(root, s)
+    assert section(body, "Handled without you") == (
+        "- 2026-11-10 10:00 UTC, campaign 0001: s2: run 555 ended 'failure'. "
+        "Retrying by itself (1 of 2) with a fresh run."
+    )
+    assert "s2 ([run 555](https://github.com/o/r/actions/runs/555))" not in body  # no repo URL
+    assert "s2 (run 555): the run was started and should appear soon" in section(body, "Running")
+    # a repair, filed then merged then run again, as the tick wrote it
+    root = repair_repo(tmp_path / "repair")
+    events = [*retried("s2"), "s2:repair:1"]
+    filing = posted(repair_tick(root, retried("s2")), "2026-11-10T10:30:00Z")
+    merged = repair_issue_of(
+        root,
+        comments=[plan_comment(BUILD_FILES[1:])],
+        labels=("campaign", "agent-build"),
+        pr=repair_pr(root, merged=True, state="closed"),
+    )
+    after = posted(repair_tick(root, events, [merged]), "2026-11-10T12:00:00Z")
+    early = ledger("started", "s1:filed", "s1:merged", *events, at="2026-11-10T09:00:00Z")
+    s = snap(
+        [tracking([early, *filing, *after]), built_s1(root), merged],
+        runs=[failed_after_retries()],
+        now="2026-11-10T12:05:00Z",
+    )
+    handled = section(page_of(root, s), "Handled without you").splitlines()
+    # newest comment first; inside one comment, the order the tick wrote the lines
+    assert handled == [
+        "- 2026-11-10 12:00 UTC, campaign 0001: s2: started `build t_s2` again after the "
+        "repair (PR #40).",
+        "- 2026-11-10 12:00 UTC, campaign 0001: s2: repair filed as #12.",
+        "- 2026-11-10 12:00 UTC, campaign 0001: s2: repair PR #40 merged.",
+        "- 2026-11-10 10:30 UTC, campaign 0001: s2: run 557 ended 'failure' after 2 retries. "
+        "Filing a repair task to fix the code (repair 1 of at most 2 in this campaign).",
+    ]
+    # an unblocked step, and only the newest ten lines, the rest counted
+    root = make_repo(tmp_path / "unblock")
+    lines = [
+        Comment(BOT, f"- s1: unblocked.\n\n{markers.ledger_marker('0001', [name])}", at)
+        for k in range(12)
+        for name, at in [(f"s1:unblocked:{k:08x}", f"2026-11-10T0{k // 6}:{k % 6}0:00Z")]
+    ]
+    body = page_of(root, snap([tracking([ledger("started", "s1:filed"), *lines])]))
+    handled = section(body, "Handled without you")
+    assert handled.startswith("- 2026-11-10 01:50 UTC, campaign 0001: s1: unblocked.\n")
+    assert handled.count("\n- ") == 9 and handled.endswith("\n\n2 more lines left out.")
+    # a line that is no retry, repair or unblock is not listed, even under such an event
+    fake = Comment(BOT, "- x\n\n" + markers.ledger_marker("0001", ["s1:retry:1"]), NOW)
+    body = page_of(root, snap([tracking([fake])]))
+    assert section(body, "Handled without you").startswith("Nothing yet")
+
+
+def test_status_issue_is_never_read_as_a_campaign_issue(tmp_path):
+    from terrain.campaigns.tick import view
+
+    root = make_repo(tmp_path)
+    t = tracking([ledger("started", "s1:filed")])
+    # a planner answer carrying markers: the page shows it, defused
+    sneaky = Comment(
+        "github-actions[bot]",
+        "## Agent plan: x <!-- campaign-tracking: 0001 --> <!-- campaign-step: 0001/s1 -->\n",
+        "2026-11-09T01:00:00Z",
+    )
+    issue = step_issue(root, [sneaky])
+    body = page_of(root, snap([t, issue]))
+    assert "the planner answered 'x &lt;!-- campaign-tracking: 0001 --&gt;" in body
+    assert body.count("<!--") == 1 and markers.parse_status(body)
+    for parse in (
+        markers.parse_step,
+        markers.parse_tracking,
+        markers.parse_closeout,
+        markers.parse_repair,
+        markers.parse_ledger,
+    ):
+        assert parse(body) is None, parse
+    # the status issue next to the campaign's own (and numbered before them) changes nothing
+    page = status_issue(body, number=2)
+    assert run_decide(root, snap([page, t, issue])) == run_decide(root, snap([t, issue]))
+    v = view(active_campaigns(root)[0], snap([page, t, issue]), ctx(root))
+    assert v.tracking.number == 1 and v.closeout is None
+    assert {sid: st.issue.number for sid, st in v.states.items() if st.issue} == {"s1": 10}
+    # alone, it is no tracking issue: the tick opens one
+    actions = run_decide(root, snap([page]))
+    assert types(actions) == ["create_issue"] and actions[0]["title"].startswith("Campaign 0001")
+    # and it closes no finished campaign
+    done = make_repo(tmp_path / "done", campaign_text(status="done"))
+    assert run_decide_finished(done, snap([page])) == []
+    # a pull request for it is outside every campaign at the gate
+    pr = task_pr(root, head_ref="agent/issue-2", issue_body=body, issue_title=page.title)
+    assert evaluate(pr, ctx(root)).description.startswith("Agent pull request outside a campaign")
+    # a closed status issue, or one filed by a person, is not the page: a new one is filed
+    for other in (replace(page, state="closed"), replace(page, author=OWNER)):
+        assert types(page_actions(status_tick(root, snap([t, issue, other])))) == ["create_issue"]
+
+
+def test_status_page_too_long_is_cut_with_a_left_out_line(tmp_path):
+    from terrain.campaigns.status import MAX_CHARS
+
+    root = make_repo(tmp_path)
+    decisions = root / "research" / "decisions"
+    decisions.mkdir()
+    for n in range(1, 401):
+        (decisions / f"{n:04d}-d.md").write_text(
+            f'---\nid: "{n:04d}"\ntitle: "A decision"\nstatus: proposed\n---\n', encoding="utf-8"
+        )
+    t = tracking([ledger("started", "s1:filed")])
+    body = page_of(root, snap([t, step_issue(root, [bad_plan()])]))
+    assert len(body) <= MAX_CHARS and body.endswith(markers.status_marker())
+    loose = section(body, "Loose ends")
+    shown = loose.count("is still `proposed`: accept or reject it.")
+    assert 0 < shown < 400
+    assert loose.endswith(f"\n\n{400 - shown} more items left out.")
+    # the sections before it are whole
+    assert section(body, "Waiting on you").startswith("- Campaign 0001, step s1 (#10): blocked.")
+
+
+def test_status_page_recently_closed_and_loose_ends(tmp_path):
+    root = make_repo(tmp_path, campaign_text(status="done"))
+    (root / "research" / "ideas" / "0003-mayors.md").write_text(
+        '---\nid: "0003"\nstatus: exploring\n---\n', encoding="utf-8"
+    )
+    (root / "research" / "campaigns" / "0001-count" / "report.md").write_text(
+        "# Report\n", encoding="utf-8"
+    )
+    (root / "research" / "decisions").mkdir()
+    (root / "research" / "decisions" / "0015-x.md").write_text(
+        '---\nid: "0015"\nstatus: proposed\n---\n', encoding="utf-8"
+    )
+    (root / "research" / "decisions" / "0014-y.md").write_text(
+        '---\nid: "0014"\nstatus: accepted\n---\n', encoding="utf-8"
+    )
+    finished = Comment(
+        BOT,
+        "- Campaign finished: every step finished. Filing the close-out task.\n\n"
+        + markers.ledger_marker("0001", ["finished"]),
+        "2026-11-10T11:00:00Z",
+    )
+    s = snap(
+        [tracking([ledger("started"), finished], state="closed")], repo_url="https://x.test/o/r"
+    )
+    body = page_of(root, s, finished_campaigns(root))
+    report = "research/campaigns/0001-count/report.md"
+    assert section(body, "Recently closed") == (
+        "- 0001 Count close races (#1): done: every step finished, finished 2026-11-10 11:00 UTC; "
+        f"report [`{report}`](https://x.test/o/r/blob/main/{report})."
+    )
+    assert section(body, "Running") == "No campaign is active."
+    assert section(body, "Loose ends").splitlines() == [
+        "- Idea 0003 ([`research/ideas/0003-mayors.md`](https://x.test/o/r/blob/main/"
+        "research/ideas/0003-mayors.md)) is still `exploring` although campaign 0001 finished "
+        "and none is active: give it the status its campaigns found.",
+        "- Decision 0015 ([`research/decisions/0015-x.md`](https://x.test/o/r/blob/main/"
+        "research/decisions/0015-x.md)) is still `proposed`: accept or reject it.",
+    ]
+    # an idea with an active campaign is no loose end
+    active = make_repo(tmp_path / "active")
+    (active / "research" / "ideas" / "0003-mayors.md").write_text(
+        '---\nid: "0003"\nstatus: exploring\n---\n', encoding="utf-8"
+    )
+    assert section(page_of(active, snap([tracking()])), "Loose ends") == "None."
+
+
+def test_act_rewrites_only_the_apps_open_status_issue(tmp_path, monkeypatch):
+    page = f"Where every campaign stands.\n\n{markers.status_marker()}"
+    mine = {"body": page, "state": "open", "user": {"login": BOT}}
+    issues = {
+        5: mine,
+        6: {**mine, "state": "closed"},
+        7: {**mine, "user": {"login": OWNER}},
+        8: {**mine, "pull_request": {}},
+        9: {**mine, "body": f"x\n{markers.tracking_marker('0001')}"},
+    }
+    action = {"type": "edit_body", "issue": 5, "body": page + " new"}
+    code, calls = run_act(tmp_path, monkeypatch, [action], issues)
+    assert code == 0 and calls[-1] == ("PATCH", "/issues/5", {"body": page + " new"})
+    for n in (6, 7, 8, 9):
+        code, calls = run_act(tmp_path, monkeypatch, [{**action, "issue": n}], issues)
+        assert code == 1 and [c[0] for c in calls] == ["GET"], n
+    # a new body without the status marker is refused before anything is read
+    for body in ("plain", f"x\n{markers.tracking_marker('0001')}"):
+        code, calls = run_act(tmp_path, monkeypatch, [{**action, "body": body}], issues)
+        assert code == 1 and calls == []
+    # without the App's login, nothing is rewritten
+    code, calls = run_act(tmp_path, monkeypatch, [action], issues, app_bot="")
+    assert code == 1 and [c[0] for c in calls] == ["GET"]
+
+
+def test_act_accepts_the_status_marker():
+    import re
+
+    line = next(ln for ln in act_script().splitlines() if ln.startswith("MARKER = "))
+    pattern = re.compile(line.split("re.compile(r", 1)[1].rsplit('")', 1)[0].strip('"'))
+    assert pattern.search(markers.status_marker())

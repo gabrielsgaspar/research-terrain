@@ -177,6 +177,7 @@ jobs:
         env:
           APP_TOKEN: ${{ steps.app-token.outputs.token }}
           REPO: ${{ github.repository }}
+          APP_BOT: ${{ vars.AGENT_APP_BOT }}
           ACTIONS: ${{ runner.temp }}/tick/actions.json
         run: |
           set -euo pipefail
@@ -184,6 +185,7 @@ jobs:
           import json, os, re, sys, urllib.error, urllib.request
 
           REPO, TOKEN = os.environ["REPO"], os.environ["APP_TOKEN"]
+          APP_BOT = os.environ.get("APP_BOT", "")
           LABELS = {"campaign", "explore", "agent-plan", "agent-build"}
           WORKFLOWS = {
               "explore-run.yml": {"script": r"^[0-9]{4}_[a-z0-9_]{1,60}$", "campaign": r"^[0-9]{4}/s[0-9]{1,2}$"},
@@ -191,8 +193,9 @@ jobs:
                                     "campaign": r"^[0-9]{4}/s[0-9]{1,2}$"},
               "campaign-gate.yml": {"pr": r"^[0-9]{1,7}$"},
           }
-          MARKER = re.compile(r"<!-- campaign-(step|tracking|closeout|ledger|repair): [0-9]{4}")
+          MARKER = re.compile(r"<!-- campaign-(step|tracking|closeout|ledger|repair|status): [0-9]{4}")
           TRACKING = re.compile(r"<!-- campaign-tracking: [0-9]{4} -->")
+          STATUS = re.compile(r"<!-- campaign-status: 0000 -->")
 
           def call(method, path, body=None):
               req = urllib.request.Request(
@@ -270,6 +273,19 @@ jobs:
                           raise ValueError(f"#{n} is not a campaign tracking issue")
                       call("PATCH", f"/issues/{n}", {"state": "closed", "state_reason": "completed"})
                       print(f"closed #{n}")
+                  elif kind == "edit_body":
+                      # only the status page's body, on the open issue the App filed for it
+                      check_text(a["body"])
+                      if not STATUS.search(a["body"]):
+                          raise ValueError("the new body has no status marker")
+                      n = number(a["issue"])
+                      issue = call("GET", f"/issues/{n}")
+                      if ("pull_request" in issue or issue.get("state") != "open" or not APP_BOT
+                              or (issue.get("user") or {}).get("login") != APP_BOT
+                              or not STATUS.search(issue.get("body") or "")):
+                          raise ValueError(f"#{n} is not the agent App's open status issue")
+                      call("PATCH", f"/issues/{n}", {"body": a["body"]})
+                      print(f"rewrote the body of #{n}")
                   else:
                       raise ValueError(f"unknown action type {kind!r}")
               except (ValueError, KeyError, urllib.error.HTTPError, urllib.error.URLError) as exc:

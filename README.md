@@ -7,6 +7,8 @@ reaches `main` through a pull request that a person merges.
 
 > Work in progress. Nothing here is a finding until it appears in the paper.
 
+Where every campaign stands, and what waits for you: the issue titled "Research Terrain: status".
+
 ## The question
 
 Does local democracy protect land that has voters and push environmental harm
