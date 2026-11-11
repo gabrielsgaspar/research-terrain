@@ -19,6 +19,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from terrain.campaigns import markers
 from terrain.campaigns.facts import (
     Comment,
     Issue,
@@ -31,6 +32,16 @@ from terrain.campaigns.gate import MANIFEST_BRANCH, RECORD_BRANCH, TASK_BRANCH
 
 _NEXT = re.compile(r'<([^>]+)>;\s*rel="next"')
 REVIEW_BOT = "github-actions[bot]"
+LOG_TAIL_BYTES = 64 * 1024  # of a job log, kept while reading; the rest is dropped
+LOG_TAIL_LINES = 200
+FAILED = ("failure", "timed_out")
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Return redirects as errors, so the token is never sent to the address they name."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001, ARG002
+        return None
 
 
 class GitHub:
@@ -50,6 +61,42 @@ class GitHub:
         with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310 (fixed https host)
             link = resp.headers.get("Link", "")
             return json.loads(resp.read().decode("utf-8") or "null"), link
+
+    def _text_tail(self, url: str) -> str:
+        """The end of a plain-text download, such as a job log.
+
+        GitHub answers a log request with a redirect to a short-lived storage
+        address that carries its own signature; that address is read without
+        the token. Only the last LOG_TAIL_BYTES are kept.
+        """
+        req = urllib.request.Request(url)
+        req.add_header("X-GitHub-Api-Version", "2022-11-28")
+        if self.token:
+            req.add_header("Authorization", f"Bearer {self.token}")
+        try:
+            resp = urllib.request.build_opener(_NoRedirect).open(req, timeout=30)
+        except urllib.error.HTTPError as exc:
+            location = exc.headers.get("Location", "") if exc.code in (301, 302, 307) else ""
+            if urllib.parse.urlsplit(location).scheme != "https":
+                raise
+            resp = urllib.request.urlopen(location, timeout=60)  # noqa: S310 (https only)
+        tail = b""
+        with resp:
+            while chunk := resp.read(LOG_TAIL_BYTES):
+                tail = (tail + chunk)[-LOG_TAIL_BYTES:]
+        lines = tail.decode("utf-8", errors="replace").splitlines()
+        return "\n".join(lines[-LOG_TAIL_LINES:])
+
+    def failed_job_log(self, run_id: int) -> str:
+        """The last lines the failed job of run `run_id` printed ("" if none failed)."""
+        jobs = self.get(f"/actions/runs/{run_id}/jobs", filter="latest", per_page=100)
+        jobs = (jobs or {}).get("jobs", [])
+        job = next((j for j in jobs if j.get("conclusion") == "failure"), None) or next(
+            (j for j in jobs if j.get("conclusion") in ("timed_out", "cancelled")), None
+        )
+        if job is None:
+            return ""
+        return self._text_tail(f"{self.api}/repos/{self.repo}/actions/jobs/{job['id']}/logs")
 
     def get(self, path: str, **params: Any) -> Any:
         query = f"?{urllib.parse.urlencode(params)}" if params else ""
@@ -168,7 +215,34 @@ class GitHub:
             for r in raw
         ]
 
-    def snapshot(self, now: str, enabled: bool, app_bot: str, since: str, root: Path) -> Snapshot:
+    def run_logs(self, runs: list[Run], campaigns: frozenset[str]) -> dict[int, str]:
+        """Log tails of failed data-pipeline runs of `campaigns`: the newest run of each
+        step, when it failed. A log that cannot be read gives ""."""
+        newest: dict[str, Run] = {}
+        for r in runs:
+            found = markers.parse_run_title(r.title)
+            if r.workflow == "data-pipeline.yml" and found and found[0] in campaigns:
+                if r.title not in newest or r.created_at > newest[r.title].created_at:
+                    newest[r.title] = r
+        logs: dict[int, str] = {}
+        for r in newest.values():
+            if r.status != "completed" or r.conclusion not in FAILED:
+                continue
+            try:
+                logs[r.id] = self.failed_job_log(r.id)
+            except (OSError, ValueError):  # HTTP and network errors, a bad answer
+                logs[r.id] = ""
+        return logs
+
+    def snapshot(
+        self,
+        now: str,
+        enabled: bool,
+        app_bot: str,
+        since: str,
+        root: Path,
+        log_campaigns: frozenset[str] = frozenset(),
+    ) -> Snapshot:
         issues: list[Issue] = []
         for raw in self.pages("/issues", state="all", labels="campaign"):
             if "pull_request" in raw:
@@ -219,7 +293,8 @@ class GitHub:
             if (root / "data" / "manifests").is_dir()
             else frozenset()
         )
-        return Snapshot(now, enabled, app_bot, issues, runs, record_prs, results, on_main)
+        logs = self.run_logs(runs, log_campaigns) if log_campaigns else {}
+        return Snapshot(now, enabled, app_bot, issues, runs, record_prs, results, on_main, logs)
 
 
 def safe_snapshot(gh: GitHub, **kw: Any) -> Snapshot:

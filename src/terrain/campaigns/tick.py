@@ -18,6 +18,9 @@ Pacing, to stay gentle on the subscription's usage limits:
 
 A run step whose run ended 'failure' or 'timed_out' is started again by the
 tick, at most MAX_AUTO_RETRIES times per step, before the owner is asked.
+In a campaign with `self_repair: true`, a pipeline_run step that still fails
+then gets one repair task (`terrain.campaigns.repair`, decision 0014); once
+it merges, the step runs once more, and only then is the owner asked.
 """
 
 from __future__ import annotations
@@ -28,7 +31,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from terrain.campaigns import markers
+from terrain.campaigns import markers, repair
 from terrain.campaigns.closeout import closeout_issue, table
 from terrain.campaigns.codeowners import CodeOwners
 from terrain.campaigns.facts import (
@@ -114,6 +117,9 @@ IN_FLIGHT = {
     "running",
     "recording",
     "retry_waiting",  # a failed run to start again once no other run is in flight
+    "repair_waiting",  # a repair to file once no other task of the campaign is in flight
+    "repair_filing",  # a repair filed, its issue not seen yet
+    "repair_merged",  # a merged repair: the run starts again once no other run is in flight
 }
 RUN_IN_FLIGHT = {"waiting_run", "running", "recording", "in_review", "mergeable", "awaiting_gate"}
 
@@ -132,11 +138,15 @@ class StepState:
     record: str = ""  # path of the explore-run record, once merged
     run_again: str = ""  # for a failed run: the workflow and inputs to start it again
     retry: int = 0  # for a failed run the tick may start again: the number of that retry
+    repair: Issue | None = None  # for a pipeline_run step: its repair issue, once seen
+    repairing: bool = False  # the repair task (not a run) is what is in flight
 
     def links(self) -> str:
         parts = []
         if self.issue:
             parts.append(f"#{self.issue.number}")
+        if self.repair and self.repair is not self.issue:
+            parts.append(f"repair #{self.repair.number}")
         if self.pr:
             parts.append(f"PR #{self.pr.number}")
         if self.run:
@@ -299,6 +309,12 @@ def _retries(sid: str, events: dict[str, str]) -> int:
     return sum(1 for k in range(1, MAX_AUTO_RETRIES + 1) if f"{sid}:retry:{k}" in events)
 
 
+def _repair_event(sid: str, stage: str = "") -> str:
+    """The ledger event of a stage of step `sid`'s repair: "" (filing), filed, merged, run."""
+    base = f"{sid}:repair:{repair.MAX_PER_STEP}"
+    return f"{base}:{stage}" if stage else base
+
+
 def _run_state(
     c: Campaign, s: Step, snap: Snapshot, gctx: GateContext, events: dict[str, str]
 ) -> StepState:
@@ -313,9 +329,11 @@ def _run_state(
     run = runs[-1]
     retries = _retries(s.id, events)
     retried = events.get(f"{s.id}:retry:{retries}", "") if retries else ""
-    if retried and _time(retried) > _time(run.created_at):
-        # the newest run is older than the newest retry: the fresh run has not appeared yet
-        if _older(snap.now, retried, RUN_APPEAR_TIMEOUT):
+    repaired = events.get(_repair_event(s.id, "run"), "")
+    restarted = max((t for t in (retried, repaired) if t), key=_time, default="")
+    if restarted and _time(restarted) > _time(run.created_at):
+        # the newest run is older than the newest restart: the fresh run has not appeared yet
+        if _older(snap.now, restarted, RUN_APPEAR_TIMEOUT):
             return StepState("blocked", "the run was started again but never appeared", run=run)
         return StepState("waiting_run", run=run)
     st = StepState("running", run=run)
@@ -325,9 +343,11 @@ def _run_state(
         st.status, st.detail = "blocked", f"run {run.id} ended '{run.conclusion}'"
         st.cause = "run_failed"
         st.run_again = _run_again(c, s)
-        if retries:
-            st.detail += f". Retried {retries} time{'s' if retries > 1 else ''}."
-        if run.conclusion in RETRY_CONCLUSIONS and retries < MAX_AUTO_RETRIES:
+        done = [f"Retried {retries} time{'s' if retries > 1 else ''}"] if retries else []
+        done += ["repaired once"] if repaired else []
+        if done:
+            st.detail += ". " + ", ".join(done)[0].upper() + ", ".join(done)[1:] + "."
+        if run.conclusion in RETRY_CONCLUSIONS and retries < MAX_AUTO_RETRIES and not repaired:
             st.retry = retries + 1
         return st
     pr = snap.record_prs.get(run.id)
@@ -375,6 +395,86 @@ def _run_state(
     return _pr_state(st, pr, gctx)
 
 
+def _repair_state(
+    c: Campaign,
+    s: Step,
+    st: StepState,
+    issue: Issue | None,
+    snap: Snapshot,
+    gctx: GateContext,
+    events: dict[str, str],
+) -> StepState:
+    """Step `s`'s state once a repair was filed for it (decision 0014).
+
+    Until the repair merges, the step is its repair task: in flight, or
+    blocked with the task's cause. Once merged, it waits for the tick to start
+    the run again; once that run is started, the run is read as usual.
+    """
+    filing = events.get(_repair_event(s.id), "")
+    if issue is None and not filing:
+        return st
+    since = issue.created_at if issue else filing
+    newer = st.run is not None and _time(st.run.created_at) > _time(since)
+    if _repair_event(s.id, "run") in events or st.status == "done" or newer:
+        # the run after the repair, or one started by hand since it was filed: read as usual
+        st.repair = issue
+        return st
+    if issue is None:
+        if _older(snap.now, filing, RUN_APPEAR_TIMEOUT):
+            return StepState("blocked", "the repair task was filed but never appeared", run=st.run)
+        return StepState(
+            "repair_filing", "the repair task was just filed", run=st.run, repairing=True
+        )
+    rst = _task_state(issue, repair.repair_paths(c, s, gctx.codeowners), snap, gctx)
+    out = StepState(rst.status, issue=issue, pr=rst.pr, run=st.run, repair=issue)
+    if rst.status == "done":
+        out.status = "repair_merged"
+        out.detail = f"repair PR #{rst.pr.number} merged; the run starts again"
+    elif rst.status == "blocked":
+        out.detail, out.cause = f"the repair task: {rst.detail}", rst.cause
+    else:
+        out.detail, out.repairing = rst.detail, True
+    return out
+
+
+def _repairs(c: Campaign, v: CampaignView) -> int:
+    """How many repairs campaign `c` has filed, from the ledger and its issues."""
+    return sum(
+        1
+        for s in c.steps
+        if s.kind == "pipeline_run" and (v.states[s.id].repair or _repair_event(s.id) in v.events)
+    )
+
+
+def _no_repair(c: Campaign, s: Step, st: StepState, v: CampaignView, gctx: GateContext) -> str:
+    """Why failed run step `s` gets no repair now ("" if it may get one).
+
+    "-" means it is not a repair case at all (the campaign does not allow
+    repairs, the step is no pipeline_run, the run did not fail or still has
+    retries, or this step was repaired already).
+    """
+    if not (
+        c.self_repair
+        and s.kind == "pipeline_run"
+        and st.status == "blocked"
+        and st.cause == "run_failed"
+        and st.run is not None
+        and st.run.conclusion in RETRY_CONCLUSIONS
+        and not st.retry
+        and _retries(s.id, v.events) >= MAX_AUTO_RETRIES
+        and st.repair is None
+        and _repair_event(s.id) not in v.events
+    ):
+        return "-"
+    if _repairs(c, v) >= repair.MAX_PER_CAMPAIGN:
+        return f"the campaign's {repair.MAX_PER_CAMPAIGN} repairs are used"
+    if v.used["max_model_jobs"] >= c.budget["max_model_jobs"]:
+        return "the model-job budget is used up"
+    if not repair.repair_paths(c, s, gctx.codeowners):
+        return "no task step it comes after lists a file a repair may change"
+    return ""
+
+
 def _own_issues(c: Campaign, snap: Snapshot) -> tuple[list[Issue], Issue | None, Issue | None]:
     """The App's issues, oldest first, and the campaign's tracking and close-out issues."""
     mine = sorted((i for i in snap.issues if i.author == snap.app_bot), key=lambda i: i.number)
@@ -397,10 +497,14 @@ def view(c: Campaign, snap: Snapshot, gctx: GateContext) -> CampaignView:
     mine, tracking, closeout = _own_issues(c, snap)
     events = _ledger_events(tracking, c.id, snap.app_bot)
     by_step: dict[str, Issue] = {}
+    by_repair: dict[str, Issue] = {}
     for i in mine:
         found = markers.parse_step(i.body)
         if found and found[0] == c.id:
             by_step.setdefault(found[1], i)
+        fixing = markers.parse_repair(i.body)
+        if fixing and fixing[0] == c.id and fixing[2] == repair.MAX_PER_STEP:
+            by_repair.setdefault(fixing[1], i)
     states: dict[str, StepState] = {}
     stop_all = False
     for s in c.steps:
@@ -411,6 +515,8 @@ def view(c: Campaign, snap: Snapshot, gctx: GateContext) -> CampaignView:
             )
         else:
             st = _run_state(c, s, snap, gctx, events)
+            if s.kind == "pipeline_run":
+                st = _repair_state(c, s, st, by_repair.get(s.id), snap, gctx, events)
         if st.status == "unstarted":
             deps = [states[a] for a in s.after]
             if stop_all:
@@ -449,9 +555,19 @@ def view(c: Campaign, snap: Snapshot, gctx: GateContext) -> CampaignView:
         "max_model_jobs": 0,
     }
     used["max_model_jobs"] = sum(
-        _model_jobs(i) for i in [*by_step.values(), *([closeout] if closeout else [])]
+        _model_jobs(i)
+        for i in [*by_step.values(), *by_repair.values(), *([closeout] if closeout else [])]
     )
     return CampaignView(c, tracking, closeout, states, events, used)
+
+
+def _tasks_in_flight(v: CampaignView) -> int:
+    """Tasks of the campaign in flight: task steps, and repairs being worked."""
+    return sum(
+        1
+        for s in v.campaign.steps
+        if v.states[s.id].status in IN_FLIGHT and (s.kind == "task" or v.states[s.id].repairing)
+    )
 
 
 def block_id(cause: str, links: str) -> str:
@@ -609,6 +725,30 @@ def friction_facts(v: CampaignView, snap: Snapshot, new: Sequence[tuple[str, str
         else:
             smooth.append(s.id)
 
+    repair_rows = []
+    for s in c.steps:
+        st = v.states[s.id]
+        if s.kind != "pipeline_run" or not (st.repair or _repair_event(s.id) in events):
+            continue
+        fix = st.repair
+        pr = fix.pr if fix else None
+        if _repair_event(s.id, "run") in events:
+            after = st.run.conclusion if st.run and st.status != "waiting_run" else ""
+            ended = f"merged; the run after it: {after or st.status}"
+        elif st.status == "blocked":
+            ended = f"blocked: {st.detail}"
+        else:
+            ended = st.status
+        repair_rows.append(
+            [
+                s.id,
+                f"#{fix.number}" if fix else "never appeared",
+                f"PR #{pr.number}" if pr else "none",
+                str(_model_jobs(fix)) if fix else "0",
+                ended,
+            ]
+        )
+
     run_rows = []
     for s in c.steps:
         runs = _step_runs(c, s, snap) if s.kind != "task" else []
@@ -652,6 +792,10 @@ def friction_facts(v: CampaignView, snap: Snapshot, new: Sequence[tuple[str, str
 ### Run steps that took more than one run
 
 {group(run_rows, ["Step", "Runs", "Run ids and how they ended"])}
+
+### Repairs
+
+{group(repair_rows, ["Step", "Repair issue", "Pull request", "Model jobs", "How it ended"])}
 
 ### Time
 
@@ -716,7 +860,9 @@ def decide(
         1
         for v in views
         for s in v.campaign.steps
-        if s.kind != "task" and v.states[s.id].status in RUN_IN_FLIGHT
+        if s.kind != "task"
+        and v.states[s.id].status in RUN_IN_FLIGHT
+        and not v.states[s.id].repairing
     )
     today = _time(snap.now).date()
     for v in views:
@@ -746,8 +892,67 @@ def decide(
         if stopped:
             event("stopped", "Stopped by the owner: no new steps, no merges.")
         can_start = not stopped and today <= dt.date.fromisoformat(c.end_by)
+        filed_repair = False
         for s in c.steps:
             st = v.states[s.id]
+            why_not = _no_repair(c, s, st, v, gctx) if can_start else "-"
+            if why_not == "" and _tasks_in_flight(v):
+                st = StepState(
+                    "repair_waiting",
+                    f"run {st.run.id} ended '{st.run.conclusion}' after {MAX_AUTO_RETRIES} "
+                    "retries; a repair is filed once no other task is in flight",
+                    run=st.run,
+                )
+            elif why_not == "":
+                event(
+                    _repair_event(s.id),
+                    f"{s.id}: run {st.run.id} ended '{st.run.conclusion}' after "
+                    f"{MAX_AUTO_RETRIES} retries. Filing a repair task to fix the code "
+                    f"(repair {_repairs(c, v) + 1} of at most {repair.MAX_PER_CAMPAIGN} "
+                    "in this campaign).",
+                )
+                title, body = repair.repair_issue(
+                    c,
+                    s,
+                    st.run.id,
+                    snap.run_logs.get(st.run.id, ""),
+                    repair.repair_paths(c, s, gctx.codeowners),
+                    repair.MAX_PER_STEP,
+                )
+                doing.append(
+                    {
+                        "type": "create_issue",
+                        "title": title,
+                        "body": body,
+                        "labels": ["campaign"],
+                        "then_labels": ["agent-plan"],
+                    }
+                )
+                st = StepState(
+                    "repair_filing", "the repair task was just filed", run=st.run, repairing=True
+                )
+                filed_repair = True
+            elif why_not != "-":
+                st.detail += f" Not repaired: {why_not}."
+            if st.status == "repair_merged" and not can_start:
+                st.status = "blocked"
+                st.detail = (
+                    f"{st.detail.split(';')[0]}, but the campaign is stopped or past its end "
+                    "date, so the run was not started again"
+                )
+                st.cause, st.run_again = "run_failed", _run_again(c, s)
+            elif st.status == "repair_merged" and runs_in_flight:
+                st.detail = f"{st.detail} once no other run is in flight"
+            elif st.status == "repair_merged":
+                event(
+                    _repair_event(s.id, "run"),
+                    f"{s.id}: started `{s.stage} {s.target}` again after the repair "
+                    f"(PR #{st.pr.number}).",
+                )
+                doing.append(run_dispatch(c, s))
+                runs_in_flight += 1
+                st = StepState("waiting_run", run=st.run, repair=st.repair)
+            v.states[s.id] = st
             if st.retry and can_start:
                 if runs_in_flight:
                     st = StepState(
@@ -766,8 +971,15 @@ def decide(
                     runs_in_flight += 1
                     st = StepState("waiting_run", run=st.run)
                 v.states[s.id] = st
-            if st.issue:
+            if st.issue and s.kind == "task":
                 event(f"{s.id}:filed", f"{s.id}: filed as #{st.issue.number}.")
+            if st.repair:
+                event(_repair_event(s.id, "filed"), f"{s.id}: repair filed as #{st.repair.number}.")
+            if st.repair and st.repair.pr and st.repair.pr.merged:
+                event(
+                    _repair_event(s.id, "merged"),
+                    f"{s.id}: repair PR #{st.repair.pr.number} merged.",
+                )
             if st.status == "done" and s.kind == "task":
                 event(f"{s.id}:merged", f"{s.id}: PR #{st.pr.number} merged.")
             if st.status == "done" and s.kind == "explore_run":
@@ -805,10 +1017,8 @@ def decide(
                     }
                 )
 
-        tasks_in_flight = sum(
-            1 for s in c.steps if s.kind == "task" and v.states[s.id].status in IN_FLIGHT
-        )
-        started = False
+        tasks_in_flight = _tasks_in_flight(v)
+        started = filed_repair
         for s in c.steps:
             st = v.states[s.id]
             if started or not can_start or st.status != "unstarted":

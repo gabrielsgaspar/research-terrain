@@ -171,6 +171,13 @@ there means a runner reached it). If none does, tell Gabriel this is a
 risk and propose that its acquire be the first step, before any work that
 needs the data.
 
+If the campaign has `pipeline_run` steps, ask Gabriel whether it may
+repair its own data steps (decision 0014). Explain the limits in three lines:
+- a data step still failing after two retries gets one repair task, from a fixed template;
+- it may change only the build tasks' allowed paths, never protected, owned or explore files;
+- at most one per step and two per campaign, inside the model-job budget; he is asked if it fails.
+Write his answer as `self_repair: true` or `false`, and in Provenance, in his words.
+
 ### 7. Kill rules
 
 Read `references/kill-rules.md`. For each `explore_run` step, propose two

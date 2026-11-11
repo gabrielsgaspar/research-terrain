@@ -118,8 +118,16 @@ def cmd_decide(root: Path, args: argparse.Namespace) -> int:
         # Runs matter only to active campaigns; with none, read only today's.
         since = min(c.created for c in campaigns) if campaigns else now[:10]
         gh = GitHub(_env("GITHUB_REPOSITORY"))
+        # Failed runs' log lines, for repair tasks (decision 0014): self_repair campaigns only.
+        repairs = frozenset(c.id for c in campaigns if c.self_repair)
         snap = safe_snapshot(
-            gh, now=now, enabled=enabled, app_bot=ctx.app_bot, since=since, root=root
+            gh,
+            now=now,
+            enabled=enabled,
+            app_bot=ctx.app_bot,
+            since=since,
+            root=root,
+            log_campaigns=repairs,
         )
         actions = decide(campaigns, snap, ctx, root, finished)
     elif not enabled:

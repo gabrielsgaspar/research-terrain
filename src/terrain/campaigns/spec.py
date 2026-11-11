@@ -134,6 +134,8 @@ class Campaign:
     datasets: tuple[dict[str, Any], ...]
     steps: tuple[Step, ...]
     referee_not_applicable_ok: tuple[str, ...] = ("R5",)
+    # May the tick file a repair task for a failing pipeline_run step (decision 0014)?
+    self_repair: bool = False
     problems: tuple[str, ...] = field(default=())
 
     def step(self, step_id: str) -> Step | None:
@@ -366,7 +368,7 @@ def _check_against_repo(c: Campaign, root: Path, owners: CodeOwners, problems: l
                     f"{m.group(1)}, not {c.idea}"
                 )
             exists = (root / "explore" / f"{s.script}.py").is_file()
-            earlier = _ancestors(c, s.id)
+            earlier = ancestors(c, s.id)
             made_before = any(
                 f"explore/{s.script}.py" in c.step(a).allowed_paths
                 for a in earlier
@@ -391,7 +393,7 @@ def _check_against_repo(c: Campaign, root: Path, owners: CodeOwners, problems: l
                     "which is not listed in datasets"
                 )
             if not (root / "pipeline" / s.stage / f"{s.target}.py").is_file():
-                earlier = _ancestors(c, s.id)
+                earlier = ancestors(c, s.id)
                 path = f"pipeline/{s.stage}/{s.target}.py"
                 if not any(c.step(a) and path in c.step(a).allowed_paths for a in earlier):
                     problems.append(
@@ -400,7 +402,8 @@ def _check_against_repo(c: Campaign, root: Path, owners: CodeOwners, problems: l
                     )
 
 
-def _ancestors(c: Campaign, step_id: str) -> set[str]:
+def ancestors(c: Campaign, step_id: str) -> set[str]:
+    """Every step that `step_id` comes after, directly or through other steps."""
     out: set[str] = set()
     frontier = set(c.step(step_id).after) if c.step(step_id) else set()
     while frontier:
@@ -442,7 +445,8 @@ def parse_campaign(root: Path, folder: Path) -> Campaign:
     if not path.is_file():
         problems.append(f"{rel}: missing campaign.md")
         return Campaign(cid, rel, "", "draft", "", "", "", "", {}, (), (), problems=tuple(problems))
-    fm = read_front_matter(path.read_text(encoding="utf-8"))
+    text = path.read_text(encoding="utf-8")
+    fm = read_front_matter(text)
     if isinstance(fm, str):
         problems.append(f"{rel}/campaign.md: {fm}")
         return Campaign(cid, rel, "", "draft", "", "", "", "", {}, (), (), problems=tuple(problems))
@@ -485,6 +489,15 @@ def parse_campaign(root: Path, folder: Path) -> Campaign:
     for r in na_ok:
         if r not in REFEREE_IDS:
             problems.append(f"{where}: referee_not_applicable_ok lists unknown check '{r}'")
+    self_repair = fm.get("self_repair", False)
+    raw_repair = re.search(r"^self_repair:[ \t]*(.*?)[ \t]*(#.*)?$", text, re.M)
+    if "self_repair" in fm and (
+        not isinstance(self_repair, bool)
+        or not raw_repair
+        or raw_repair.group(1) not in ("true", "false")
+    ):
+        problems.append(f"{where}: self_repair must be true or false")
+        self_repair = False
     datasets = tuple(fm.get("datasets") or ()) if isinstance(fm.get("datasets", []), list) else ()
     if not isinstance(fm.get("datasets", []), list):
         problems.append(f"{where}: datasets must be a list")
@@ -517,6 +530,7 @@ def parse_campaign(root: Path, folder: Path) -> Campaign:
         datasets=datasets,
         steps=tuple(steps),
         referee_not_applicable_ok=na_ok,
+        self_repair=self_repair,
     )
     _check_graph(c, problems)
     _check_datasets(c, problems)
