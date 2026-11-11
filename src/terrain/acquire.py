@@ -15,6 +15,7 @@ import gzip
 import hashlib
 import json
 import os
+import re
 import tempfile
 import zipfile
 from contextlib import contextmanager
@@ -23,6 +24,8 @@ from http.client import IncompleteRead
 from itertools import product
 from pathlib import Path
 from typing import Any, NamedTuple
+from urllib.parse import urlsplit
+from xml.etree import ElementTree
 
 from terrain.catalog import dataset
 from terrain.http import Fetcher, Headers, HTTPStatusError, UrllibFetcher
@@ -31,6 +34,8 @@ from terrain.storage import GCSStore, Store
 
 CHUNK = 1 << 20
 MAX_FAILURES = 8  # stalls or bad resumes tolerated per file
+COUNT_LIMIT = 1 << 16  # bytes; a WFS hits answer is one short XML element
+COUNT_TYPES = ("wfs_hits",)
 
 
 class AcquireError(RuntimeError):
@@ -42,6 +47,32 @@ class WantedFile(NamedTuple):
     check: dict[str, Any]
     name: str  # stored file name
     meta: str | None  # URL of a JSON record that gives the version, if any
+    count: str | None = None  # URL of a WFS resultType=hits answer: the rows expected
+
+
+def _count_url(item: dict[str, Any]) -> str | None:
+    """The `count:` URL of a catalog file, after checking its declaration.
+
+    `count: {type: wfs_hits, url: ...}` replaces the byte-size check for a file
+    served without a Content-Length: its data rows must equal the server's
+    numberMatched. Only for csv checks, whose min_rows and columns still apply,
+    and never next to `meta:`.
+    """
+    count = item.get("count")
+    if count is None:
+        return None
+    url = item["url"]
+    if not isinstance(count, dict) or set(count) != {"type", "url"}:
+        raise AcquireError(f"{url}: count must be {{type, url}}")
+    if count["type"] not in COUNT_TYPES:
+        raise AcquireError(f"{url}: unknown count type {count['type']}")
+    if not isinstance(count["url"], str) or urlsplit(count["url"]).scheme != "https":
+        raise AcquireError(f"{url}: count url must be https")
+    if item.get("meta") is not None:
+        raise AcquireError(f"{url}: count and meta cannot both be given")
+    if item["check"].get("type") != "csv":
+        raise AcquireError(f"{url}: count needs a csv check")
+    return count["url"]
 
 
 def expand_urls(entry: dict[str, Any]) -> list[WantedFile]:
@@ -53,14 +84,14 @@ def expand_urls(entry: dict[str, Any]) -> list[WantedFile]:
         for year, uf in product(years, ufs):
             url = item["url"]
             meta = item.get("meta")
-            if year is not None:
-                url = url.replace("<year>", year)
-                meta = meta.replace("<year>", year) if meta else meta
-            if uf is not None:
-                url = url.replace("<uf>", uf)
-                meta = meta.replace("<uf>", uf) if meta else meta
+            count = _count_url(item)
+            for key, value in (("<year>", year), ("<uf>", uf)):
+                if value is not None:
+                    url = url.replace(key, value)
+                    meta = meta.replace(key, value) if meta else meta
+                    count = count.replace(key, value) if count else count
             name = item.get("name") or url.rsplit("/", 1)[-1]
-            out.append(WantedFile(url, item["check"], name, meta))
+            out.append(WantedFile(url, item["check"], name, meta, count))
     names = [f.name for f in out]
     if len(names) != len(set(names)):
         raise AcquireError(f"{entry['name']}: two URLs share a file name")
@@ -76,8 +107,10 @@ def _check_zip(path: Path, member: str | None) -> None:
             raise AcquireError(f"{path.name}: no member matching {member}")
 
 
-def _check_csv(path: Path, columns: list[str], forbid_columns: list[str], min_rows: int) -> None:
+def _check_csv(path: Path, columns: list[str], forbid_columns: list[str], min_rows: int) -> int:
     """Header has every `columns` name and no `forbid_columns` name; enough rows.
+
+    Returns the number of data rows (non-blank records after the header).
 
     Messages name the file, the catalog's column names and counts only, never a
     cell of the file (an HTML page's first line must not be echoed).
@@ -102,14 +135,18 @@ def _check_csv(path: Path, columns: list[str], forbid_columns: list[str], min_ro
         raise AcquireError(f"{path.name}: not readable as CSV") from None
     if rows < min_rows:
         raise AcquireError(f"{path.name}: {rows} data rows, expected at least {min_rows}")
+    return rows
 
 
-def check_file(path: Path, check: dict[str, Any]) -> None:
-    """Raise `AcquireError` unless `path` passes its catalog check."""
+def check_file(path: Path, check: dict[str, Any]) -> int | None:
+    """Raise `AcquireError` unless `path` passes its catalog check.
+
+    Returns the number of data rows for a csv check, else None.
+    """
     kind = check["type"]
     try:
         if kind == "csv":
-            _check_csv(
+            return _check_csv(
                 path,
                 list(check["columns"]),
                 list(check.get("forbid_columns", [])),
@@ -129,6 +166,29 @@ def check_file(path: Path, check: dict[str, Any]) -> None:
         raise AcquireError(f"{path.name}: not a valid zip") from err
     except (gzip.BadGzipFile, EOFError, OSError) as err:
         raise AcquireError(f"{path.name}: not a complete gzip stream") from err
+    return None
+
+
+def wfs_hits(body: bytes, url: str) -> int:
+    """numberMatched from a WFS 2.0 `GetFeature&resultType=hits` answer.
+
+    Refuses anything but a FeatureCollection with an integer numberMatched (a
+    GeoServer ExceptionReport, "unknown", a page). Messages never echo the body.
+    """
+    if len(body) > COUNT_LIMIT:
+        raise AcquireError(f"{url}: count answer over {COUNT_LIMIT} bytes")
+    if b"<!DOCTYPE" in body or b"<!ENTITY" in body:
+        raise AcquireError(f"{url}: count answer has a DTD")
+    try:
+        root = ElementTree.fromstring(body)
+    except ElementTree.ParseError:
+        raise AcquireError(f"{url}: count answer is not XML") from None
+    if root.tag.rsplit("}", 1)[-1] != "FeatureCollection":
+        raise AcquireError(f"{url}: count answer is not a WFS FeatureCollection")
+    value = root.get("numberMatched", "")
+    if not re.fullmatch(r"[0-9]+", value):
+        raise AcquireError(f"{url}: count answer has no integer numberMatched")
+    return int(value)
 
 
 def _source(url: str, h: Headers) -> dict[str, Any]:
@@ -144,8 +204,8 @@ def _unchanged(old: dict[str, Any], current: list[dict[str, Any]]) -> bool:
     old_by_url = {s.get("url"): s for s in old.get("sources", [])}
     if set(old_by_url) != {s["url"] for s in current}:
         return False
-    keys = ("last_modified", "etag", "bytes")
-    return all(all(old_by_url[s["url"]].get(k) == s[k] for k in keys) for s in current)
+    keys = ("last_modified", "etag", "bytes", "rows")
+    return all(all(old_by_url[s["url"]].get(k) == s.get(k) for k in keys) for s in current)
 
 
 class _Short(Exception):
@@ -243,7 +303,8 @@ def acquire(
     files_wanted = expand_urls(entry)
 
     heads: dict[str, Headers] = {}
-    expected_size: dict[str, int] = {}
+    expected_size: dict[str, int | None] = {}
+    expected_rows: dict[str, int] = {}
     sources: list[dict[str, Any]] = []
     for f in files_wanted:
         if f.meta is not None:
@@ -265,10 +326,14 @@ def acquire(
         else:
             heads[f.url] = fetcher.head(f.url)
             length = heads[f.url].content_length
-            if length is None:
+            source = _source(f.url, heads[f.url])
+            if f.count is not None:
+                expected_rows[f.url] = wfs_hits(fetcher.read(f.count, COUNT_LIMIT + 1), f.count)
+                source["rows"] = expected_rows[f.url]
+            elif length is None:
                 raise AcquireError(f"{f.url}: no Content-Length")
             expected_size[f.url] = length
-            sources.append(_source(f.url, heads[f.url]))
+            sources.append(source)
 
     old = latest_manifest(store, root)
     if old is not None and _unchanged(old, sources):
@@ -290,10 +355,14 @@ def acquire(
         expected = expected_size[f.url]
         digest = _download(fetcher, f.url, heads.get(f.url), dest, expected)
         size = dest.stat().st_size
-        if size != expected:
+        if expected is not None and size != expected:
             raise AcquireError(f"{f.name}: got {size} bytes, expected {expected}")
-        check_file(dest, f.check)
-        local.append((f.name, dest, digest, expected))
+        rows = check_file(dest, f.check)
+        if f.url in expected_rows and rows != expected_rows[f.url]:
+            raise AcquireError(
+                f"{f.name}: {rows} data rows, the server's count is {expected_rows[f.url]}"
+            )
+        local.append((f.name, dest, digest, size))
 
     prefix = _free_prefix(store, root, today)
     files: list[dict[str, Any]] = []

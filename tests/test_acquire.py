@@ -85,6 +85,8 @@ class FakeFetcher:
         self.declared: dict[str, int] = {}
         self.no_length: set[str] = set()
         self.records: dict[str, object] = {}
+        self.texts: dict[str, bytes] = {}  # small bodies served by read()
+        self.reads: list[str] = []
         self.stalls: dict[str, int] = {}  # downloads still to stall, per URL
         self.resume_status = 206
         self.requests: list[tuple[str, int]] = []  # (url, offset) of every GET
@@ -113,6 +115,10 @@ class FakeFetcher:
 
     def json(self, url: str):
         return self.records[url]
+
+    def read(self, url: str, limit: int) -> bytes:
+        self.reads.append(url)
+        return self.texts[url][:limit]
 
     @contextmanager
     def get_from(self, url: str, offset: int):
@@ -677,3 +683,207 @@ def test_no_url_or_dataset_folder_in_code():
         assert "https://" not in text, path
         for folder in folders:
             assert folder not in text, (path, folder)
+
+
+# --- csv files without a byte size, checked by the WFS row count ------------
+
+WURL = "https://example.test/ows?request=GetFeature&outputFormat=csv"
+HITS = "https://example.test/ows?request=GetFeature&resultType=hits"
+LAST_MODIFIED = "Mon, 01 Jan 2024 00:00:00 GMT"  # what FakeFetcher sends
+WCHECK = {"type": "csv", "columns": ["FID", "uf"], "forbid_columns": ["geologo"], "min_rows": 3}
+
+
+def wentry(**over) -> dict:
+    item = {
+        "url": WURL,
+        "name": "points.csv",
+        "count": {"type": "wfs_hits", "url": HITS},
+        "check": dict(WCHECK),
+    }
+    item.update(over)
+    return {"name": "test_ds", "gcs": ROOT, "acquire": {"files": [item]}}
+
+
+def points_csv(rows: int, header: str = "FID,uf") -> bytes:
+    lines = [header] + [f"p.{i},PA" for i in range(rows)]
+    return ("\r\n".join(lines) + "\r\n").encode("utf-8")
+
+
+def hits_xml(matched: str) -> bytes:
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<wfs:FeatureCollection xmlns:wfs="http://www.opengis.net/wfs/2.0" '
+        f'numberMatched="{matched}" numberReturned="0" timeStamp="2026-11-11T00:00:00Z"/>'
+    ).encode()
+
+
+def wfs_fetcher(rows: int = 5, matched: int | str | None = None) -> FakeFetcher:
+    """A GeoServer-like source: no Content-Length and no ETag."""
+    f = FakeFetcher(urls=[WURL])
+    f.bodies[WURL] = points_csv(rows)
+    f.no_length.add(WURL)
+    f.etags[WURL] = ""
+    f.texts[HITS] = hits_xml(str(rows if matched is None else matched))
+    return f
+
+
+def wrun(store, fetcher, tmp_path, entry=None, today=date(2025, 3, 1)):
+    return run(store, fetcher, tmp_path, today=today, entry=entry or wentry())
+
+
+def test_csv_without_content_length_and_without_count_raises(tmp_path):
+    # the failure of campaign 0007 s5 (run 43113036449): GeoServer sends no Content-Length
+    store = MemoryStore()
+    entry = wentry()
+    del entry["acquire"]["files"][0]["count"]
+    with pytest.raises(AcquireError, match="no Content-Length"):
+        wrun(store, wfs_fetcher(), tmp_path, entry=entry)
+    assert store.list("") == []
+
+
+def test_rows_equal_to_the_wfs_count_are_accepted(tmp_path):
+    store = MemoryStore()
+    f = wfs_fetcher(rows=5)
+    m = wrun(store, f, tmp_path)
+    assert m["status"] == "created"
+    assert validate_manifest(m, stage="acquire", dataset="test_ds") == []
+    assert m["sources"] == [
+        {"url": WURL, "last_modified": LAST_MODIFIED, "etag": "", "bytes": None, "rows": 5}
+    ]
+    body = f.bodies[WURL]
+    assert m["files"] == [
+        {
+            "path": m["gcs_prefix"] + "points.csv",
+            "sha256": hashlib.sha256(body).hexdigest(),
+            "bytes": len(body),
+        }
+    ]
+    assert f.reads == [HITS]
+
+
+@pytest.mark.parametrize("matched", [4, 6])
+def test_rows_different_from_the_wfs_count_raise(tmp_path, matched):
+    store = MemoryStore()
+    with pytest.raises(AcquireError, match="5 data rows, the server's count is"):
+        wrun(store, wfs_fetcher(rows=5, matched=matched), tmp_path)
+    assert store.list("") == []
+
+
+def test_a_cut_stream_is_caught_by_the_count(tmp_path):
+    # the stream ends early with no error: no byte size to compare, the count catches it
+    store = MemoryStore()
+    f = wfs_fetcher(rows=40)
+    f.bodies[WURL] = f.bodies[WURL][: len(f.bodies[WURL]) // 2]
+    with pytest.raises(AcquireError, match="the server's count is 40"):
+        wrun(store, f, tmp_path)
+    assert store.list("") == []
+
+
+def test_count_keeps_the_csv_checks(tmp_path):
+    store = MemoryStore()
+    with pytest.raises(AcquireError, match="expected at least 3"):
+        wrun(store, wfs_fetcher(rows=2), tmp_path)
+    f = wfs_fetcher(rows=5)
+    f.bodies[WURL] = points_csv(5, header="FID,uf,geologo")
+    with pytest.raises(AcquireError, match="forbidden columns"):
+        wrun(store, f, tmp_path)
+    f = wfs_fetcher(rows=5)
+    f.bodies[WURL] = points_csv(5, header="FID,sigla")
+    with pytest.raises(AcquireError, match="missing columns"):
+        wrun(store, f, tmp_path)
+    assert store.list("") == []
+
+
+def test_count_keeps_a_content_length_when_one_is_sent(tmp_path):
+    store = MemoryStore()
+    f = wfs_fetcher(rows=5)
+    f.no_length.discard(WURL)
+    f.declared[WURL] = len(f.bodies[WURL]) + 7
+    with pytest.raises(AcquireError):
+        wrun(store, f, tmp_path)
+    assert store.list("") == []
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        hits_xml("unknown"),
+        hits_xml(""),
+        hits_xml("-3"),
+        hits_xml("1e3"),
+        hits_xml("\u0665"),  # a non-ASCII digit
+        b'<?xml version="1.0"?><ows:ExceptionReport xmlns:ows="http://www.opengis.net/ows/1.1"/>',
+        b'<FeatureCollection numberReturned="0"/>',
+        b"<html><body>Zeca</body></html",
+        b'<!DOCTYPE x [<!ENTITY a "aaaa">]><FeatureCollection numberMatched="5"/>',
+        hits_xml("5") + b" " * (1 << 16),
+    ],
+)
+def test_bad_count_answers_raise_before_any_download(tmp_path, answer):
+    store = MemoryStore()
+    f = wfs_fetcher(rows=5)
+    f.texts[HITS] = answer
+    with pytest.raises(AcquireError) as err:
+        wrun(store, f, tmp_path)
+    assert "Zeca" not in str(err.value)
+    assert f.requests == []
+    assert store.list("") == []
+
+
+def test_same_count_is_unchanged_and_a_new_count_is_a_new_folder(tmp_path):
+    store = MemoryStore()
+    first = wrun(store, wfs_fetcher(rows=5), tmp_path)
+    write_manifest(first, store, tmp_path / "m.json")
+
+    again = wfs_fetcher(rows=5)
+    second = wrun(store, again, tmp_path)
+    assert second["status"] == "unchanged"
+    assert second["gcs_prefix"] == first["gcs_prefix"]
+    assert again.requests == []
+
+    third = wrun(store, wfs_fetcher(rows=6), tmp_path)
+    assert third["status"] == "created"
+    assert third["gcs_prefix"] == f"{ROOT}2025-03-01-2/"
+
+
+@pytest.mark.parametrize(
+    "over",
+    [
+        {"count": {"type": "rows", "url": HITS}},
+        {"count": {"type": "wfs_hits", "url": "http://example.test/hits"}},
+        {"count": {"type": "wfs_hits", "url": HITS, "min": 1}},
+        {"count": {"type": "wfs_hits"}},
+        {"count": HITS},
+        {"meta": "https://example.test/items/abc?f=json"},
+        {"check": {"type": "zip", "member": "*.csv"}},
+    ],
+)
+def test_bad_count_declarations_raise(over):
+    with pytest.raises(AcquireError):
+        expand_urls(wentry(**over))
+
+
+def test_count_url_expands_like_the_file_url():
+    entry = wentry(
+        url="https://example.test/<uf>_<year>.csv",
+        name=None,
+        years=[2024],
+        ufs=["PA"],
+        count={"type": "wfs_hits", "url": "https://example.test/hits?uf=<uf>&year=<year>"},
+    )
+    (f,) = expand_urls(entry)
+    assert (f.url, f.count) == (
+        "https://example.test/PA_2024.csv",
+        "https://example.test/hits?uf=PA&year=2024",
+    )
+
+
+def test_real_sgb_count_is_the_hits_of_the_same_layer():
+    (sgb,) = expand_urls(dataset("sgb_gold_occurrences"))
+    assert sgb.count is not None and sgb.meta is None
+    assert "resultType=hits" in sgb.count
+    assert "typeNames=geosgb:ocorrencias_recursos_minerais" in sgb.count
+    assert "typeNames=geosgb:ocorrencias_recursos_minerais" in sgb.url
+    assert "geologo" not in sgb.count
+    assert sgb.check["min_rows"] == 30000
+    assert all(f.count is None for f in expand_urls(dataset("gold_price")))

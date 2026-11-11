@@ -46,6 +46,10 @@ class Fetcher(Protocol):
         """GET `url` and return the parsed JSON body."""
         ...
 
+    def read(self, url: str, limit: int) -> bytes:
+        """GET `url` and return at most `limit` bytes of its body (a record, never a data file)."""
+        ...
+
     def get_from(
         self, url: str, offset: int
     ) -> AbstractContextManager[tuple[int, str, Headers, BinaryIO]]:
@@ -91,6 +95,10 @@ class UrllibFetcher:
     def json(self, url: str) -> Any:
         with _urlopen(_request(url, "GET")) as resp:
             return json.loads(resp.read().decode("utf-8"))
+
+    def read(self, url: str, limit: int) -> bytes:
+        with _urlopen(_request(url, "GET")) as resp:
+            return resp.read(limit)
 
     @contextmanager
     def get_from(self, url: str, offset: int) -> Iterator[tuple[int, str, Headers, BinaryIO]]:
