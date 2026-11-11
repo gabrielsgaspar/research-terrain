@@ -28,8 +28,9 @@ can change a campaign while it runs.
 1. Design it with the `campaign-design` skill in Claude Code. The skill
    checks what is already known, interviews you, and opens a PR with the
    campaign folder.
-2. Merge that PR with `status: active`. The next tick (every three hours, or
-   run `campaign-tick` by hand) opens the tracking issue.
+2. Merge that PR with `status: active`. The next tick opens the tracking issue. A
+   tick runs after each workflow a step waits on, with an hourly backup, or
+   when you run `campaign-tick` by hand.
 3. The tick works through the steps in order, one at a time, inside the
    budget. Each step is logged as a comment on the tracking issue.
 4. When nothing more can run, the tick files the close-out task. Its PR

@@ -31,7 +31,7 @@ Datasets by their `data/catalog.yaml` names; anything not yet in the catalog.
 
 ## Status
 
-One of: proposed, exploring, promising, dead, registered (spec in
+One of: proposed, exploring, promising, parked, dead, registered (spec in
 `confirm/specs/`), confirmed, rejected. Add a dated line each time it changes.
 
 ## Log

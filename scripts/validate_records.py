@@ -18,6 +18,7 @@ IDEA_STATUSES = {
     "proposed",
     "exploring",
     "promising",
+    "parked",
     "dead",
     "registered",
     "confirmed",

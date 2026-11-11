@@ -1,9 +1,9 @@
 ---
 id: "0005"
 title: "Enforcement shielding around council winners' strongholds"
-status: proposed
+status: parked
 created: 2026-11-09
-updated: 2026-11-10
+updated: 2026-11-11
 datasets:
   - cell_enforcement
   - cell_exposure
