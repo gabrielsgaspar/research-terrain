@@ -26,9 +26,16 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from terrain.campaigns import markers
-from terrain.campaigns.closeout import closeout_issue
+from terrain.campaigns.closeout import closeout_issue, table
 from terrain.campaigns.codeowners import CodeOwners
-from terrain.campaigns.facts import Issue, PullRequest, Run, Snapshot, latest_plan
+from terrain.campaigns.facts import (
+    PLAN_PREFIX,
+    Issue,
+    PullRequest,
+    Run,
+    Snapshot,
+    latest_plan,
+)
 from terrain.campaigns.gate import GateContext, closeout_paths, evaluate
 from terrain.campaigns.rules import evaluate as apply_rules
 from terrain.campaigns.spec import Campaign, Step, is_protected, path_allowed
@@ -237,19 +244,24 @@ def _pr_state(st: StepState, pr: PullRequest, gctx: GateContext) -> StepState:
     return st
 
 
-def _run_state(
-    c: Campaign, s: Step, snap: Snapshot, gctx: GateContext, events: dict[str, str]
-) -> StepState:
+def _step_runs(c: Campaign, s: Step, snap: Snapshot) -> list[Run]:
+    """The runs of run step `s`, oldest first: those with its workflow and its title."""
     if s.kind == "explore_run":
         title = markers.explore_run_title(s.script, c.id, s.id)
         workflow = EXPLORE_WORKFLOW
     else:
         title = markers.pipeline_run_title(s.stage, s.target, c.id, s.id)
         workflow = PIPELINE_WORKFLOW
-    runs = sorted(
+    return sorted(
         (r for r in snap.runs if r.workflow == workflow and r.title == title),
         key=lambda r: r.created_at,
     )
+
+
+def _run_state(
+    c: Campaign, s: Step, snap: Snapshot, gctx: GateContext, events: dict[str, str]
+) -> StepState:
+    runs = _step_runs(c, s, snap)
     dispatched = events.get(f"{s.id}:dispatched", "")
     if not runs:
         if not dispatched:
@@ -318,6 +330,16 @@ def _own_issues(c: Campaign, snap: Snapshot) -> tuple[list[Issue], Issue | None,
     return mine, tracking, closeout
 
 
+def _plans(issue: Issue) -> int:
+    """How many plans were posted on the issue (each is one model job)."""
+    return sum(1 for cm in issue.comments if cm.body.startswith(PLAN_PREFIX))
+
+
+def _model_jobs(issue: Issue) -> int:
+    """Model jobs an issue used: one per plan, two per agent review (each follows one build)."""
+    return _plans(issue) + (2 * len(issue.pr.reviews) if issue.pr else 0)
+
+
 def view(c: Campaign, snap: Snapshot, gctx: GateContext) -> CampaignView:
     mine, tracking, closeout = _own_issues(c, snap)
     events = _ledger_events(tracking, c.id, snap.app_bot)
@@ -373,12 +395,9 @@ def view(c: Campaign, snap: Snapshot, gctx: GateContext) -> CampaignView:
         ),
         "max_model_jobs": 0,
     }
-    jobs = 0
-    for issue in [*by_step.values(), *([closeout] if closeout else [])]:
-        jobs += sum(1 for cm in issue.comments if cm.body.startswith("## Agent plan: "))
-        if issue.pr:
-            jobs += 2 * len(issue.pr.reviews)  # each review follows one build
-    used["max_model_jobs"] = jobs
+    used["max_model_jobs"] = sum(
+        _model_jobs(i) for i in [*by_step.values(), *([closeout] if closeout else [])]
+    )
     return CampaignView(c, tracking, closeout, states, events, used)
 
 
@@ -445,6 +464,148 @@ def _block_events(
     if holding:
         out.append((holding, _block_line(label or sid, st, owner)))
     return out
+
+
+# -- friction facts: what slowed the campaign down, for the close-out report ------
+
+
+def _hours(start: str, end: str) -> float:
+    return (_time(end) - _time(start)).total_seconds() / 3600
+
+
+def _cause_in(line: str, label: str) -> str:
+    """The cause in a ledger line that reports a block of `label`, or "" if it is not one."""
+    new = f"{label}: **blocked**. Cause: "
+    old = f"{label}: **blocked**: "  # before blocks had causes and ids
+    if line.startswith(new):
+        return line[len(new) :].split(" Needs you: ", 1)[0].strip().removesuffix(".")
+    if line.startswith(old):
+        return line[len(old) :].rsplit(" (", 1)[0].strip()
+    return ""
+
+
+def _items(body: str) -> list[str]:
+    """The top-level `- ` lines of a ledger comment, without the dash."""
+    return [ln[2:] for ln in body.replace("\r\n", "\n").split("\n") if ln.startswith("- ")]
+
+
+def _block_causes(
+    tracking: Issue | None, cid: str, app_bot: str, new: Sequence[tuple[str, str]]
+) -> dict[str, str]:
+    """Block event -> its cause, as the ledger line that reported it says."""
+    comments: list[tuple[set[str], list[str]]] = []
+    for cm in tracking.comments if tracking else ():
+        found = markers.parse_ledger(cm.body) if cm.author == app_bot else None
+        if found and found[0] == cid:
+            comments.append((found[1], _items(cm.body)))
+    comments += [({name}, [line]) for name, line in new]
+    causes: dict[str, str] = {}
+    for names, items in comments:
+        for name in sorted(names):
+            sid, sep, _ = name.partition(":blocked")
+            if not sep or name in causes:
+                continue
+            label = "close-out" if sid == "closeout" else sid
+            cause = next((x for x in (_cause_in(it, label) for it in items) if x), "")
+            if cause:
+                causes[name] = cause
+    return causes
+
+
+def friction_facts(v: CampaignView, snap: Snapshot, new: Sequence[tuple[str, str]] = ()) -> str:
+    """What slowed the campaign down, as plain facts from the ledger and GitHub.
+
+    `new` holds the ledger events this tick is about to post; the campaign is
+    taken to finish now if its `finished` event is not posted yet. No model is
+    involved: every number is counted from what the tick already reads.
+    """
+    c = v.campaign
+    events = dict(v.events)
+    for name, _ in new:
+        events.setdefault(name, snap.now)
+    events.setdefault("finished", snap.now)
+    causes = _block_causes(v.tracking, c.id, snap.app_bot, new)
+
+    blocks = sorted(
+        (events[name], sid, name)
+        for sid in [*(s.id for s in c.steps), "closeout"]
+        for name in _blocks(sid, events)
+    )
+    block_rows = [
+        [
+            "close-out" if sid == "closeout" else sid,
+            causes.get(name, "not readable from the ledger line"),
+            when,
+            f"{_hours(when, events[_unblocked(name)]):.1f}"
+            if _unblocked(name) in events
+            else "never",
+        ]
+        for when, sid, name in blocks
+    ]
+
+    task_rows, smooth = [], []
+    for s in c.steps:
+        issue = v.states[s.id].issue
+        if s.kind != "task" or issue is None:
+            continue
+        plans = _plans(issue)
+        fixes = max(len(issue.pr.reviews) - 1, 0) if issue.pr else 0
+        if plans > 1 or fixes:
+            task_rows.append([s.id, str(plans), str(fixes), str(_model_jobs(issue))])
+        else:
+            smooth.append(s.id)
+
+    run_rows = []
+    for s in c.steps:
+        runs = _step_runs(c, s, snap) if s.kind != "task" else []
+        if len(runs) > 1:
+            ended = ", ".join(f"{r.id} {r.conclusion or r.status}" for r in runs)
+            run_rows.append([s.id, str(len(runs)), ended])
+
+    at: dict[str, list[str]] = {}
+    for name, when in events.items():
+        at.setdefault(when, []).append(name)
+    times = sorted(at, key=_time)
+    gaps = sorted(
+        ((_hours(a, b), a, b) for a, b in zip(times, times[1:], strict=False)),
+        key=lambda g: (-g[0], _time(g[1])),
+    )[:3]
+
+    def names(when: str) -> str:
+        return ", ".join(f"`{n}`" for n in sorted(at[when])) + f" ({when})"
+
+    gap_rows = [[f"{h:.1f}", names(a), names(b)] for h, a, b in gaps]
+
+    def group(rows: list[list[str]], header: list[str]) -> str:
+        return table(header, rows) if rows else "None."
+
+    started = events.get("started", "")
+    wall = (
+        f"Wall-clock time from `started` ({started}) to `finished` ({events['finished']}): "
+        f"{_hours(started, events['finished']):.1f} hours."
+        if started
+        else "Wall-clock time: none (the ledger has no `started` event)."
+    )
+    smooth_line = f"\n\nOne plan and no fix round: {', '.join(smooth)}." if smooth else ""
+    return f"""### Blocks
+
+{group(block_rows, ["Step", "Cause", "Posted", "Hours until unblocked"])}
+
+### Task steps with more than one plan or a fix round
+
+{group(task_rows, ["Step", "Plans posted", "Fix rounds", "Model jobs"])}{smooth_line}
+
+### Run steps that took more than one run
+
+{group(run_rows, ["Step", "Runs", "Run ids and how they ended"])}
+
+### Time
+
+{wall}
+
+The three longest gaps between two ledger events:
+
+{group(gap_rows, ["Hours", "After", "Before"])}"""
 
 
 def _tracking_body(c: Campaign) -> str:
@@ -676,7 +837,15 @@ def decide(
                     f"{s.id}: {line}" for s in c.steps for line in v.states[s.id].verdict_lines
                 ]
                 title, body = closeout_issue(
-                    c, root, rows, v.used, reason, v.tracking.number, final, applied
+                    c,
+                    root,
+                    rows,
+                    v.used,
+                    reason,
+                    v.tracking.number,
+                    final,
+                    applied,
+                    friction_facts(v, snap, new),
                 )
                 doing.append(
                     {

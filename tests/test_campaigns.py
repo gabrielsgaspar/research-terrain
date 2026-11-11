@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 
 from terrain.campaigns import markers
+from terrain.campaigns.closeout import REPORT_OPENING, REPORT_SECTIONS, number_word
 from terrain.campaigns.codeowners import CodeOwners
 from terrain.campaigns.facts import Comment, Issue, PullRequest, Review, Run, Snapshot, parse_review
 from terrain.campaigns.gate import GateContext, evaluate
@@ -1215,3 +1216,146 @@ def test_github_reader_counts_only_approvals_of_the_head(reviews, approvals):
         }
     )
     assert gh.pull_request(41, with_issue=False).approvals == approvals
+
+
+# -- friction facts in the close-out issue ----------------------------------------
+
+
+def closeout_body(actions) -> str:
+    (body,) = [a["body"] for a in actions if "close out campaign" in a.get("title", "")]
+    return body
+
+
+def friction_groups(body: str) -> dict[str, str]:
+    """The friction facts of a close-out body, by group heading."""
+    facts = body.split("## Friction facts (written by the tick; copy as is)\n", 1)[1]
+    facts = facts.split("\n## In scope", 1)[0]
+    groups = {}
+    for part in facts.split("### ")[1:]:
+        head, _, text = part.partition("\n")
+        groups[head] = text.strip()
+    return groups
+
+
+def test_closeout_carries_every_block_and_the_fix_rounds(tmp_path):
+    """Two blocks on s1 (one cleared, one not) and one fix round on its PR."""
+    root = make_repo(tmp_path)
+    ledgers = [ledger("started", "s1:filed", at="2026-11-09T00:30:00Z")]
+    replanned = step_issue(root, [bad_plan(), good_plan("2026-11-09T03:00:00Z")])
+    for now, issue in (
+        ("2026-11-09T02:00:00Z", step_issue(root, [bad_plan()])),
+        ("2026-11-09T04:00:00Z", replanned),
+    ):
+        ledgers += posted(run_decide(root, snap([tracking(ledgers), issue], now=now)), now)
+    reviews = (
+        Review("changes", "b" * 12, dict(REFEREE_OK), "2026-11-09T04:30:00Z"),
+        Review("approve", SHA[:12], dict(REFEREE_OK), "2026-11-09T04:40:00Z"),
+    )
+    issue = replace(
+        replanned,
+        labels=("campaign", "explore", "agent-build", "needs-human"),
+        pr=task_pr(root, reviews=reviews),
+    )
+    now = "2026-11-09T05:00:00Z"
+    ledgers += posted(run_decide(root, snap([tracking(ledgers), issue], now=now)), now)
+    stop = tracking(ledgers, labels=("campaign", "campaign-stop"))
+    body = closeout_body(run_decide(root, snap([stop, issue], now="2026-11-09T07:00:00Z")))
+    groups = friction_groups(body)
+    blocks = groups["Blocks"]
+    outside = "the plan lists files outside the step's allowed paths: ['src/terrain/x.py']"
+    assert f"| s1 | {outside} | 2026-11-09T02:00:00Z | 2.0 |" in blocks
+    stopped = "an agent stopped and labelled it needs-human"
+    assert f"| s1 | {stopped} | 2026-11-09T05:00:00Z | never |" in blocks
+    assert blocks.count("\n| s1 |") == 2
+    # two plans, two agent reviews: one fix round, 2 + 2 * 2 model jobs
+    tasks = groups["Task steps with more than one plan or a fix round"]
+    assert "| s1 | 2 | 1 | 6 |" in tasks
+    time = groups["Time"]
+    assert "2026-11-09T00:30:00Z) to `finished` (2026-11-09T07:00:00Z): 6.5 hours." in time
+    assert time.count("\n| 2.0 |") == 2 and "| 1.5 |" in time
+    # the report must list those blocks; "none" only without block rows
+    assert '"Stops and blocks" copies the friction facts above' in body
+
+
+def test_closeout_counts_the_runs_of_a_run_step(tmp_path):
+    root = make_repo(tmp_path)
+    events = ("started", "s1:filed", "s1:merged", "s2:dispatched")
+    failed = replace(record_run(), id=554, conclusion="failure", created_at="2026-11-09T04:00:00Z")
+    s = snap(
+        [tracking([ledger(*events)]), merged_issue(root)],
+        runs=[failed, record_run()],
+        record_prs={555: record_pr(merged=True, state="closed")},
+        results={"research/explore-runs/0003/555.json": {"races": {"1pct": 45}}},
+    )
+    groups = friction_groups(closeout_body(run_decide(root, s)))
+    assert (
+        "| s2 | 2 | 554 failure, 555 success |" in groups["Run steps that took more than one run"]
+    )
+
+
+def test_closeout_without_friction_says_none(tmp_path):
+    root = make_repo(tmp_path)
+    # one plan, one approving review, one run, no block
+    events = ("started", "s1:filed", "s1:merged", "s2:dispatched")
+    s = snap(
+        [tracking([ledger(*events)]), merged_issue(root)],
+        runs=[record_run()],
+        record_prs={555: record_pr(merged=True, state="closed")},
+        results={"research/explore-runs/0003/555.json": {"races": {"1pct": 45}}},
+    )
+    groups = friction_groups(closeout_body(run_decide(root, s)))
+    assert groups["Blocks"] == "None."
+    assert groups["Task steps with more than one plan or a fix round"] == (
+        "None.\n\nOne plan and no fix round: s1."
+    )
+    assert groups["Run steps that took more than one run"] == "None."
+    # stopped before anything happened: every group says none
+    stop = tracking(labels=("campaign", "campaign-stop"))
+    groups = friction_groups(closeout_body(run_decide(root, snap([stop]))))
+    assert list(groups) == [
+        "Blocks",
+        "Task steps with more than one plan or a fix round",
+        "Run steps that took more than one run",
+        "Time",
+    ]
+    for head in list(groups)[:3]:
+        assert groups[head] == "None."
+    assert ": 0.0 hours." in groups["Time"] and groups["Time"].endswith("\n\nNone.")
+
+
+def test_closeout_body_names_every_report_section_in_order(tmp_path):
+    root = make_repo(tmp_path)
+    body = closeout_body(run_decide(root, snap([tracking(labels=("campaign", "campaign-stop"))])))
+    assert len(REPORT_SECTIONS) == 9
+    assert REPORT_SECTIONS.index("Proposed harness changes (at most three)") == (
+        REPORT_SECTIONS.index("Stops and blocks") + 1
+    )
+    places = [body.index(f"   - `## {s}`") for s in REPORT_SECTIONS]
+    assert places == sorted(places)
+    openings = [body.index(f"   - `{line}`") for line in REPORT_OPENING]
+    assert openings == sorted(openings) and openings[-1] < places[0]
+    done = body.split("## Done when", 1)[1]
+    assert f"then has the {number_word(len(REPORT_SECTIONS))} sections listed" in done
+    assert "nine sections" in done and "eight sections" not in body
+    assert "## Friction facts (written by the tick; copy as is)" in body
+    assert body.index("## Friction facts") < body.index("## In scope")
+
+
+def test_closeout_reads_the_cause_of_an_old_block_line(tmp_path):
+    """Ledgers from before blocks had ids wrote `s1: **blocked**: cause (links)`."""
+    root = make_repo(tmp_path)
+    old = Comment(
+        BOT,
+        "- s1: **blocked**: no plan two hours after filing (#10). @gabrielsgaspar\n\n"
+        + markers.ledger_marker("0001", ["s1:blocked"]),
+        "2026-11-09T03:00:00Z",
+    )
+    t = tracking(
+        [ledger("started", "s1:filed", at="2026-11-09T00:00:00Z"), old],
+        labels=("campaign", "campaign-stop"),
+    )
+    groups = friction_groups(closeout_body(run_decide(root, snap([t, step_issue(root)]))))
+    assert (
+        "| s1 | no plan two hours after filing | 2026-11-09T03:00:00Z | never |"
+        in (groups["Blocks"])
+    )
