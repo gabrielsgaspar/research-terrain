@@ -185,7 +185,7 @@ jobs:
                                     "campaign": r"^[0-9]{4}/s[0-9]{1,2}$"},
               "campaign-gate.yml": {"pr": r"^[0-9]{1,7}$"},
           }
-          MARKER = re.compile(r"<!-- campaign-(step|tracking|closeout|ledger): [0-9]{4}")
+          MARKER = re.compile(r"<!-- campaign-(step|tracking|closeout|ledger|repair): [0-9]{4}")
           TRACKING = re.compile(r"<!-- campaign-tracking: [0-9]{4} -->")
 
           def call(method, path, body=None):

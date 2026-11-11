@@ -18,6 +18,7 @@ budget:
   max_pipeline_runs: 0   # data-pipeline dispatches (acquire or build)
   max_model_jobs: 16     # planner + builder + reviewer jobs, counted from their comments
 referee_not_applicable_ok: [R5]   # referee rows that may be "Not applicable" (R5 cannot be checked before a run)
+self_repair: false       # true lets the tick file one repair task for a data-pipeline step that still fails after two retries (decision 0014)
 # oversize_reason: "..."  # needed when there are more than 8 steps: why it cannot be split, in the owner's words
 datasets: []             # new data this campaign may acquire or build; nothing else may be added
 #  - name: some_dataset          # its data/catalog.yaml name

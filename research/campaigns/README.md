@@ -50,6 +50,21 @@ can change a campaign while it runs.
 7. Every agent reads those notes as advice for its role, never as rules; checks in code are only proposed in the report, for you to batch into tasks later.
 8. The close-out may not touch the harness, the workflows, `AGENTS.md` or the skills, and the notes file changes only in a close-out you approve.
 
+## Self-repair of data steps
+
+A campaign file may say `self_repair: true` (decision 0014; the default is
+false). Then a `pipeline_run` step whose run still fails after both retries
+gets one repair task: the tick files an issue from a fixed template, with
+the failed job's last log lines as data and, as the only files it may
+change, the allowed paths of the build tasks the step comes after (never a
+protected or owned path, never explore code). The planner, builder and
+reviewer work it like any task, the gate checks it against the template,
+and the tick merges it and runs the step once more. You are asked only if
+the repair blocks or the run after it fails ("Retried 2 times, repaired
+once."). At most one repair per step and two per campaign; their model jobs
+count against the budget, and the close-out lists each one. Explore runs
+are never repaired.
+
 ## Controls
 
 | To | Do |

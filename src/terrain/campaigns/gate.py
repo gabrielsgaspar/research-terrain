@@ -10,6 +10,10 @@ pull request and the campaign files on main; no model takes part.
   before campaigns.
 - An agent pull request inside an active campaign passes only if every check
   below passes. The tick merges it; nobody else needs to.
+- A repair pull request (its issue carries a `campaign-repair` marker,
+  decision 0014) fails unless its campaign is active with `self_repair: true`,
+  its step is a pipeline_run, every file is a repair file and neither
+  protected nor owned, and the issue is the tick's template, unchanged.
 
 Code-owner review (CODEOWNERS plus the ruleset) is a second, separate lock:
 the App cannot merge an owned path even if the gate said success.
@@ -21,7 +25,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from terrain.campaigns import markers
+from terrain.campaigns import markers, repair
 from terrain.campaigns.codeowners import CodeOwners
 from terrain.campaigns.facts import PullRequest
 from terrain.campaigns.spec import NOTES_PATH, Campaign, is_protected, path_allowed
@@ -78,6 +82,61 @@ def _outside(pr: PullRequest, ctx: GateContext, why: str) -> GateResult:
     )
 
 
+def _checks(pr: PullRequest, label: str, failures: list[str], cid: str, sid: str) -> GateResult:
+    """CI and the agent review of the head commit, after the other `failures`."""
+    pending: list[str] = []
+    if pr.ci_test is None:
+        pending.append("waiting for CI's test check on the head commit")
+    elif pr.ci_test != "success":
+        failures.append(f"CI's test check is '{pr.ci_test}' on the head commit")
+    review = pr.review_of_head()
+    if review is None:
+        pending.append(f"waiting for an agent review of {pr.head_sha[:12]}")
+    elif review.verdict != "approve":
+        pending.append("the agent review asked for changes (fix rounds run on their own)")
+    if failures:
+        return GateResult(
+            "failure", _short(f"{label}: {failures[0]}"), tuple(failures + pending), cid, sid
+        )
+    if pending:
+        return GateResult("pending", _short(f"{label}: {pending[0]}"), tuple(pending), cid, sid)
+    return GateResult("success", _short(f"{label}: every check passes."), (), cid, sid)
+
+
+def _repair(pr: PullRequest, ctx: GateContext, cid: str, sid: str, n: int) -> GateResult:
+    """The gate for a repair pull request (decision 0014): anything unexpected fails."""
+    label = f"Campaign {cid} step {sid} repair"
+    campaign = next((c for c in ctx.campaigns if c.id == cid), None)
+    if campaign is None:
+        return GateResult("failure", _short(f"{label}: the campaign is not active."), (), cid, sid)
+    if not campaign.self_repair:
+        return GateResult(
+            "failure", _short(f"{label}: the campaign does not allow repairs."), (), cid, sid
+        )
+    step = campaign.step(sid)
+    if step is None or step.kind != "pipeline_run":
+        return GateResult(
+            "failure", _short(f"{label}: there is no pipeline_run step {sid}."), (), cid, sid
+        )
+    if not 1 <= n <= repair.MAX_PER_STEP:
+        return GateResult(
+            "failure", _short(f"{label}: a step gets at most one repair."), (), cid, sid
+        )
+    failures: list[str] = []
+    paths = repair.repair_paths(campaign, step, ctx.codeowners)
+    if not pr.files:
+        failures.append("the pull request changes no files")
+    bad = [f for f in pr.files if not path_allowed(f, paths)]
+    if bad:
+        failures.append(f"files outside the repair's allowed files: {bad[:5]}")
+    prot = [f for f in pr.files if is_protected(f) or ctx.codeowners.owned(f)]
+    if prot:
+        failures.append(f"protected or owned paths: {prot[:5]}")
+    if not repair.matches_template(campaign, step, pr.issue_title, pr.issue_body, paths, n):
+        failures.append("the issue is not the repair template the tick files for this step")
+    return _checks(pr, label, failures, cid, sid)
+
+
 def evaluate(pr: PullRequest, ctx: GateContext) -> GateResult:
     if pr.author != ctx.app_bot:
         return GateResult("success", "Not an agent pull request; its author merges it.")
@@ -94,10 +153,13 @@ def evaluate(pr: PullRequest, ctx: GateContext) -> GateResult:
     if m_task:
         step = markers.parse_step(pr.issue_body)
         closeout = markers.parse_closeout(pr.issue_body)
+        fixing = markers.parse_repair(pr.issue_body)
         if step:
             kind, (cid, sid) = "task", step
         elif closeout:
             kind, cid = "closeout", closeout
+        elif fixing:
+            return _repair(pr, ctx, *fixing)
     elif m_rec or m_man:
         run_id = m_rec.group(2) if m_rec else m_man.group(3)
         found = markers.parse_run_title(pr.run_title)

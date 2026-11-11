@@ -221,6 +221,11 @@ workflow carries it out; the `campaign-gate` check decides what may merge.
   rule names. A rule that cannot be applied stops the step; it never passes.
 - At most two campaigns are active, never two on the same idea. One task is
   in flight per campaign and one run across all campaigns.
+- Self-repair (decision 0014), only with `self_repair: true`: a pipeline_run
+  step still failing after both retries gets one repair task from a fixed
+  template, limited to the allowed paths of the build tasks it comes after,
+  never protected or owned. Never for explore runs, explore scripts, kill
+  rules or campaign files. At most 1 per step and 2 per campaign.
 - Never, in a campaign or not: the confirmation half, `confirm/`, accepted
   decisions, kill criteria in idea files, analysis that a step does not
   list, deleting data, personal identifiers in Git.

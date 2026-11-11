@@ -122,3 +122,6 @@ class Snapshot:
     record_prs: dict[int, PullRequest] = field(default_factory=dict)  # run id -> its record PR
     results: dict[str, object] = field(default_factory=dict)  # repo path -> parsed JSON on main
     files_on_main: frozenset[str] = frozenset()
+    # failed data-pipeline run id -> the last lines its failed job printed, raw
+    # (only for campaigns with self_repair; cleaned by terrain.campaigns.repair)
+    run_logs: dict[int, str] = field(default_factory=dict)
