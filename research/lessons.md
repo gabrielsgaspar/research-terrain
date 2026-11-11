@@ -16,6 +16,52 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-11: The 2,216 pairs missing from campaign 0006's primary were never lost; the runs count different things (idea 0006)
+- Tried: reading `explore/0006_feasibility.py` and `explore/0006_effects.py`
+  to explain why the feasibility run (42935501189) reports 23,132 close pairs
+  at 0.50% and the effects run (42939196149) reports 20,916 for the 0.50%
+  primary. No data was read and nothing new was computed. Every count below
+  comes from those two run records or the `place_outcomes` build manifest.
+- Result: both scripts build the same pair table, because the effects script
+  loads the feasibility script's functions. The 23,132 is the number of rows
+  in that table (`counts.pairs_050`). The 20,916 is the regression's
+  `n_pairs`: pairs that reach at least one polling place in its sample. A pair
+  reaches every polling place of its municipality and election, so it drops
+  only when none of those places passes all five filters:
+  1. the place has council votes (round 1, main election) in `section_votes`;
+  2. it is matched to an INEP school at high or medium confidence;
+  3. that school is municipal (`rede` 3);
+  4. `school_n_fac` is not null at E;
+  5. `school_n_fac` is not null at E+4.
+  Not a cause: the 2020 window (`place_outcomes_E2020_y2024` exists and was
+  read), the exploration half (both scripts restrict it the same way), and
+  alignment (10,072 + 10,820 + 24 = 20,916).
+  What the records settle: filter 1 drops at most 38 pairs, because the same
+  run's native-loss sample reaches 23,094. The other 2,178 or more fail
+  filters 2-5, and the records cannot split them. Other samples in the run
+  reach other counts: state schools 19,458; built-up 23,085; native loss
+  23,094; night lights 12,450 of the 12,462 pairs of 2016 and 2020.
+- Why: `n_pairs` means "pairs touching this sample", not "pairs in the
+  design". It also counts pairs that do not move the slope: pairs whose
+  candidates got no votes at any sample place (D = 0), and pairs in a
+  municipality with only one sample place, where the fixed effect absorbs D.
+- Implication: the gap cannot bias the null through filters 1-4. They are
+  fixed before the election, and the randomisation re-draws winners only
+  within pairs, so a drop there cannot depend on who won. They change whom
+  the estimate speaks for (municipalities with a usable municipal-school
+  polling place), not the comparison. Filter 5 comes after the election. If
+  a narrow win changed whether a school still reports all nine facilities at
+  E+4 (by closing, merging or missing answers), the sample would be selected
+  on the outcome. That channel works on places in kept pairs too, not just
+  on the 2,216. School places with a null count rise from E to E+4 in every
+  election (exploration half, all networks, all municipalities: 647 to 801
+  in 2008, 758 to 1,105 in 2012, 974 to 1,732 in 2016, 1,332 to 1,957 in
+  2020). Nobody has tested whether that missingness depends on D. Splitting
+  the 2,216 by filter, and an attrition check (D on "count missing at E+4"),
+  each need a new count-only explore run; neither ran. From now on, a script
+  reports pairs at each filter step, and a regression's `n_pairs` is compared
+  only with the pairs that could enter that sample.
+
 ## 2026-11-11: Narrow council wins do not move municipal-school facilities at E+4 on the exploration half (idea 0006, issue #294)
 - Tried: campaign 0006 ran `explore/0006_feasibility.py` (run 42935501189,
   `research/explore-runs/0006/42935501189.md`) and `explore/0006_effects.py`
