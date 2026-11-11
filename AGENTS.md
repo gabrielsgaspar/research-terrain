@@ -165,6 +165,9 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
 
 ### Agents
 
+- Each role's instructions (prompt, model, turn limit) are in `harness/roles/`.
+- `harness/roles/` is protected and owned: only Gabriel changes it.
+- `harness/roles/README.md` lists every agent role and where its instructions live.
 - Allowlists are enforced: every agent runs with the sandbox's
   `autoAllowBashIfSandboxed` off, so a command not on its list is refused.
 - Every build writes all its outputs locally and uploads them only after every
