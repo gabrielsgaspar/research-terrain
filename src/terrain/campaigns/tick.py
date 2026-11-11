@@ -20,6 +20,7 @@ Pacing, to stay gentle on the subscription's usage limits:
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -42,6 +43,43 @@ RUN_APPEAR_TIMEOUT = dt.timedelta(hours=2)
 RECORD_TIMEOUT = dt.timedelta(hours=3)
 BLOCK_GRACE = dt.timedelta(hours=24)  # time the owner has to unblock a step before close-out
 
+# What the owner does about each kind of block, named by where to click on GitHub.
+NEEDS_YOU = {
+    "needs_human": (
+        "open the issue or pull request, read the agent's last comment, fix what it asks, "
+        "then remove the `needs-human` label in the right-hand column"
+    ),
+    "no_plan": (
+        "open the Actions tab, look for a failed Agent plan run for this issue, "
+        "then remove and re-add the `agent-plan` label on the issue"
+    ),
+    "plan_paths": (
+        "open the issue and read the plan's Files to change; for a new plan, "
+        "remove and re-add the `agent-plan` label on the issue"
+    ),
+    "run_failed": (
+        "open the run from the Actions tab, read the failed step's log, "
+        "then choose Re-run jobs once the cause is fixed"
+    ),
+    "record_missing": (
+        "open the run from the Actions tab and read its record job; "
+        "choose Re-run failed jobs if it failed"
+    ),
+    "conflict": (
+        "open the pull request, choose Resolve conflicts (or Update branch) "
+        "at the bottom of the Conversation tab"
+    ),
+    "unreadable": (
+        "open the record and compare its results with the step's kill rules in campaign.md; "
+        "to end the campaign, add `campaign-stop` to this issue"
+    ),
+    "pr_closed": (
+        "open the pull request, read why it was closed, and choose Reopen pull request "
+        "if that was a mistake"
+    ),
+}
+NEEDS_YOU_DEFAULT = "open the links and read the last comment"
+
 IN_FLIGHT = {
     "filed",
     "planning",
@@ -61,6 +99,7 @@ RUN_IN_FLIGHT = {"waiting_run", "running", "recording", "in_review", "mergeable"
 class StepState:
     status: str  # unstarted, skipped, done, blocked, or one of IN_FLIGHT
     detail: str = ""
+    cause: str = ""  # for a block: its kind, a key of NEEDS_YOU ("" for the default)
     verdict: str = ""  # explore: killed, survived, unreadable; task: merged; pipeline: recorded
     verdict_lines: list[str] = field(default_factory=list)
     issue: Issue | None = None
@@ -149,11 +188,12 @@ def _task_state(
         return st
     if "needs-human" in issue.labels or (pr and "needs-human" in pr.labels):
         st.status, st.detail = "blocked", "an agent stopped and labelled it needs-human"
+        st.cause = "needs_human"
         return st
     plan = latest_plan(list(issue.comments))
     if plan is None:
         if _older(snap.now, issue.created_at, PLAN_TIMEOUT):
-            st.status, st.detail = "blocked", "no plan two hours after filing"
+            st.status, st.detail, st.cause = "blocked", "no plan two hours after filing", "no_plan"
         else:
             st.status = "planning"
         return st
@@ -162,7 +202,7 @@ def _task_state(
         return st
     problem = _plan_problem(plan.files, allowed, gctx.codeowners, allow_owned)
     if problem:
-        st.status, st.detail = "blocked", problem
+        st.status, st.detail, st.cause = "blocked", problem, "plan_paths"
         return st
     if pr is None:
         if "agent-build" not in issue.labels:
@@ -174,6 +214,7 @@ def _task_state(
         return st
     if pr.state != "open":
         st.status, st.detail = "blocked", f"PR #{pr.number} was closed without merging"
+        st.cause = "pr_closed"
         return st
     return _pr_state(st, pr, gctx)
 
@@ -188,6 +229,7 @@ def _pr_state(st: StepState, pr: PullRequest, gctx: GateContext) -> StepState:
         st.status, st.detail = "awaiting_gate", "the gate passes but its status is not posted yet"
     elif pr.mergeable is False:
         st.status, st.detail = "blocked", f"PR #{pr.number} has a merge conflict"
+        st.cause = "conflict"
     elif pr.mergeable is None:
         st.status, st.detail = "in_review", "GitHub is still computing whether it can merge"
     else:
@@ -221,6 +263,7 @@ def _run_state(
         return st
     if run.conclusion != "success":
         st.status, st.detail = "blocked", f"run {run.id} ended '{run.conclusion}'"
+        st.cause = "run_failed"
         return st
     pr = snap.record_prs.get(run.id)
     st.pr = pr
@@ -239,6 +282,7 @@ def _run_state(
             )
         elif _older(snap.now, finished, RECORD_TIMEOUT):
             st.status, st.detail = "blocked", "no record pull request three hours after the run"
+            st.cause = "record_missing"
         else:
             st.status = "recording"
         return st
@@ -255,11 +299,13 @@ def _run_state(
         st.verdict, st.verdict_lines = verdict.outcome, verdict.lines()
         if verdict.outcome == "unreadable":
             st.status, st.detail = "blocked", "a kill rule could not be applied to the results"
+            st.cause = "unreadable"
         else:
             st.status = "done"
         return st
     if pr.state != "open":
         st.status, st.detail = "blocked", f"record PR #{pr.number} was closed without merging"
+        st.cause = "pr_closed"
         return st
     return _pr_state(st, pr, gctx)
 
@@ -334,6 +380,71 @@ def view(c: Campaign, snap: Snapshot, gctx: GateContext) -> CampaignView:
             jobs += 2 * len(issue.pr.reviews)  # each review follows one build
     used["max_model_jobs"] = jobs
     return CampaignView(c, tracking, closeout, states, events, used)
+
+
+def block_id(cause: str, links: str) -> str:
+    """A block's id: the first 8 hex characters of the SHA-256 of its cause and links."""
+    return hashlib.sha256(f"{cause}\n{links}".encode()).hexdigest()[:8]
+
+
+def _unblocked(block_event: str) -> str:
+    """`s1:blocked:ab12cd34` -> `s1:unblocked:ab12cd34` (and `s1:blocked` -> `s1:unblocked`)."""
+    sid, _, rest = block_event.partition(":blocked")
+    return f"{sid}:unblocked{rest}"
+
+
+def _blocks(sid: str, events: dict[str, str]) -> list[str]:
+    """Every block event of step `sid` in the ledger, including the old plain `sid:blocked`."""
+    plain = f"{sid}:blocked"
+    return sorted(e for e in events if e == plain or e.startswith(plain + ":"))
+
+
+def _holding_block(sid: str, st: StepState, events: dict[str, str]) -> str:
+    """The ledger event of the block that holds step `sid` now, posted or not yet.
+
+    Each distinct block (cause, issue, pull request or run) gets its own event,
+    `sid:blocked:<id>`. The same block coming back after it was unblocked gets
+    `sid:blocked:<id>-2`, `-3` and so on, so it is reported again. A plain
+    `sid:blocked` from before blocks had ids, never unblocked, is taken to be
+    the block that still holds.
+    """
+    plain = f"{sid}:blocked"
+    if plain in events and _unblocked(plain) not in events:
+        return plain
+    base = f"{plain}:{block_id(st.detail, st.links())}"
+    name, n = base, 1
+    while name in events and _unblocked(name) in events:
+        n += 1
+        name = f"{base}-{n}"
+    return name
+
+
+def _block_line(label: str, st: StepState, owner: str) -> str:
+    cause = st.detail.strip()
+    stop = "" if cause.endswith(".") else "."
+    action = NEEDS_YOU.get(st.cause, NEEDS_YOU_DEFAULT)
+    extra = "".join(f"\n  - {ln}" for ln in st.verdict_lines)
+    return (
+        f"{label}: **blocked**. Cause: {cause}{stop} Needs you: {action}. "
+        f"({st.links() or 'no links'}) @{owner}{extra}"
+    )
+
+
+def _block_events(
+    sid: str, st: StepState, owner: str, events: dict[str, str], label: str = ""
+) -> list[tuple[str, str]]:
+    """Ledger events for step `sid`'s blocks: an unblocked line for each block that
+    no longer holds, and the block that holds now. Already posted ones are dropped
+    by the caller."""
+    holding = _holding_block(sid, st, events) if st.status == "blocked" else ""
+    out = [
+        (_unblocked(name), f"{label or sid}: unblocked.")
+        for name in _blocks(sid, events)
+        if name != holding and _unblocked(name) not in events
+    ]
+    if holding:
+        out.append((holding, _block_line(label or sid, st, owner)))
+    return out
 
 
 def _tracking_body(c: Campaign) -> str:
@@ -436,17 +547,8 @@ def decide(
                 event(f"{s.id}:recorded", f"{s.id}: {s.stage} {s.target} recorded ({st.links()}).")
             if st.status == "skipped":
                 event(f"{s.id}:skipped", f"{s.id}: skipped ({st.detail}).")
-            if st.status == "blocked":
-                extra = (
-                    ("\n" + "\n".join(f"  - {ln}" for ln in st.verdict_lines))
-                    if st.verdict_lines
-                    else ""
-                )
-                event(
-                    f"{s.id}:blocked",
-                    f"{s.id}: **blocked**: {st.detail} ({st.links() or 'no links'}). "
-                    f"@{c.owner}{extra}",
-                )
+            for name, line in _block_events(s.id, st, c.owner, v.events):
+                event(name, line)
             if stopped:
                 continue
             if st.status == "plan_ready":
@@ -548,10 +650,13 @@ def decide(
             finished = True  # nothing in flight will merge now; close out what there is
         if finished and not stopped:
             # a block posted less than a day ago (or not yet posted) gives the
-            # owner time to unblock it before the campaign closes
+            # owner time to unblock it before the campaign closes; the day counts
+            # from the newest block of the step that still holds
             for sid, st in v.states.items():
-                when = v.events.get(f"{sid}:blocked", "")
-                if st.status == "blocked" and (not when or not _older(snap.now, when, BLOCK_GRACE)):
+                if st.status != "blocked":
+                    continue
+                when = v.events.get(_holding_block(sid, st, v.events), "")
+                if not when or not _older(snap.now, when, BLOCK_GRACE):
                     finished = False
         if finished:
             reason = _reason(v, stopped, today)
@@ -586,6 +691,8 @@ def decide(
             else:
                 cst = _task_state(v.closeout, closeout_paths(c, root), snap, gctx, allow_owned=True)
                 event("closeout:filed", f"Close-out filed as #{v.closeout.number}.")
+                for name, line in _block_events("closeout", cst, c.owner, v.events, "close-out"):
+                    event(name, line)
                 if cst.status == "plan_ready":
                     doing.append(
                         {
@@ -603,16 +710,21 @@ def decide(
                             "inputs": {"pr": str(cst.pr.number)},
                         }
                     )
+                elif cst.status == "mergeable" and c.owner in cst.pr.approvals:
+                    # the owner's GitHub review approves this exact head commit:
+                    # that is how the owner accepts the report (decision 0012)
+                    event(
+                        f"closeout:approved:{cst.pr.head_sha[:12]}",
+                        f"Close-out approved by @{c.owner}; merging PR #{cst.pr.number}.",
+                    )
+                    doing.append({"type": "merge", "pr": cst.pr.number, "sha": cst.pr.head_sha})
                 elif cst.status == "mergeable":
                     event(
                         "closeout:ready",
-                        f"@{c.owner} the report is ready for you: PR #{cst.pr.number}. "
-                        "Read it, decide, and merge it yourself.",
-                    )
-                elif cst.status == "blocked":
-                    event(
-                        "closeout:blocked",
-                        f"@{c.owner} the close-out task is blocked: {cst.detail} ({cst.links()}).",
+                        f"@{c.owner} the report is ready: PR #{cst.pr.number}. To accept it, "
+                        "open the pull request, choose Files changed, then Review changes, "
+                        "then Approve. It is then merged for you. To reject it, close the "
+                        "pull request.",
                     )
                 elif cst.status == "done":
                     event("closeout:merged", "Close-out merged. The campaign is done.")
