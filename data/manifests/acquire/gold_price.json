@@ -1,0 +1,35 @@
+{
+  "dataset": "gold_price",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/prices/gold/2026-11-11/",
+  "created_at": "2026-11-11T23:36:41.443495+00:00",
+  "code_commit": "a54e559f949dc48b0e244f6d6cf03da16613ad42",
+  "sources": [
+    {
+      "url": "https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Historical-Data-Monthly.xlsx",
+      "last_modified": "Tue, 03 Nov 2026 19:30:42 GMT",
+      "etag": "",
+      "bytes": null
+    },
+    {
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPIAUCSL",
+      "last_modified": "Tue, 10 Nov 2026 14:12:46 GMT",
+      "etag": "",
+      "bytes": 17782
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/prices/gold/2026-11-11/CMO-Historical-Data-Monthly.xlsx",
+      "sha256": "3c8d9d8dbb48342fdbf24777c39a8ce8964cc2fd0958f72f6779e6e4ad99cde2",
+      "bytes": 587760
+    },
+    {
+      "path": "data/raw/prices/gold/2026-11-11/CPIAUCSL.csv",
+      "sha256": "c9be2d4909ffd28d91f07df5d113151b0fe7ba602144ee6fd453d3bc8426efde",
+      "bytes": 17782
+    }
+  ],
+  "notes": ""
+}
