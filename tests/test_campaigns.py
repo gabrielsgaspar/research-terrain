@@ -2696,3 +2696,208 @@ def test_closeout_may_not_change_the_index(tmp_path):
     assert evaluate(pr, ctx(root)).state == "success"
     result = evaluate(replace(pr, files=(*pr.files, "research/INDEX.md")), ctx(root))
     assert result.state == "failure" and "outside the close-out list" in result.description
+
+
+# -- the approval card: one page printed from the plan ------------------------------
+
+CARD_CAMPAIGN = """\
+---
+id: "0001"
+title: "Count close races"
+status: draft
+idea: "0003"
+owner: gabrielsgaspar
+created: 2026-11-08
+end_by: 2026-11-20
+budget:
+  max_tasks: 2
+  max_explore_runs: 2
+  max_pipeline_runs: 1
+  max_model_jobs: 12
+self_repair: false
+datasets:
+  - name: inpe_fires
+    source: "INPE, BDQueimadas fire points at queimadas.dgi.inpe.br; daily files"
+    licence: "CC BY-SA 4.0; INPE asks for a citation"
+    max_size_gb: 3
+    identifiers: none
+  - name: donors
+    source: "TSE donor lists, with CPFs hashed in memory"
+    licence: "public (TSE)"
+    max_size_gb: 1
+    identifiers: hashed
+steps:
+  - id: s1
+    kind: task
+    type: build
+    draft: drafts/s1.md
+    allowed_paths:
+      - pipeline/acquire/inpe_fires.py
+      - figures/fires_map.py
+    after: []
+  - id: s2
+    kind: pipeline_run
+    stage: acquire
+    target: inpe_fires
+    dataset: inpe_fires
+    after: [s1]
+  - id: s3
+    kind: task
+    type: explore
+    draft: drafts/s3.md
+    allowed_paths:
+      - explore/0003_count.py
+      - tests/test_explore_count.py
+    after: []
+  - id: s4
+    kind: explore_run
+    script: 0003_count
+    after: [s2, s3]
+    kill_rules:
+      - id: k1
+        says: "Fewer than 60 races at 1%"
+        field: races.1pct
+        op: "<"
+        value: 60
+        confirmed: true
+      - id: k2
+        says: "Pre-election placebo: randomisation-inference p below 0.10"
+        field: placebo.ri_p
+        op: "<"
+        value: 0.10
+        confirmed: true
+    on_kill: stop
+  - id: s5
+    kind: explore_run
+    script: 0003_count
+    after: [s4]
+    kill_rules:
+      - id: k1
+        says: "Balance test rejects at 5%"
+        field: balance.p_joint
+        op: "<="
+        value: 0.05
+        confirmed: false
+---
+
+# 0001: Count close races
+
+## Question
+
+Something long that the card leaves out.
+
+## Read before this runs
+
+- Smith (2020), the closest paper. Not read yet.
+
+## Steps and why
+
+Also left out.
+"""
+
+
+def card_repo(root: Path) -> Path:
+    make_repo(root, CARD_CAMPAIGN)
+    (root / "research/campaigns/0001-count/drafts/s3.md").write_text(DRAFT, encoding="utf-8")
+    return root
+
+
+def test_card_lists_every_kill_rule_and_dataset(tmp_path):
+    from terrain.campaigns.card import render_card
+
+    root = card_repo(tmp_path)
+    (c,) = load_campaigns(root)
+    assert not c.problems
+    card = render_card(root, "0001")
+    for s in c.steps:
+        for r in s.kill_rules:
+            assert f"- {s.id} {r.id}: {r.says} (`{r.field}` {r.op} " in card
+    for d in c.datasets:
+        assert f"- `{d['name']}`: " in card
+    assert "`inpe_fires`: INPE, BDQueimadas fire points at queimadas.dgi.inpe.br …" in card
+    assert "licence: CC BY-SA 4.0 … · at most 3 GB · no identifiers" in card
+    assert "`donors`: TSE donor lists …" in card and "salted hashes" in card
+    # Sections in the stated order; the prose outside "Read before this runs" stays out.
+    heads = [ln for ln in card.splitlines() if ln.startswith("### ")]
+    assert heads == [
+        "### What runs",
+        "### What stops it",
+        "### New data",
+        "### Limits",
+        "### What an agent may touch",
+        "### Read before this runs",
+    ]
+    assert "- Smith (2020), the closest paper. Not read yet." in card
+    assert "Something long" not in card and "Also left out" not in card
+    assert "Idea 0003 · ends 2026-11-20" in card.splitlines()[2]
+    # Phases end at explore runs; a kill rule not yet confirmed says so.
+    assert (
+        "- **Phase 1, s1-s4:** 1 build task and 1 explore task; fetches `inpe_fires`; "
+        "ends at s4, explore run `0003_count` (2 kill rules; a kill stops the campaign)"
+    ) in card
+    assert "- **Phase 2, s5:** no tasks; no data fetched or built; ends at s5" in card
+    assert "**Not yet confirmed.**" in card.split("- s5 k1:")[1].splitlines()[0]
+    # Limits and paths.
+    assert "at most 2 tasks, 2 explore runs, 1 pipeline run and 12 model jobs" in card
+    assert "- Self-repair: no." in card
+    assert "- 4 distinct files across all steps." in card
+    assert "`figures/fires_map.py` (s1)" in card
+    assert "words" not in card.split("### Limits")[1].split("###")[0]
+
+
+def test_card_notes_the_false_stop_rate_of_p_rules(tmp_path):
+    from terrain.campaigns.card import is_p_rule, render_card
+
+    card = render_card(card_repo(tmp_path), "0001")
+    k2 = next(ln for ln in card.splitlines() if ln.startswith("- s4 k2:"))
+    assert "p-value rule: if the design is valid, it fires by chance about 10% of the time" in k2
+    s5 = next(ln for ln in card.splitlines() if ln.startswith("- s5 k1:"))
+    assert "about 5% of the time" in s5
+    assert "p-value" not in next(ln for ln in card.splitlines() if ln.startswith("- s4 k1:"))
+    assert "**p-value rules: 2.** Together they stop a valid design up to 15% of the time" in card
+    assert not is_p_rule(rule(">", 0.10, "placebo.ri_p"))
+    assert not is_p_rule(rule("<", 0.25, "power.mde_share_025"))
+    assert is_p_rule(rule("<", 0.05, "balance.ri_p_joint"))
+
+
+def test_card_refuses_a_campaign_with_problems(tmp_path):
+    from terrain.campaigns.card import CardError, render_card
+
+    root = make_repo(tmp_path, CARD_CAMPAIGN.replace("field: races.1pct\n", ""))
+    with pytest.raises(CardError, match="has problems, so no card is printed"):
+        render_card(root, "0001")
+    with pytest.raises(CardError, match="No campaign 0009"):
+        render_card(root, "9")
+
+
+@pytest.mark.parametrize("cid", ["0004", "0006", "0007"])
+def test_cards_of_real_campaigns(cid):
+    from terrain.campaigns.card import read_first_lines, render_card
+
+    card = render_card(REPO, cid)
+    assert card == render_card(REPO, cid)  # the same on every run
+    (c,) = [c for c in load_campaigns(REPO) if c.id == cid]
+    for s in c.steps:
+        for r in s.kill_rules:
+            assert f"- {s.id} {r.id}: {' '.join(r.says.split())} (`{r.field}`" in card
+    for d in c.datasets:
+        assert f"- `{d['name']}`: " in card
+    text = (REPO / c.folder / "campaign.md").read_text(encoding="utf-8")
+    for line in read_first_lines(text) or []:
+        assert line in card
+    assert len(card.splitlines()) <= 60
+
+
+def test_card_command_prints_the_card(tmp_path, capsys):
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("campaign_cli", REPO / "scripts/campaign.py")
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+    root = card_repo(tmp_path)
+    assert cli.cmd_card(root, "0001") == 0
+    out = capsys.readouterr().out
+    from terrain.campaigns.card import render_card
+
+    assert out == render_card(root, "0001")
+    assert cli.cmd_card(root, "0002") == 1

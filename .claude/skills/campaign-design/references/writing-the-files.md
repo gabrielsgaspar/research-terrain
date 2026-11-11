@@ -169,6 +169,25 @@ uv run ruff check . && uv run ruff format --check .
 uv run pytest tests/test_campaigns.py tests/test_records.py
 ```
 
+## The approval card
+
+Once those checks pass, print the card and use it as it comes out:
+
+```bash
+uv run python scripts/campaign.py card NNNN
+```
+
+It is built by `src/terrain/campaigns/card.py` from the front matter and
+the "Read before this runs" section, so what you write there is what
+Gabriel approves. Keep each dataset's `source` and `licence` starting with
+the publisher and the licence name: the card shows only their first words
+(up to the first `;`, and for a source up to the first comma after its
+first two words; "built from" lists are kept whole). Write every kill
+rule's `says` so it stands alone on one line. Show Gabriel the card in the
+conversation, then put it unchanged at the top of the PR description under
+`## What you are approving` (SKILL.md, stage 10). Never edit its output; if
+it is wrong, fix the files and print it again.
+
 ## A worked example: the smoke-test pilot
 
 The smallest useful campaign re-runs a script that already exists, so no
