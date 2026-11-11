@@ -36,6 +36,9 @@ CHUNK = 1 << 20
 MAX_FAILURES = 8  # stalls or bad resumes tolerated per file
 COUNT_LIMIT = 1 << 16  # bytes; a WFS hits answer is one short XML element
 COUNT_TYPES = ("wfs_hits",)
+# check types whose file is a zip: its end record and directory are its last
+# bytes and every member carries a CRC-32, so the check fails on any cut file
+ZIP_CHECKS = ("zip", "ods")
 
 
 class AcquireError(RuntimeError):
@@ -48,6 +51,7 @@ class WantedFile(NamedTuple):
     name: str  # stored file name
     meta: str | None  # URL of a JSON record that gives the version, if any
     count: str | None = None  # URL of a WFS resultType=hits answer: the rows expected
+    complete_by: str | None = None  # "zip_directory": the zip check proves completeness
 
 
 def _count_url(item: dict[str, Any]) -> str | None:
@@ -75,6 +79,27 @@ def _count_url(item: dict[str, Any]) -> str | None:
     return count["url"]
 
 
+def _complete_by(item: dict[str, Any]) -> str | None:
+    """The `complete_by:` of a catalog file, after checking its declaration.
+
+    `complete_by: zip_directory` lets a zip served without a Content-Length be
+    accepted: a cut zip loses its end record, and the zip check reads the
+    directory and every member's CRC-32, so it fails on any short or damaged
+    file. Only for zip-type checks, never next to `meta:` or `count:`.
+    """
+    value = item.get("complete_by")
+    if value is None:
+        return None
+    url = item["url"]
+    if value != "zip_directory":
+        raise AcquireError(f"{url}: unknown complete_by {value}")
+    if item.get("meta") is not None or item.get("count") is not None:
+        raise AcquireError(f"{url}: complete_by cannot be given with meta or count")
+    if item["check"].get("type") not in ZIP_CHECKS:
+        raise AcquireError(f"{url}: complete_by zip_directory needs a zip or ods check")
+    return value
+
+
 def expand_urls(entry: dict[str, Any]) -> list[WantedFile]:
     """Every file the entry's `acquire.files` expands to, in catalog order."""
     out: list[WantedFile] = []
@@ -91,7 +116,7 @@ def expand_urls(entry: dict[str, Any]) -> list[WantedFile]:
                     meta = meta.replace(key, value) if meta else meta
                     count = count.replace(key, value) if count else count
             name = item.get("name") or url.rsplit("/", 1)[-1]
-            out.append(WantedFile(url, item["check"], name, meta, count))
+            out.append(WantedFile(url, item["check"], name, meta, count, _complete_by(item)))
     names = [f.name for f in out]
     if len(names) != len(set(names)):
         raise AcquireError(f"{entry['name']}: two URLs share a file name")
@@ -330,7 +355,7 @@ def acquire(
             if f.count is not None:
                 expected_rows[f.url] = wfs_hits(fetcher.read(f.count, COUNT_LIMIT + 1), f.count)
                 source["rows"] = expected_rows[f.url]
-            elif length is None:
+            elif length is None and f.complete_by is None:
                 raise AcquireError(f"{f.url}: no Content-Length")
             expected_size[f.url] = length
             sources.append(source)

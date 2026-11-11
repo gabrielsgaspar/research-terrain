@@ -887,3 +887,151 @@ def test_real_sgb_count_is_the_hits_of_the_same_layer():
     assert "geologo" not in sgb.count
     assert sgb.check["min_rows"] == 30000
     assert all(f.count is None for f in expand_urls(dataset("gold_price")))
+
+
+# --- zips without a byte size, whose own directory proves them complete ------
+
+ZURL = "https://example.test/related/Prices.xlsx"
+ZCHECK = {"type": "zip", "member": "xl/workbook.xml"}
+
+
+def small_xlsx() -> bytes:
+    sheet = b"".join(b'<row r="%d"><c r="A%d"><v>%d</v></c></row>' % (i, i, i) for i in range(60))
+    return make_zip({"xl/workbook.xml": b"<workbook/>", "xl/worksheets/sheet1.xml": sheet})
+
+
+def zentry(**over) -> dict:
+    item = {"url": ZURL, "name": "Prices.xlsx", "complete_by": "zip_directory", "check": ZCHECK}
+    item.update(over)
+    return {"name": "test_ds", "gcs": ROOT, "acquire": {"files": [item]}}
+
+
+def zip_fetcher() -> FakeFetcher:
+    """A Cloudflare-like source: Last-Modified, no Content-Length, no ETag."""
+    f = FakeFetcher(urls=[ZURL])
+    f.bodies[ZURL] = small_xlsx()
+    f.no_length.add(ZURL)
+    f.etags[ZURL] = ""
+    return f
+
+
+def zrun(store, fetcher, tmp_path, entry=None):
+    return run(store, fetcher, tmp_path, entry=entry or zentry())
+
+
+def test_zip_without_content_length_and_without_complete_by_raises(tmp_path):
+    # the failure of campaign 0007 s4 (run 43098821873): the World Bank sends no Content-Length
+    store = MemoryStore()
+    entry = zentry()
+    del entry["acquire"]["files"][0]["complete_by"]
+    with pytest.raises(AcquireError, match="no Content-Length"):
+        zrun(store, zip_fetcher(), tmp_path, entry=entry)
+    assert store.list("") == []
+
+
+def test_zip_proven_by_its_directory_is_accepted(tmp_path):
+    store = MemoryStore()
+    f = zip_fetcher()
+    m = zrun(store, f, tmp_path)
+    assert m["status"] == "created"
+    assert validate_manifest(m, stage="acquire", dataset="test_ds") == []
+    assert m["sources"] == [
+        {"url": ZURL, "last_modified": LAST_MODIFIED, "etag": "", "bytes": None}
+    ]
+    body = f.bodies[ZURL]
+    assert m["files"] == [
+        {
+            "path": m["gcs_prefix"] + "Prices.xlsx",
+            "sha256": hashlib.sha256(body).hexdigest(),
+            "bytes": len(body),
+        }
+    ]
+
+
+def test_every_cut_of_a_zip_fails_its_check(tmp_path):
+    body = small_xlsx()
+    path = tmp_path / "cut.xlsx"
+    for n in range(len(body)):
+        path.write_bytes(body[:n])
+        with pytest.raises(AcquireError):
+            check_file(path, ZCHECK)
+    path.write_bytes(body)
+    check_file(path, ZCHECK)
+
+
+def test_a_cut_stream_is_caught_by_the_zip_directory(tmp_path):
+    store = MemoryStore()
+    f = zip_fetcher()
+    f.bodies[ZURL] = f.bodies[ZURL][:-40]
+    with pytest.raises(AcquireError, match="not a valid zip"):
+        zrun(store, f, tmp_path)
+    assert store.list("") == []
+
+
+def test_a_damaged_member_is_caught_by_its_crc(tmp_path):
+    store = MemoryStore()
+    f = zip_fetcher()
+    body = bytearray(f.bodies[ZURL])
+    at = body.index(b'<row r="30">')  # stored: member bytes appear verbatim
+    body[at + 1] ^= 0xFF
+    f.bodies[ZURL] = bytes(body)
+    with pytest.raises(AcquireError, match="corrupt member"):
+        zrun(store, f, tmp_path)
+    assert store.list("") == []
+
+
+def test_complete_by_keeps_a_content_length_when_one_is_sent(tmp_path):
+    store = MemoryStore()
+    f = zip_fetcher()
+    f.no_length.discard(ZURL)
+    f.declared[ZURL] = len(f.bodies[ZURL]) + 7
+    with pytest.raises(AcquireError):
+        zrun(store, f, tmp_path)
+    assert store.list("") == []
+
+
+def test_same_last_modified_is_unchanged_and_a_new_one_is_a_new_folder(tmp_path):
+    store = MemoryStore()
+    first = zrun(store, zip_fetcher(), tmp_path)
+    write_manifest(first, store, tmp_path / "m.json")
+
+    again = zip_fetcher()
+    assert zrun(store, again, tmp_path)["status"] == "unchanged"
+    assert again.requests == []
+
+    newer = zip_fetcher()
+    newer._head = lambda url: Headers("Tue, 01 Dec 2026 00:00:00 GMT", "", None)
+    third = zrun(store, newer, tmp_path)
+    assert third["status"] == "created"
+    assert third["gcs_prefix"] == f"{ROOT}2025-03-01-2/"
+
+
+@pytest.mark.parametrize(
+    "over",
+    [
+        {"complete_by": "size"},
+        {"complete_by": True},
+        {"check": {"type": "csv", "columns": ["FID"]}},
+        {"check": {"type": "gzip"}},
+        {"meta": "https://example.test/items/abc?f=json"},
+    ],
+)
+def test_bad_complete_by_declarations_raise(over):
+    with pytest.raises(AcquireError):
+        expand_urls(zentry(**over))
+
+
+def test_complete_by_with_count_raises():
+    entry = wentry(complete_by="zip_directory")
+    with pytest.raises(AcquireError):
+        expand_urls(entry)
+
+
+def test_real_gold_price_xlsx_is_proven_by_its_zip_directory():
+    files = {f.name: f for f in expand_urls(dataset("gold_price"))}
+    xlsx = files["CMO-Historical-Data-Monthly.xlsx"]
+    assert xlsx.complete_by == "zip_directory"
+    assert xlsx.check == {"type": "zip", "member": "xl/workbook.xml"}
+    assert files["CPIAUCSL.csv"].complete_by is None
+    others = [f for e in load_catalog() if "acquire" in e for f in expand_urls(e)]
+    assert [f.name for f in others if f.complete_by] == ["CMO-Historical-Data-Monthly.xlsx"]
