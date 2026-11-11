@@ -37,15 +37,18 @@ can change a campaign while it runs.
    block mentions you once, with its cause and what it needs from you, and
    the ledger records when it was unblocked. A blocked step gets 24 hours,
    counted from its newest block, before the campaign closes out.
-4. When nothing more can run, the tick files the close-out task. Its PR
+4. A run that ends 'failure' or 'timed_out' is started again by the tick on main, at most
+   twice per step and only when no other run is in flight, with one ledger line each. A
+   cancelled run is never retried. After both retries a failure blocks, "Retried 2 times."
+5. When nothing more can run, the tick files the close-out task. Its PR
    holds the report, the ledger, a lessons entry and a status line for the
    idea. You read it and decide. To accept it, approve the PR (Files
    changed, then Review changes, then Approve); the next tick merges the
    commit you approved. To reject it, close the PR. Only your approval
    counts, and only on the PR's newest commit.
-5. The report also carries the friction facts the tick counted (blocks, extra plans and fix rounds, repeated runs, long gaps) and proposes at most three harness changes, each tied to one fact.
-6. You pick which proposals become tasks, by filing them yourself.
-7. Nothing is changed automatically: the close-out task may not touch the harness, the workflows, `AGENTS.md` or the skills.
+6. The report also carries the friction facts the tick counted (blocks, extra plans and fix rounds, repeated runs, long gaps) and proposes at most three harness changes, each tied to one fact.
+7. You pick which proposals become tasks, by filing them yourself.
+8. Nothing is changed automatically: the close-out task may not touch the harness, the workflows, `AGENTS.md` or the skills.
 
 ## Controls
 

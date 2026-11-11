@@ -15,6 +15,9 @@ Pacing, to stay gentle on the subscription's usage limits:
 - at most one run (explore or pipeline, until its record is merged) in
   flight across all campaigns, so two record PRs never race on the index;
 - at most one new step started per campaign per tick.
+
+A run step whose run ended 'failure' or 'timed_out' is started again by the
+tick, at most MAX_AUTO_RETRIES times per step, before the owner is asked.
 """
 
 from __future__ import annotations
@@ -51,6 +54,12 @@ BUILD_TIMEOUT = dt.timedelta(hours=12)
 RUN_APPEAR_TIMEOUT = dt.timedelta(hours=2)
 RECORD_TIMEOUT = dt.timedelta(hours=3)
 BLOCK_GRACE = dt.timedelta(hours=24)  # time the owner has to unblock a step before close-out
+
+# A failed run step is started again by itself this many times, counted from the
+# ledger's `<step>:retry:<k>` events (not from runs, so runs started by hand do not
+# use them up). Only these conclusions are retried: 'cancelled' means someone stopped it.
+MAX_AUTO_RETRIES = 2
+RETRY_CONCLUSIONS = {"failure", "timed_out"}
 
 # What the owner does about each kind of block, named by where to click on GitHub.
 NEEDS_YOU = {
@@ -104,6 +113,7 @@ IN_FLIGHT = {
     "waiting_run",
     "running",
     "recording",
+    "retry_waiting",  # a failed run to start again once no other run is in flight
 }
 RUN_IN_FLIGHT = {"waiting_run", "running", "recording", "in_review", "mergeable", "awaiting_gate"}
 
@@ -121,6 +131,7 @@ class StepState:
 
     record: str = ""  # path of the explore-run record, once merged
     run_again: str = ""  # for a failed run: the workflow and inputs to start it again
+    retry: int = 0  # for a failed run the tick may start again: the number of that retry
 
     def links(self) -> str:
         parts = []
@@ -283,6 +294,11 @@ def _step_runs(c: Campaign, s: Step, snap: Snapshot) -> list[Run]:
     )
 
 
+def _retries(sid: str, events: dict[str, str]) -> int:
+    """How many times the tick started step `sid` again by itself, from the ledger."""
+    return sum(1 for k in range(1, MAX_AUTO_RETRIES + 1) if f"{sid}:retry:{k}" in events)
+
+
 def _run_state(
     c: Campaign, s: Step, snap: Snapshot, gctx: GateContext, events: dict[str, str]
 ) -> StepState:
@@ -295,6 +311,13 @@ def _run_state(
             return StepState("blocked", "the run was started but never appeared")
         return StepState("waiting_run")
     run = runs[-1]
+    retries = _retries(s.id, events)
+    retried = events.get(f"{s.id}:retry:{retries}", "") if retries else ""
+    if retried and _time(retried) > _time(run.created_at):
+        # the newest run is older than the newest retry: the fresh run has not appeared yet
+        if _older(snap.now, retried, RUN_APPEAR_TIMEOUT):
+            return StepState("blocked", "the run was started again but never appeared", run=run)
+        return StepState("waiting_run", run=run)
     st = StepState("running", run=run)
     if run.status != "completed":
         return st
@@ -302,6 +325,10 @@ def _run_state(
         st.status, st.detail = "blocked", f"run {run.id} ended '{run.conclusion}'"
         st.cause = "run_failed"
         st.run_again = _run_again(c, s)
+        if retries:
+            st.detail += f". Retried {retries} time{'s' if retries > 1 else ''}."
+        if run.conclusion in RETRY_CONCLUSIONS and retries < MAX_AUTO_RETRIES:
+            st.retry = retries + 1
         return st
     pr = snap.record_prs.get(run.id)
     st.pr = pr
@@ -718,8 +745,27 @@ def decide(
         event("started", f"Campaign {c.id} started.")
         if stopped:
             event("stopped", "Stopped by the owner: no new steps, no merges.")
+        can_start = not stopped and today <= dt.date.fromisoformat(c.end_by)
         for s in c.steps:
             st = v.states[s.id]
+            if st.retry and can_start:
+                if runs_in_flight:
+                    st = StepState(
+                        "retry_waiting",
+                        f"run {st.run.id} ended '{st.run.conclusion}'; it starts again "
+                        "once no other run is in flight",
+                        run=st.run,
+                    )
+                else:
+                    event(
+                        f"{s.id}:retry:{st.retry}",
+                        f"{s.id}: run {st.run.id} ended '{st.run.conclusion}'. Retrying by "
+                        f"itself ({st.retry} of {MAX_AUTO_RETRIES}) with a fresh run.",
+                    )
+                    doing.append(run_dispatch(c, s))
+                    runs_in_flight += 1
+                    st = StepState("waiting_run", run=st.run)
+                v.states[s.id] = st
             if st.issue:
                 event(f"{s.id}:filed", f"{s.id}: filed as #{st.issue.number}.")
             if st.status == "done" and s.kind == "task":
@@ -759,7 +805,6 @@ def decide(
                     }
                 )
 
-        can_start = not stopped and today <= dt.date.fromisoformat(c.end_by)
         tasks_in_flight = sum(
             1 for s in c.steps if s.kind == "task" and v.states[s.id].status in IN_FLIGHT
         )

@@ -28,6 +28,7 @@ from terrain.campaigns.spec import (
     validate,
 )
 from terrain.campaigns.tick import (
+    MAX_AUTO_RETRIES,
     NEEDS_YOU,
     NEEDS_YOU_DEFAULT,
     WORKFLOW_NAMES,
@@ -710,15 +711,19 @@ def failed_block_line(actions) -> str:
     return body[body.rfind("\n", 0, start) + 1 : body.index("\n\n<!--", start)]
 
 
+def both_retries(sid: str, at: str) -> Comment:
+    """The ledger comment of a step whose two automatic retries were used up."""
+    return ledger(f"{sid}:retry:1", f"{sid}:retry:2", at=at)
+
+
 def test_tick_failed_explore_run_gives_the_values_to_start_it_again(tmp_path):
     root = make_repo(tmp_path)
     events = ("started", "s1:filed", "s1:merged", "s2:dispatched")
     failed = replace(record_run(), conclusion="failure")
-    actions = run_decide(
-        root, snap([tracking([ledger(*events)]), merged_issue(root)], runs=[failed])
-    )
+    t = tracking([ledger(*events), both_retries("s2", "2026-11-09T04:00:00Z")])
+    actions = run_decide(root, snap([t, merged_issue(root)], runs=[failed]))
     line = failed_block_line(actions)
-    assert line.startswith("- s2: **blocked**. Cause: run 555 ended 'failure'.")
+    assert line.startswith("- s2: **blocked**. Cause: run 555 ended 'failure'. Retried 2 times.")
     assert f"Needs you: {NEEDS_YOU['run_failed']}." in line
     assert "Re-run failed jobs" in line and "Run workflow on main" in line
     assert "Re-run jobs once the cause is fixed" not in line
@@ -750,7 +755,9 @@ def test_tick_failed_pipeline_run_gives_the_values_to_start_it_again(tmp_path):
     failed = Run(
         556, "data-pipeline.yml", title, "completed", "failure", "2026-11-10T10:00:00Z", None
     )
-    t = tracking([ledger("started", "s1:filed", "s3:dispatched")])
+    t = tracking(
+        [ledger("started", "s1:filed", "s3:dispatched"), both_retries("s3", "2026-11-10T09:00:00Z")]
+    )
     line = failed_block_line(run_decide(root, snap([t, step_issue(root)], runs=[failed])))
     assert line.startswith("- s3: **blocked**. Cause: run 556 ended 'failure'.")
     assert "Re-run jobs once the cause is fixed" not in line
@@ -765,6 +772,139 @@ def test_tick_names_the_run_workflows_as_github_shows_them():
     for file, name in WORKFLOW_NAMES.items():
         text = (REPO / ".github" / "workflows" / file).read_text(encoding="utf-8")
         assert text.splitlines()[0] == f"name: {name}"
+
+
+# -- failed runs: started again by the tick, twice, before the owner is asked ---------
+
+RUN_TITLE = markers.explore_run_title("0003_count", "0001", "s2")
+RUN_EVENTS = ("started", "s1:filed", "s1:merged", "s2:dispatched")
+
+
+def s2_run(run_id: int, conclusion: str | None, created: str, status="completed") -> Run:
+    return Run(run_id, "explore-run.yml", RUN_TITLE, status, conclusion, created, created)
+
+
+def tick_s2(root, ledgers, runs, now, **kw):
+    """One tick of the run step s2, and the ledger as the next tick would read it."""
+    s = snap([tracking(ledgers, **kw), merged_issue(root)], runs=runs, now=now)
+    actions = run_decide(root, s)
+    return actions, [*ledgers, *posted(actions, now)]
+
+
+def retry_line(run_id: int, conclusion: str, k: int) -> str:
+    return (
+        f"- s2: run {run_id} ended '{conclusion}'. Retrying by itself ({k} of 2) with a fresh run."
+    )
+
+
+@pytest.mark.parametrize("conclusion", ["failure", "timed_out"])
+def test_tick_retries_a_failed_run_by_itself(tmp_path, conclusion):
+    root = make_repo(tmp_path)
+    ledgers = [ledger(*RUN_EVENTS, at="2026-11-10T08:00:00Z")]
+    # an earlier run started by hand does not use up a retry
+    by_hand = s2_run(554, "failure", "2026-11-10T08:30:00Z")
+    failed = s2_run(555, conclusion, "2026-11-10T09:00:00Z")
+    actions, ledgers = tick_s2(root, ledgers, [by_hand, failed], "2026-11-10T10:00:00Z")
+    assert types(actions) == ["comment", "dispatch"]
+    body = actions[0]["body"]
+    assert body.startswith(retry_line(555, conclusion, 1) + "\n")
+    assert f"@{OWNER}" not in body and "**blocked**" not in body
+    assert markers.parse_ledger(body) == ("0001", {"s2:retry:1"})
+    # the same dispatch that started the step, so the fresh run uses main as it is now
+    assert actions[1] == {
+        "type": "dispatch",
+        "workflow": "explore-run.yml",
+        "inputs": {"script": "0003_count", "campaign": "0001/s2"},
+    }
+    # before the fresh run appears, the step waits for it: nothing twice, no block
+    for now in ("2026-11-10T10:05:00Z", "2026-11-10T11:30:00Z"):
+        assert tick_s2(root, ledgers, [by_hand, failed], now)[0] == []
+    # it never appears: then the owner is asked
+    actions, _ = tick_s2(root, ledgers, [by_hand, failed], "2026-11-10T12:30:00Z")
+    assert types(actions) == ["comment"]
+    assert "Cause: the run was started again but never appeared." in actions[0]["body"]
+    assert f"@{OWNER}" in actions[0]["body"]
+
+
+def test_tick_retries_twice_then_asks(tmp_path):
+    root = make_repo(tmp_path)
+    ledgers = [ledger(*RUN_EVENTS, at="2026-11-10T08:00:00Z")]
+    runs = [s2_run(555, "failure", "2026-11-10T09:00:00Z")]
+    actions, ledgers = tick_s2(root, ledgers, runs, "2026-11-10T10:00:00Z")
+    assert retry_line(555, "failure", 1) in actions[0]["body"]
+    # the fresh run starts, then fails: the second retry
+    runs.append(s2_run(556, None, "2026-11-10T10:01:00Z", status="in_progress"))
+    assert tick_s2(root, ledgers, runs, "2026-11-10T10:30:00Z")[0] == []
+    runs[-1] = s2_run(556, "timed_out", "2026-11-10T10:01:00Z")
+    actions, ledgers = tick_s2(root, ledgers, runs, "2026-11-10T11:00:00Z")
+    assert types(actions) == ["comment", "dispatch"]
+    assert retry_line(556, "timed_out", 2) in actions[0]["body"]
+    assert f"@{OWNER}" not in actions[0]["body"]
+    # it fails again: blocked as before, the owner is asked, and the retries are named
+    runs.append(s2_run(557, "failure", "2026-11-10T11:01:00Z"))
+    actions, ledgers = tick_s2(root, ledgers, runs, "2026-11-10T12:00:00Z")
+    assert types(actions) == ["comment"]
+    line = failed_block_line(actions)
+    assert line.startswith(
+        "- s2: **blocked**. Cause: run 557 ended 'failure'. Retried 2 times. Needs you: "
+    )
+    assert f"@{OWNER}" in line and "Run workflow values" in line
+    assert tick_s2(root, ledgers, runs, "2026-11-10T13:00:00Z")[0] == []
+    # a run the owner starts by hand is read as usual; no third retry
+    runs.append(s2_run(558, "failure", "2026-11-10T13:30:00Z"))
+    actions, _ = tick_s2(root, ledgers, runs, "2026-11-10T14:00:00Z")
+    assert "dispatch" not in types(actions)
+    assert "Cause: run 558 ended 'failure'. Retried 2 times." in actions[0]["body"]
+    assert MAX_AUTO_RETRIES == 2
+
+
+def test_tick_retry_that_succeeds_goes_on_as_usual(tmp_path):
+    root = make_repo(tmp_path)
+    ledgers = [ledger(*RUN_EVENTS, at="2026-11-10T08:00:00Z")]
+    runs = [s2_run(555, "failure", "2026-11-10T09:00:00Z")]
+    _, ledgers = tick_s2(root, ledgers, runs, "2026-11-10T10:00:00Z")
+    runs.append(s2_run(556, "success", "2026-11-10T10:01:00Z"))
+    s = snap(
+        [tracking(ledgers), merged_issue(root)],
+        runs=runs,
+        record_prs={
+            556: record_pr(
+                head_ref="explore/0003_count-556",
+                files=("research/explore-runs/0003/556.md", "research/explore-runs/0003/556.json"),
+            )
+        },
+        now="2026-11-10T11:00:00Z",
+    )
+    assert run_decide(root, s) == [{"type": "merge", "pr": 30, "sha": SHA}]
+    assert not any("**blocked**" in c.body for c in ledgers)
+
+
+def test_tick_never_retries_a_cancelled_run(tmp_path):
+    root = make_repo(tmp_path)
+    ledgers = [ledger(*RUN_EVENTS, at="2026-11-10T08:00:00Z")]
+    runs = [s2_run(555, "cancelled", "2026-11-10T09:00:00Z")]
+    actions, _ = tick_s2(root, ledgers, runs, "2026-11-10T10:00:00Z")
+    assert types(actions) == ["comment"]
+    line = failed_block_line(actions)
+    assert line.startswith("- s2: **blocked**. Cause: run 555 ended 'cancelled'. Needs you: ")
+    assert f"@{OWNER}" in line and "Retr" not in line.split("Needs you:")[0]
+
+
+def test_tick_no_retry_when_stopped_or_past_the_end_date(tmp_path):
+    root = make_repo(tmp_path)
+    ledgers = [ledger(*RUN_EVENTS, at="2026-11-10T08:00:00Z")]
+    runs = [s2_run(555, "failure", "2026-11-10T09:00:00Z")]
+    stopped = ("campaign", "campaign-stop")
+    actions, _ = tick_s2(root, ledgers, runs, "2026-11-10T10:00:00Z", labels=stopped)
+    assert "dispatch" not in types(actions)
+    assert "retry" not in json.dumps(actions)
+    assert "s2: **blocked**. Cause: run 555 ended 'failure'." in actions[0]["body"]
+    ended = tmp_path / "ended"
+    ended.mkdir()
+    root = make_repo(ended, campaign_text(end_by="2026-11-09"))
+    actions, _ = tick_s2(root, ledgers, runs, "2026-11-10T10:00:00Z")
+    assert "dispatch" not in types(actions)
+    assert "s2: **blocked**. Cause: run 555 ended 'failure'." in actions[0]["body"]
 
 
 def test_tick_unreadable_results_block_the_step(tmp_path):
@@ -798,8 +938,8 @@ def test_tick_stop_files_the_closeout(tmp_path):
     assert "status: stopped" in actions[1]["body"]
 
 
-def test_tick_one_run_in_flight_across_campaigns(tmp_path):
-    """A second campaign's run waits while another run is in flight."""
+def two_campaigns(tmp_path) -> tuple[Path, Issue]:
+    """Campaign 0001 and a second one, 0002, with one explore run step and its tracking issue."""
     root = make_repo(tmp_path)
     (root / "explore" / "0003_count.py").write_text("", encoding="utf-8")
     (root / "explore" / "0004_other.py").write_text("", encoding="utf-8")
@@ -829,7 +969,6 @@ def test_tick_one_run_in_flight_across_campaigns(tmp_path):
     )
     (other / "campaign.md").write_text(text, encoding="utf-8")
     assert validate(root) == []
-    t1 = tracking([ledger("started", "s1:filed", "s1:merged", "s2:dispatched")])
     t2 = Issue(
         2,
         "Campaign 0002",
@@ -840,9 +979,56 @@ def test_tick_one_run_in_flight_across_campaigns(tmp_path):
         NOW,
         (Comment(BOT, markers.ledger_marker("0002", ["started"]), NOW),),
     )
+    return root, t2
+
+
+def test_tick_one_run_in_flight_across_campaigns(tmp_path):
+    """A second campaign's run waits while another run is in flight."""
+    root, t2 = two_campaigns(tmp_path)
+    t1 = tracking([ledger("started", "s1:filed", "s1:merged", "s2:dispatched")])
     running = replace(record_run(), status="in_progress", conclusion=None)
     actions = run_decide(root, snap([t1, t2, merged_issue(root)], runs=[running]))
     assert not [a for a in actions if a["type"] == "dispatch"]
+
+
+def test_tick_retry_waits_while_another_run_is_in_flight(tmp_path):
+    root, t2 = two_campaigns(tmp_path)
+    t1 = tracking([ledger(*RUN_EVENTS, at="2026-11-10T08:00:00Z")])
+    failed = s2_run(555, "failure", "2026-11-10T09:00:00Z")
+    t2_started = replace(t2, comments=(Comment(BOT, ledger_0002("started", "s1:dispatched"), NOW),))
+    other = Run(
+        600,
+        "explore-run.yml",
+        markers.explore_run_title("0004_other", "0002", "s1"),
+        "in_progress",
+        None,
+        "2026-11-10T09:30:00Z",
+    )
+    issues = [t1, t2_started, merged_issue(root)]
+    actions = run_decide(root, snap(issues, runs=[failed, other]))
+    # no retry, no block, no close-out: the step waits for the other run
+    assert actions == []
+    # the other run is done and recorded: the retry goes, and only that run starts
+    done = replace(other, status="completed", conclusion="success")
+    merged = record_pr(number=31, run_title=other.title, merged=True, state="closed")
+    s = snap(
+        [t1, t2, merged_issue(root)],
+        runs=[failed, done],
+        record_prs={600: merged},
+        results={"research/explore-runs/0004/600.json": {"n": 5}},
+    )
+    actions = run_decide(root, s)
+    dispatches = [a for a in actions if a["type"] == "dispatch"]
+    assert [d["inputs"]["campaign"] for d in dispatches] == ["0001/s2"]
+    assert retry_line(555, "failure", 1) in actions[0]["body"]
+    # and the other way round: a retry going out holds back another campaign's new run
+    actions = run_decide(root, snap([t1, t2, merged_issue(root)], runs=[failed]))
+    dispatches = [a for a in actions if a["type"] == "dispatch"]
+    assert [d["inputs"]["campaign"] for d in dispatches] == ["0001/s2"]
+
+
+def ledger_0002(*events: str) -> str:
+    return "- x\n\n" + markers.ledger_marker("0002", list(events))
 
 
 # -- blocks: each one reported, with its cause ---------------------------------
