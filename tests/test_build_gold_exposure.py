@@ -495,6 +495,86 @@ def test_cpi_with_a_bad_date_stops(tmp_path):
         ge.read_cpi(path)
 
 
+def _cpi(values: dict[tuple[int, int], float | None]) -> dict:
+    return dict(values)
+
+
+def _year(year: int, value: float, skip: tuple[int, ...] = ()) -> dict:
+    return {(year, m): (None if m in skip else value + m) for m in range(1, 13)}
+
+
+def test_one_missing_cpi_month_is_the_geometric_mean_of_its_neighbours():
+    # FRED's CPIAUCSL has no October 2025: the BLS never published it (2025 shutdown)
+    cpi = {**_year(2024, 300), **_year(2025, 310, skip=(10,)), **_year(2026, 320)}
+    cpi[(2025, 9)], cpi[(2025, 11)] = 324.245, 325.063
+    filled, months = ge.fill_cpi_gap(cpi)
+    assert months == [(2025, 10)]
+    assert filled[(2025, 10)] == pytest.approx(math.sqrt(324.245 * 325.063))
+    assert filled[(2025, 10)] == pytest.approx(324.654, abs=1e-3)
+    assert {k: v for k, v in filled.items() if k != (2025, 10)} == {
+        k: v for k, v in cpi.items() if k != (2025, 10)
+    }
+    assert cpi[(2025, 10)] is None  # the input is not changed
+
+
+def test_a_missing_january_uses_the_december_before():
+    cpi = {**_year(2024, 300), **_year(2025, 310, skip=(1,))}
+    filled, months = ge.fill_cpi_gap(cpi)
+    assert months == [(2025, 1)]
+    assert filled[(2025, 1)] == pytest.approx(math.sqrt(312 * 312))
+
+
+@pytest.mark.parametrize(
+    "cpi",
+    [
+        {**_year(2024, 300), **_year(2025, 310, skip=(3, 10))},  # two months missing
+        {**_year(2024, 300), **_year(2025, 310, skip=(12,))},  # no January after it
+        {k: v for k, v in _year(2025, 310).items() if k[1] <= 10},  # the current year
+        {**_year(2024, 300), **_year(2025, 310, skip=(1,)), (2024, 12): None},  # no neighbour
+    ],
+)
+def test_cpi_years_that_are_not_one_month_short_are_left_alone(cpi):
+    filled, months = ge.fill_cpi_gap(cpi)
+    assert months == [] and filled == cpi
+
+
+def test_a_filled_cpi_month_completes_its_year(tmp_path):
+    gold = {(y, m): 1000.0 for y in (2024, 2025) for m in range(1, 13)}
+    soy = {(y, m): 500.0 for y in (2024, 2025) for m in range(1, 13)}
+    cpi = {**_year(2024, 300), **_year(2025, 310, skip=(10,)), (2026, 1): 330.0}
+    assert annual_prices(gold, soy, cpi, 2024)["year"].to_list() == [2024]  # the old stop
+    filled, months = ge.fill_cpi_gap(cpi)
+    prices = annual_prices(gold, soy, filled, 2024, months)
+    row = {r["year"]: r for r in prices.iter_rows(named=True)}
+    assert prices["year"].to_list() == [2024, 2025]
+    assert row[2025]["n_months_cpi"] == 12 and row[2025]["n_months_cpi_filled"] == 1
+    assert row[2024]["n_months_cpi_filled"] == 0
+    expected = (sum(310 + m for m in range(1, 13) if m != 10) + math.sqrt(319 * 321)) / 12
+    assert row[2025]["cpi"] == pytest.approx(expected)
+
+
+def test_build_fills_a_missing_cpi_month_and_says_so(tmp_path):
+    # the fixture's 2025 has no gold December, so a 2023 gap stands in for October 2025
+    blank = cpi_csv().replace(b"2023-06-01,110\n", b"2023-06-01,\n")
+    assert blank != cpi_csv()
+    inputs = Inputs(tmp_path, cpi=blank)
+    manifest = inputs.build()
+    assert (
+        "cpi_months_filled=2023-06 (geometric mean of the months on each side)"
+        in (manifest["notes"])
+    )
+    prices = read(inputs, manifest, "gold_prices.parquet")
+    row = {r["year"]: r for r in prices.iter_rows(named=True)}
+    assert prices["year"].to_list() == [2022, 2023, 2024]
+    assert row[2023]["n_months_cpi"] == 12 and row[2023]["n_months_cpi_filled"] == 1
+    assert row[2023]["cpi"] == pytest.approx(110)
+    assert row[2022]["n_months_cpi_filled"] == 0
+
+
+def test_notes_say_when_no_cpi_month_was_filled(inputs):
+    assert "cpi_months_filled=none" in inputs.build()["notes"]
+
+
 def test_cpi_missing_value_is_missing(tmp_path):
     path = _write(tmp_path / "cpi.csv", b"observation_date,CPIAUCSL\n2020-01-01,.\n")
     assert ge.read_cpi(path) == {(2020, 1): None}

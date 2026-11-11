@@ -19,7 +19,8 @@ import shutil
 import unicodedata
 import xml.etree.ElementTree as ET
 import zipfile
-from collections import defaultdict
+from collections import Counter, defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -370,11 +371,43 @@ def read_cpi(path: Path) -> Monthly:
     return out
 
 
-def annual_prices(gold: Monthly, soy: Monthly, cpi: Monthly, base_year: int) -> pl.DataFrame:
+def fill_cpi_gap(cpi: Monthly) -> tuple[Monthly, list[tuple[int, int]]]:
+    """Fill a year's single missing CPI month with the geometric mean of its neighbours.
+
+    The BLS never published the October 2025 CPI (the 2025 US government shutdown), so
+    FRED leaves that month empty. A month is filled only when it is the only one missing
+    in its year and the months on each side (across a year end too) both have values;
+    otherwise the year stays incomplete. Returns the filled series and the filled months.
+    """
+    out = dict(cpi)
+    filled: list[tuple[int, int]] = []
+    for year in sorted({y for y, _ in cpi}):
+        missing = [m for m in range(1, 13) if cpi.get((year, m)) is None]
+        if len(missing) != 1:
+            continue
+        month = missing[0]
+        before = cpi.get((year, month - 1) if month > 1 else (year - 1, 12))
+        after = cpi.get((year, month + 1) if month < 12 else (year + 1, 1))
+        if before is None or after is None or before <= 0 or after <= 0:
+            continue
+        out[(year, month)] = math.sqrt(before * after)
+        filled.append((year, month))
+    return out, filled
+
+
+def annual_prices(
+    gold: Monthly,
+    soy: Monthly,
+    cpi: Monthly,
+    base_year: int,
+    cpi_filled: Iterable[tuple[int, int]] = (),
+) -> pl.DataFrame:
     """One row per year in which gold, soybeans and CPI all have 12 months.
 
     Annual means of the monthly values; real prices are `price * cpi[base_year] / cpi`.
+    `cpi_filled` lists the CPI months `fill_cpi_gap` filled; each year counts its own.
     """
+    filled_by_year = Counter(year for year, _ in cpi_filled)
 
     def by_year(series: Monthly) -> dict[int, list[float]]:
         values: dict[int, list[float]] = defaultdict(list)
@@ -400,6 +433,7 @@ def annual_prices(gold: Monthly, soy: Monthly, cpi: Monthly, base_year: int) -> 
                 "n_months_gold": len(g[y]),
                 "n_months_soy": len(s[y]),
                 "n_months_cpi": len(c[y]),
+                "n_months_cpi_filled": filled_by_year[y],
             }
         )
     cpi_base = next(r["cpi"] for r in rows if r["year"] == base_year)
@@ -422,6 +456,7 @@ def annual_prices(gold: Monthly, soy: Monthly, cpi: Monthly, base_year: int) -> 
         "n_months_gold": pl.Int64,
         "n_months_soy": pl.Int64,
         "n_months_cpi": pl.Int64,
+        "n_months_cpi_filled": pl.Int64,
     }
     return pl.DataFrame(rows, schema=schema).select(list(schema))
 
@@ -553,7 +588,8 @@ def build(
     xlsx_path = _fetch(store, xlsx_entry, tmp_dir)
     cpi_path = _fetch(store, cpi_entry, tmp_dir)
     gold, soy = read_prices_xlsx(xlsx_path)
-    prices = annual_prices(gold, soy, read_cpi(cpi_path), limits.base_year)
+    cpi, cpi_filled = fill_cpi_gap(read_cpi(cpi_path))
+    prices = annual_prices(gold, soy, cpi, limits.base_year, cpi_filled)
     check_prices(prices, limits)
 
     path = _fetch(store, municipalities_entry, tmp_dir)
@@ -711,6 +747,9 @@ def build(
         f"repaired_polygons: anm_gold_and_sand_titles={title_repaired}, "
         f"indigenous_lands={indigenous_repaired}",
         f"price_years={prices['year'].min()}-{prices['year'].max()} ({prices.height} years)",
+        "cpi_months_filled="
+        + (", ".join(f"{y}-{m:02d}" for y, m in cpi_filled) or "none")
+        + " (geometric mean of the months on each side)",
     ]
 
     exposure_path, prices_path = tmp_dir / EXPOSURE_FILE, tmp_dir / PRICES_FILE
