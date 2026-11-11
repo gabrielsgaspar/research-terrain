@@ -94,8 +94,9 @@ flowchart TD
 Inside a **campaign** (`research/campaigns/`, decision 0010) the first three
 rows are done by the `campaign-tick` workflow instead, for steps you approved
 in advance, and only when the required `campaign-gate` check passes. You
-decide when you merge the campaign file and when you merge its close-out
-report.
+decide when you merge the campaign file. You accept its close-out report by
+approving the close-out pull request, and it is then merged for you
+(decision 0012).
 
 ## How to
 

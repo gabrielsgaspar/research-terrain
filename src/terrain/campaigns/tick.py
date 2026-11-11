@@ -43,6 +43,8 @@ from terrain.campaigns.spec import Campaign, Step, is_protected, path_allowed
 GATE_WORKFLOW = "campaign-gate.yml"
 EXPLORE_WORKFLOW = "explore-run.yml"
 PIPELINE_WORKFLOW = "data-pipeline.yml"
+# Each run workflow's name as GitHub shows it in the Actions tab (its `name:`).
+WORKFLOW_NAMES = {EXPLORE_WORKFLOW: "Explore run", PIPELINE_WORKFLOW: "Data pipeline"}
 
 PLAN_TIMEOUT = dt.timedelta(hours=2)
 BUILD_TIMEOUT = dt.timedelta(hours=12)
@@ -65,8 +67,12 @@ NEEDS_YOU = {
         "remove and re-add the `agent-plan` label on the issue"
     ),
     "run_failed": (
-        "open the run from the Actions tab, read the failed step's log, "
-        "then choose Re-run jobs once the cause is fixed"
+        "open the run from the Actions tab and read the failed step's log. "
+        "If the cause was outside the code (a server error, a timeout, an export "
+        "still running), choose Re-run failed jobs. If a fix was merged since the run "
+        "started, a re-run would use the old code: open the Actions tab, choose the "
+        "workflow, choose Run workflow on main, and enter the values below (campaign "
+        "too, although the form says to leave it empty)"
     ),
     "record_missing": (
         "open the run from the Actions tab and read its record job; "
@@ -114,6 +120,7 @@ class StepState:
     run: Run | None = None
 
     record: str = ""  # path of the explore-run record, once merged
+    run_again: str = ""  # for a failed run: the workflow and inputs to start it again
 
     def links(self) -> str:
         parts = []
@@ -244,6 +251,24 @@ def _pr_state(st: StepState, pr: PullRequest, gctx: GateContext) -> StepState:
     return st
 
 
+def run_dispatch(c: Campaign, s: Step) -> dict:
+    """The dispatch action that starts run step `s`: its workflow and inputs."""
+    if s.kind == "explore_run":
+        workflow = EXPLORE_WORKFLOW
+        inputs = {"script": s.script, "campaign": f"{c.id}/{s.id}"}
+    else:
+        workflow = PIPELINE_WORKFLOW
+        inputs = {"stage": s.stage, "target": s.target, "campaign": f"{c.id}/{s.id}"}
+    return {"type": "dispatch", "workflow": workflow, "inputs": inputs}
+
+
+def _run_again(c: Campaign, s: Step) -> str:
+    """What to enter under Run workflow to start run step `s` by hand, as the tick does."""
+    action = run_dispatch(c, s)
+    values = ", ".join(f"{k} `{v}`" for k, v in action["inputs"].items())
+    return f"Run workflow values: workflow **{WORKFLOW_NAMES[action['workflow']]}**, {values}"
+
+
 def _step_runs(c: Campaign, s: Step, snap: Snapshot) -> list[Run]:
     """The runs of run step `s`, oldest first: those with its workflow and its title."""
     if s.kind == "explore_run":
@@ -276,6 +301,7 @@ def _run_state(
     if run.conclusion != "success":
         st.status, st.detail = "blocked", f"run {run.id} ended '{run.conclusion}'"
         st.cause = "run_failed"
+        st.run_again = _run_again(c, s)
         return st
     pr = snap.record_prs.get(run.id)
     st.pr = pr
@@ -442,7 +468,8 @@ def _block_line(label: str, st: StepState, owner: str) -> str:
     cause = st.detail.strip()
     stop = "" if cause.endswith(".") else "."
     action = NEEDS_YOU.get(st.cause, NEEDS_YOU_DEFAULT)
-    extra = "".join(f"\n  - {ln}" for ln in st.verdict_lines)
+    lines = [*st.verdict_lines, st.run_again] if st.run_again else st.verdict_lines
+    extra = "".join(f"\n  - {ln}" for ln in lines)
     return (
         f"{label}: **blocked**. Cause: {cause}{stop} Needs you: {action}. "
         f"({st.links() or 'no links'}) @{owner}{extra}"
@@ -764,26 +791,7 @@ def decide(
                 key = "max_explore_runs" if s.kind == "explore_run" else "max_pipeline_runs"
                 if runs_in_flight or v.used[key] >= c.budget[key]:
                     continue
-                if s.kind == "explore_run":
-                    doing.append(
-                        {
-                            "type": "dispatch",
-                            "workflow": EXPLORE_WORKFLOW,
-                            "inputs": {"script": s.script, "campaign": f"{c.id}/{s.id}"},
-                        }
-                    )
-                else:
-                    doing.append(
-                        {
-                            "type": "dispatch",
-                            "workflow": PIPELINE_WORKFLOW,
-                            "inputs": {
-                                "stage": s.stage,
-                                "target": s.target,
-                                "campaign": f"{c.id}/{s.id}",
-                            },
-                        }
-                    )
+                doing.append(run_dispatch(c, s))
                 event(
                     f"{s.id}:dispatched",
                     f"{s.id}: started `{s.script or s.stage + ' ' + s.target}`.",
