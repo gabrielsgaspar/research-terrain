@@ -23,7 +23,13 @@
 #                   ufs: [...]          # expands <uf>, if present
 #                   check: {type: zip, member: "*_BRASIL.csv"}
 #             check types: zip (optionally a required member glob), ods,
-#             gzip. Every file is checked before anything is uploaded.
+#             gzip, csv (columns, forbid_columns, min_rows). Every file is
+#             checked before anything is uploaded.
+#             A file's size comes from its Content-Length, or from `meta:`
+#             (a JSON record with size and modified). A csv served with
+#             neither may declare `count: {type: wfs_hits, url: ...}`
+#             instead: its data rows must equal the numberMatched of that
+#             WFS resultType=hits answer, on top of its csv check.
 
 datasets:
   - name: ibge_municipalities
@@ -1008,10 +1014,15 @@ datasets:
       record was entered, not a discovery date. Checked from a local session
       on 2026-11-11: this URL returns every row in one response, with header
       FID,municipio,uf,data_cadastro,provincia,status_economico,importancia,situacao_mina,situacao_garimpo,substancias,longitude,latitude.
+      GeoServer streams the CSV with no Content-Length, ETag or
+      Last-Modified, so completeness is checked by row count: the data rows
+      must equal numberMatched from the same layer's resultType=hits answer
+      (36,484 for both, checked from a local session on 2026-11-11).
     acquire:
       files:
         - url: https://geoservicos.sgb.gov.br/geoserver/ows?service=WFS&version=2.0.0&request=GetFeature&typeNames=geosgb:ocorrencias_recursos_minerais&outputFormat=csv&propertyName=substancias,status_economico,situacao_garimpo,situacao_mina,importancia,provincia,municipio,uf,data_cadastro,latitude,longitude
           name: sgb_ocorrencias.csv
+          count: {type: wfs_hits, url: "https://geoservicos.sgb.gov.br/geoserver/ows?service=WFS&version=2.0.0&request=GetFeature&typeNames=geosgb:ocorrencias_recursos_minerais&resultType=hits"}
           check: {type: csv, columns: [FID, substancias, status_economico, municipio, uf, latitude, longitude], forbid_columns: [geologo], min_rows: 30000}
 
   - name: gold_exposure

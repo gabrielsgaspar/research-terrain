@@ -48,13 +48,14 @@ def _call_all(fetcher: UrllibFetcher) -> None:
     with fetcher.get(URL) as (_, stream):
         stream.read()
     fetcher.json(URL)
+    fetcher.read(URL, 100)
     with fetcher.get_from(URL, 10) as (_, _, _, stream):
         stream.read()
 
 
 def test_every_request_sends_the_user_agent(sent):
     _call_all(UrllibFetcher())
-    assert [r.get_method() for r in sent] == ["HEAD", "GET", "GET", "GET"]
+    assert [r.get_method() for r in sent] == ["HEAD", "GET", "GET", "GET", "GET"]
     for request in sent:
         assert request.get_header("User-agent") == USER_AGENT
 
@@ -76,6 +77,7 @@ def test_user_agent_names_the_project_without_a_url_scheme():
     [
         (lambda f: f.head(URL), "HEAD"),
         (lambda f: f.json(URL), "GET"),
+        (lambda f: f.read(URL, 100), "GET"),
         (lambda f: f.get(URL).__enter__(), "GET"),
         (lambda f: f.get_from(URL, 5).__enter__(), "GET"),
     ],
@@ -106,3 +108,9 @@ def test_timeout_is_unchanged(monkeypatch):
     monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
     UrllibFetcher().head(URL)
     assert seen == [http.TIMEOUT]
+
+
+def test_read_returns_at_most_limit_bytes(monkeypatch):
+    monkeypatch.setattr(urllib.request, "urlopen", lambda request, timeout: _Response(b"x" * 50))
+    assert UrllibFetcher().read(URL, 10) == b"x" * 10
+    assert UrllibFetcher().read(URL, 100) == b"x" * 50
