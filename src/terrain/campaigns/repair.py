@@ -50,26 +50,45 @@ def clean_log(text: str) -> str:
     backticks become quotes and HTML comment marks are broken, so the text
     cannot close its fenced block or carry a campaign marker. At most
     LOG_MAX_LINES lines and LOG_MAX_CHARS characters, each line at most
-    LOG_LINE_CHARS long.
+    LOG_LINE_CHARS long. If lines were dropped or shortened, the first line
+    says so (`cut_line`), and it counts toward both limits.
     """
-    lines = []
+    lines: list[tuple[str, bool]] = []  # (line, shortened)
     for raw in (text or "").replace("\r\n", "\n").replace("\r", "\n").split("\n"):
         line = _STAMP.sub("", _ANSI.sub("", raw)).replace("\t", "    ")
         line = "".join(ch for ch in line if ch.isprintable()).replace("`", "'")
         while "<!--" in line or "-->" in line:
             line = line.replace("<!--", "<! --").replace("-->", "-- >")
         line = _ID_LIKE.sub("[number removed]", line).rstrip()
-        if len(line) > LOG_LINE_CHARS:
+        shortened = len(line) > LOG_LINE_CHARS
+        if shortened:
             line = line[: LOG_LINE_CHARS - 1] + "…"
-        lines.append(line)
-    while lines and not lines[-1]:
+        lines.append((line, shortened))
+    while lines and not lines[-1][0]:
         lines.pop()
-    lines = lines[-LOG_MAX_LINES:]
-    while lines and len("\n".join(lines)) > LOG_MAX_CHARS:
+    while lines and not lines[0][0]:
         lines.pop(0)
-    while lines and not lines[0]:
-        lines.pop(0)
-    return "\n".join(lines) or NO_LOG
+    total = len(lines)
+
+    def result(kept: list[tuple[str, bool]]) -> list[str]:
+        cut = cut_line(len(kept), total, any(short for _, short in kept))
+        return ([cut] if cut else []) + [line for line, _ in kept]
+
+    kept = lines[-LOG_MAX_LINES:]
+    while kept and (
+        len(result(kept)) > LOG_MAX_LINES or len("\n".join(result(kept))) > LOG_MAX_CHARS
+    ):
+        kept = kept[1:]
+    while kept and not kept[0][0]:
+        kept = kept[1:]
+    return "\n".join(result(kept)) if kept else NO_LOG
+
+
+def cut_line(kept: int, total: int, shortened: bool) -> str:
+    """The line that opens a cut log, in plain words; empty if nothing was cut."""
+    parts = [f"the last {kept} of {total} lines"] if kept < total else []
+    parts += ["long lines shortened"] if shortened else []
+    return f"(cut: {'; '.join(parts)})" if parts else ""
 
 
 def repair_paths(c: Campaign, s: Step, owners: CodeOwners) -> tuple[str, ...]:

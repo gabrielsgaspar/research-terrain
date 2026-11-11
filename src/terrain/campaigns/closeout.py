@@ -1,11 +1,13 @@
 """The close-out task: the issue the tick files when a campaign finishes.
 
 The body is generated from the campaign file and what the tick saw, so the
-builder gets every fact it needs (steps, verdicts, runs, budget used, and the
-friction facts: blocks, extra plans and fix rounds, repeated runs, long gaps)
-as data. From those facts the close-out adds at most three notes of advice
-to `research/agent-notes.md`, which every agent reads (decision 0013), and
-one Scoreboard row; checks in code it only proposes, in the report.
+builder gets every fact it needs (steps, verdicts, runs, budget used, the
+friction facts: blocks, extra plans and fix rounds, repeated runs, long gaps,
+and the checks not run: unfinished steps, kill rules never applied, referee
+rows marked not applicable) as data. From those facts the close-out adds at
+most three notes of advice to `research/agent-notes.md`, which every agent
+reads (decision 0013), and one Scoreboard row; checks in code it only
+proposes, in the report.
 The close-out PR touches owned paths (the idea file, campaign.md, the notes),
 so the owner always approves it: it is where he reads the report and decides.
 It also sets the idea's status to the report's recommendation (one of
@@ -27,6 +29,7 @@ REPORT_SECTIONS = (
     "Kill rules applied",
     "Budget used",
     "Stops and blocks",
+    "Checks not run",
     "Proposed harness changes (at most three)",
     "Suggested next variants (not run)",
     "Decisions for Gabriel",
@@ -103,8 +106,13 @@ def closeout_issue(
     final_status: str = "done",
     applied: list[str] | None = None,
     friction: str = "None given.",
+    not_run: list[str] | None = None,
 ) -> tuple[str, str]:
-    """(title, body) of the close-out issue."""
+    """(title, body) of the close-out issue.
+
+    `not_run` holds the tick's checks not run, one line each (`checks_not_run`
+    in `terrain.campaigns.tick`): the report must list every one of them.
+    """
     idea_files = sorted(
         p.relative_to(root).as_posix() for p in (root / "research" / "ideas").glob(f"{c.idea}-*.md")
     )
@@ -116,6 +124,7 @@ def closeout_issue(
     opening = "\n".join(f"   - `{line}`" for line in REPORT_OPENING)
     n_sections = number_word(len(REPORT_SECTIONS))
     rules = "\n".join(f"- {line}" for line in (applied or [])) or "- No kill rule was applied."
+    checks = "\n".join(f"- {line}" for line in (not_run or [])) or "None."
     roles = ", ".join(NOTE_ROLES)
     banned = ", ".join(f"`{w}`" for w in NOTE_BANNED)
     score_header = " | ".join(SCOREBOARD_HEADER)
@@ -161,6 +170,14 @@ round is one agent review after the first.
 
 {friction}
 
+## Checks not run (written by the tick; copy as is)
+
+Every step that did not finish, every kill rule that was never applied
+because its step did not run to a result, and every referee row a review
+in this campaign marked "Not applicable", each with its reason.
+
+{checks}
+
 ## In scope
 
 - `{c.folder}/ledger.md`: the table above, under a heading
@@ -179,6 +196,10 @@ round is one agent review after the first.
   - "Stops and blocks" copies the friction facts above as they are, and lists
     every row of their Blocks table. It may say "none" only when that table
     says "None.".
+  - "Checks not run" lists every item of "Checks not run" above, each with
+    its reason as written there. It may say "None" only when that list says
+    "None.": every step finished, every kill rule was applied and no referee
+    row was marked "Not applicable".
   - "Proposed harness changes (at most three)" has two parts:
     `### Notes added`: the id and full text of each note this task added to
     `{NOTES_PATH}`, and which old notes it merged or removed, if any; or
@@ -243,36 +264,39 @@ round is one agent review after the first.
 2. `{c.folder}/report.md` opens with the four lines listed, one sentence
    each, and then has the {n_sections} sections listed, in that order.
 3. Every number in `report.md` appears in a run record it cites by path
-   (`research/explore-runs/...`) or in the ledger or friction facts above,
+   (`research/explore-runs/...`) or in the ledger, the friction facts or
+   the checks not run above,
    and every kill rule's outcome matches the ledger's Verdict column.
 4. "Results and their limits" says plainly that these are exploration-half
    results and that nothing here is a finding, and has the item
    "Unexplained differences" (both numbers and both paths, or "None found").
 5. "Stops and blocks" holds the friction facts unchanged and lists every row
    of their Blocks table; it says "none" only if that table says "None.".
-6. "Proposed harness changes (at most three)" has the parts "Notes added"
+6. "Checks not run" lists every item of "Checks not run" above with its
+   reason; it says "None" only if that list says "None.".
+7. "Proposed harness changes (at most three)" has the parts "Notes added"
    and "Checks in code proposed"; at most three checks, each with its
    friction fact, the check in one sentence and the file it would touch.
-7. "Decisions for Gabriel" has at most three choices, each changing what
+8. "Decisions for Gabriel" has at most three choices, each changing what
    happens next in the repository (the idea's status, registering, a
    follow-up), none about unused budget, each with options and one
    recommendation, and says the recommendation is the agent's, not his. The
    first is the idea's status, recommending one of {statuses}. The
    number on the report's "Decisions for you:" line is how many there are.
-8. `research/lessons.md` has one new dated entry. In `{idea_file}`, the
+9. `research/lessons.md` has one new dated entry. In `{idea_file}`, the
    front-matter `status` is the status the first decision recommends and
    `updated` is today's date, and there is one new dated line under
    `## Status` that names that status, says it is the report's
    recommendation and that Gabriel accepts it by approving this pull
    request; nothing else in either file changes.
-9. `{c.folder}/campaign.md` differs only in `status: {final_status}`.
-10. In `{NOTES_PATH}`: at most {number_word(MAX_NEW_NOTES)} new notes, every one citing
+10. `{c.folder}/campaign.md` differs only in `status: {final_status}`.
+11. In `{NOTES_PATH}`: at most {number_word(MAX_NEW_NOTES)} new notes, every one citing
     campaign {c.id} and a row of the friction facts above; the Scoreboard
     has exactly one new row, for campaign {c.id}; and
     `uv run python scripts/validate_records.py` passes.
-11. Nothing outside the files under "In scope" changes: no harness file,
+12. Nothing outside the files under "In scope" changes: no harness file,
     workflow, `AGENTS.md` or skill.
-12. `uv run ruff check .`, `uv run ruff format --check .` and `uv run pytest` pass.
+13. `uv run ruff check .`, `uv run ruff format --check .` and `uv run pytest` pass.
 
 {markers.closeout_marker(c.id)}
 """

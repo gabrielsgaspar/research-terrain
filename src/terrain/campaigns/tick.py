@@ -28,12 +28,20 @@ tick, at most MAX_AUTO_RETRIES times per step, before the owner is asked.
 In a campaign with `self_repair: true`, a pipeline_run step that still fails
 then gets one repair task (`terrain.campaigns.repair`, decision 0014); once
 it merges, the step runs once more, and only then is the owner asked.
+
+A circuit breaker per campaign: while BREAKER_BLOCKS or more of its blocks,
+posted within BREAKER_WINDOW and not unblocked since, are in the ledger, the
+tick starts nothing new in it (no step, no retry, no repair, no run after a
+repair). Work in flight goes on and merges through the gate go on. The
+breaker holding and lifting each get one ledger line (`breaker:held:<k>`,
+`breaker:lifted:<k>`).
 """
 
 from __future__ import annotations
 
 import datetime as dt
 import hashlib
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -70,6 +78,12 @@ BLOCK_GRACE = dt.timedelta(hours=24)  # time the owner has to unblock a step bef
 # use them up). Only these conclusions are retried: 'cancelled' means someone stopped it.
 MAX_AUTO_RETRIES = 2
 RETRY_CONCLUSIONS = {"failure", "timed_out"}
+
+# The circuit breaker (see the module docstring). Only block events of the newer
+# kind, `<step>:blocked:<id>`, count; the close-out's blocks do not.
+BREAKER_BLOCKS = 3
+BREAKER_WINDOW = dt.timedelta(hours=24)
+_STEP_BLOCK = re.compile(r"^(s\d{1,2}):blocked:[0-9a-f]{8}(?:-\d+)?$")
 
 # Runs in flight across all campaigns (see the module docstring).
 MAX_PIPELINE_RUNS_IN_FLIGHT = 3
@@ -175,6 +189,8 @@ class CampaignView:
     states: dict[str, StepState]
     events: dict[str, str]  # ledger event -> time it was posted
     used: dict[str, int]
+    # the blocks that hold the circuit breaker; empty while it does not hold
+    breaker: tuple[str, ...] = ()
 
 
 @dataclass
@@ -609,7 +625,9 @@ def view(c: Campaign, snap: Snapshot, gctx: GateContext) -> CampaignView:
         _model_jobs(i)
         for i in [*by_step.values(), *by_repair.values(), *([closeout] if closeout else [])]
     )
-    return CampaignView(c, tracking, closeout, states, events, used)
+    recent = breaker_blocks(events, snap.now)
+    breaker = recent if len(recent) >= BREAKER_BLOCKS else ()
+    return CampaignView(c, tracking, closeout, states, events, used, breaker)
 
 
 def _tasks_in_flight(v: CampaignView) -> int:
@@ -684,6 +702,93 @@ def _block_events(
     ]
     if holding:
         out.append((holding, _block_line(label or sid, st, owner)))
+    return out
+
+
+def breaker_blocks(events: dict[str, str], now: str) -> tuple[str, ...]:
+    """The step blocks that count toward the circuit breaker, oldest first: of the
+    newer kind, posted within BREAKER_WINDOW before `now`, and not unblocked since."""
+    return tuple(
+        sorted(
+            (
+                e
+                for e, when in events.items()
+                if _STEP_BLOCK.match(e)
+                and _unblocked(e) not in events
+                and not _older(now, when, BREAKER_WINDOW)
+            ),
+            key=lambda e: (_time(events[e]), e),
+        )
+    )
+
+
+def breaker_line(c: Campaign, blocks: Sequence[str]) -> str:
+    """The circuit breaker's message, in plain words, naming the blocked steps."""
+    sids = {b.partition(":")[0] for b in blocks}
+    steps = ", ".join(s.id for s in c.steps if s.id in sids)
+    hours = int(BREAKER_WINDOW.total_seconds() // 3600)
+    return (
+        f"Paused by the circuit breaker: {len(blocks)} steps blocked within {hours} hours "
+        f"({steps}). Nothing new starts until fewer than {BREAKER_BLOCKS} blocks fall in "
+        f"the last {hours} hours, or you clear the blocks."
+    )
+
+
+def _breaker_events(v: CampaignView, held: bool) -> list[tuple[str, str]]:
+    """The ledger event for the breaker now: holding (once per occasion), or lifting."""
+    k = 0
+    while f"breaker:held:{k + 1}" in v.events:
+        k += 1
+    open_ = k > 0 and f"breaker:lifted:{k}" not in v.events
+    if held and not open_:
+        return [
+            (f"breaker:held:{k + 1}", f"{breaker_line(v.campaign, v.breaker)} @{v.campaign.owner}")
+        ]
+    if open_ and not v.breaker:
+        return [
+            (
+                f"breaker:lifted:{k}",
+                f"Circuit breaker lifted: fewer than {BREAKER_BLOCKS} blocks in the last "
+                f"{int(BREAKER_WINDOW.total_seconds() // 3600)} hours. New steps start again.",
+            )
+        ]
+    return []
+
+
+def checks_not_run(v: CampaignView) -> list[str]:
+    """What the campaign never checked, for the close-out report, one line each.
+
+    Every step that did not finish, every kill rule that was never applied
+    because its step did not run to a result (or its results could not be
+    read), and every referee row the review of a merged pull request marked
+    "Not applicable".
+    """
+    c, out = v.campaign, []
+    for s in c.steps:
+        st = v.states[s.id]
+        if st.status != "done":
+            why = f"{st.status}: {st.detail}" if st.detail else st.status
+            out.append(f"Step {s.id} ({s.kind}) did not finish ({why.strip().rstrip('.')}).")
+    for s in c.steps:
+        st = v.states[s.id]
+        if st.status == "done" and st.verdict != "unreadable":
+            continue
+        reason = (
+            "the run's results could not be read for it"
+            if st.verdict == "unreadable"
+            else f"step {s.id} did not run to a result"
+        )
+        for k in s.kill_rules:
+            out.append(f"Kill rule {k.id} of step {s.id} ({k.says}) was never applied: {reason}.")
+    for s in c.steps:
+        pr = v.states[s.id].pr
+        review = pr.review_of_head() if pr and pr.merged else None
+        for rid, status in sorted((review.referee if review else {}).items()):
+            if status == "Not applicable":
+                out.append(
+                    f"Referee {rid} was marked Not applicable in the review of step {s.id} "
+                    f"(PR #{pr.number})."
+                )
     return out
 
 
@@ -811,10 +916,12 @@ def friction_facts(v: CampaignView, snap: Snapshot, new: Sequence[tuple[str, str
     for name, when in events.items():
         at.setdefault(when, []).append(name)
     times = sorted(at, key=_time)
-    gaps = sorted(
+    all_gaps = sorted(
         ((_hours(a, b), a, b) for a, b in zip(times, times[1:], strict=False)),
         key=lambda g: (-g[0], _time(g[1])),
-    )[:3]
+    )
+    gaps = all_gaps[:3]
+    gaps_left = len(all_gaps) - len(gaps)
 
     def names(when: str) -> str:
         return ", ".join(f"`{n}`" for n in sorted(at[when])) + f" ({when})"
@@ -832,6 +939,9 @@ def friction_facts(v: CampaignView, snap: Snapshot, new: Sequence[tuple[str, str
         else "Wall-clock time: none (the ledger has no `started` event)."
     )
     smooth_line = f"\n\nOne plan and no fix round: {', '.join(smooth)}." if smooth else ""
+    gaps_line = (
+        f"\n\n{gaps_left} shorter gap{'s' if gaps_left > 1 else ''} left out." if gaps_left else ""
+    )
     return f"""### Blocks
 
 {group(block_rows, ["Step", "Cause", "Posted", "Hours until unblocked"])}
@@ -854,7 +964,7 @@ def friction_facts(v: CampaignView, snap: Snapshot, new: Sequence[tuple[str, str
 
 The three longest gaps between two ledger events:
 
-{group(gap_rows, ["Hours", "After", "Before"])}"""
+{group(gap_rows, ["Hours", "After", "Before"])}{gaps_line}"""
 
 
 def _tracking_body(c: Campaign) -> str:
@@ -972,15 +1082,24 @@ def _advance(
         if stopped:
             event("stopped", "Stopped by the owner: no new steps, no merges.")
         can_start = not stopped and today <= dt.date.fromisoformat(c.end_by)
+        # the circuit breaker: nothing new starts (no step, retry, repair or run
+        # after a repair); work in flight and merges go on
+        held = bool(v.breaker) and can_start and v.closeout is None
+        for name, line in _breaker_events(v, held):
+            event(name, line)
+        if not held:
+            v.breaker = ()
+        breaker_wait = "once the circuit breaker lifts"
         filed_repair = False
         for s in c.steps:
             st = v.states[s.id]
             why_not = _no_repair(c, s, st, v, gctx) if can_start else "-"
-            if why_not == "" and _tasks_in_flight(v):
+            if why_not == "" and (held or _tasks_in_flight(v)):
+                wait = breaker_wait if held else "once no other task is in flight"
                 st = StepState(
                     "repair_waiting",
                     f"run {st.run.id} ended '{st.run.conclusion}' after {MAX_AUTO_RETRIES} "
-                    "retries; a repair is filed once no other task is in flight",
+                    f"retries; a repair is filed {wait}",
                     run=st.run,
                 )
             elif why_not == "":
@@ -1021,8 +1140,8 @@ def _advance(
                     "date, so the run was not started again"
                 )
                 st.cause, st.run_again = "run_failed", _run_again(c, s)
-            elif st.status == "repair_merged" and slots.wait(c, s):
-                st.detail = f"{st.detail} {slots.wait(c, s)}"
+            elif st.status == "repair_merged" and (held or slots.wait(c, s)):
+                st.detail = f"{st.detail} {breaker_wait if held else slots.wait(c, s)}"
             elif st.status == "repair_merged":
                 event(
                     _repair_event(s.id, "run"),
@@ -1034,11 +1153,11 @@ def _advance(
                 st = StepState("waiting_run", run=st.run, repair=st.repair)
             v.states[s.id] = st
             if st.retry and can_start:
-                if slots.wait(c, s):
+                if held or slots.wait(c, s):
                     st = StepState(
                         "retry_waiting",
                         f"run {st.run.id} ended '{st.run.conclusion}'; it starts again "
-                        f"{slots.wait(c, s)}",
+                        f"{breaker_wait if held else slots.wait(c, s)}",
                         run=st.run,
                     )
                 else:
@@ -1102,7 +1221,7 @@ def _advance(
         paced = filed_repair  # a task, explore run or repair: one per campaign per tick
         for s in c.steps:
             st = v.states[s.id]
-            if not can_start or st.status != "unstarted":
+            if not can_start or held or st.status != "unstarted":
                 continue
             if paced and (s.kind != "pipeline_run" or filed_repair):
                 continue
@@ -1194,6 +1313,7 @@ def _advance(
                     final,
                     applied,
                     friction_facts(v, snap, new),
+                    checks_not_run(v),
                 )
                 doing.append(
                     {

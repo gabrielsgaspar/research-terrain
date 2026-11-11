@@ -1510,7 +1510,7 @@ def closeout_body(actions) -> str:
 def friction_groups(body: str) -> dict[str, str]:
     """The friction facts of a close-out body, by group heading."""
     facts = body.split("## Friction facts (written by the tick; copy as is)\n", 1)[1]
-    facts = facts.split("\n## In scope", 1)[0]
+    facts = facts.split("\n## ", 1)[0]
     groups = {}
     for part in facts.split("### ")[1:]:
         head, _, text = part.partition("\n")
@@ -1554,6 +1554,8 @@ def test_closeout_carries_every_block_and_the_fix_rounds(tmp_path):
     time = groups["Time"]
     assert "2026-11-09T00:30:00Z) to `finished` (2026-11-09T07:00:00Z): 6.5 hours." in time
     assert time.count("\n| 2.0 |") == 2 and "| 1.5 |" in time
+    # four gaps between ledger times, three shown: the last line counts the one left out
+    assert time.endswith("\n\n1 shorter gap left out.")
     # the report must list those blocks; "none" only without block rows
     assert '"Stops and blocks" copies the friction facts above' in body
 
@@ -1608,9 +1610,10 @@ def test_closeout_without_friction_says_none(tmp_path):
 def test_closeout_body_names_every_report_section_in_order(tmp_path):
     root = make_repo(tmp_path)
     body = closeout_body(run_decide(root, snap([tracking(labels=("campaign", "campaign-stop"))])))
-    assert len(REPORT_SECTIONS) == 9
+    assert len(REPORT_SECTIONS) == 10
+    assert REPORT_SECTIONS.index("Checks not run") == REPORT_SECTIONS.index("Stops and blocks") + 1
     assert REPORT_SECTIONS.index("Proposed harness changes (at most three)") == (
-        REPORT_SECTIONS.index("Stops and blocks") + 1
+        REPORT_SECTIONS.index("Checks not run") + 1
     )
     places = [body.index(f"   - `## {s}`") for s in REPORT_SECTIONS]
     assert places == sorted(places)
@@ -1618,9 +1621,12 @@ def test_closeout_body_names_every_report_section_in_order(tmp_path):
     assert openings == sorted(openings) and openings[-1] < places[0]
     done = body.split("## Done when", 1)[1]
     assert f"then has the {number_word(len(REPORT_SECTIONS))} sections listed" in done
-    assert "nine sections" in done and "eight sections" not in body
+    assert "ten sections" in done and "nine sections" not in body
     assert "## Friction facts (written by the tick; copy as is)" in body
-    assert body.index("## Friction facts") < body.index("## In scope")
+    assert body.index("## Friction facts") < body.index("## Checks not run (written by the tick")
+    assert body.index("## Checks not run (written by the tick") < body.index("## In scope")
+    assert '6. "Checks not run" lists every item of "Checks not run" above' in done
+    assert "13. `uv run ruff check .`" in done
 
 
 def test_closeout_writes_notes_and_proposes_checks(tmp_path):
@@ -1842,8 +1848,14 @@ def test_repair_log_is_cleaned_and_bounded():
     assert clean_log("") == NO_LOG
     many = clean_log("\n".join(f"line {i}" for i in range(500)))
     assert many.splitlines()[-1] == "line 499" and len(many.splitlines()) == LOG_MAX_LINES
+    assert many.splitlines()[0] == "(cut: the last 59 of 500 lines)"
     wide = clean_log("\n".join("x" * 500 for _ in range(50)))
-    assert len(wide) <= LOG_MAX_CHARS and all(len(ln) == 200 for ln in wide.splitlines())
+    first, *rest = wide.splitlines()
+    assert first == f"(cut: the last {len(rest)} of 50 lines; long lines shortened)"
+    assert len(wide) <= LOG_MAX_CHARS and all(len(ln) == 200 for ln in rest)
+    assert clean_log("short\n" + "y" * 300).splitlines()[0] == "(cut: long lines shortened)"
+    # nothing cut: no cut line, whatever blank lines surround the text
+    assert clean_log("\n\nfirst\nlast\n\n") == "first\nlast"
     assert clean_log("cpf 123.456.789-09 and 12345678901") == (
         "cpf [number removed] and [number removed]"
     )
@@ -2901,3 +2913,296 @@ def test_card_command_prints_the_card(tmp_path, capsys):
 
     assert out == render_card(root, "0001")
     assert cli.cmd_card(root, "0002") == 1
+
+
+# -- the circuit breaker: three blocks within a day hold new starts ---------------------
+
+BREAKER_STEPS = ("s2", "s3", "s4", "s5")
+BLOCKS_AT = "2026-11-10T11:00:00Z"
+
+
+def breaker_repo(root: Path) -> Path:
+    """s1 builds; s2 to s5 are data-pipeline runs that each come after s1 only."""
+    head = repair_text().split("  - id: s2\n", 1)[0]
+    head = head.replace("max_pipeline_runs: 3", "max_pipeline_runs: 4")
+    steps = "".join(
+        f"  - id: {sid}\n    kind: pipeline_run\n    stage: build\n    target: t_{sid}\n"
+        "    dataset: tse_candidates\n    after: [s1]\n"
+        for sid in BREAKER_STEPS
+    )
+    make_repo(root, head + steps + "---\n\n# 0001: Build candidates\n")
+    (root / "pipeline" / "build").mkdir(parents=True)
+    for sid in BREAKER_STEPS:
+        (root / "pipeline" / "build" / f"t_{sid}.py").write_text("", encoding="utf-8")
+    assert validate(root) == []
+    return root
+
+
+def cancelled_runs() -> list[Run]:
+    """s2, s3 and s4 cancelled: each blocks, with no retry and no repair."""
+    return [
+        pipe_run(550 + k, sid, "cancelled", "2026-11-10T10:00:00Z")
+        for k, sid in enumerate(PIPE_STEPS)
+    ]
+
+
+def run_block(sid: str, run_id: int) -> str:
+    return f"{sid}:blocked:{block_id(f"run {run_id} ended 'cancelled'", f'run {run_id}')}"
+
+
+THREE_BLOCKS = tuple(run_block(sid, 550 + k) for k, sid in enumerate(PIPE_STEPS))
+
+
+def breaker_tick(root, now=NOW, early=(), late=(), runs=(), issues=(), status_page=False, **kw):
+    """One tick: s1 merged and s2 to s4 blocked at 11:00; `late` events posted at 12:00."""
+    t = tracking(
+        [
+            ledger(
+                "started",
+                "s1:filed",
+                "s1:merged",
+                *(f"{sid}:dispatched" for sid in PIPE_STEPS),
+                *early,
+                at="2026-11-10T09:00:00Z",
+            ),
+            ledger(*THREE_BLOCKS, at=BLOCKS_AT),
+            *([ledger(*late, at="2026-11-10T12:00:00Z")] if late else []),
+        ]
+    )
+    s = snap([t, built_s1(root), *issues], runs=[*cancelled_runs(), *runs], now=now, **kw)
+    if status_page:
+        return page_of(root, s)
+    return run_decide(root, s)
+
+
+HELD = (
+    "Paused by the circuit breaker: 3 steps blocked within 24 hours (s2, s3, s4). "
+    "Nothing new starts until fewer than 3 blocks fall in the last 24 hours, "
+    "or you clear the blocks."
+)
+
+
+def test_breaker_holds_new_starts_and_says_so_once(tmp_path):
+    root = breaker_repo(tmp_path)
+    actions = breaker_tick(root)
+    # s5 could start, but three blocks fell within 24 hours: one line, no dispatch
+    assert types(actions) == ["comment"]
+    body = actions[0]["body"]
+    assert markers.parse_ledger(body) == ("0001", {"breaker:held:1"})
+    assert f"- {HELD} @{OWNER}" in body
+    # a fourth tick, and one just inside the window, post nothing and start nothing
+    assert breaker_tick(root, late=["breaker:held:1"], now="2026-11-10T12:30:00Z") == []
+    assert breaker_tick(root, late=["breaker:held:1"], now="2026-11-11T10:59:00Z") == []
+    # the window passes: the breaker lifts with one line, and s5 starts
+    actions = breaker_tick(root, late=["breaker:held:1"], now="2026-11-11T11:30:00Z")
+    assert types(actions) == ["comment", "dispatch"]
+    assert markers.parse_ledger(actions[0]["body"])[1] == {"breaker:lifted:1", "s5:dispatched"}
+    assert "Circuit breaker lifted: fewer than 3 blocks in the last 24 hours." in actions[0]["body"]
+    assert actions[1]["inputs"]["target"] == "t_s5"
+    # lifted, then three new blocks: a second occasion, posted once
+    again = breaker_tick(root, late=["breaker:held:1", "breaker:lifted:1"])
+    assert markers.parse_ledger(again[0]["body"]) == ("0001", {"breaker:held:2"})
+
+
+def test_breaker_lifts_when_the_blocks_are_cleared(tmp_path):
+    root = breaker_repo(tmp_path)
+    # s2's run is started again by hand and succeeds; its manifest is on main
+    fresh = pipe_run(560, "s2", "success", "2026-11-10T11:30:00Z")
+    files = frozenset({"data/manifests/build/t_s2.json"})
+    actions = breaker_tick(
+        root, late=["breaker:held:1"], runs=[fresh], files_on_main=files, now="2026-11-10T13:00:00Z"
+    )
+    unblocked = f"s2:unblocked:{THREE_BLOCKS[0].rsplit(':', 1)[1]}"
+    assert types(actions) == ["comment"]  # the unblock is posted; nothing starts yet
+    assert markers.parse_ledger(actions[0]["body"])[1] == {unblocked, "s2:recorded"}
+    actions = breaker_tick(
+        root,
+        late=["breaker:held:1", unblocked, "s2:recorded"],
+        runs=[fresh],
+        files_on_main=files,
+        now="2026-11-10T13:30:00Z",
+    )
+    assert types(actions) == ["comment", "dispatch"]
+    assert markers.parse_ledger(actions[0]["body"])[1] == {"breaker:lifted:1", "s5:dispatched"}
+
+
+def test_breaker_holds_retries_and_repairs_but_not_work_in_flight(tmp_path):
+    root = breaker_repo(tmp_path)
+    held = ["breaker:held:1", "s5:dispatched"]
+    # s5 failed with retries left: no retry while the breaker holds
+    failed = pipe_run(561, "s5", "failure", "2026-11-10T11:30:00Z")
+    assert breaker_tick(root, late=held, runs=[failed]) == []
+    # s5 failed after both retries: no repair either
+    retries = [*held, "s5:retry:1", "s5:retry:2"]
+    actions = breaker_tick(root, late=retries, runs=[failed], run_logs={561: LOG})
+    assert "create_issue" not in types(actions)
+    # once the window passes, the retry goes
+    later = breaker_tick(root, late=held, runs=[failed], now="2026-11-11T11:30:00Z")
+    assert "s5:retry:1" in markers.parse_ledger(later[0]["body"])[1] and "dispatch" in types(later)
+    # s5's run succeeded and its manifest PR passes the gate: it is merged
+    done = pipe_run(561, "s5", "success", "2026-11-10T11:30:00Z")
+    manifest = PullRequest(
+        number=31,
+        author=BOT,
+        head_ref="data/build-t_s5-561",
+        head_sha=SHA,
+        state="open",
+        merged=False,
+        mergeable=True,
+        files=("data/manifests/build/t_s5.json",),
+        ci_test="success",
+        gate_status="success",
+        run_title=markers.pipeline_run_title("build", "t_s5", "0001", "s5"),
+        run_conclusion="success",
+    )
+    actions = breaker_tick(root, late=held, runs=[done], record_prs={561: manifest})
+    assert actions == [{"type": "merge", "pr": 31, "sha": SHA}]
+    # a run in flight goes on: nothing to do, nothing posted
+    going = pipe_run(561, "s5", None, "2026-11-10T11:30:00Z", status="in_progress")
+    assert breaker_tick(root, late=held, runs=[going]) == []
+
+
+def test_breaker_is_waiting_on_you_on_the_status_page(tmp_path):
+    root = breaker_repo(tmp_path)
+    waiting = section(
+        breaker_tick(root, late=["breaker:held:1"], status_page=True), "Waiting on you"
+    )
+    assert waiting.startswith(f"- Campaign 0001 (#1): {HELD}\n- Campaign 0001, step s2")
+    lifted = breaker_tick(
+        root, late=["breaker:held:1"], now="2026-11-11T11:30:00Z", status_page=True
+    )
+    assert "circuit breaker" not in section(lifted, "Waiting on you")
+
+
+# -- checks not run, in the close-out --------------------------------------------------
+
+
+def checks_not_run_of(body: str) -> str:
+    part = body.split("## Checks not run (written by the tick; copy as is)\n", 1)[1]
+    return part.split("\n## In scope", 1)[0].strip().split("\n\n", 1)[1]
+
+
+def test_closeout_lists_checks_not_run_when_stopped_at_the_first_gate(tmp_path):
+    # s2's kill rule stops the campaign; s3, an explore run after it, never runs
+    extra = (
+        "  - id: s3\n    kind: explore_run\n    script: 0003_count\n    after: [s2]\n"
+        '    kill_rules:\n      - id: k2\n        says: "Fewer than 30 races at 0.5%"\n'
+        '        field: races.half\n        op: "<"\n        value: 30\n        confirmed: true\n'
+    )
+    text = campaign_text(on_kill="stop", extra_steps=extra, max_explore_runs=2)
+    root = make_repo(tmp_path, text)
+    events = ("started", "s1:filed", "s1:merged", "s2:dispatched")
+    s = snap(
+        [tracking([ledger(*events)]), merged_issue(root)],
+        runs=[record_run()],
+        record_prs={555: record_pr(merged=True, state="closed")},
+        results={"research/explore-runs/0003/555.json": {"races": {"1pct": 45}}},
+    )
+    body = closeout_body(run_decide(root, s))
+    assert checks_not_run_of(body) == (
+        "- Step s3 (explore_run) did not finish (skipped: step s2 was killed).\n"
+        "- Kill rule k2 of step s3 (Fewer than 30 races at 0.5%) was never applied: step s3 "
+        "did not run to a result."
+    )
+    assert '"Checks not run" lists every item of "Checks not run" above' in body
+    assert 'It may say "None" only when that list says\n    "None."' in body
+
+
+def test_closeout_checks_not_run_say_none_only_when_everything_ran(tmp_path):
+    root = make_repo(tmp_path)
+    events = ("started", "s1:filed", "s1:merged", "s2:dispatched")
+
+    def body_with(review: Review) -> str:
+        issue = replace(
+            merged_issue(root), pr=task_pr(root, merged=True, state="closed", reviews=(review,))
+        )
+        s = snap(
+            [tracking([ledger(*events)]), issue],
+            runs=[record_run()],
+            record_prs={555: record_pr(merged=True, state="closed")},
+            results={"research/explore-runs/0003/555.json": {"races": {"1pct": 75}}},
+        )
+        return closeout_body(run_decide(root, s))
+
+    everything = body_with(Review("approve", SHA[:12], dict(REFEREE_OK), NOW))
+    assert checks_not_run_of(everything) == "None."
+    # every step ran, but the review marked R5 not applicable: that is listed
+    waived = body_with(Review("approve", SHA[:12], {**REFEREE_OK, "R5": "Not applicable"}, NOW))
+    assert checks_not_run_of(waived) == (
+        "- Referee R5 was marked Not applicable in the review of step s1 (PR #20)."
+    )
+    # stopped before anything ran: both steps and the kill rule
+    stop = tracking(labels=("campaign", "campaign-stop"))
+    listed = checks_not_run_of(closeout_body(run_decide(root, snap([stop]))))
+    assert listed.splitlines() == [
+        "- Step s1 (task) did not finish (unstarted).",
+        "- Step s2 (explore_run) did not finish (waiting).",
+        "- Kill rule k1 of step s2 (Fewer than 60 races at 1%) was never applied: step s2 "
+        "did not run to a result.",
+    ]
+
+
+# -- cut text says it was cut -------------------------------------------------------------
+
+
+def test_cut_repair_log_still_matches_the_template(tmp_path):
+    from terrain.campaigns import repair
+
+    root = repair_repo(tmp_path)
+    c = active_campaigns(root)[0]
+    long_log = "\n".join(f"line {i} " + "z" * (300 if i == 450 else 5) for i in range(412))
+    title, body = repair_body(root, log=long_log)
+    log = body.split("```text\n", 1)[1].split("\n```\n", 1)[0]
+    assert log.splitlines()[0] == "(cut: the last 59 of 412 lines)"
+    assert len(log.splitlines()) == repair.LOG_MAX_LINES
+    paths = repair.repair_paths(c, c.step("s2"), ctx(root).codeowners)
+    assert repair.matches_template(c, c.step("s2"), title, body, paths, 1)
+    assert evaluate(repair_pr(root, issue_body=body), ctx(root)).state == "success"
+
+
+# -- the repair reviewer does not read the log ------------------------------------------
+
+
+def review_issue_script() -> str:
+    """The Python the agent-review workflow runs after it writes the issue file."""
+    text = (REPO / ".github" / "workflows" / "agent-review.yml").read_text(encoding="utf-8")
+    step = text.index("- name: Read the issue and the plan\n")
+    start = text.index("python3 -I - <<'EOF'\n", step) + len("python3 -I - <<'EOF'\n")
+    return textwrap.dedent(text[start : text.index("\n          EOF\n", start)])
+
+
+def run_review_issue_script(tmp_path, monkeypatch, issue: str) -> tuple[object, str]:
+    data = tmp_path / "agent-review" / "data"
+    data.mkdir(parents=True)
+    (data / "issue.md").write_text(issue, encoding="utf-8")
+    hidden = json.dumps([{"path": "src/x.py", "change": "modify"}])
+    plan = (
+        f"## Agent plan: Plan\n\n### Done when\n\n- [ ] it works\n\n<!-- agent-files: {hidden} -->"
+    )
+    (data / "plan.md").write_text(plan, encoding="utf-8")
+    monkeypatch.setenv("RUNNER_TEMP", str(tmp_path))
+    monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "out.txt"))
+    code = None
+    try:
+        exec(compile(review_issue_script(), "agent-review plan", "exec"), {"__name__": "__main__"})
+    except SystemExit as stop:
+        code = stop.code
+    return code, (data / "issue.md").read_text(encoding="utf-8")
+
+
+def test_review_of_a_repair_gets_the_issue_without_its_log(tmp_path, monkeypatch):
+    root = repair_repo(tmp_path / "repo")
+    title, body = repair_body(root)
+    code, issue = run_review_issue_script(tmp_path / "repair", monkeypatch, f"# {title}\n\n{body}")
+    assert code is None
+    assert "ColumnNotFoundError" not in issue and "```text" not in issue
+    assert "## The failing run\n\nRun 557." in issue
+    assert (
+        "\n(run log removed: the reviewer judges the change, not the log)\n\n## In scope" in issue
+    )
+    # the planner and the builder still get it: the issue on GitHub keeps the log
+    assert "ColumnNotFoundError" in body
+    # any other issue is left as it is
+    plain = "# Task\n\n## The failing run\n\n```text\nkeep me\n```\n"
+    code, issue = run_review_issue_script(tmp_path / "plain", monkeypatch, plain)
+    assert code is None and issue == plain
