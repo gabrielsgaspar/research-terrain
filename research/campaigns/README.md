@@ -56,6 +56,12 @@ can change a campaign while it runs.
 7. Every agent reads those notes as advice for its role, never as rules; checks in code are only proposed in the report, for you to batch into tasks later.
 8. The close-out may not touch the harness, the workflows, `AGENTS.md` or the skills, and the notes file changes only in a close-out you approve.
 
+## The approval card
+
+`uv run python scripts/campaign.py card NNNN` prints one page, built by code from the campaign's files and never by a model: phases, every kill rule, new data, limits, paths and papers to read first.
+The `campaign-design` skill shows it to you before you say go, and puts it unchanged at the top of the campaign PR under "What you are approving".
+p-value kill rules carry their false-stop rate, and the card adds them up for the campaign; if the card looks wrong, the plan is wrong.
+
 ## Self-repair of data steps
 
 A campaign file may say `self_repair: true` (decision 0014; the default is

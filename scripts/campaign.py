@@ -4,6 +4,9 @@
         Check every campaign file; one line per problem, exit 1 if any.
     uv run python scripts/campaign.py status
         Print each campaign and its steps (offline; reads only the files).
+    uv run python scripts/campaign.py card 0007
+        Print the approval card for one campaign: one Markdown page, built by
+        code from its files, of what approving it means (offline).
     uv run python scripts/campaign.py gate --pr N --out gate.json
         Evaluate the campaign gate for pull request N (reads GitHub).
     uv run python scripts/campaign.py gate --branch B --sha S --out gate.json
@@ -35,6 +38,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "src"))
 
+from terrain.campaigns.card import CardError, render_card  # noqa: E402
 from terrain.campaigns.codeowners import CodeOwners  # noqa: E402
 from terrain.campaigns.gate import GateContext, evaluate  # noqa: E402
 from terrain.campaigns.spec import (  # noqa: E402
@@ -83,6 +87,15 @@ def cmd_status(root: Path) -> int:
             what = s.draft or s.script or f"{s.stage} {s.target}"
             after = f" after {','.join(s.after)}" if s.after else ""
             print(f"    {s.id} {s.kind:12} {what}{after}")
+    return 0
+
+
+def cmd_card(root: Path, campaign_id: str) -> int:
+    try:
+        print(render_card(root, campaign_id), end="")
+    except CardError as exc:
+        print(exc, file=sys.stderr)
+        return 1
     return 0
 
 
@@ -206,6 +219,8 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("validate")
     sub.add_parser("status")
+    k = sub.add_parser("card")
+    k.add_argument("id", help="the campaign number, such as 0007")
     g = sub.add_parser("gate")
     g.add_argument("--pr")
     g.add_argument("--branch")
@@ -220,6 +235,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_validate(root)
     if args.cmd == "status":
         return cmd_status(root)
+    if args.cmd == "card":
+        return cmd_card(root, args.id)
     if args.cmd == "page":
         return cmd_page(root)
     if args.cmd == "gate":

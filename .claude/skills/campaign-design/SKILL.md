@@ -235,8 +235,9 @@ Read `references/writing-the-files.md`. Then:
    status `proposed`, its kill criteria marked as his).
 3. Run `uv run python scripts/campaign.py validate`, `uv run ruff check .`
    and `uv run pytest tests/test_campaigns.py`. Fix every problem.
-4. Show Gabriel a summary table: steps, rules (in plain words), datasets,
-   budget, end date, and what he stated versus confirmed.
+4. Show Gabriel what he stated, what he confirmed and what you suggested.
+   The steps, rules, datasets, budget and end date come from the card in
+   item 6, not from a table you write.
 5. Ask: `draft` (merge now, start later) or `active` (starts on the first
    tick after he merges)? If the campaign has more than four steps and the
    closest paper is unverified, first ask whether he has read it (stage 3).
@@ -254,11 +255,27 @@ Read `references/writing-the-files.md`. Then:
    campaign whose idea is not `exploring`, so run it, and the step 3 checks,
    again. If `draft`: leave the idea's status as it is; the PR that later
    makes the campaign active sets it.
-6. Create a branch `campaigns/NNNN-slug`, commit, push, and open a PR with
+6. Print the approval card, once every check above passes:
+
+   ```bash
+   uv run python scripts/campaign.py card NNNN
+   ```
+
+   Code builds it from the campaign's own files: the phases, every kill rule
+   (with the false-stop rate of each p-value rule and their sum), every
+   dataset, the limits, the paths agents may touch and "Read before this
+   runs". Show it to Gabriel in the conversation exactly as printed and ask
+   for his go-ahead on it. Never write, edit, shorten or reorder the card
+   yourself. If it shows something wrong, fix the campaign files, run the
+   checks again and print a new card. If the command refuses, it names the
+   problems: fix them first.
+7. Create a branch `campaigns/NNNN-slug`, commit, push, and open a PR with
    `gh pr create`. Never merge it: Gabriel merges (`gh pr merge` is denied).
-   The PR body lists what he must check before merging: the kill rules, the
-   datasets and their licences, the budget, and that `CAMPAIGNS_ENABLED`
-   is `true` if he wants it to run.
+   The PR description starts with the heading `## What you are approving`,
+   then the card output, unchanged: print it again after the last commit
+   and paste it as it is. Below it, list what he must check before merging:
+   the kill rules, the datasets and their licences, the budget, and that
+   `CAMPAIGNS_ENABLED` is `true` if he wants it to run.
 
 Finish by telling him, in three lines, what happens after he merges: the
 tracking issue opens on the next tick, he hears from it only when a step is
