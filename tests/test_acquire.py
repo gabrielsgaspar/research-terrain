@@ -156,6 +156,8 @@ def test_expansion_of_the_synthetic_entry():
         ("ibge_grid_2010", 38),
         ("naturalearth_basemap", 4),
         ("ibge_boundaries_2024", 3),
+        ("gold_price", 2),
+        ("sgb_gold_occurrences", 1),
     ],
 )
 def test_real_catalog_url_counts(name, count):
@@ -286,6 +288,78 @@ def test_gzip_check_passes(tmp_path):
 def test_gzip_check_fails_when_truncated(tmp_path):
     with pytest.raises(AcquireError):
         check_file(_write(tmp_path, gzip.compress(CSV, mtime=0)[:-20]), {"type": "gzip"})
+
+
+# --- csv check ---------------------------------------------------------------
+
+GOOD_CSV = b"FID,uf,value\nA.1,PA,10\nA.2,MT,20\nA.3,AM,30\n"
+CSV_CHECK = {"type": "csv", "columns": ["FID", "uf"], "min_rows": 3}
+
+
+def test_csv_check_passes_with_and_without_bom(tmp_path):
+    check_file(_write(tmp_path, GOOD_CSV), CSV_CHECK)
+    check_file(_write(tmp_path, b"\xef\xbb\xbf" + GOOD_CSV), CSV_CHECK)
+
+
+def test_csv_check_fails_on_html_page(tmp_path):
+    page = b"<!DOCTYPE html>\n<html><body>Blocked</body></html>\n" * 5
+    with pytest.raises(AcquireError):
+        check_file(_write(tmp_path, page), CSV_CHECK)
+
+
+def test_csv_check_fails_on_missing_column(tmp_path):
+    with pytest.raises(AcquireError, match="f.bin"):
+        check_file(_write(tmp_path, GOOD_CSV), {**CSV_CHECK, "columns": ["FID", "municipio"]})
+
+
+def test_csv_check_fails_on_forbidden_column(tmp_path):
+    with pytest.raises(AcquireError, match="f.bin"):
+        check_file(_write(tmp_path, GOOD_CSV), {**CSV_CHECK, "forbid_columns": ["value"]})
+
+
+def test_csv_check_fails_on_too_few_rows(tmp_path):
+    with pytest.raises(AcquireError, match="f.bin"):
+        check_file(_write(tmp_path, GOOD_CSV), {**CSV_CHECK, "min_rows": 4})
+    with pytest.raises(AcquireError):
+        check_file(_write(tmp_path, b"FID,uf\n\n\n"), {"type": "csv", "columns": ["FID"]})
+    with pytest.raises(AcquireError):
+        check_file(_write(tmp_path, b""), {"type": "csv", "columns": ["FID"]})
+
+
+def test_csv_check_fails_on_invalid_utf8(tmp_path):
+    with pytest.raises(AcquireError, match="f.bin"):
+        check_file(_write(tmp_path, GOOD_CSV + b"A.4,\xff\xfe,1\n"), CSV_CHECK)
+
+
+def test_csv_error_messages_hold_no_data_value(tmp_path):
+    secret = b"Zeca Pessoa"
+    body = b"nome_secreto,uf\n" + secret + b",PA\n"
+    cases = [
+        {"type": "csv", "columns": ["FID"]},
+        {"type": "csv", "columns": ["uf"], "forbid_columns": ["nome_secreto"]},
+        {"type": "csv", "columns": ["uf"], "min_rows": 5},
+    ]
+    for check in cases:
+        with pytest.raises(AcquireError) as err:
+            check_file(_write(tmp_path, body), check)
+        assert "Zeca" not in str(err.value)
+        assert "PA" not in str(err.value).replace("f.bin", "")
+    with pytest.raises(AcquireError) as err:
+        check_file(_write(tmp_path, b"\xff" + secret), {"type": "csv", "columns": ["FID"]})
+    assert "Zeca" not in str(err.value)
+
+
+def test_real_csv_checks_and_no_geologo_requested():
+    gold = {f.name: f for f in expand_urls(dataset("gold_price"))}
+    assert gold["CPIAUCSL.csv"].check["columns"] == ["observation_date", "CPIAUCSL"]
+    assert gold["CMO-Historical-Data-Monthly.xlsx"].check["type"] == "zip"
+    (sgb,) = expand_urls(dataset("sgb_gold_occurrences"))
+    assert sgb.name == "sgb_ocorrencias.csv"
+    assert sgb.check["type"] == "csv"
+    for col in ("FID", "substancias", "status_economico", "municipio", "uf"):
+        assert col in sgb.check["columns"]
+    assert "geologo" in sgb.check["forbid_columns"]
+    assert "geologo" not in sgb.url
 
 
 def test_gzip_check_fails_on_non_gzip(tmp_path):

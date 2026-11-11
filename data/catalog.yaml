@@ -967,3 +967,49 @@ datasets:
       tls_intermediate:
         url: http://crt.sectigo.com/SectigoPublicServerAuthenticationCAOVR36.crt
         sha256: 6542d176bed50f193c0ce297ae44ecd8a0a86bec2ede682769344059b4e78530
+
+  - name: gold_price
+    source: "World Bank Commodity Price Data (The Pink Sheet), monthly prices in nominal US dollars; US CPI for all urban consumers (CPIAUCSL, FRED, Federal Reserve Bank of St. Louis)"
+    licence: "World Bank: CC BY 4.0 (datacatalog.worldbank.org/public-licenses). FRED: CPIAUCSL is public domain, citation requested; FRED's terms ask users not to scrape (one file, downloaded once)"
+    gcs: data/raw/prices/gold/
+    status: planned
+    notes: >
+      The xlsx sheet "Monthly Prices" has its headers in row 5 ("Gold",
+      "Soybeans", ...) and units in row 6. Data start in row 7: column A holds
+      the month as 1960M01, and missing values are "…". The World Bank changed
+      the gold method in June 2025 (spot average of daily rates; before, the
+      London afternoon fixing). The soybean specification changed in December
+      2007, January 2021 and January 2025. The Pink Sheet URL is tied to the
+      November 2026 release. The fallback is the IMF's primary commodity
+      prices
+      (https://www.imf.org/-/media/files/research/commodityprices/monthly/external-data.xlsx,
+      columns PGOLD and PSOYB). Checked from a local session on 2026-11-11:
+      the xlsx is 588 KB, and the CSV runs from 1947-01 to 2026-10.
+    acquire:
+      files:
+        - url: https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Historical-Data-Monthly.xlsx
+          name: CMO-Historical-Data-Monthly.xlsx
+          check: {type: zip, member: "xl/workbook.xml"}
+        - url: https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPIAUCSL
+          name: CPIAUCSL.csv
+          check: {type: csv, columns: [observation_date, CPIAUCSL], min_rows: 900}
+
+  - name: sgb_gold_occurrences
+    source: "Serviço Geológico do Brasil (SGB/CPRM), mineral occurrences (ocorrências de recursos minerais), GeoServer WFS layer geosgb:ocorrencias_recursos_minerais"
+    licence: "No licence found; the WFS capabilities state AccessConstraints NONE and Fees NONE"
+    gcs: data/raw/sgb/occurrences/
+    status: planned
+    notes: >
+      The layer has 36,484 points (2026-11-11). Of these, 4,478 mention gold
+      in substancias, a comma-separated list such as "Diamante, Ouro".
+      status_economico includes "Garimpo". The field geologo holds a person's
+      name, so the URL never requests it, and the check refuses a file that
+      has it. Coordinates are decimal degrees. data_cadastro is the date the
+      record was entered, not a discovery date. Checked from a local session
+      on 2026-11-11: this URL returns every row in one response, with header
+      FID,municipio,uf,data_cadastro,provincia,status_economico,importancia,situacao_mina,situacao_garimpo,substancias,longitude,latitude.
+    acquire:
+      files:
+        - url: https://geoservicos.sgb.gov.br/geoserver/ows?service=WFS&version=2.0.0&request=GetFeature&typeNames=geosgb:ocorrencias_recursos_minerais&outputFormat=csv&propertyName=substancias,status_economico,situacao_garimpo,situacao_mina,importancia,provincia,municipio,uf,data_cadastro,latitude,longitude
+          name: sgb_ocorrencias.csv
+          check: {type: csv, columns: [FID, substancias, status_economico, municipio, uf, latitude, longitude], forbid_columns: [geologo], min_rows: 30000}

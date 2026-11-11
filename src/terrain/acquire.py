@@ -9,6 +9,7 @@ last by `run_script`.
 from __future__ import annotations
 
 import argparse
+import csv
 import fnmatch
 import gzip
 import hashlib
@@ -75,11 +76,46 @@ def _check_zip(path: Path, member: str | None) -> None:
             raise AcquireError(f"{path.name}: no member matching {member}")
 
 
+def _check_csv(path: Path, columns: list[str], forbid_columns: list[str], min_rows: int) -> None:
+    """Header has every `columns` name and no `forbid_columns` name; enough rows.
+
+    Messages name the file, the catalog's column names and counts only, never a
+    cell of the file (an HTML page's first line must not be echoed).
+    """
+    try:
+        with open(path, encoding="utf-8-sig", newline="") as f:
+            reader = csv.reader(f)
+            header = next(reader, None)
+            if header is None:
+                raise AcquireError(f"{path.name}: empty file")
+            names = set(header)
+            missing = [c for c in columns if c not in names]
+            if missing:
+                raise AcquireError(f"{path.name}: missing columns {missing}")
+            forbidden = [c for c in forbid_columns if c in names]
+            if forbidden:
+                raise AcquireError(f"{path.name}: forbidden columns {forbidden}")
+            rows = sum(1 for row in reader if any(cell.strip() for cell in row))
+    except UnicodeDecodeError:
+        raise AcquireError(f"{path.name}: not valid UTF-8") from None
+    except csv.Error:
+        raise AcquireError(f"{path.name}: not readable as CSV") from None
+    if rows < min_rows:
+        raise AcquireError(f"{path.name}: {rows} data rows, expected at least {min_rows}")
+
+
 def check_file(path: Path, check: dict[str, Any]) -> None:
     """Raise `AcquireError` unless `path` passes its catalog check."""
     kind = check["type"]
     try:
-        if kind == "zip":
+        if kind == "csv":
+            _check_csv(
+                path,
+                list(check["columns"]),
+                list(check.get("forbid_columns", [])),
+                int(check.get("min_rows", 1)),
+            )
+        elif kind == "zip":
             _check_zip(path, check.get("member"))
         elif kind == "ods":
             _check_zip(path, "content.xml")
