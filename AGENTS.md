@@ -221,3 +221,14 @@ workflow carries it out; the `campaign-gate` check decides what may merge.
   list, deleting data, personal identifiers in Git.
 - New ideas and variations an agent thinks of go into the close-out report
   as suggestions. They are never run in the same campaign.
+
+### Writing for Gabriel
+
+- Short sentences. No jargon without a one-line explanation. Numbers carry
+  their units.
+- Every message to him ends with two lines: "What happened:" and "What you
+  do next:" (or "Nothing").
+- A stop always states the real cause.
+- An action for him is a link or a button on GitHub where possible.
+- When a command is unavoidable: exactly one, for one named terminal, with
+  no placeholders to fill in.

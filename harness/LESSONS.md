@@ -4,6 +4,21 @@ What setting up and running the agent pipeline, GitHub and GCP has taught
 us. Research and data findings live in `research/lessons.md`. Newest first,
 same format.
 
+## Rules of thumb (read these first)
+
+- Before a campaign is approved, check every task step against the tests that pin what it changes. (2026-11-10)
+- Size a step to about 8 files and one clear change. Hitting the turn cap is a size problem. (2026-11-10)
+- Every stop states the real cause in one plain line, and what happens next. (2026-11-10)
+- Test each outside source from a GitHub runner before a campaign is approved, and name a fallback. (2026-11-10)
+- A campaign's ledger records every block and every repair, including fixes merged outside it. (2026-11-10)
+- A kill-criterion verdict states the condition as the idea writes it, with one test case each way. (2026-11-07)
+- Put every test you want in "Done when" before `agent-build`; send later fixes back as a fix round, not a hand push. (2026-11-07)
+- Check a task's facts (columns, values, thresholds and their units) on the real files for every state and year. (2026-11-02)
+- A build writes everything locally and uploads only after every check passes. (2026-11-02)
+- A build's output path hashes every module that reads or transforms its data. (2026-11-02)
+- When a task mirrors something, say exactly which parts: agents read ambiguous tasks literally. (2026-11-02)
+- After a workflow change, start a new run. "Re-run" replays the old commit. (2026-11-01)
+
 ## Patterns so far (2026-11-02)
 
 About twenty failures in the first two days. None put bad code on main or
@@ -20,6 +35,74 @@ plan review. They fall into five groups:
 
 Expect the rate to fall: each first use of a capability (first build, first
 deletion, first big task) has now happened once.
+
+## 2026-11-10: A campaign step's allowed files missed a test that its own change breaks (campaign 0005, #292)
+- Tried: campaign 0005 step s1, which changed the number of TSE vote files.
+- Result: `tests/test_acquire.py` pins that number, and it was not in the
+  step's allowed files. The planner caught it (#292). A running campaign
+  cannot change, so 0005 was stopped and re-issued as 0006.
+- Why: nobody checked the step against the tests that pin what it changes,
+  and a campaign's own files are owned while it runs.
+- Implication: before a campaign is approved, check every task step against
+  the tests that pin what it changes.
+
+## 2026-11-10: A build finished in 106 turns against a cap of 100, and its work was thrown away (run 42825610230)
+- Tried: campaign 0006 step s1 (#295), with the builder capped at 100 turns.
+- Result: the builder finished its work in 106 turns. The run was rejected
+  ("exceeding the configured maximum of 100") and the work was thrown away.
+  The cap was raised to 160 in #296.
+- Why: the step was too big for the cap.
+- Implication: size a step to about 8 files and one clear change. Hitting the
+  turn cap is a size problem, not a glitch.
+
+## 2026-11-10: The failure message hid the cause
+- Tried: finding out from the issue why a build had stopped.
+- Result: the issue said only "The builder did not return a usable result".
+- Why: `agent-build` posts that one fixed line whenever the builder returns
+  nothing it can read, whatever the cause.
+- Implication: every stop states the real cause in one plain line, and what
+  happens next.
+
+## 2026-11-10: Outside sources refused GitHub's runners (INEP, IBAMA)
+- Tried: downloading INEP's school data and IBAMA's portal data from
+  GitHub's runners.
+- Result: INEP's server reset the connections and IBAMA's portal returned
+  403. Base dos Dados on BigQuery solved both (#310, #311).
+- Why: the servers refuse requests from GitHub's runners. This showed only
+  when the campaign's steps ran.
+- Implication: test each outside source from a runner before a campaign is
+  approved, and name a fallback in the plan.
+
+## 2026-11-10: A resumable Earth Engine export sat blocked for hours
+- Tried: a national Earth Engine export, waited on for up to 160 minutes.
+- Result: the wait ran out with 16 of 21 parts done. The step was marked
+  blocked and sat for hours, although the message said "run again to resume".
+- Why: nothing in the system starts the run again; a person has to.
+- Implication: failures that can resume should be re-run by the system a
+  bounded number of times, and resuming must not depend on the calendar day.
+
+## 2026-11-10: One run at a time across all campaigns made unrelated work wait
+- Tried: the rule "one run at a time across all campaigns".
+- Result: unrelated work waited hours behind one long export.
+- Why: the rule exists only because record pull requests race on
+  `research/INDEX.md` (next entry).
+- Implication: not decided yet. The limit protects one generated file, not
+  the runs themselves.
+
+## 2026-11-10: Open pull requests conflict on `research/INDEX.md`
+- Tried: having more than one record pull request open at a time.
+- Result: two open pull requests conflict on `research/INDEX.md`.
+- Why: many pull requests regenerate it.
+- Implication: not decided yet. Until then, it is the reason for the
+  one-run limit above.
+
+## 2026-11-10: Campaign 0006's ledger missed two repairs (#310, #311)
+- Tried: closing out campaign 0006 from its ledger.
+- Result: the report's "Stops and blocks" says "None recorded in the
+  ledger", although steps s8 and s12 needed repairs.
+- Why: the fixes (#310, #311) were merged outside the campaign, so the
+  ledger never saw them.
+- Implication: the ledger must record blocks and repairs.
 
 ## 2026-11-07: A verdict and its test were inverted together, and the review passed them (PR #226)
 - Tried: issue #223 asked the script to report "whether drafted kill

@@ -99,6 +99,10 @@ def test_each_problem_is_caught(tmp_path, capsys, name, text, message):
     assert message in capsys.readouterr().out
 
 
+def test_parked_status_is_accepted(tmp_path):
+    assert vr.validate(make_tree(tmp_path, idea(status="parked"))) == []
+
+
 def test_duplicate_title_is_caught(tmp_path):
     make_tree(
         tmp_path,
