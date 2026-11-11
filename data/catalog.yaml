@@ -1013,3 +1013,18 @@ datasets:
         - url: https://geoservicos.sgb.gov.br/geoserver/ows?service=WFS&version=2.0.0&request=GetFeature&typeNames=geosgb:ocorrencias_recursos_minerais&outputFormat=csv&propertyName=substancias,status_economico,situacao_garimpo,situacao_mina,importancia,provincia,municipio,uf,data_cadastro,latitude,longitude
           name: sgb_ocorrencias.csv
           check: {type: csv, columns: [FID, substancias, status_economico, municipio, uf, latitude, longitude], forbid_columns: [geologo], min_rows: 30000}
+
+  - name: gold_exposure
+    source: built from anm_sigmine, sgb_gold_occurrences, gold_price, ibge_boundaries_2024, municipalities and cnfp_public_forests
+    licence: as anm_sigmine, sgb_gold_occurrences, gold_price and cnfp_public_forests (World Bank prices CC BY 4.0, with attribution; only municipality-level shares and counts are published)
+    derived: data/derived/gold_exposure/
+    contract: data/contracts/gold_exposure.md
+    status: planned
+    notes: >
+      Idea 0007 and decisions 0003 and 0011: two treatment-side tables, not
+      split by half. gold_exposure.parquet has one row per municipality
+      (5,571): area, Albers centroid, SGB gold occurrences (main exposure),
+      pre-2000 ANM gold, garimpo and sand title shares (robustness) and the
+      Indigenous share. gold_prices.parquet has one row per complete year:
+      real gold and soybean prices in 2024 dollars. Built by campaign 0007
+      step s6, run in step s7.
