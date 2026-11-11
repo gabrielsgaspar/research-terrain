@@ -940,3 +940,30 @@ datasets:
       the same municipality, with a confidence level (high, medium, low,
       none). Keys, scores and rede only; no names or addresses. Idea 0006,
       decision 0011, campaign 0006 step s9.
+
+  - name: anm_sigmine
+    source: "ANM SIGMINE, ArcGIS feature service, layer 0 'Processos minerários ativos' (active processes only)"
+    licence: "No dataset licence found; ANM publishes SIGMINE as open data (gov.br/anm dados abertos); the gov.br site footer states CC BY-ND 3.0. Only municipality-level shares are published."
+    gcs: data/raw/anm/sigmine/
+    status: planned
+    contract: data/contracts/anm_sigmine.md
+    notes: >
+      Active processes only (the layer has no inactive processes, so titles
+      that lapsed before 2026 are missing). NOME (holder) is never requested.
+      270,353 records on 2026-11-11. ANO is the year in the process number
+      (no full request date; no record lacked it on 2026-11-11). Gold is SUBS
+      in OURO, MINÉRIO DE OURO, OURO NATIVO (OURO PIGMENTO is orpiment, not
+      gold). Garimpo permits are FASE LAVRA GARIMPEIRA and REQUERIMENTO DE
+      LAVRA GARIMPEIRA. ANM's national zip with inactive processes
+      (dadosabertos.anm.gov.br) answered HTTP 403 to scripts on 2026-11-11.
+      Idea 0007, campaign 0007 step s1.
+    arcgis:
+      layer: https://geo.anm.gov.br/arcgis/rest/services/SIGMINE/dados_anm/FeatureServer/0
+      out_fields: [OBJECTID, PROCESSO, NUMERO, ANO, FASE, SUBS, USO, AREA_HA, UF]
+      order_by: OBJECTID
+      page_size: 2000
+      out_sr: 4674
+      min_records: 250000
+      tls_intermediate:
+        url: http://crt.sectigo.com/SectigoPublicServerAuthenticationCAOVR36.crt
+        sha256: 6542d176bed50f193c0ce297ae44ecd8a0a86bec2ede682769344059b4e78530
