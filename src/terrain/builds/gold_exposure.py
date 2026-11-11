@@ -26,7 +26,9 @@ from typing import Any
 
 import numpy as np
 import polars as pl
+import shapefile
 import shapely
+from shapely.geometry import shape as to_shapely
 from shapely.strtree import STRtree
 
 from terrain import grid
@@ -474,6 +476,36 @@ def _counts_by_uf(table: pl.DataFrame, column: str) -> str:
     return "/".join(f"{uf}={n}" for uf, n in rows.iter_rows())
 
 
+def read_indigenous(shp_path: Path) -> list[Any]:
+    """Every Indigenous-land polygon of a CNFP edition, with no regional limit.
+
+    `tenure.read_cnfp` keeps only polygons that meet the Legal Amazon box, which would drop the
+    Indigenous lands of the South and the Southeast. This table covers the whole country.
+    """
+    lands: list[Any] = []
+    with shapefile.Reader(str(shp_path), encoding="utf-8", encodingErrors="replace") as reader:
+        for item in reader.iterShapeRecords():
+            geom = item.shape
+            if geom.shapeType not in tenure.POLYGON_TYPES or not geom.points:
+                continue
+            record = {k.lower(): v for k, v in item.record.as_dict().items()}
+            if tenure.is_indigenous(str(record.get("categoria") or "")):
+                lands.append(to_shapely(geom.__geo_interface__))
+    return lands
+
+
+def read_indigenous_lands(store: Store, entry: dict[str, Any], tmp_dir: Path) -> list[Any]:
+    """Download the CNFP 2025 edition, read its Indigenous lands and delete the files."""
+    zip_path = _fetch(store, entry, tmp_dir)
+    work = tmp_dir / ("unpacked_" + zip_path.stem)
+    work.mkdir(exist_ok=True)
+    try:
+        return read_indigenous(tenure.extract_edition(zip_path, work))
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+        zip_path.unlink(missing_ok=True)
+
+
 def build(
     store: Store,
     anm_manifest: dict[str, Any],
@@ -561,11 +593,7 @@ def build(
     gold_points = located.filter(pl.col("gold") & pl.col("cd_ibge").is_not_null())
 
     # Indigenous lands (CNFP 2025), in degrees for the points and in km for the shares.
-    features = tenure._read_edition(store, cnfp_entry, tmp_dir)
-    indigenous_deg, indigenous_repaired = repair(
-        [f.geometry for f in features if tenure.is_indigenous(f.categoria)]
-    )
-    del features
+    indigenous_deg, indigenous_repaired = repair(read_indigenous_lands(store, cnfp_entry, tmp_dir))
     indigenous_deg = [g for g in indigenous_deg if g is not None]
     if not indigenous_deg:
         raise BuildError("no Indigenous land polygons in the CNFP edition")

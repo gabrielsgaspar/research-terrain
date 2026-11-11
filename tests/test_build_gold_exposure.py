@@ -558,6 +558,28 @@ def test_rounding_noise_in_a_share_is_clipped():
     assert ge.check_shares(table)["indigenous_share"].to_list() == [1.0]
 
 
+def test_indigenous_lands_outside_the_legal_amazon_box_are_kept(tmp_path):
+    from terrain.builds import polling_place_tenure as tenure
+
+    work = tmp_path / "south"
+    work.mkdir()
+    writer = shapefile.Writer(str(work / "south"), encoding="utf-8")
+    writer.field("categoria", "C", 30, 0)
+    south = {  # Rio Grande do Sul, south of the Legal Amazon box
+        "type": "Polygon",
+        "coordinates": [[[-52.0, -29.0], [-51.9, -29.0], [-51.9, -28.9], [-52.0, -29.0]]],
+    }
+    for categoria in ("TI", "FLONA"):
+        writer.shape(south)
+        writer.record(categoria)
+    writer.close()
+    shp = work / "south.shp"
+    assert tenure.read_cnfp(shp) == []  # the shared reader drops it
+    lands = ge.read_indigenous(shp)
+    assert len(lands) == 1
+    assert lands[0].bounds[1] < tenure.LEGAL_AMAZON_BOX[1]
+
+
 def test_no_indigenous_land_stops(tmp_path):
     work = tmp_path / "c2"
     only_forest = zipped(

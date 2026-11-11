@@ -28,9 +28,9 @@ and `terrain/grid.py` (the Albers projection). A run whose path already has a ma
 - `ibge_boundaries_2024`: `BR_Municipios_2024.zip`, keyed by `CD_MUN`.
 - `municipalities`: `municipalities.parquet`; `cd_ibge`, `uf`, `legal_amazon` (5,571 rows).
   The two lagoon polygons 4300001 and 4300002 are not in it, so they are dropped.
-- `cnfp_public_forests`: `CNFP_2025.zip`; the Indigenous lands (`is_indigenous`). The CNFP
-  reader keeps polygons whose bounding box meets the Legal Amazon box, so Indigenous lands
-  wholly outside it are not in `indigenous_share` or `geo_n_gold_indigenous`.
+- `cnfp_public_forests`: `CNFP_2025.zip`; the Indigenous lands (`is_indigenous`). All
+  Indigenous polygons are read, with no regional limit (the shared CNFP reader's Legal Amazon
+  box is not applied), so the South and the Southeast are covered.
 
 ## `gold_exposure.parquet`
 
