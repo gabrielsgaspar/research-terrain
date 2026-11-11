@@ -86,6 +86,12 @@ One row per calendar year in which gold, soybeans and CPI each have 12 months, s
 the columns are the ones headed "Gold" and "Soybeans" in row 5; months are `YYYYMmm` in column
 A; "…" or an empty cell is missing. CPI is `CPIAUCSL.csv` (`observation_date` `YYYY-MM-01`).
 
+One CPI month may be filled. When a year's CPI misses exactly one month and the months on each
+side (across a year end too) have values, that month is the geometric mean of the two. This is
+for October 2025, which the BLS never published (the 2025 US government shutdown): FRED leaves
+it empty, and the fill is 324.654 from September's 324.245 and November's 325.063. Gold and
+soybeans are never filled.
+
 | Column | Type | Meaning |
 | --- | --- | --- |
 | `year` | int64 | calendar year |
@@ -94,6 +100,7 @@ A; "…" or an empty cell is missing. CPI is `CPIAUCSL.csv` (`observation_date` 
 | `gold_real`, `soy_real` | float64 | 2024 dollars: `price × cpi_2024 / cpi` |
 | `ln_gold_real`, `ln_soy_real` | float64 | natural logs of the real prices |
 | `n_months_gold`, `n_months_soy`, `n_months_cpi` | int64 | months in the mean (always 12) |
+| `n_months_cpi_filled` | int64 | CPI months filled as above (0, or 1 for 2025) |
 
 The World Bank changed its gold method in June 2025 and its soybean specification several
 times (see the catalog entry `gold_price`); the series is not corrected for that.
@@ -124,3 +131,4 @@ writes the manifest. The manifest notes hold:
 - the ANM rows, gold titles, and gold and sand titles without a polygon;
 - the polygons repaired (ANM gold and sand titles, Indigenous lands);
 - the price years, first to last, and their number.
+- the CPI months filled (`cpi_months_filled=2025-10`, or `none`).
