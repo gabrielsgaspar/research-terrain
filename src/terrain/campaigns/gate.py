@@ -66,7 +66,6 @@ def closeout_paths(c: Campaign, root: Path) -> tuple[str, ...]:
         f"{c.folder}/ledger.md",
         f"{c.folder}/campaign.md",
         "research/lessons.md",
-        "research/INDEX.md",
         NOTES_PATH,
         *ideas,
     )
@@ -212,12 +211,11 @@ def evaluate(pr: PullRequest, ctx: GateContext) -> GateResult:
             allowed_files = (
                 f"research/explore-runs/{idea}/{run_id}.md",
                 f"research/explore-runs/{idea}/{run_id}.json",
-                "research/INDEX.md",
             )
             bad = [f for f in pr.files if f not in allowed_files]
             if bad:
                 failures.append(
-                    f"a record PR may change only its record and the index, not {bad[:5]}"
+                    f"a record PR may change only its record (.md and .json), not {bad[:5]}"
                 )
         else:
             stage, target = m_man.group(1), m_man.group(2)

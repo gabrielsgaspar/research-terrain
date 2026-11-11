@@ -223,3 +223,79 @@ def test_a_note_needs_its_campaigns_scoreboard_row(tmp_path):
     assert problems == [
         "research/agent-notes.md: note N001 cites campaign 0007, which has no Scoreboard row"
     ]
+
+
+# --- an idea's status follows its campaigns ------------------------------------
+
+
+def campaign_file(root: Path, cid: str, status: str, idea_id: str = "0001") -> None:
+    folder = root / "research" / "campaigns" / f"{cid}-c"
+    folder.mkdir(parents=True)
+    (folder / "campaign.md").write_text(
+        f'---\nid: "{cid}"\ntitle: "C"\nstatus: {status}\nidea: "{idea_id}"\n---\n',
+        encoding="utf-8",
+    )
+
+
+@pytest.mark.parametrize(
+    ("campaigns", "status", "message"),
+    [
+        # an active campaign: the idea is exploring
+        (
+            [("0007", "active")],
+            "proposed",
+            "has active campaign 0007, so its status must be 'exploring', not 'proposed'",
+        ),
+        ([("0007", "active")], "parked", "must be 'exploring', not 'parked'"),
+        ([("0006", "done"), ("0007", "active")], "parked", "has active campaign 0007"),
+        # the newest campaign finished and none is active: no longer proposed or exploring
+        ([("0006", "done")], "proposed", "newest campaign 0006 is done and none is active"),
+        (
+            [("0005", "stopped")],
+            "exploring",
+            "(promising, parked or dead) or later, not 'exploring'",
+        ),
+        ([("0005", "stopped"), ("0006", "done")], "exploring", "newest campaign 0006 is done"),
+    ],
+)
+def test_idea_status_that_does_not_follow_its_campaign_is_caught(
+    tmp_path, capsys, campaigns, status, message
+):
+    root = make_tree(tmp_path, idea(status=status))
+    for cid, cstatus in campaigns:
+        campaign_file(root, cid, cstatus)
+    problems = vr.validate(root)
+    assert len(problems) == 1, problems
+    assert problems[0].startswith("research/ideas/0001-an-idea.md: idea 0001")
+    assert message in problems[0]
+    assert vr.main([str(root)]) == 1
+    assert message in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    ("campaigns", "status"),
+    [
+        ([("0007", "active")], "exploring"),
+        ([("0006", "done")], "parked"),
+        ([("0006", "done")], "dead"),
+        ([("0006", "stopped")], "promising"),
+        ([("0006", "done")], "registered"),
+        # the newest campaign is a draft: the idea may wait as proposed
+        ([("0006", "done"), ("0007", "draft")], "proposed"),
+        ([("0007", "draft")], "proposed"),
+        # campaigns before 0005 are not checked (idea 0001 after 0002 and 0003)
+        ([("0002", "done"), ("0003", "done")], "exploring"),
+        ([("0004", "stopped")], "proposed"),
+    ],
+)
+def test_idea_status_that_follows_its_campaign_passes(tmp_path, campaigns, status):
+    root = make_tree(tmp_path, idea(status=status))
+    for cid, cstatus in campaigns:
+        campaign_file(root, cid, cstatus)
+    assert vr.validate(root) == []
+
+
+def test_campaign_of_another_idea_does_not_count(tmp_path):
+    root = make_tree(tmp_path, idea(status="proposed"))
+    campaign_file(root, "0007", "active", idea_id="0009")
+    assert vr.validate(root) == []

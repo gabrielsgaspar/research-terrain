@@ -10,11 +10,18 @@ Every decision is re-derived from GitHub on every tick (issue markers, plan
 and review comments, run titles, ledger comments), so the tick has no state
 to lose and a repeated tick does nothing twice.
 
-Pacing, to stay gentle on the subscription's usage limits:
+Pacing, to stay gentle on the subscription's usage limits (a run is in
+flight until its record is merged):
 - at most one task (issue to merged PR) in flight per campaign;
-- at most one run (explore or pipeline, until its record is merged) in
-  flight across all campaigns, so two record PRs never race on the index;
-- at most one new step started per campaign per tick.
+- at most MAX_PIPELINE_RUNS_IN_FLIGHT data-pipeline runs in flight across all
+  campaigns. Their records are one manifest file per target, and the
+  workflow has one concurrency group per target, so independent ones do not
+  conflict; research/INDEX.md, which they once raced on, is not in git;
+- at most one explore run in flight across all campaigns, and none while a
+  data-pipeline run of the same campaign is in flight;
+- at most one new task or explore run started per campaign per tick; data
+  pipeline runs start as far as the limits above and the budget allow.
+Retries and the run after a repair follow the same limits (`RunSlots`).
 
 A run step whose run ended 'failure' or 'timed_out' is started again by the
 tick, at most MAX_AUTO_RETRIES times per step, before the owner is asked.
@@ -63,6 +70,10 @@ BLOCK_GRACE = dt.timedelta(hours=24)  # time the owner has to unblock a step bef
 # use them up). Only these conclusions are retried: 'cancelled' means someone stopped it.
 MAX_AUTO_RETRIES = 2
 RETRY_CONCLUSIONS = {"failure", "timed_out"}
+
+# Runs in flight across all campaigns (see the module docstring).
+MAX_PIPELINE_RUNS_IN_FLIGHT = 3
+MAX_EXPLORE_RUNS_IN_FLIGHT = 1
 
 # What the owner does about each kind of block, named by where to click on GitHub.
 NEEDS_YOU = {
@@ -116,10 +127,10 @@ IN_FLIGHT = {
     "waiting_run",
     "running",
     "recording",
-    "retry_waiting",  # a failed run to start again once no other run is in flight
+    "retry_waiting",  # a failed run to start again once the run limits allow
     "repair_waiting",  # a repair to file once no other task of the campaign is in flight
     "repair_filing",  # a repair filed, its issue not seen yet
-    "repair_merged",  # a merged repair: the run starts again once no other run is in flight
+    "repair_merged",  # a merged repair: the run starts again once the run limits allow
 }
 RUN_IN_FLIGHT = {"waiting_run", "running", "recording", "in_review", "mergeable", "awaiting_gate"}
 
@@ -164,6 +175,46 @@ class CampaignView:
     states: dict[str, StepState]
     events: dict[str, str]  # ledger event -> time it was posted
     used: dict[str, int]
+
+
+@dataclass
+class RunSlots:
+    """Runs in flight across all campaigns, and whether one more may start."""
+
+    pipeline: int = 0
+    explore: int = 0
+    pipeline_of: dict[str, int] = field(default_factory=dict)  # campaign id -> pipeline runs
+
+    @classmethod
+    def count(cls, views: Sequence[CampaignView]) -> RunSlots:
+        slots = cls()
+        for v in views:
+            for s in v.campaign.steps:
+                st = v.states[s.id]
+                if s.kind != "task" and st.status in RUN_IN_FLIGHT and not st.repairing:
+                    slots.take(v.campaign, s)
+        return slots
+
+    def wait(self, c: Campaign, s: Step) -> str:
+        """What run step `s` of campaign `c` waits for; empty if it may start now."""
+        if s.kind == "pipeline_run":
+            if self.pipeline >= MAX_PIPELINE_RUNS_IN_FLIGHT:
+                n = MAX_PIPELINE_RUNS_IN_FLIGHT
+                return f"once fewer than {n} data-pipeline runs are in flight"
+            return ""
+        if self.explore >= MAX_EXPLORE_RUNS_IN_FLIGHT:
+            return "once no other explore run is in flight"
+        if self.pipeline_of.get(c.id, 0):
+            return "once this campaign's data-pipeline runs are recorded"
+        return ""
+
+    def take(self, c: Campaign, s: Step) -> None:
+        """Count run step `s` of campaign `c` as in flight."""
+        if s.kind == "pipeline_run":
+            self.pipeline += 1
+            self.pipeline_of[c.id] = self.pipeline_of.get(c.id, 0) + 1
+        else:
+            self.explore += 1
 
 
 def _time(s: str) -> dt.datetime:
@@ -892,14 +943,7 @@ def _advance(
     """
     actions: list[dict] = []
     views = [view(c, snap, gctx) for c in campaigns]
-    runs_in_flight = sum(
-        1
-        for v in views
-        for s in v.campaign.steps
-        if s.kind != "task"
-        and v.states[s.id].status in RUN_IN_FLIGHT
-        and not v.states[s.id].repairing
-    )
+    slots = RunSlots.count(views)
     today = _time(snap.now).date()
     for v in views:
         c = v.campaign
@@ -977,8 +1021,8 @@ def _advance(
                     "date, so the run was not started again"
                 )
                 st.cause, st.run_again = "run_failed", _run_again(c, s)
-            elif st.status == "repair_merged" and runs_in_flight:
-                st.detail = f"{st.detail} once no other run is in flight"
+            elif st.status == "repair_merged" and slots.wait(c, s):
+                st.detail = f"{st.detail} {slots.wait(c, s)}"
             elif st.status == "repair_merged":
                 event(
                     _repair_event(s.id, "run"),
@@ -986,15 +1030,15 @@ def _advance(
                     f"(PR #{st.pr.number}).",
                 )
                 doing.append(run_dispatch(c, s))
-                runs_in_flight += 1
+                slots.take(c, s)
                 st = StepState("waiting_run", run=st.run, repair=st.repair)
             v.states[s.id] = st
             if st.retry and can_start:
-                if runs_in_flight:
+                if slots.wait(c, s):
                     st = StepState(
                         "retry_waiting",
                         f"run {st.run.id} ended '{st.run.conclusion}'; it starts again "
-                        "once no other run is in flight",
+                        f"{slots.wait(c, s)}",
                         run=st.run,
                     )
                 else:
@@ -1004,7 +1048,7 @@ def _advance(
                         f"itself ({st.retry} of {MAX_AUTO_RETRIES}) with a fresh run.",
                     )
                     doing.append(run_dispatch(c, s))
-                    runs_in_flight += 1
+                    slots.take(c, s)
                     st = StepState("waiting_run", run=st.run)
                 v.states[s.id] = st
             if st.issue and s.kind == "task":
@@ -1054,10 +1098,13 @@ def _advance(
                 )
 
         tasks_in_flight = _tasks_in_flight(v)
-        started = filed_repair
+        started = filed_repair  # anything started this tick
+        paced = filed_repair  # a task, explore run or repair: one per campaign per tick
         for s in c.steps:
             st = v.states[s.id]
-            if started or not can_start or st.status != "unstarted":
+            if not can_start or st.status != "unstarted":
+                continue
+            if paced and (s.kind != "pipeline_run" or filed_repair):
                 continue
             if s.kind == "task":
                 if (
@@ -1077,18 +1124,20 @@ def _advance(
                         "then_labels": ["agent-plan"],
                     }
                 )
-                started = True
+                started = paced = True
             else:
                 key = "max_explore_runs" if s.kind == "explore_run" else "max_pipeline_runs"
-                if runs_in_flight or v.used[key] >= c.budget[key]:
+                if slots.wait(c, s) or v.used[key] >= c.budget[key]:
                     continue
                 doing.append(run_dispatch(c, s))
                 event(
                     f"{s.id}:dispatched",
                     f"{s.id}: started `{s.script or s.stage + ' ' + s.target}`.",
                 )
-                runs_in_flight += 1
+                slots.take(c, s)
+                v.used[key] += 1  # several pipeline runs may start in one tick
                 started = True
+                paced |= s.kind == "explore_run"
 
         in_flight = any(st.status in IN_FLIGHT for st in v.states.values())
         startable = False

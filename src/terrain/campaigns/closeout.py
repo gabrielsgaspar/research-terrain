@@ -8,6 +8,9 @@ to `research/agent-notes.md`, which every agent reads (decision 0013), and
 one Scoreboard row; checks in code it only proposes, in the report.
 The close-out PR touches owned paths (the idea file, campaign.md, the notes),
 so the owner always approves it: it is where he reads the report and decides.
+It also sets the idea's status to the report's recommendation (one of
+RECOMMENDED_STATUSES), so the idea's status follows its campaign; approving
+the pull request accepts it, and scripts/validate_records.py catches drift.
 """
 
 from __future__ import annotations
@@ -29,6 +32,9 @@ REPORT_SECTIONS = (
     "Decisions for Gabriel",
 )
 
+
+# The statuses a close-out may recommend for its idea, and then writes to the idea file.
+RECOMMENDED_STATUSES = ("promising", "parked", "dead")
 
 # The lines the report opens with, before `## Summary`, one sentence each.
 REPORT_OPENING = ("What we tested:", "What happened:", "What it means:", "Decisions for you:")
@@ -118,6 +124,12 @@ def closeout_issue(
         "the friction fact in a few words. Added YYYY-MM-DD."
     )
     score_row = f"| {c.id} | {len(c.steps)} | blocks | fix rounds | retries | hours | notes added |"
+    statuses = ", ".join(f"`{x}`" for x in RECOMMENDED_STATUSES)
+    status_line = (
+        "- YYYY-MM-DD: <status>, the recommendation of campaign "
+        f"{c.id}'s close-out report (`{c.folder}/report.md`); Gabriel accepts it "
+        "by approving this pull request. <What the campaign found, in a sentence or two.>"
+    )
     title = f"Task: close out campaign {c.id} ({c.title})"
     body = f"""## Goal
 
@@ -177,7 +189,8 @@ round is one agent review after the first.
   - "Decisions for Gabriel": at most three. Each must change what happens
     next in the repository: the idea's status, whether to register a design
     for the confirmation half, or whether to open a follow-up campaign or
-    task. No question about unused budget.
+    task. No question about unused budget. The first is always the idea's
+    status, with the options {statuses} and one of them recommended.
 - `{NOTES_PATH}`: advice for later campaigns, which every agent reads.
   - Add at most {number_word(MAX_NEW_NOTES)} notes under `## Notes`. Each answers one row
     of the friction facts above (a row of a table, or the wall-clock line)
@@ -203,12 +216,17 @@ round is one agent review after the first.
     Change nothing else in the file.
 - `research/lessons.md`: one dated entry for the campaign, in the file's
   existing style, citing the run records by path.
-- `{idea_file}`: one dated line under `## Status` saying what the campaign
-  found. The front-matter `status` and `kill_criteria` stay as they are:
-  Gabriel changes them, not this task.
+- `{idea_file}`: the idea's status follows the report. In the front matter,
+  `status` becomes the status the report recommends in its first decision
+  (one of {statuses}) and `updated` today's date; `kill_criteria` and every
+  other key stay as they are. Add one dated line under `## Status`, in this
+  shape, on one item:
+
+  ```markdown
+  {status_line}
+  ```
+
 - `{c.folder}/campaign.md`: front-matter `status: {final_status}`, nothing else.
-- `research/INDEX.md`: regenerated with `uv run python scripts/build_index.py`
-  only if a test says it is out of date.
 
 ## Out of scope
 
@@ -239,9 +257,14 @@ round is one agent review after the first.
    happens next in the repository (the idea's status, registering, a
    follow-up), none about unused budget, each with options and one
    recommendation, and says the recommendation is the agent's, not his. The
+   first is the idea's status, recommending one of {statuses}. The
    number on the report's "Decisions for you:" line is how many there are.
-8. `research/lessons.md` has one new dated entry and `{idea_file}` one new
-   dated status line; nothing else in either file changes.
+8. `research/lessons.md` has one new dated entry. In `{idea_file}`, the
+   front-matter `status` is the status the first decision recommends and
+   `updated` is today's date, and there is one new dated line under
+   `## Status` that names that status, says it is the report's
+   recommendation and that Gabriel accepts it by approving this pull
+   request; nothing else in either file changes.
 9. `{c.folder}/campaign.md` differs only in `status: {final_status}`.
 10. In `{NOTES_PATH}`: at most {number_word(MAX_NEW_NOTES)} new notes, every one citing
     campaign {c.id} and a row of the friction facts above; the Scoreboard

@@ -479,7 +479,6 @@ def test_gate_record_pr(tmp_path):
         files=(
             "research/explore-runs/0003/555.md",
             "research/explore-runs/0003/555.json",
-            "research/INDEX.md",
         ),
         ci_test="success",
         gate_status="success",
@@ -489,6 +488,11 @@ def test_gate_record_pr(tmp_path):
     assert evaluate(pr, ctx(root)).state == "success"
     bad = replace(pr, files=(*pr.files, "research/lessons.md"))
     assert evaluate(bad, ctx(root)).state == "failure"
+    # research/INDEX.md is not in git: a record PR may not add it back
+    index = replace(pr, files=(*pr.files, "research/INDEX.md"))
+    result = evaluate(index, ctx(root))
+    assert result.state == "failure"
+    assert "only its record" in result.description
     manual = replace(pr, run_title="Explore 0003_count ")
     assert evaluate(manual, ctx(root)).state == "pending"
 
@@ -958,6 +962,11 @@ def two_campaigns(tmp_path) -> tuple[Path, Issue]:
     """Campaign 0001 and a second one, 0002, with one explore run step and its tracking issue."""
     root = make_repo(tmp_path)
     (root / "explore" / "0003_count.py").write_text("", encoding="utf-8")
+    return root, add_campaign_0002(root)
+
+
+def add_campaign_0002(root: Path) -> Issue:
+    """Campaign 0002 (idea 0004, one explore run step s1) and its tracking issue."""
     (root / "explore" / "0004_other.py").write_text("", encoding="utf-8")
     (root / "research" / "ideas" / "0004-align.md").write_text("---\n---\n", encoding="utf-8")
     other = root / "research" / "campaigns" / "0002-other"
@@ -985,7 +994,7 @@ def two_campaigns(tmp_path) -> tuple[Path, Issue]:
     )
     (other / "campaign.md").write_text(text, encoding="utf-8")
     assert validate(root) == []
-    t2 = Issue(
+    return Issue(
         2,
         "Campaign 0002",
         markers.tracking_marker("0002"),
@@ -995,7 +1004,6 @@ def two_campaigns(tmp_path) -> tuple[Path, Issue]:
         NOW,
         (Comment(BOT, markers.ledger_marker("0002", ["started"]), NOW),),
     )
-    return root, t2
 
 
 def test_tick_one_run_in_flight_across_campaigns(tmp_path):
@@ -2446,3 +2454,245 @@ def test_act_accepts_the_status_marker():
     line = next(ln for ln in act_script().splitlines() if ln.startswith("MARKER = "))
     pattern = re.compile(line.split("re.compile(r", 1)[1].rsplit('")', 1)[0].strip('"'))
     assert pattern.search(markers.status_marker())
+
+
+# -- data-pipeline runs in parallel --------------------------------------------
+
+PARALLEL = ("s1", "s2", "s3", "s4")
+
+
+def parallel_text(pipeline_budget: int = 4, explore_after: str = "[]") -> str:
+    """Four independent pipeline steps (s1-s4) and an explore run (s5) of campaign 0001."""
+    steps = "".join(
+        f"  - id: {sid}\n    kind: pipeline_run\n    stage: build\n    target: t_{sid}\n"
+        "    dataset: tse_candidates\n    after: []\n"
+        for sid in PARALLEL
+    )
+    head = textwrap.dedent(
+        f"""\
+        ---
+        id: "0001"
+        title: "Build in parallel"
+        status: active
+        idea: "0003"
+        owner: gabrielsgaspar
+        created: 2026-11-08
+        end_by: 2026-11-20
+        budget:
+          max_tasks: 0
+          max_explore_runs: 1
+          max_pipeline_runs: {pipeline_budget}
+          max_model_jobs: 0
+        datasets:
+          - name: tse_candidates
+            source: "TSE, consulta_cand_<year>.zip"
+            licence: public
+            max_size_gb: 1
+            identifiers: none
+        steps:
+        """
+    )
+    explore = (
+        "  - id: s5\n    kind: explore_run\n    script: 0003_count\n"
+        f"    after: {explore_after}\n    kill_rules:\n"
+        '      - {id: k1, says: "none", field: n, op: "<", value: 1, confirmed: true}\n'
+    )
+    return head + steps + explore + "---\n\n# 0001: Build in parallel\n"
+
+
+def parallel_repo(root: Path, **kw) -> Path:
+    make_repo(root, parallel_text(**kw))
+    (root / "pipeline" / "build").mkdir(parents=True)
+    for sid in PARALLEL:
+        (root / "pipeline" / "build" / f"t_{sid}.py").write_text("", encoding="utf-8")
+    (root / "explore" / "0003_count.py").write_text("", encoding="utf-8")
+    assert validate(root) == []
+    return root
+
+
+def dispatched(actions) -> list[str]:
+    return [a["inputs"]["campaign"] for a in actions if a["type"] == "dispatch"]
+
+
+def pipe_recorded(run_id: int, sid: str) -> tuple[Run, PullRequest]:
+    run = pipe_run(run_id, sid, "success", "2026-11-10T10:00:00Z")
+    pr = record_pr(number=run_id, run_title=run.title, merged=True, state="closed")
+    return run, pr
+
+
+def test_tick_starts_independent_pipeline_runs_together_up_to_the_limit(tmp_path):
+    from terrain.campaigns.tick import MAX_PIPELINE_RUNS_IN_FLIGHT
+
+    assert MAX_PIPELINE_RUNS_IN_FLIGHT == 3
+    root = parallel_repo(tmp_path)
+    actions = run_decide(root, snap([tracking([ledger("started")])]))
+    # three pipeline steps of one campaign start in the same tick; the fourth
+    # and the explore run (which waits for its campaign's pipeline runs) do not
+    assert dispatched(actions) == ["0001/s1", "0001/s2", "0001/s3"]
+    events = markers.parse_ledger(actions[0]["body"])[1]
+    assert {"s1:dispatched", "s2:dispatched", "s3:dispatched"} <= events
+    assert "s4:dispatched" not in events and "s5:dispatched" not in events
+    # the next tick, all three still in flight: the fourth waits
+    running = [
+        pipe_run(600 + i, sid, None, NOW, "in_progress") for i, sid in enumerate(PARALLEL[:3])
+    ]
+    t = tracking([ledger("started", "s1:dispatched", "s2:dispatched", "s3:dispatched")])
+    assert dispatched(run_decide(root, snap([t], runs=running))) == []
+    # one is recorded: the fourth starts; the explore run still waits for s2 and s3
+    run, pr = pipe_recorded(600, "s1")
+    s = snap([t], runs=[run, *running[1:]], record_prs={600: pr})
+    assert dispatched(run_decide(root, s)) == ["0001/s4"]
+
+
+def test_tick_explore_run_waits_for_its_campaigns_pipeline_runs(tmp_path):
+    root = parallel_repo(tmp_path)
+    recorded = [pipe_recorded(600 + i, sid) for i, sid in enumerate(PARALLEL[:3])]
+    running = pipe_run(603, "s4", None, NOW, "in_progress")
+    t = tracking([ledger("started", *(f"{sid}:dispatched" for sid in PARALLEL))])
+    runs = [r for r, _ in recorded]
+    prs = {r.id: pr for r, pr in recorded}
+    assert dispatched(run_decide(root, snap([t], runs=[*runs, running], record_prs=prs))) == []
+    # s4's record is merged: no pipeline run of the campaign is in flight, the explore run starts
+    run4, pr4 = pipe_recorded(603, "s4")
+    actions = run_decide(root, snap([t], runs=[*runs, run4], record_prs={**prs, 603: pr4}))
+    assert dispatched(actions) == ["0001/s5"]
+
+
+def test_tick_explore_runs_stay_one_at_a_time_across_campaigns(tmp_path):
+    root, t2 = two_campaigns(tmp_path)
+    t1 = tracking([ledger("started", "s1:filed", "s1:merged")])
+    # both campaigns have an explore run ready: only the first starts
+    actions = run_decide(root, snap([t1, t2, merged_issue(root)]))
+    assert dispatched(actions) == ["0001/s2"]
+
+
+def test_tick_other_campaigns_pipeline_runs_do_not_hold_an_explore_run(tmp_path):
+    root = parallel_repo(tmp_path)
+    t2 = add_campaign_0002(root)
+    assert validate(root) == []
+    t1 = tracking([ledger("started", "s1:dispatched", "s2:dispatched", "s3:dispatched")])
+    running = [
+        pipe_run(600 + i, sid, None, NOW, "in_progress") for i, sid in enumerate(PARALLEL[:3])
+    ]
+    # campaign 0001's pipeline runs fill every pipeline slot and hold its own
+    # explore run, but not campaign 0002's
+    assert dispatched(run_decide(root, snap([t1, t2], runs=running))) == ["0002/s1"]
+
+
+def test_tick_pipeline_runs_respect_the_budget(tmp_path):
+    """Starting several in one tick still stops at the budget (spent here by earlier runs)."""
+    root = parallel_repo(tmp_path)
+    (c,) = active_campaigns(root)
+    c = replace(c, budget={**c.budget, "max_pipeline_runs": 2})
+
+    def tick(s):
+        return decide([c], s, ctx(root), root)
+
+    assert dispatched(tick(snap([tracking([ledger("started")])]))) == ["0001/s1", "0001/s2"]
+    # one run was already used: only one more starts
+    t = tracking([ledger("started", "s1:dispatched")])
+    running = pipe_run(600, "s1", None, NOW, "in_progress")
+    assert dispatched(tick(snap([t], runs=[running]))) == ["0001/s2"]
+    # both used and recorded: s3 and s4 never start; only the explore run, s5, goes
+    recorded = [pipe_recorded(600 + i, sid) for i, sid in enumerate(PARALLEL[:2])]
+    t = tracking([ledger("started", "s1:dispatched", "s2:dispatched")])
+    s = snap([t], runs=[r for r, _ in recorded], record_prs={r.id: pr for r, pr in recorded})
+    assert dispatched(tick(s)) == ["0001/s5"]
+
+
+def test_tick_pipeline_limit_counts_across_campaigns_and_holds_retries(tmp_path):
+    root = parallel_repo(tmp_path)
+    t = tracking(
+        [
+            ledger(
+                "started",
+                "s1:dispatched",
+                "s2:dispatched",
+                "s3:dispatched",
+                at="2026-11-10T08:00:00Z",
+            ),
+            ledger("s4:dispatched", at="2026-11-10T08:30:00Z"),
+        ]
+    )
+    running = [
+        pipe_run(600 + i, sid, None, NOW, "in_progress") for i, sid in enumerate(PARALLEL[:3])
+    ]
+    failed = pipe_run(603, "s4", "failure", "2026-11-10T09:00:00Z")
+    # three in flight: s4's retry waits, with no block and no dispatch
+    actions = run_decide(root, snap([t], runs=[*running, failed]))
+    assert dispatched(actions) == []
+    assert not any("**blocked**" in a.get("body", "") for a in actions)
+    # one recorded: the retry goes, as a fresh run
+    run, pr = pipe_recorded(600, "s1")
+    actions = run_decide(root, snap([t], runs=[run, *running[1:], failed], record_prs={600: pr}))
+    assert dispatched(actions) == ["0001/s4"]
+    assert "s4: run 603 ended 'failure'. Retrying by itself (1 of 2)" in actions[0]["body"]
+
+
+def test_tick_explore_retry_waits_for_its_campaigns_pipeline_runs(tmp_path):
+    root = parallel_repo(tmp_path)
+    t = tracking(
+        [
+            ledger("started", "s1:dispatched", "s5:dispatched", at="2026-11-10T08:00:00Z"),
+        ]
+    )
+    explore_failed = Run(
+        700,
+        "explore-run.yml",
+        markers.explore_run_title("0003_count", "0001", "s5"),
+        "completed",
+        "failure",
+        "2026-11-10T09:00:00Z",
+    )
+    s1_running = pipe_run(600, "s1", None, NOW, "in_progress")
+    actions = run_decide(root, snap([t], runs=[s1_running, explore_failed]))
+    # s2 and s3 start (pipeline slots are free); s5's retry waits for s1, s2 and s3
+    assert dispatched(actions) == ["0001/s2", "0001/s3"]
+    assert "Retrying" not in actions[0]["body"]
+
+
+# -- the close-out sets the idea's status to the report's recommendation --------
+
+
+def test_closeout_sets_the_idea_status_to_the_reports_recommendation(tmp_path):
+    from terrain.campaigns.closeout import RECOMMENDED_STATUSES
+
+    assert RECOMMENDED_STATUSES == ("promising", "parked", "dead")
+    root = make_repo(tmp_path)
+    body = closeout_body(run_decide(root, snap([tracking(labels=("campaign", "campaign-stop"))])))
+    scope = body.split("## In scope", 1)[1].split("## Out of scope", 1)[0]
+    idea = scope.split("- `research/ideas/0003-mayors.md`:", 1)[1].split("\n- `", 1)[0]
+    assert "`status` becomes the status the report recommends in its first decision" in idea
+    assert "(one of `promising`, `parked`, `dead`)" in idea
+    assert "`kill_criteria` and every\n  other key stay as they are" in idea
+    assert (
+        "the recommendation of campaign 0001's close-out report "
+        "(`research/campaigns/0001-count/report.md`); Gabriel accepts it by approving "
+        "this pull request." in idea
+    )
+    assert "The first is always the idea's\n    status" in scope
+    done = body.split("## Done when", 1)[1]
+    assert "front-matter `status` is the status the first decision recommends" in done
+    assert "Gabriel accepts it by approving this pull\n   request" in done
+    assert "Gabriel changes them, not this task" not in body
+    assert "INDEX" not in body
+
+
+def test_closeout_may_not_change_the_index(tmp_path):
+    from terrain.campaigns.gate import closeout_paths
+
+    root = make_repo(tmp_path)
+    (c,) = active_campaigns(root)
+    paths = closeout_paths(c, root)
+    assert "research/INDEX.md" not in paths
+    assert "research/ideas/0003-mayors.md" in paths
+    base = closeout_issue(merged=False).pr
+    pr = replace(
+        base,
+        issue_body=f"x\n{markers.closeout_marker('0001')}",
+        reviews=(Review("approve", SHA[:12], {}, NOW),),
+        files=("research/campaigns/0001-count/report.md", "research/ideas/0003-mayors.md"),
+    )
+    assert evaluate(pr, ctx(root)).state == "success"
+    result = evaluate(replace(pr, files=(*pr.files, "research/INDEX.md")), ctx(root))
+    assert result.state == "failure" and "outside the close-out list" in result.description

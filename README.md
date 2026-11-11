@@ -161,7 +161,8 @@ power. Two new ideas are written down: mayoral close races (0003), whose
 power check found far too few races (power below 0.10), and alignment with
 the mayor (0004), not started. A draft pre-analysis plan for idea 0001 is in
 `harness/drafts/pap-draft.md`; nothing is registered. The newest results are in `research/lessons.md`, and
-`research/INDEX.md` lists every record.
+`research/INDEX.md` lists every record. The index is generated on demand
+and is not in git: `python3 scripts/build_index.py` builds it.
 
 | Area | State |
 | --- | --- |

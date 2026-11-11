@@ -184,6 +184,12 @@ jobs:
             printf '%s\n' "${ISSUE_BODY}"
           } > .agent-plan/issue.md
 
+      # research/INDEX.md is not in git: it is built where it is read, from
+      # this checkout's records, so the planner can read it. The builder uses
+      # the standard library only, so the runner's own python3 runs it.
+      - name: Build research/INDEX.md
+        run: python3 -I scripts/build_index.py
+
       # The planner's instructions, model and turn limit now live in
       # harness/roles/planner.md; scripts/role.py checks and loads them.
       - name: Load the planner's instructions

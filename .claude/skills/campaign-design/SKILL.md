@@ -45,9 +45,12 @@ when you move to a new stage.
 
 Read `AGENTS.md`, `research/agent-notes.md` (the notes for role `design`:
 advice from earlier campaigns, never rules), `research/INDEX.md`, decision
-0010, `research/campaigns/README.md` and `TEMPLATE.md`. Run:
+0010, `research/campaigns/README.md` and `TEMPLATE.md`. The index is
+generated on demand and is not in git: build it first with the first
+command below. Run:
 
 ```bash
+python3 scripts/build_index.py
 uv run python scripts/campaign.py status
 uv run python scripts/campaign.py validate
 ```
@@ -141,12 +144,19 @@ whole, ask him for the `oversize_reason` in his words: the validator
 refuses a campaign created on or after 2026-11-12 with more than eight
 steps and no reason.
 
-Check the pacing: one task is in flight per campaign and one run across
-all campaigns. The tick runs after each workflow a step waits on (explore
-run, data pipeline, CI, agent plan, build and review), with an hourly
-backup (`.github/workflows/campaign-tick.yml`), and starts at most one new
-step per campaign per tick. So a step waits mostly on its own workflows,
-not on the clock; see `references/budget.md`.
+Check the pacing: one task is in flight per campaign. Across all
+campaigns, at most three data-pipeline runs and one explore run are in
+flight, and an explore run waits until its own campaign's data-pipeline
+runs are recorded. So data-pipeline steps that do not depend on each other
+(no `after` between them) run at the same time; give them `after` only
+when one really needs the other's output. The tick runs after each
+workflow a step waits on (explore run, data pipeline, CI, agent plan,
+build and review), with an hourly backup
+(`.github/workflows/campaign-tick.yml`), and starts at most one new task
+or explore run per campaign per tick (data-pipeline runs as many as the
+limits allow). So a step waits mostly on its own workflows, not on the
+clock; see `references/budget.md` (its pacing lines predate parallel
+data-pipeline runs; the limits here win).
 
 ### 6. Data
 
@@ -230,6 +240,20 @@ Read `references/writing-the-files.md`. Then:
 5. Ask: `draft` (merge now, start later) or `active` (starts on the first
    tick after he merges)? If the campaign has more than four steps and the
    closest paper is unverified, first ask whether he has read it (stage 3).
+   If `active`: in the same PR, set the idea file's front-matter `status`
+   to `exploring` and `updated` to today, and add one dated line under its
+   `## Status`, in this shape:
+
+   ```markdown
+   - YYYY-MM-DD: exploring. Campaign NNNN (`research/campaigns/NNNN-slug/`)
+     starts when this pull request merges.
+   ```
+
+   Change nothing else in the idea file. An idea's status follows its
+   campaign: `uv run python scripts/validate_records.py` fails on an active
+   campaign whose idea is not `exploring`, so run it, and the step 3 checks,
+   again. If `draft`: leave the idea's status as it is; the PR that later
+   makes the campaign active sets it.
 6. Create a branch `campaigns/NNNN-slug`, commit, push, and open a PR with
    `gh pr create`. Never merge it: Gabriel merges (`gh pr merge` is denied).
    The PR body lists what he must check before merging: the kill rules, the
