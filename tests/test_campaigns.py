@@ -26,7 +26,7 @@ from terrain.campaigns.spec import (
     path_allowed,
     validate,
 )
-from terrain.campaigns.tick import decide
+from terrain.campaigns.tick import NEEDS_YOU, NEEDS_YOU_DEFAULT, block_id, decide
 
 REPO = Path(__file__).resolve().parents[1]
 BOT = "terrain-agent[bot]"
@@ -577,11 +577,18 @@ def test_tick_blocks_a_plan_outside_the_allowed_paths(tmp_path):
     issue = step_issue(root, [plan_comment(("explore/0003_count.py", "src/terrain/x.py"))])
     actions = run_decide(root, snap([t, issue]))
     assert types(actions) == ["comment"]
-    assert "blocked" in actions[0]["body"] and f"@{OWNER}" in actions[0]["body"]
+    body = actions[0]["body"]
+    cause = "the plan lists files outside the step's allowed paths: ['src/terrain/x.py']"
+    assert (
+        f"- s1: **blocked**. Cause: {cause}. Needs you: {NEEDS_YOU['plan_paths']}. (#10) @{OWNER}"
+        in body
+    )
+    name = f"s1:blocked:{block_id(cause, '#10')}"
+    assert markers.parse_ledger(body) == ("0001", {name})
     # blocked and nothing else can run: the owner gets a day to unblock it
-    recent = tracking([ledger("started", "s1:filed", "s1:blocked")])
+    recent = tracking([ledger("started", "s1:filed", name)])
     assert run_decide(root, snap([recent, issue])) == []
-    old = tracking([ledger("started", "s1:filed", "s1:blocked", at="2026-11-09T06:00:00Z")])
+    old = tracking([ledger("started", "s1:filed", name, at="2026-11-09T06:00:00Z")])
     actions = run_decide(root, snap([old, issue]))
     assert "close out campaign 0001" in actions[-1]["title"]
 
@@ -767,11 +774,126 @@ def test_tick_one_run_in_flight_across_campaigns(tmp_path):
     assert not [a for a in actions if a["type"] == "dispatch"]
 
 
+# -- blocks: each one reported, with its cause ---------------------------------
+
+
+def posted(actions, at: str) -> list[Comment]:
+    """The tick's ledger comments, as GitHub would show them on the next tick."""
+    return [Comment(BOT, a["body"], at) for a in actions if a["type"] == "comment"]
+
+
+def bad_plan(at: str = "2026-11-09T01:00:00Z") -> Comment:
+    return replace(plan_comment(("explore/0003_count.py", "src/terrain/x.py")), created_at=at)
+
+
+def good_plan(at: str) -> Comment:
+    return replace(plan_comment(), created_at=at)
+
+
+def test_tick_reports_each_block_and_each_unblock(tmp_path):
+    """Blocked, unblocked, blocked for another reason: two mentions and one unblocked line."""
+    root = make_repo(tmp_path)
+    ledgers = [ledger("started", "s1:filed", at="2026-11-09T00:30:00Z")]
+    issue = step_issue(root, [bad_plan()])
+    first = run_decide(root, snap([tracking(ledgers), issue], now="2026-11-09T02:00:00Z"))
+    ledgers += posted(first, "2026-11-09T02:00:00Z")
+    # a new plan inside the allowed paths: unblocked, and the labels swap
+    issue = step_issue(root, [bad_plan(), good_plan("2026-11-09T03:00:00Z")])
+    second = run_decide(root, snap([tracking(ledgers), issue], now="2026-11-09T04:00:00Z"))
+    assert types(second) == ["comment", "swap_labels"]
+    assert second[0]["body"].startswith("- s1: unblocked.\n")
+    ledgers += posted(second, "2026-11-09T04:00:00Z")
+    # the agent stops on it: blocked again, for another cause
+    issue = replace(issue, labels=("campaign", "explore", "agent-build", "needs-human"))
+    third = run_decide(root, snap([tracking(ledgers), issue], now="2026-11-09T05:00:00Z"))
+    ledgers += posted(third, "2026-11-09T05:00:00Z")
+    bodies = [c.body for c in ledgers]
+    blocked = [b for b in bodies if "**blocked**" in b]
+    assert len(blocked) == 2 and all(f"@{OWNER}" in b for b in blocked)
+    assert "Cause: the plan lists files outside" in blocked[0]
+    assert "Cause: an agent stopped and labelled it needs-human. Needs you: " in blocked[1]
+    assert NEEDS_YOU["needs_human"] in blocked[1]
+    assert sum(b.count("unblocked.") for b in bodies) == 1
+    # the same block seen again on the next tick: nothing new
+    assert run_decide(root, snap([tracking(ledgers), issue], now="2026-11-09T06:00:00Z")) == []
+
+
+def test_tick_reports_the_same_block_again_after_an_unblock(tmp_path):
+    root = make_repo(tmp_path)
+    stopped = step_issue(root, [plan_comment()], labels=("campaign", "explore", "needs-human"))
+    going = step_issue(root, [plan_comment()])  # plan ready, labels swap next
+    ledgers = [ledger("started", "s1:filed")]
+    for n, issue in enumerate((stopped, going, stopped)):
+        actions = run_decide(root, snap([tracking(ledgers), issue]))
+        ledgers += posted(actions, f"2026-11-10T11:4{n}:00Z")
+    found = set()
+    for c in ledgers:
+        found |= markers.parse_ledger(c.body)[1]
+    name = f"s1:blocked:{block_id('an agent stopped and labelled it needs-human', '#10')}"
+    assert {name, name + "-2", name.replace("blocked", "unblocked")} <= found
+    assert sum("**blocked**" in c.body and f"@{OWNER}" in c.body for c in ledgers) == 2
+
+
+def test_tick_grace_counts_from_the_newest_block(tmp_path):
+    root = make_repo(tmp_path)
+    issue = step_issue(root, [plan_comment()], labels=("campaign", "explore", "needs-human"))
+    now_id = block_id("an agent stopped and labelled it needs-human", "#10")
+    old_id = block_id("no plan two hours after filing", "#10")
+    two_days_ago = "2026-11-08T12:00:00Z"
+    history = [
+        ledger("started", "s1:filed", f"s1:blocked:{old_id}", at=two_days_ago),
+        ledger(f"s1:unblocked:{old_id}", at="2026-11-08T13:00:00Z"),
+    ]
+    # the newest block was posted an hour ago: no close-out yet
+    recent = tracking([*history, ledger(f"s1:blocked:{now_id}", at="2026-11-10T11:00:00Z")])
+    assert run_decide(root, snap([recent, issue])) == []
+    # an older block that never cleared does not shorten the day either
+    never_cleared = tracking(
+        [
+            ledger("started", "s1:filed", f"s1:blocked:{old_id}", at=two_days_ago),
+            ledger(f"s1:blocked:{now_id}", at="2026-11-10T11:00:00Z"),
+        ]
+    )
+    actions = run_decide(root, snap([never_cleared, issue]))
+    assert types(actions) == ["comment"] and actions[0]["body"] == (
+        "- s1: unblocked.\n\n" + markers.ledger_marker("0001", [f"s1:unblocked:{old_id}"]) + "\n"
+    )
+    # a day after the newest block: the campaign closes out
+    old = tracking([*history, ledger(f"s1:blocked:{now_id}", at="2026-11-09T11:00:00Z")])
+    assert "close out campaign 0001" in run_decide(root, snap([old, issue]))[-1]["title"]
+
+
+def test_tick_reads_the_old_block_event_name(tmp_path):
+    """Ledgers from before blocks had ids hold a plain `s1:blocked`: an earlier block."""
+    root = make_repo(tmp_path)
+    issue = step_issue(root, [plan_comment()], labels=("campaign", "explore", "needs-human"))
+    recent = tracking([ledger("started", "s1:filed", "s1:blocked")])
+    assert run_decide(root, snap([recent, issue])) == []  # still the same block, in its day
+    old = tracking([ledger("started", "s1:filed", "s1:blocked", at="2026-11-09T06:00:00Z")])
+    assert "close out campaign 0001" in run_decide(root, snap([old, issue]))[-1]["title"]
+    going = step_issue(root, [plan_comment()])  # plan ready, labels swap next
+    actions = run_decide(root, snap([recent, going]))
+    assert markers.parse_ledger(actions[0]["body"]) == ("0001", {"s1:unblocked"})
+    assert "- s1: unblocked." in actions[0]["body"]
+    # after that, a new block gets an id and a mention
+    cleared = tracking([ledger("started", "s1:filed", "s1:blocked", "s1:unblocked")])
+    body = run_decide(root, snap([cleared, issue]))[0]["body"]
+    assert "s1: **blocked**" in body and f"@{OWNER}" in body
+
+
+def test_tick_unknown_block_kinds_get_the_default_action(tmp_path):
+    root = make_repo(tmp_path)
+    issue = replace(step_issue(root, [plan_comment()]), state="closed")
+    body = run_decide(root, snap([tracking([ledger("started", "s1:filed")]), issue]))[0]["body"]
+    assert f"Needs you: {NEEDS_YOU_DEFAULT}. (#10) @{OWNER}" in body
+
+
 # -- closing the tracking issue after the close-out ---------------------------------
 
 
-def closeout_issue(merged=True) -> Issue:
-    pr = PullRequest(
+def closeout_issue(merged=True, labels=("campaign", "agent-build"), **pr_over) -> Issue:
+    body = f"x\n{markers.closeout_marker('0001')}"
+    base = dict(
         number=41,
         author=BOT,
         head_ref="agent/issue-40",
@@ -783,16 +905,17 @@ def closeout_issue(merged=True) -> Issue:
         ci_test="success",
         gate_status="success",
     )
+    base.update(pr_over)
     return Issue(
         40,
         "Task: close out campaign 0001",
-        f"x\n{markers.closeout_marker('0001')}",
+        body,
         "closed" if merged else "open",
-        ("campaign", "agent-build"),
+        labels,
         BOT,
         "2026-11-10T00:00:00Z",
         (plan_comment(("research/campaigns/0001-count/report.md",)),),
-        pr,
+        PullRequest(**base),
     )
 
 
@@ -840,6 +963,68 @@ def test_tick_closes_when_an_active_campaigns_closeout_merges(tmp_path):
     assert types(actions) == ["comment", "close_issue"]
     found = markers.parse_ledger(actions[0]["body"])
     assert found == ("0001", {"closeout:merged", "closed"})
+
+
+# -- the close-out: Gabriel approves, the tick merges ------------------------------
+
+
+STOPPED = ("started", "stopped", "finished", "closeout:filed")
+
+
+def ready_closeout(approvals=()) -> Issue:
+    """An open close-out PR that the gate passes and GitHub can merge."""
+    return closeout_issue(
+        merged=False,
+        issue_body=f"x\n{markers.closeout_marker('0001')}",
+        reviews=(Review("approve", SHA[:12], {}, NOW),),
+        approvals=approvals,
+    )
+
+
+def stopped_tracking(*extra: str) -> Issue:
+    return tracking([ledger(*STOPPED, *extra)], labels=("campaign", "campaign-stop"))
+
+
+def test_closeout_approved_by_the_owner_is_merged(tmp_path):
+    root = make_repo(tmp_path)
+    actions = run_decide(root, snap([stopped_tracking(), ready_closeout((OWNER,))]))
+    assert [a for a in actions if a["type"] == "merge"] == [{"type": "merge", "pr": 41, "sha": SHA}]
+    assert f"- Close-out approved by @{OWNER}; merging PR #41." in actions[0]["body"]
+    assert "the report is ready" not in actions[0]["body"]
+    # the next tick (merge not yet seen) tries the merge again but posts nothing twice
+    found = markers.parse_ledger(actions[0]["body"])[1]
+    again = run_decide(root, snap([stopped_tracking(*found), ready_closeout((OWNER,))]))
+    assert again == [{"type": "merge", "pr": 41, "sha": SHA}]
+
+
+@pytest.mark.parametrize("approvals", [(), ("someone-else",), ("someone-else", BOT)])
+def test_closeout_without_the_owners_approval_is_not_merged(tmp_path, approvals):
+    root = make_repo(tmp_path)
+    actions = run_decide(root, snap([stopped_tracking(), ready_closeout(approvals)]))
+    assert types(actions) == ["comment"]
+    assert (
+        f"- @{OWNER} the report is ready: PR #41. To accept it, open the pull request, choose "
+        "Files changed, then Review changes, then Approve. It is then merged for you. "
+        "To reject it, close the pull request." in actions[0]["body"]
+    )
+    # a repeated tick does not post the ready message twice
+    assert run_decide(root, snap([stopped_tracking("closeout:ready"), ready_closeout()])) == []
+
+
+def test_closeout_blocks_are_reported_like_steps(tmp_path):
+    root = make_repo(tmp_path)
+    stuck = ready_closeout()
+    stuck = replace(stuck, labels=(*stuck.labels, "needs-human"))
+    body = run_decide(root, snap([stopped_tracking(), stuck]))[0]["body"]
+    assert "- close-out: **blocked**. Cause: an agent stopped and labelled it needs-human." in body
+    assert f"@{OWNER}" in body
+    (name,) = markers.parse_ledger(body)[1]
+    assert name.startswith("closeout:blocked:") and len(name) == len("closeout:blocked:") + 8
+    assert run_decide(root, snap([stopped_tracking(name), stuck])) == []
+    # unblocked, and an old plain `closeout:blocked` reads as an earlier block
+    for old in (name, "closeout:blocked"):
+        body = run_decide(root, snap([stopped_tracking(old), ready_closeout()]))[0]["body"]
+        assert "- close-out: unblocked." in body and "the report is ready" in body
 
 
 def act_script() -> str:
@@ -995,3 +1180,38 @@ def test_github_reader_builds_the_facts(tmp_path):
     assert [i.number for i in s.issues] == [10] and s.issues[0].pr.number == 20
     assert [r.id for r in s.runs] == [555] and s.record_prs == {}
     assert s.results == {"research/explore-runs/0003/555.json": {"races": {"1pct": 70}}}
+
+
+@pytest.mark.parametrize(
+    "reviews, approvals",
+    [
+        ([("APPROVED", SHA)], (OWNER,)),
+        ([("APPROVED", SHA), ("CHANGES_REQUESTED", SHA)], ()),  # changes requested after
+        ([("APPROVED", "b" * 40)], ()),  # an approval of an older commit
+        ([("COMMENTED", SHA)], ()),
+    ],
+)
+def test_github_reader_counts_only_approvals_of_the_head(reviews, approvals):
+    """What the close-out merge rests on: the owner's latest review approves the head."""
+    gh = FakeGitHub(
+        {
+            "/pulls/41": {
+                "number": 41,
+                "user": {"login": BOT},
+                "head": {"ref": "agent/issue-40", "sha": SHA},
+                "state": "open",
+                "merged": False,
+                "mergeable": True,
+                "labels": [],
+            },
+            "/pulls/41/files": [{"filename": "research/campaigns/0001-count/report.md"}],
+            f"/commits/{SHA}/check-runs": {"check_runs": []},
+            f"/commits/{SHA}/statuses": [],
+            "/issues/41/comments": [],
+            "/pulls/41/reviews": [
+                {"user": {"login": OWNER}, "state": state, "commit_id": sha}
+                for state, sha in reviews
+            ],
+        }
+    )
+    assert gh.pull_request(41, with_issue=False).approvals == approvals
