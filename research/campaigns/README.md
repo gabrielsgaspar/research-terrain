@@ -54,7 +54,7 @@ can change a campaign while it runs.
 | Pause one campaign | Add `campaign-pause` to its tracking issue |
 | Stop one campaign | Add `campaign-stop`, or close the tracking issue |
 | Stop everything | Set the repository variable `CAMPAIGNS_ENABLED` to `false` |
-| Unblock a step | Do what the block comment's "Needs you" says (for example remove `needs-human`, re-add `agent-plan`, or re-run the workflow); the next tick picks it up and logs "unblocked" |
+| Unblock a step | Do what the block comment's "Needs you" says (for example remove `needs-human` or re-add `agent-plan`); the next tick picks it up and logs "unblocked". For a failed run: if the cause was outside the code (a server error, a timeout, an export still running), open the run and choose Re-run failed jobs. If a fix was merged since the run started, a re-run would use the old code: open the Actions tab, choose the workflow, choose Run workflow on main, and enter the values the block comment gives |
 | Accept the report | Approve the close-out PR (Files changed, then Review changes, then Approve); the next tick merges that commit |
 | Reject the report | Close the close-out PR |
 | See where it is | `uv run python scripts/campaign.py status`, and the tracking issue |

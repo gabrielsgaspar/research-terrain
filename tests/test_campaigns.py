@@ -27,7 +27,13 @@ from terrain.campaigns.spec import (
     path_allowed,
     validate,
 )
-from terrain.campaigns.tick import NEEDS_YOU, NEEDS_YOU_DEFAULT, block_id, decide
+from terrain.campaigns.tick import (
+    NEEDS_YOU,
+    NEEDS_YOU_DEFAULT,
+    WORKFLOW_NAMES,
+    block_id,
+    decide,
+)
 
 REPO = Path(__file__).resolve().parents[1]
 BOT = "terrain-agent[bot]"
@@ -695,6 +701,70 @@ def test_tick_merges_the_record_then_applies_the_kill_rule(tmp_path):
     row = "| s2 | explore_run | done | killed | PR #30, run 555, `research/explore-runs/0003/555"
     assert row in actions[1]["body"]
     assert "s2: k1 (Fewer than 60 races at 1%)" in actions[1]["body"]
+
+
+def failed_block_line(actions) -> str:
+    """The ledger's block line for a failed run, with its sub-lines."""
+    body = next(a["body"] for a in actions if a["type"] == "comment")
+    start = body.index("**blocked**. Cause: run ")
+    return body[body.rfind("\n", 0, start) + 1 : body.index("\n\n<!--", start)]
+
+
+def test_tick_failed_explore_run_gives_the_values_to_start_it_again(tmp_path):
+    root = make_repo(tmp_path)
+    events = ("started", "s1:filed", "s1:merged", "s2:dispatched")
+    failed = replace(record_run(), conclusion="failure")
+    actions = run_decide(
+        root, snap([tracking([ledger(*events)]), merged_issue(root)], runs=[failed])
+    )
+    line = failed_block_line(actions)
+    assert line.startswith("- s2: **blocked**. Cause: run 555 ended 'failure'.")
+    assert f"Needs you: {NEEDS_YOU['run_failed']}." in line
+    assert "Re-run failed jobs" in line and "Run workflow on main" in line
+    assert "Re-run jobs once the cause is fixed" not in line
+    # the same workflow and inputs the tick dispatched for this step
+    assert line.endswith(
+        "\n  - Run workflow values: workflow **Explore run**, "
+        "script `0003_count`, campaign `0001/s2`"
+    )
+
+
+def test_tick_failed_pipeline_run_gives_the_values_to_start_it_again(tmp_path):
+    extra = (
+        "  - id: s3\n    kind: pipeline_run\n    stage: build\n    target: tse_candidates\n"
+        "    dataset: tse_candidates\n"
+    )
+    dataset = (
+        "datasets:\n  - name: tse_candidates\n    source: TSE\n    licence: open\n"
+        "    max_size_gb: 1\n    identifiers: none\n"
+    )
+    text = campaign_text(extra_steps=extra).replace("max_pipeline_runs: 0", "max_pipeline_runs: 1")
+    root = make_repo(tmp_path, text.replace("datasets: []\n", dataset))
+    (root / "pipeline" / "build").mkdir(parents=True)
+    (root / "pipeline" / "build" / "tse_candidates.py").write_text("", encoding="utf-8")
+    assert validate(root) == []
+    first = run_decide(root, snap([tracking([ledger("started", "s1:filed")]), step_issue(root)]))
+    dispatch = next(a for a in first if a["type"] == "dispatch")
+    assert dispatch["workflow"] == "data-pipeline.yml"
+    title = markers.pipeline_run_title("build", "tse_candidates", "0001", "s3")
+    failed = Run(
+        556, "data-pipeline.yml", title, "completed", "failure", "2026-11-10T10:00:00Z", None
+    )
+    t = tracking([ledger("started", "s1:filed", "s3:dispatched")])
+    line = failed_block_line(run_decide(root, snap([t, step_issue(root)], runs=[failed])))
+    assert line.startswith("- s3: **blocked**. Cause: run 556 ended 'failure'.")
+    assert "Re-run jobs once the cause is fixed" not in line
+    values = "\n  - Run workflow values: workflow **Data pipeline**, "
+    assert values in line
+    for key, value in dispatch["inputs"].items():
+        assert f"{key} `{value}`" in line.split(values, 1)[1]
+    assert line.endswith("stage `build`, target `tse_candidates`, campaign `0001/s3`")
+
+
+def test_tick_names_the_run_workflows_as_github_shows_them():
+    for file, name in WORKFLOW_NAMES.items():
+        text = (REPO / ".github" / "workflows" / file).read_text(encoding="utf-8")
+        assert text.splitlines()[0] == f"name: {name}"
 
 
 def test_tick_unreadable_results_block_the_step(tmp_path):

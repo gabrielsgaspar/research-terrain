@@ -20,8 +20,10 @@ name: Campaign tick
 #   workflow_run       The end of every workflow a campaign step waits on:
 #                      Explore run and Data pipeline (a step's run), CI (a
 #                      record PR's checks, and main's after a merge), Agent
-#                      plan and Agent build (a close-out's plan and PR) and
-#                      Agent review (its verdict). The next step then starts
+#                      plan and Agent build (a close-out's plan and PR),
+#                      Agent review (its verdict) and Campaign gate, only
+#                      when a review started it (Gabriel's approval of a
+#                      close-out; see below). The next step then starts
 #                      minutes after the last one ends, instead of at the
 #                      cron, which fired once in about eight hours on
 #                      2026-11-08, 37 minutes late. workflow_run always runs
@@ -37,14 +39,27 @@ name: Campaign tick
 #                      (the decide job only reads).
 #   workflow_dispatch  By hand.
 #
-# Not Campaign gate, and not this workflow. GitHub runs at most three levels
-# of workflow_run chains and silently skips a fourth. CI on a pull request
-# (level 1) starts Agent review (level 2), which starts a tick (level 3).
-# Campaign gate's workflow_run on Agent review is level 3 too, so a tick on
-# the gate would be level 4 and would never run, just after a review, where
-# it matters. A tick on itself would loop. A workflow_dispatch starts a new
-# chain, so the tick's own dispatches (explore-run, campaign-gate) and
-# agent-review's dispatch of the gate do not count towards the three.
+# Campaign gate: only a gate run that a review started. When Gabriel approves
+# a close-out pull request, the review starts Campaign gate directly
+# (pull_request_review), which posts the status; the gate's end then starts
+# this tick, which merges the approved commit within minutes instead of at
+# the hourly schedule (decision 0012). The decide job's `if` lets such a run
+# go ahead only when github.event.workflow_run.event is pull_request_review.
+# Every other gate run (pull request events, the hourly sweep, the tick's own
+# dispatches of the gate, the gate's runs after CI or Agent review) skips
+# the tick's jobs at once, so the tick never loops on its own dispatches.
+# This is safe with GitHub's chain limit: GitHub runs at most three levels
+# of workflow_run chains and silently skips a fourth. A review is not a
+# workflow_run event, so the gate it starts is level 1 and the tick level 2,
+# well inside the limit. (The gate's runs after Agent review are level 3, so
+# a tick on them would be level 4 and never run; they are skipped anyway.)
+# A tick on itself would loop, so this workflow is not listed. A
+# workflow_dispatch starts a new chain, so the tick's own dispatches
+# (explore-run, campaign-gate) and agent-review's dispatch of the gate do
+# not count towards the three.
+# A skipped gate run still takes its place in the concurrency group below
+# while it waits, so it can replace a pending tick; that event then waits
+# for the next trigger or the hourly schedule.
 # https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_run
 #
 # Bursts collapse to one pending run. CI runs twice per push, on every
@@ -56,7 +71,7 @@ name: Campaign tick
 # that arrived while the current one ran.
 on:
   workflow_run:
-    workflows: [Explore run, Data pipeline, CI, Agent plan, Agent build, Agent review]
+    workflows: [Explore run, Data pipeline, CI, Agent plan, Agent build, Agent review, Campaign gate]
     types: [completed]
   schedule:
     - cron: "41 * * * *" # backup only, hourly (see above)
@@ -72,7 +87,13 @@ concurrency:
 
 jobs:
   decide:
-    if: vars.CAMPAIGNS_ENABLED == 'true' && github.ref == 'refs/heads/main'
+    # From main only; after Campaign gate, only when a review started that run
+    # (see "Campaign gate" above).
+    if: >-
+      vars.CAMPAIGNS_ENABLED == 'true' && github.ref == 'refs/heads/main' &&
+      (github.event_name != 'workflow_run' ||
+      github.event.workflow_run.name != 'Campaign gate' ||
+      github.event.workflow_run.event == 'pull_request_review')
     runs-on: ubuntu-26.04
     timeout-minutes: 15
     permissions:

@@ -1,15 +1,15 @@
 ---
 id: "0012"
 title: "The close-out: Gabriel approves it, the tick merges it"
-status: proposed
+status: accepted
 date: 2026-11-11
 supersedes: null
 ---
 
 # 0012: The close-out: Gabriel approves it, the tick merges it
 
-Date: 2026-11-11. Status: proposed, drafted by Claude for Gabriel. It takes
-effect when Gabriel accepts it and merges the pull request that adds it with
+Date: 2026-11-11. Status: accepted. Drafted by Claude for Gabriel; Gabriel
+accepted it on 2026-11-11 by merging pull request #328, which added it with
 the matching change to `src/terrain/campaigns/tick.py`. It replaces point 8
 of decision 0010 and nothing else in it.
 
@@ -65,5 +65,5 @@ accept the report with the approval itself, without weakening any lock?
 
 ## How we will know it works
 
-The next campaign's close-out is merged by the tick within an hour of
+The next campaign's close-out is merged by the tick within minutes of
 Gabriel's approval, at the commit he approved, with no merge by hand.
