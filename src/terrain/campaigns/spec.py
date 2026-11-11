@@ -55,6 +55,10 @@ PROTECTED_DIRS = (
 )
 PROTECTED_FILES = ("pyproject.toml", "uv.lock", "AGENTS.md", "CLAUDE.md")
 
+# Advice from earlier campaigns (decision 0013). Only a close-out writes it,
+# so no campaign step may list it.
+NOTES_PATH = "research/agent-notes.md"
+
 FOLDER = re.compile(r"^(\d{4})-[a-z0-9][a-z0-9-]{0,40}$")
 STEP_ID = re.compile(r"^s\d{1,2}$")
 SCRIPT = re.compile(r"^(\d{4})_[a-z0-9_]{1,60}$")
@@ -254,6 +258,11 @@ def _step(raw: object, folder: str, index: int, problems: list[str]) -> Step | N
             if p.startswith("/") or ".." in p.split("/") or p.endswith("/") or "**" in p:
                 problems.append(
                     f"{where}: allowed path '{p}' must be a full file path (one * per name at most)"
+                )
+            elif path_allowed(NOTES_PATH, (p,)):
+                problems.append(
+                    f"{where}: allowed path '{p}' covers {NOTES_PATH}, "
+                    "which only a close-out writes (decision 0013)"
                 )
             elif is_protected(p):
                 problems.append(f"{where}: allowed path '{p}' is protected (AGENTS.md)")

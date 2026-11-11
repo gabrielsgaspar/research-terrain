@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from terrain.campaigns import markers
-from terrain.campaigns.closeout import REPORT_OPENING, REPORT_SECTIONS, number_word
+from terrain.campaigns.closeout import NOTE_BANNED, REPORT_OPENING, REPORT_SECTIONS, number_word
 from terrain.campaigns.codeowners import CodeOwners
 from terrain.campaigns.facts import Comment, Issue, PullRequest, Review, Run, Snapshot, parse_review
 from terrain.campaigns.gate import GateContext, evaluate
@@ -228,6 +228,21 @@ def test_owned_paths_are_allowed_in_closed_campaigns(tmp_path):
         assert not any("owned in CODEOWNERS" in p for p in problems), problems
 
 
+@pytest.mark.parametrize("path", ["research/agent-notes.md", "research/*.md"])
+def test_no_step_may_list_the_agent_notes(tmp_path, path):
+    """Only a close-out writes research/agent-notes.md (decision 0013)."""
+    for status in ("active", "done"):
+        text = (
+            campaign_text(status=status)
+            .replace("type: explore", "type: build")
+            .replace("- tests/test_explore_count.py", f"- {path}")
+        )
+        problems = validate(make_repo(tmp_path / status, text))
+        assert any(
+            f"allowed path '{path}' covers research/agent-notes.md" in p for p in problems
+        ), problems
+
+
 def test_explore_task_paths_are_limited(tmp_path):
     text = campaign_text().replace("- tests/test_explore_count.py", "- src/terrain/count.py")
     problems = validate(make_repo(tmp_path, text))
@@ -376,6 +391,7 @@ def test_repo_codeowners_protect_the_gate():
         "tests/test_build_cell_outcomes.py",
         "tests/test_build_cell_enforcement.py",
         "tests/test_repo_rules.py",
+        "research/agent-notes.md",
     ):
         assert owners.owned(path), path
     for path in (
@@ -1595,6 +1611,40 @@ def test_closeout_body_names_every_report_section_in_order(tmp_path):
     assert "nine sections" in done and "eight sections" not in body
     assert "## Friction facts (written by the tick; copy as is)" in body
     assert body.index("## Friction facts") < body.index("## In scope")
+
+
+def test_closeout_writes_notes_and_proposes_checks(tmp_path):
+    root = make_repo(tmp_path)
+    body = closeout_body(run_decide(root, snap([tracking(labels=("campaign", "campaign-stop"))])))
+    scope = body.split("## In scope", 1)[1].split("## Out of scope", 1)[0]
+    assert "- `research/agent-notes.md`: advice for later campaigns" in scope
+    assert "### Notes added" in scope and "### Checks in code proposed" in scope
+    assert "Add at most three notes" in scope
+    assert "From: campaign 0001, the friction fact in a few words. Added YYYY-MM-DD." in scope
+    assert "design, planner, builder, reviewer, closeout" in scope
+    for word in NOTE_BANNED:
+        assert f"`{word}`" in scope
+    assert "`| 0001 | 2 | blocks | fix rounds | retries | hours | notes added |`" in scope
+    assert "add no note\n    and still add the row" in scope
+    assert "merge or remove the oldest notes" in scope
+    done = body.split("## Done when", 1)[1]
+    assert "the Scoreboard\n    has exactly one new row" in done
+    assert "uv run python scripts/validate_records.py` passes" in done
+
+
+def test_gate_lets_a_closeout_write_the_agent_notes(tmp_path):
+    root = make_repo(tmp_path)
+    base = closeout_issue(merged=False).pr
+    pr = replace(
+        base,
+        issue_body=f"x\n{markers.closeout_marker('0001')}",
+        reviews=(Review("approve", SHA[:12], {}, NOW),),
+        files=("research/campaigns/0001-count/report.md", "research/agent-notes.md"),
+    )
+    assert evaluate(pr, ctx(root)).state == "success"
+    worse = replace(pr, files=(*pr.files, "research/questions.md"))
+    result = evaluate(worse, ctx(root))
+    assert result.state == "failure" and "outside the close-out list" in result.description
 
 
 def test_closeout_reads_the_cause_of_an_old_block_line(tmp_path):

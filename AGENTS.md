@@ -4,6 +4,11 @@ Standing instructions for any agent working in this repository (Claude Code
 locally, and the planner, builder and reviewer workflows on GitHub). Read this
 file in full before making changes.
 
+After this file, read `research/agent-notes.md` and take the notes for your
+role (design, planner, builder, reviewer, closeout) as advice from earlier
+campaigns (decision 0013). This file and the task's plan always win. If a
+note looks wrong or harmful, do not follow it, and say so in your result.
+
 ## What this project is
 
 research-terrain is a research lab for one economics paper: how elections shape

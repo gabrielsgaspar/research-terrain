@@ -24,7 +24,7 @@ from pathlib import Path
 from terrain.campaigns import markers
 from terrain.campaigns.codeowners import CodeOwners
 from terrain.campaigns.facts import PullRequest
-from terrain.campaigns.spec import Campaign, is_protected, path_allowed
+from terrain.campaigns.spec import NOTES_PATH, Campaign, is_protected, path_allowed
 
 TASK_BRANCH = re.compile(r"^agent/issue-(\d+)$")
 RECORD_BRANCH = re.compile(r"^explore/(\d{4}_[a-z0-9_]{1,60})-(\d+)$")
@@ -63,6 +63,7 @@ def closeout_paths(c: Campaign, root: Path) -> tuple[str, ...]:
         f"{c.folder}/campaign.md",
         "research/lessons.md",
         "research/INDEX.md",
+        NOTES_PATH,
         *ideas,
     )
 

@@ -1,4 +1,4 @@
-"""Check the front matter of idea and decision records.
+"""Check the front matter of idea and decision records, and the agent notes.
 
 Usage: uv run python scripts/validate_records.py
 
@@ -11,6 +11,16 @@ import sys
 from pathlib import Path
 
 import yaml
+
+from terrain.campaigns.closeout import (
+    MAX_ADVICE_CHARS,
+    MAX_NEW_NOTES,
+    MAX_NOTES,
+    NOTE_BANNED,
+    NOTE_ROLES,
+    SCOREBOARD_HEADER,
+)
+from terrain.campaigns.spec import NOTES_PATH
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -39,6 +49,14 @@ DECISION_KEYS = {"id", "title", "status", "date", "supersedes"}
 SKIP = {"README.md", "TEMPLATE.md"}
 NAME = re.compile(r"^(\d{4})-.+\.md$")
 ID = re.compile(r"^\d{4}$")
+
+
+NOTE = re.compile(
+    r"^- \[(?P<id>N\d{3})\] \((?P<role>[a-z]+)\) (?P<advice>.+?\.) "
+    r"From: campaign (?P<campaign>\d{4}), (?P<fact>.+)\. Added (?P<added>\d{4}-\d{2}-\d{2})\.$"
+)
+NOTE_ID = re.compile(r"^- \[(N\d{3})\]")
+HOURS = re.compile(r"^\d+(\.\d+)?$")
 
 
 class PlainLoader(yaml.SafeLoader):
@@ -148,7 +166,102 @@ def validate(root: Path = REPO) -> list[str]:
             problems += check_idea(label, fm, catalog, ids)
         else:
             problems += check_decision(label, fm, decision_ids)
+    if (root / NOTES_PATH).is_file():
+        problems += check_agent_notes(root)
     return problems
+
+
+def _cells(line: str) -> list[str]:
+    return [c.strip() for c in line.strip().strip("|").split("|")]
+
+
+def check_agent_notes(root: Path) -> list[str]:
+    """research/agent-notes.md: notes in the fixed shape, then the Scoreboard table."""
+    label = NOTES_PATH
+    lines = (root / NOTES_PATH).read_text(encoding="utf-8").splitlines()
+    heads = [i for i, ln in enumerate(lines) if ln.startswith("## ")]
+    if [lines[i] for i in heads] != ["## Notes", "## Scoreboard"]:
+        return [f"{label}: needs exactly the headings '## Notes' then '## Scoreboard'"]
+    notes_at, board_at = heads
+    out: list[str] = []
+    seen: set[str] = set()
+    cited: list[tuple[str, str]] = []  # (note id, campaign)
+    count = 0
+    for n, line in enumerate(lines[notes_at + 1 : board_at], start=notes_at + 2):
+        if not line.strip():
+            continue
+        count += 1
+        m = NOTE.match(line)
+        found = NOTE_ID.match(line)
+        name = f"note {found.group(1)}" if found else f"line {n}"
+        lowered = line.lower()
+        out += [
+            f"{label}: {name} contains '{w}', which a note may not mention"
+            for w in NOTE_BANNED
+            if w.lower() in lowered
+        ]
+        if m is None:
+            out.append(
+                f"{label}: {name} is not in the shape '- [N001] (role) Advice. "
+                "From: campaign NNNN, fact. Added YYYY-MM-DD.'"
+            )
+            continue
+        nid = m.group("id")
+        if nid in seen:
+            out.append(f"{label}: note {nid} has a duplicate id")
+        seen.add(nid)
+        if m.group("role") not in NOTE_ROLES:
+            out.append(f"{label}: note {nid} has role '{m.group('role')}', not one of {NOTE_ROLES}")
+        advice = m.group("advice")
+        if len(advice) > MAX_ADVICE_CHARS:
+            out.append(
+                f"{label}: note {nid} advice is {len(advice)} characters (at most "
+                f"{MAX_ADVICE_CHARS})"
+            )
+        if re.search(r"[.!?] ", advice):
+            out.append(f"{label}: note {nid} advice must be one sentence")
+        if parse_date(m.group("added")) is None:
+            out.append(f"{label}: note {nid} 'Added' is not a valid YYYY-MM-DD date")
+        cited.append((nid, m.group("campaign")))
+    if count > MAX_NOTES:
+        out.append(f"{label}: {count} notes; at most {MAX_NOTES}")
+
+    table = [ln for ln in lines[board_at + 1 :] if ln.strip()]
+    if len(table) < 2 or _cells(table[0]) != list(SCOREBOARD_HEADER):
+        out.append(f"{label}: the Scoreboard table must have the header {SCOREBOARD_HEADER}")
+        return out
+    if set(_cells(table[1])) != {"---"} or len(_cells(table[1])) != len(SCOREBOARD_HEADER):
+        out.append(f"{label}: the Scoreboard's second line must be the table separator")
+    boarded: set[str] = set()
+    for row in table[2:]:
+        cells = _cells(row)
+        if not row.startswith("|") or len(cells) != len(SCOREBOARD_HEADER):
+            out.append(f"{label}: Scoreboard row '{row}' needs {len(SCOREBOARD_HEADER)} cells")
+            continue
+        cid, steps, blocks, fixes, retries, hours, added = cells
+        where = f"{label}: Scoreboard row for campaign {cid}"
+        if not ID.match(cid):
+            out.append(f"{label}: Scoreboard campaign '{cid}' is not a four-digit id")
+        elif cid in boarded:
+            out.append(f"{where} appears twice")
+        elif not any((root / "research" / "campaigns").glob(f"{cid}-*/campaign.md")):
+            out.append(f"{where}: no such campaign in research/campaigns/")
+        boarded.add(cid)
+        for head, value in zip(
+            SCOREBOARD_HEADER[1:5], (steps, blocks, fixes, retries), strict=True
+        ):
+            if not value.isdigit():
+                out.append(f"{where}: '{head}' must be a whole number, not '{value}'")
+        if not HOURS.match(hours):
+            out.append(f"{where}: hours must be a number, not '{hours}'")
+        if not added.isdigit() or int(added) > MAX_NEW_NOTES:
+            out.append(f"{where}: notes added must be 0 to {MAX_NEW_NOTES}, not '{added}'")
+    out += [
+        f"{label}: note {nid} cites campaign {cid}, which has no Scoreboard row"
+        for nid, cid in cited
+        if cid not in boarded
+    ]
+    return out
 
 
 def check_idea(label: str, fm: dict, catalog: set[str], ids: set[str]) -> list[str]:
