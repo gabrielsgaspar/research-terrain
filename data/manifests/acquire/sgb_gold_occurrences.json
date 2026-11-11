@@ -1,0 +1,25 @@
+{
+  "dataset": "sgb_gold_occurrences",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/sgb/occurrences/2026-11-11/",
+  "created_at": "2026-11-11T23:10:56.249589+00:00",
+  "code_commit": "83bc372a4d61c9ca1302f2b1f559ce3e200b8d3a",
+  "sources": [
+    {
+      "url": "https://geoservicos.sgb.gov.br/geoserver/ows?service=WFS&version=2.0.0&request=GetFeature&typeNames=geosgb:ocorrencias_recursos_minerais&outputFormat=csv&propertyName=substancias,status_economico,situacao_garimpo,situacao_mina,importancia,provincia,municipio,uf,data_cadastro,latitude,longitude",
+      "last_modified": "",
+      "etag": "",
+      "bytes": null,
+      "rows": 36484
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/sgb/occurrences/2026-11-11/sgb_ocorrencias.csv",
+      "sha256": "126821a4632ac8c700b2e699dc87a024dda6e7e5e94ace5a2ee938f27cc7fb4c",
+      "bytes": 5028826
+    }
+  ],
+  "notes": ""
+}
