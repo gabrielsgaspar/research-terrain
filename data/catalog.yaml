@@ -661,6 +661,38 @@ datasets:
       tests/test_split.py); the build is campaign 0006 step s14 and its run
       is step s15.
 
+  - name: mining_panel
+    source: built from mapbiomas_mining, mapbiomas_coverage_national and ibge_boundaries_2024, split by half
+    licence: CC BY 4.0 (MapBiomas), with attribution
+    derived: data/derived/mining_panel/
+    sealed: sealed/outcomes/mining_panel/
+    status: planned
+    notes: >
+      Idea 0007 and decisions 0003 and 0011: MapBiomas mining area (garimpo
+      and industrial, gold and other substances) per municipality and year
+      1985-2025, all of Brazil. Exploration-half rows (both exploration
+      lists) in derived, all other rows only in sealed, like cell_outcomes.
+      Name, derived and sealed are fixed by the campaign 0007 PR (the sealed
+      line is pinned in tests/test_split.py); the build task is campaign
+      0007 step s12, which adds the contract and the rest.
+
+  - name: politics_panel
+    source: built from tse_candidates, tse_results, municipalities, sim_homicides, ibge_population_annual and tse_receipts, split by half
+    licence: public (TSE, DATASUS, IBGE), as its sources
+    derived: data/derived/politics_panel/
+    sealed: sealed/outcomes/politics_panel/
+    status: planned
+    notes: >
+      Idea 0007 and decisions 0003 and 0011: one row per municipality and
+      municipal election 2000-2024 with council entry, competition, who wins,
+      mining-sector campaign money and homicides per 100,000. The electoral
+      inputs are public TSE files that cannot be sealed; the panel is split
+      anyway, so explore code can read only the exploration half.
+      Exploration-half rows (both exploration lists) in derived, all other
+      rows only in sealed. Name, derived and sealed are fixed by the campaign
+      0007 PR (the sealed line is pinned in tests/test_split.py); the build
+      task is campaign 0007 step s19, which adds the contract and the rest.
+
   - name: funai_indigenous_lands
     source: FUNAI indigenous land boundaries
     licence: public
