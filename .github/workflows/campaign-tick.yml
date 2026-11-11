@@ -57,9 +57,8 @@ name: Campaign tick
 # workflow_dispatch starts a new chain, so the tick's own dispatches
 # (explore-run, campaign-gate) and agent-review's dispatch of the gate do
 # not count towards the three.
-# A skipped gate run still takes its place in the concurrency group below
-# while it waits, so it can replace a pending tick; that event then waits
-# for the next trigger or the hourly schedule.
+# A gate run that will skip the jobs gets its own concurrency group (below),
+# so it can no longer replace a pending tick that would do work.
 # https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_run
 #
 # Bursts collapse to one pending run. CI runs twice per push, on every
@@ -80,9 +79,16 @@ on:
 permissions:
   contents: read
 
-# One running, at most one pending; see "Bursts" above.
+# One running, at most one pending; see "Bursts" above. A run the decide
+# job's `if` will skip (a Campaign gate run not started by a review) gets a
+# group of its own, so it never replaces a pending tick. The condition below
+# is the decide job's gate clause, word for word: keep the two the same.
 concurrency:
-  group: campaign-tick
+  group: >-
+    ${{ (github.event_name != 'workflow_run' ||
+    github.event.workflow_run.name != 'Campaign gate' ||
+    github.event.workflow_run.event == 'pull_request_review') &&
+    'campaign-tick' || format('campaign-tick-skipped-{0}', github.run_id) }}
   cancel-in-progress: false
 
 jobs:
