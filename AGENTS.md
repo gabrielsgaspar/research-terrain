@@ -245,6 +245,10 @@ workflow carries it out; the `campaign-gate` check decides what may merge.
   list, deleting data, personal identifiers in Git.
 - New ideas and variations an agent thinks of go into the close-out report
   as suggestions. They are never run in the same campaign.
+- Circuit breaker: while 3 step blocks posted in the last 24 hours still hold,
+  nothing new starts in that campaign (no step, retry or repair); work in flight
+  and gate merges go on. Every report lists its "Checks not run" from the tick's
+  list; text cut by code says so; the repair reviewer never sees the run log.
 
 ### Writing for Gabriel
 

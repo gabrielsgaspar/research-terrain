@@ -265,6 +265,23 @@ jobs:
               sys.exit(1)
 
 
+          # A repair issue quotes the failed run's log: text printed by an outside server
+          # must not reach the agent that judges the fix. The planner and builder keep it.
+          issue_path = os.path.join(work, "data", "issue.md")
+          issue = open(issue_path, encoding="utf-8").read().replace("\r\n", "\n")
+          if re.search(r"<!-- campaign-repair: \d{4}/s\d{1,2}/\d -->", issue):
+              lines = issue.split("\n")
+              try:
+                  head = lines.index("## The failing run")
+                  start = lines.index("```text", head)
+                  end = lines.index("```", start + 1)
+              except ValueError:
+                  fail("The repair issue has no run log block under '## The failing run' to remove.")
+              lines[start : end + 1] = ["(run log removed: the reviewer judges the change, not the log)"]
+              with open(issue_path, "w", encoding="utf-8") as out:
+                  out.write("\n".join(lines))
+              print("Removed the run log from the repair issue given to the reviewer.")
+
           plan = open(os.path.join(work, "data", "plan.md"), encoding="utf-8").read()
           done = section(plan, "Done when")
           # The planner writes a `- [ ]` checklist; plain bullets count only if there is none.

@@ -36,6 +36,7 @@ from terrain.campaigns.tick import (
     _own_issues,
     _task_state,
     _time,
+    breaker_line,
 )
 
 STATUS_TITLE = "Research Terrain: status"
@@ -148,7 +149,8 @@ def _block_item(
 def waiting_on_you(
     views: Sequence[CampaignView], snap: Snapshot, gctx: GateContext, root: Path
 ) -> list[str]:
-    """One line per thing Gabriel must do: blocks, reports to approve, pauses.
+    """One line per thing Gabriel must do: blocks, reports to approve, pauses,
+    and a circuit breaker that holds (its blocks follow it).
 
     Once a campaign's close-out is filed, its steps no longer hold anything up
     (nothing more starts), so only the close-out itself can be listed.
@@ -164,6 +166,10 @@ def waiting_on_you(
                 "the `campaign-pause` label in the right-hand column of that issue."
             )
         cst = _closeout_state(v, snap, gctx, root)
+        if cst is None and v.breaker:
+            out.append(
+                _clip(f"- Campaign {c.id} (#{tracking.number}): {breaker_line(c, v.breaker)}")
+            )
         if cst is None:
             for s in c.steps:
                 st = v.states[s.id]

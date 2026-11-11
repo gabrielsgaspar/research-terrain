@@ -45,16 +45,21 @@ can change a campaign while it runs.
 4. A run that ends 'failure' or 'timed_out' is started again by the tick on main, at most
    twice per step and only within the run limits of item 3, with one ledger line each. A
    cancelled run is never retried. After both retries a failure blocks, "Retried 2 times."
-5. When nothing more can run, the tick files the close-out task. Its PR
+5. The circuit breaker: when 3 step blocks posted in the last 24 hours still hold, the
+   tick starts nothing new in that campaign (no step, no retry, no repair) and mentions
+   you once in the ledger. Work in flight and merges through the gate go on. It lifts
+   by itself, with one ledger line, once fewer than 3 such blocks remain: when they are
+   older than 24 hours or you clear them.
+6. When nothing more can run, the tick files the close-out task. Its PR
    holds the report, the ledger, a lessons entry and the idea's new status:
    the report's recommendation (`promising`, `parked` or `dead`), with a
    status line saying so. You read it and decide. To accept it, approve the PR (Files
    changed, then Review changes, then Approve); that also accepts the
    idea's new status, and the next tick merges the commit you approved. To reject it, close the PR. Only your approval
    counts, and only on the PR's newest commit.
-6. The report carries the friction facts the tick counted (blocks, extra plans and fix rounds, repeated runs, long gaps); from them the close-out adds at most three notes and one Scoreboard row to `research/agent-notes.md` (decision 0013).
-7. Every agent reads those notes as advice for its role, never as rules; checks in code are only proposed in the report, for you to batch into tasks later.
-8. The close-out may not touch the harness, the workflows, `AGENTS.md` or the skills, and the notes file changes only in a close-out you approve.
+7. The report carries the friction facts the tick counted (blocks, extra plans and fix rounds, repeated runs, long gaps) and a section "Checks not run": every step that did not finish, every kill rule never applied, and every referee row a review marked "Not applicable", from a list the tick builds; it says "None" only when that list is empty. From the friction facts the close-out adds at most three notes and one Scoreboard row to `research/agent-notes.md` (decision 0013).
+8. Every agent reads those notes as advice for its role, never as rules; checks in code are only proposed in the report, for you to batch into tasks later.
+9. The close-out may not touch the harness, the workflows, `AGENTS.md` or the skills, and the notes file changes only in a close-out you approve.
 
 ## The approval card
 
@@ -75,7 +80,11 @@ and the tick merges it and runs the step once more. You are asked only if
 the repair blocks or the run after it fails ("Retried 2 times, repaired
 once."). At most one repair per step and two per campaign; their model jobs
 count against the budget, and the close-out lists each one. Explore runs
-are never repaired.
+are never repaired. A log cut to fit says so on its first line, for example
+"(cut: the last 59 of 412 lines)". The planner and builder read the log;
+the agent review of the repair gets the issue with the log replaced by one
+line, so text printed by an outside server never reaches the agent that
+judges the fix.
 
 ## The status page
 
@@ -86,8 +95,9 @@ only when the page changes, so a tick with nothing new leaves it alone. The
 page has five parts, in this order:
 
 1. Waiting on you: every step whose block still holds (its cause and what
-   to do), every close-out PR that is ready for your approval, and every
-   paused campaign. "Nothing" when nothing waits.
+   to do), every close-out PR that is ready for your approval, every
+   paused campaign and every campaign held by the circuit breaker.
+   "Nothing" when nothing waits.
 2. Running: each active campaign, its steps done, what is in progress,
    the last ledger event, model jobs used and the end date.
 3. Handled without you: the newest 10 automatic retries, repairs and
