@@ -1,0 +1,701 @@
+"""First stage of idea 0007: does the gold price move garimpo where gold lies? (campaign step s14).
+
+The national exploration half (decision 0011), municipality-years 1990-2024. The main estimate is
+beta on D_mt = E_m x ln_gold_real (year t-1), with `garimpo_share` as the outcome, municipality and
+state x year fixed effects, and three controls (`native_share_2004`, ln `area_km2`,
+`indigenous_share`) each interacted with a full set of year dummies (one dropped). E_m is
+`geo_gold_per_km2`. See `research/ideas/0007-gold-and-the-ballot.md` and the campaign file
+`research/campaigns/0007-gold-and-the-ballot/campaign.md`, step s14.
+
+Inference: municipality-clustered errors (small-sample factor G/(G-1) x (N-1)/(N-K)), Conley errors
+at 50, 100 and 200 km (uniform kernel over municipality scores), and randomisation inference
+(1,000 draws, seed 20261111, E_m permuted within state). The clustered errors can over-reject with
+one common shock (Moreno-Louzada, Figueira and Picchetti 2025), so the RI p comes first.
+
+It reads `mining_panel` (derived, 1990-2024) and `gold_exposure` (`gold_exposure.parquet` and
+`gold_prices.parquet`) and nothing else: no election data, no SIM data, nothing in `sealed/`.
+`gold_prices` is national and has no `cd_ibge`, so it is read without `restrict`. It writes the
+three fields the kill rules of step s15 read: `first_stage.f_cluster`, `placebo.lead_ratio` and
+`estimates.finite`. A non-finite number is written as null, never as NaN or Infinity.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import os
+import re
+import tempfile
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+import polars as pl
+import polars.selectors as cs
+
+from terrain.explore import exploration_municipalities, restrict, write_results
+from terrain.storage import GCSStore
+
+REPO = Path(__file__).resolve().parents[1]
+MANIFESTS = REPO / "data" / "manifests" / "build"
+
+YEARS = tuple(range(1990, 2025))
+BASE_YEAR = 2000
+CUTOFFS_KM = (50, 100, 200)
+N_DRAWS = 1000
+SEED = 20261111
+SENTINEL = 1_000_000_000.0
+TOL = 1e-10
+MAX_ROUNDS = 1000
+RANK_TOL = 1e-9
+REGIMES = {"r1": (1990, 2013), "r2": (2014, 2022), "r3": (2023, 2024)}
+MAIN = "garimpo_share"
+SECONDARY = ("garimpo_gold_share", "ln_garimpo_ha", "industrial_gold_share", "garimpo_other_share")
+
+MINING_COLUMNS = [
+    "cd_ibge",
+    "year",
+    "n_cells",
+    "garimpo_gold_ha",
+    "garimpo_other_ha",
+    "industrial_gold_ha",
+    "garimpo_ha",
+    "garimpo_share",
+    "native_share_2004",
+]
+EXPOSURE_COLUMNS = [
+    "cd_ibge",
+    "uf",
+    "area_km2",
+    "centroid_x_km",
+    "centroid_y_km",
+    "indigenous_share",
+    "geo_gold_per_km2",
+    "geo_exposed",
+    "geo_gold_indigenous_share",
+    "title_gold_pre2000_share",
+    "title_sand_pre2000_share",
+]
+PRICE_COLUMNS = ["year", "ln_gold_real", "ln_soy_real"]
+EXPOSURE_NEEDED = [
+    "geo_gold_per_km2",
+    "geo_exposed",
+    "title_gold_pre2000_share",
+    "title_sand_pre2000_share",
+    "centroid_x_km",
+    "centroid_y_km",
+]
+OUTCOME_SOURCES = [
+    "garimpo_share",
+    "garimpo_gold_ha",
+    "garimpo_other_ha",
+    "industrial_gold_ha",
+    "garimpo_ha",
+]
+
+
+class FirstStageError(Exception):
+    """The inputs cannot support the design."""
+
+
+# --- Linear algebra
+
+
+class Grouper:
+    """Group means for dense group codes 0..G-1."""
+
+    def __init__(self, code: np.ndarray) -> None:
+        self.code = code
+        self.order = np.argsort(code, kind="stable")
+        sorted_code = code[self.order]
+        self.starts = np.flatnonzero(np.r_[True, sorted_code[1:] != sorted_code[:-1]])
+        self.counts = np.diff(np.r_[self.starts, len(code)]).astype(float)
+
+    def subtract_means(self, x: np.ndarray) -> float:
+        """Subtract each group's column means from `x` in place; return the largest mean."""
+        sums = np.add.reduceat(x[self.order], self.starts, axis=0)
+        means = sums / self.counts[:, None]
+        x -= means[self.code]
+        return float(np.abs(means).max()) if means.size else 0.0
+
+
+def demean_two_way(
+    x: np.ndarray,
+    muni: Grouper,
+    state_year: Grouper,
+    tol: float = TOL,
+    max_rounds: int = MAX_ROUNDS,
+) -> np.ndarray:
+    """Alternating projections: demean by municipality, then by state x year, until stable.
+
+    Stops when the largest mean subtracted in a round is below `tol`, or after `max_rounds`.
+    """
+    out = np.array(x, dtype=float).reshape(len(muni.code), -1)
+    for _ in range(max_rounds):
+        change = max(muni.subtract_means(out), state_year.subtract_means(out))
+        if change < tol:
+            break
+    return out
+
+
+def control_matrix(controls: np.ndarray, n_years: int) -> np.ndarray:
+    """Municipality controls (M x c) times year dummies, first year dropped: (M*T) x c(T-1)."""
+    dummies = np.eye(n_years)[:, 1:]
+    full = controls[:, None, :, None] * dummies[None, :, None, :]
+    return full.reshape(controls.shape[0] * n_years, -1)
+
+
+class Design:
+    """The fixed part of every regression: fixed effects and partialled controls."""
+
+    def __init__(self, state: np.ndarray, n_years: int, controls: np.ndarray) -> None:
+        self.n_muni = len(state)
+        self.n_years = n_years
+        self.n_obs = self.n_muni * n_years
+        muni = np.repeat(np.arange(self.n_muni), n_years)
+        raw = np.repeat(state, n_years) * n_years + np.tile(np.arange(n_years), self.n_muni)
+        _, sy = np.unique(raw, return_inverse=True)
+        self.muni = Grouper(muni)
+        self.state_year = Grouper(sy.reshape(-1))
+        c_t = self.demean(control_matrix(controls, n_years))
+        if c_t.shape[1] == 0:
+            self.basis, self.rank = np.zeros((self.n_obs, 0)), 0
+        else:
+            u, s, _ = np.linalg.svd(c_t, full_matrices=False)
+            self.rank = int(np.sum(s > s[0] * RANK_TOL)) if s[0] > 0 else 0
+            self.basis = u[:, : self.rank]
+
+    def demean(self, x: np.ndarray) -> np.ndarray:
+        return demean_two_way(x, self.muni, self.state_year)
+
+    def residualise(self, x: np.ndarray) -> np.ndarray:
+        """Remove the fixed effects, then the controls, from each column (N x k)."""
+        out = self.demean(x)
+        return out - self.basis @ (self.basis.T @ out)
+
+
+@dataclass
+class Fit:
+    beta: np.ndarray  # k
+    cov: np.ndarray  # k x k, with the small-sample factor
+    cov_raw: np.ndarray  # k x k, without it
+    dtd: np.ndarray  # k x k
+    scores: np.ndarray  # M x k
+
+    @property
+    def se(self) -> np.ndarray:
+        with np.errstate(invalid="ignore"):
+            return np.sqrt(np.diag(self.cov))
+
+
+def fit(design: Design, d_res: np.ndarray, y_res: np.ndarray) -> Fit:
+    """OLS of residualised `y_res` (N) on `d_res` (N x k), clustered by municipality."""
+    k = d_res.shape[1]
+    dtd = d_res.T @ d_res
+    if not np.all(np.isfinite(dtd)) or np.trace(dtd) <= 1e-12:
+        nan_k, nan_kk = np.full(k, np.nan), np.full((k, k), np.nan)
+        return Fit(nan_k, nan_kk, nan_kk, dtd, np.full((design.n_muni, k), np.nan))
+    beta = np.linalg.lstsq(dtd, d_res.T @ y_res, rcond=None)[0]
+    inv = np.linalg.pinv(dtd)
+    resid = y_res - d_res @ beta
+    scores = (d_res * resid[:, None]).reshape(design.n_muni, design.n_years, k).sum(axis=1)
+    cov_raw = inv @ (scores.T @ scores) @ inv
+    g, n = design.n_muni, design.n_obs
+    dof = n - (k + design.rank)
+    factor = (g / (g - 1)) * ((n - 1) / dof) if g > 1 and dof > 0 else np.nan
+    return Fit(beta, cov_raw * factor, cov_raw, dtd, scores)
+
+
+def conley_se(scores: np.ndarray, dtd: float, xy: np.ndarray, cutoff_km: float) -> float:
+    """sqrt(sum over pairs within the cutoff of s_m s_m') / dtd, uniform kernel, no factor."""
+    total = 0.0
+    for lo in range(0, len(scores), 500):
+        near = ((xy[lo : lo + 500, None, :] - xy[None, :, :]) ** 2).sum(axis=2) <= cutoff_km**2
+        total += float(scores[lo : lo + 500] @ (near @ scores))
+    return math.sqrt(total) / dtd if total >= 0 and dtd > 0 else float("nan")
+
+
+def ri_p(
+    design: Design,
+    state: np.ndarray,
+    exposure: np.ndarray,
+    price: np.ndarray,
+    y_res: dict[str, np.ndarray],
+    observed: dict[str, float],
+    n_draws: int = N_DRAWS,
+    seed: int = SEED,
+) -> dict[str, float]:
+    """Randomisation p for each outcome: permute `exposure` within state, re-estimate beta."""
+    rng = np.random.default_rng(seed)
+    groups = [np.flatnonzero(state == s) for s in np.unique(state)]
+    count = dict.fromkeys(y_res, 0)
+    for _ in range(n_draws):
+        permuted = exposure.copy()
+        for idx in groups:
+            permuted[idx] = exposure[rng.permutation(idx)]
+        d_res = design.residualise(shock(permuted, price))[:, 0]
+        den = float(d_res @ d_res)
+        if den <= 1e-12:
+            continue
+        for name, y in y_res.items():
+            if abs(float(d_res @ y) / den) >= abs(observed[name]) * (1 - 1e-9):
+                count[name] += 1
+    return {
+        name: (1 + count[name]) / (1 + n_draws) if math.isfinite(observed[name]) else float("nan")
+        for name in y_res
+    }
+
+
+def shock(exposure: np.ndarray, price: np.ndarray) -> np.ndarray:
+    """D_mt = E_m x price_t as an (M*T) x 1 column, municipality-major."""
+    return (exposure[:, None] * price[None, :]).reshape(-1, 1)
+
+
+# --- The panel
+
+
+@dataclass
+class Panel:
+    codes: list[str]
+    state: np.ndarray  # state index of each municipality
+    n_states: int
+    years: np.ndarray
+    xy: np.ndarray  # M x 2, Albers km
+    controls: np.ndarray  # M x 3
+    exposures: dict[str, np.ndarray]  # each M
+    outcomes: dict[str, np.ndarray]  # each M x T
+    ln_gold: np.ndarray  # T: ln_gold_real of year t-1
+    ln_soy: np.ndarray  # T
+    n_half: int
+    dropped: dict[str, int]
+
+
+def _lagged(prices: pl.DataFrame, column: str) -> np.ndarray:
+    by_year = dict(zip(prices["year"].to_list(), prices[column].to_list(), strict=True))
+    missing = [y - 1 for y in YEARS if by_year.get(y - 1) is None]
+    if missing:
+        raise FirstStageError(f"gold_prices has no {column} for years {missing}")
+    return np.array([float(by_year[y - 1]) for y in YEARS])
+
+
+def build_panel(mining: pl.DataFrame, exposure: pl.DataFrame, prices: pl.DataFrame) -> Panel:
+    """The balanced municipality-year panel; both tables are already restricted to the half."""
+    n_years = len(YEARS)
+    mining = (
+        mining.with_columns(pl.col("cd_ibge").cast(pl.Utf8), cs.float().fill_nan(None))
+        .filter(pl.col("year").is_between(YEARS[0], YEARS[-1]))
+        .with_columns(
+            (pl.col("garimpo_gold_ha") / (pl.col("n_cells") * 100)).alias("garimpo_gold_share"),
+            (pl.col("garimpo_other_ha") / (pl.col("n_cells") * 100)).alias("garimpo_other_share"),
+            (pl.col("industrial_gold_ha") / (pl.col("n_cells") * 100)).alias(
+                "industrial_gold_share"
+            ),
+            (1 + pl.col("garimpo_ha")).log().alias("ln_garimpo_ha"),
+        )
+    )
+    outcome_names = [MAIN, *SECONDARY]
+    exposure = exposure.with_columns(pl.col("cd_ibge").cast(pl.Utf8), cs.float().fill_nan(None))
+    per_muni = mining.group_by("cd_ibge").agg(
+        pl.len().alias("n_rows"),
+        pl.col("n_cells").min().alias("min_cells"),
+        pl.col("n_cells").null_count().alias("null_cells"),
+        pl.col("native_share_2004").mean().alias("native_share_2004"),
+        pl.col("native_share_2004").null_count().alias("null_native"),
+        pl.sum_horizontal(*[pl.col(c).is_null().sum() for c in outcome_names]).alias(
+            "null_outcome"
+        ),
+    )
+    codes = pl.concat([mining.select("cd_ibge"), exposure.select("cd_ibge")]).unique()
+    info = (
+        codes.join(
+            exposure.with_columns(pl.lit(True).alias("_in_exposure")), on="cd_ibge", how="left"
+        )
+        .join(per_muni, on="cd_ibge", how="left")
+        .sort("cd_ibge")
+    )
+    null_control = (
+        pl.col("native_share_2004").is_null()
+        | (pl.col("null_native") > 0)
+        | pl.col("area_km2").is_null()
+        | (pl.col("area_km2") <= 0)
+        | pl.col("indigenous_share").is_null()
+    )
+    null_exposure = pl.any_horizontal(*[pl.col(c).is_null() for c in EXPOSURE_NEEDED]) | (
+        pl.col("uf").is_null()
+    )
+    info = info.with_columns(
+        pl.when(pl.col("_in_exposure").is_null())
+        .then(pl.lit("no_exposure_row"))
+        .when(pl.col("n_rows").is_null())
+        .then(pl.lit("no_panel_rows"))
+        .when((pl.col("min_cells") < 1).fill_null(True) | (pl.col("null_cells") > 0))
+        .then(pl.lit("no_cells"))
+        .when(null_control.fill_null(True))
+        .then(pl.lit("null_controls"))
+        .when(null_exposure.fill_null(True))
+        .then(pl.lit("null_exposure"))
+        .when((pl.col("n_rows") != n_years) | (pl.col("null_outcome") > 0))
+        .then(pl.lit("unbalanced"))
+        .otherwise(pl.lit(None, dtype=pl.Utf8))
+        .alias("_reason")
+    )
+    dropped_rows = info.filter(pl.col("_reason").is_not_null()).group_by("_reason").len()
+    dropped = {r: int(n) for r, n in dropped_rows.iter_rows()}
+    kept = info.filter(pl.col("_reason").is_null())
+    if kept.is_empty():
+        raise FirstStageError("no municipality is left after the sample rules")
+    kept_codes = kept["cd_ibge"].to_list()
+    rows = mining.filter(pl.col("cd_ibge").is_in(kept_codes)).sort(["cd_ibge", "year"])
+    if rows.height != len(kept_codes) * n_years:
+        raise FirstStageError("the panel is not balanced after the sample rules")
+    if rows["year"].to_list()[:n_years] != list(YEARS):
+        raise FirstStageError("the panel years are not 1990..2024")
+    ufs = kept["uf"].to_list()
+    state_names = sorted(set(ufs))
+    state = np.array([state_names.index(u) for u in ufs])
+
+    def col(name: str) -> np.ndarray:
+        return kept[name].cast(pl.Float64).to_numpy()
+
+    return Panel(
+        codes=kept_codes,
+        state=state,
+        n_states=len(state_names),
+        years=np.array(YEARS),
+        xy=np.column_stack([col("centroid_x_km"), col("centroid_y_km")]),
+        controls=np.column_stack(
+            [col("native_share_2004"), np.log(col("area_km2")), col("indigenous_share")]
+        ),
+        exposures={
+            "main": col("geo_gold_per_km2"),
+            "titles": col("title_gold_pre2000_share"),
+            "binary": kept["geo_exposed"].cast(pl.Float64).to_numpy(),
+            "sand": col("title_sand_pre2000_share"),
+            "indigenous": kept["geo_gold_indigenous_share"]
+            .cast(pl.Float64)
+            .fill_null(0.0)
+            .to_numpy(),
+        },
+        outcomes={
+            name: rows[name].cast(pl.Float64).to_numpy().reshape(len(kept_codes), n_years)
+            for name in outcome_names
+        },
+        ln_gold=_lagged(prices, "ln_gold_real"),
+        ln_soy=_lagged(prices, "ln_soy_real"),
+        n_half=codes.height,
+        dropped=dropped,
+    )
+
+
+# --- Estimates
+
+
+def _ratio2(beta: float, se: float) -> float:
+    return (beta / se) ** 2 if se > 0 and math.isfinite(se) else float("nan")
+
+
+def _bse(f: Fit, j: int = 0) -> dict[str, float]:
+    return {"beta": float(f.beta[j]), "se": float(f.se[j])}
+
+
+def _with_f(f: Fit) -> dict[str, float]:
+    out = _bse(f)
+    out["f_cluster"] = _ratio2(out["beta"], out["se"])
+    return out
+
+
+def event_matrix(exposure: np.ndarray, years: np.ndarray, base: int) -> np.ndarray:
+    """E_m x 1[year = y] for every year but `base`: (M*T) x (T-1)."""
+    cols = [j for j, y in enumerate(years) if y != base]
+    out = np.zeros((len(exposure), len(years), len(cols)))
+    for k, j in enumerate(cols):
+        out[:, j, k] = exposure
+    return out.reshape(len(exposure) * len(years), -1)
+
+
+def _lead_ratio(coef: dict[int, float]) -> float:
+    lead = [b for y, b in coef.items() if y <= 2001]
+    tail = [b for y, b in coef.items() if y >= 2002]
+    num, den = abs(float(np.mean(lead))), abs(float(np.mean(tail)))
+    if not math.isfinite(num) or not math.isfinite(den):
+        return float("nan")
+    return SENTINEL if den == 0 else num / den
+
+
+def estimate(panel: Panel, n_draws: int = N_DRAWS, seed: int = SEED) -> dict[str, Any]:
+    """Every block of `results.json`, before `finalize`."""
+    design = Design(panel.state, len(panel.years), panel.controls)
+    y_res = {
+        name: design.residualise(panel.outcomes[name].reshape(-1)[:, None])[:, 0]
+        for name in (MAIN, *SECONDARY)
+    }
+    exp = panel.exposures
+    d_main = design.residualise(shock(exp["main"], panel.ln_gold))
+    main = fit(design, d_main, y_res[MAIN])
+    betas = {name: float(fit(design, d_main, y).beta[0]) for name, y in y_res.items()}
+    ri = ri_p(design, panel.state, exp["main"], panel.ln_gold, y_res, betas, n_draws, seed)
+
+    first_stage: dict[str, Any] = {
+        **_bse(main),
+        "f_cluster": _ratio2(float(main.beta[0]), float(main.se[0])),
+        "ri_p": ri[MAIN],
+        "n_munis": design.n_muni,
+        "n_obs": design.n_obs,
+        "n_states": panel.n_states,
+    }
+    for km in CUTOFFS_KM:
+        first_stage[f"conley_se_{km}km"] = conley_se(
+            main.scores[:, 0], float(main.dtd[0, 0]), panel.xy, km
+        )
+
+    d_event = design.residualise(event_matrix(exp["main"], panel.years, BASE_YEAR))
+    event_fit = fit(design, d_event, y_res[MAIN])
+    event_years = [int(y) for y in panel.years if y != BASE_YEAR]
+    coef = {y: float(b) for y, b in zip(event_years, event_fit.beta, strict=True)}
+    event_se = {y: float(s) for y, s in zip(event_years, event_fit.se, strict=True)}
+
+    secondary = {}
+    for name in SECONDARY:
+        secondary[name] = {**_bse(fit(design, d_main, y_res[name])), "ri_p": ri[name]}
+
+    def one(exposure: np.ndarray, price: np.ndarray) -> Fit:
+        return fit(design, design.residualise(shock(exposure, price)), y_res[MAIN])
+
+    placebo_soy, placebo_sand = one(exp["main"], panel.ln_soy), one(exp["sand"], panel.ln_gold)
+    placebo = {
+        "lead_ratio": _lead_ratio(coef),
+        "soy_beta": float(placebo_soy.beta[0]),
+        "soy_se": float(placebo_soy.se[0]),
+        "sand_beta": float(placebo_sand.beta[0]),
+        "sand_se": float(placebo_sand.se[0]),
+    }
+
+    regime_cols = [
+        shock(exp["main"], panel.ln_gold * ((panel.years >= lo) & (panel.years <= hi)))
+        for lo, hi in REGIMES.values()
+    ]
+    regime_fit = fit(design, design.residualise(np.hstack(regime_cols)), y_res[MAIN])
+    regimes: dict[str, Any] = {name: _bse(regime_fit, j) for j, name in enumerate(REGIMES)}
+    diff_var = regime_fit.cov[1, 1] + regime_fit.cov[0, 0] - 2 * regime_fit.cov[0, 1]
+    regimes["r2_minus_r1"] = {
+        "beta": float(regime_fit.beta[1] - regime_fit.beta[0]),
+        "se": float(np.sqrt(diff_var)) if diff_var >= 0 else float("nan"),
+    }
+
+    access_cols = np.hstack(
+        [shock(exp["main"], panel.ln_gold), shock(exp["main"] * exp["indigenous"], panel.ln_gold)]
+    )
+    access = _bse(fit(design, design.residualise(access_cols), y_res[MAIN]), 1)
+
+    return {
+        "first_stage": first_stage,
+        "event": {
+            "coef": {f"y{y}": b for y, b in coef.items()},
+            "se": {f"y{y}": s for y, s in event_se.items()},
+        },
+        "placebo": placebo,
+        "secondary": secondary,
+        "robust": {
+            "titles": _with_f(one(exp["titles"], panel.ln_gold)),
+            "binary": _with_f(one(exp["binary"], panel.ln_gold)),
+        },
+        "regimes": regimes,
+        "access": access,
+        "price": {"mean_ln_gold_real": float(np.mean(panel.ln_gold))},
+        "exposure": {"mean_geo_gold_per_km2": float(np.mean(exp["main"]))},
+        "sample": {
+            "n_half": panel.n_half,
+            "n_kept": design.n_muni,
+            "dropped": dict(sorted(panel.dropped.items())),
+        },
+    }
+
+
+def _clean(value: Any, bad: list[int]) -> Any:
+    """Nested dicts with every non-finite float turned into None (counted in `bad`)."""
+    if isinstance(value, dict):
+        return {str(k): _clean(v, bad) for k, v in value.items()}
+    if value is None or isinstance(value, (bool, str)):
+        return value
+    if isinstance(value, (int, np.integer)):
+        return int(value)
+    number = float(value)
+    if not math.isfinite(number):
+        bad.append(1)
+        return None
+    return number
+
+
+def finalize(results: dict[str, Any]) -> dict[str, Any]:
+    """Standard-JSON results: non-finite numbers become null and `estimates.finite` is set.
+
+    `estimates.finite` is false if any number was non-finite or the lead-ratio sentinel fired.
+    """
+    bad: list[int] = []
+    clean = _clean(results, bad)
+    lead = clean.get("placebo", {}).get("lead_ratio")
+    sentinel = lead is not None and lead == SENTINEL
+    clean["estimates"] = {"finite": not bad and not sentinel}
+    return clean
+
+
+def build_results(
+    mining: pl.DataFrame,
+    exposure: pl.DataFrame,
+    prices: pl.DataFrame,
+    half: frozenset[str],
+    n_draws: int = N_DRAWS,
+) -> tuple[dict[str, Any], Panel]:
+    """Restrict every table with a `cd_ibge` to the half, then build the panel and estimate.
+
+    `prices` is national and has no `cd_ibge`, so it is not restricted.
+    """
+    mining = restrict(mining, half)
+    exposure = restrict(exposure, half)
+    panel = build_panel(mining, exposure, prices)
+    return finalize(estimate(panel, n_draws)), panel
+
+
+# --- Summary
+
+
+def _f(x: Any, digits: int = 4) -> str:
+    return "n/a" if x is None else f"{x:.{digits}g}"
+
+
+def _summary(results: dict[str, Any], panel: Panel) -> str:
+    fs, ev, pl_, sec = (
+        results["first_stage"],
+        results["event"],
+        results["placebo"],
+        results["secondary"],
+    )
+    rb, rg, ac, sm = results["robust"], results["regimes"], results["access"], results["sample"]
+    lines = [
+        "## First stage of idea 0007: gold price x gold exposure on garimpo",
+        "",
+        "Clustered errors can over-reject with one common shock (Moreno-Louzada, Figueira and "
+        "Picchetti 2025), so the randomisation p comes first.",
+        "",
+        f"**Main estimate** (outcome `garimpo_share`, 0 to 1; {fs['n_munis']:,} municipalities, "
+        f"{fs['n_states']} states, {fs['n_obs']:,} municipality-years, 1990-2024):",
+        "",
+        f"- beta = {_f(fs['beta'])} per unit of E x ln(real gold price, t-1)",
+        f"- RI p = {_f(fs['ri_p'])} (1,000 draws, seed {SEED}, E permuted within state)",
+        f"- clustered SE = {_f(fs['se'])}, F = {_f(fs['f_cluster'])}",
+        f"- Conley SE: 50 km {_f(fs['conley_se_50km'])}, 100 km {_f(fs['conley_se_100km'])}, "
+        f"200 km {_f(fs['conley_se_200km'])}",
+        f"- sample means: ln real gold price {_f(results['price']['mean_ln_gold_real'])}, "
+        f"gold occurrences per km2 {_f(results['exposure']['mean_geo_gold_per_km2'])}",
+        "",
+        "### Event study (base year 2000; clustered SE)",
+        "",
+        "| Year | b | SE | ln real gold price, year-1 |",
+        "| --- | --- | --- | --- |",
+    ]
+    for j, y in enumerate(panel.years):
+        if y == BASE_YEAR:
+            continue
+        lines.append(
+            f"| {y} | {_f(ev['coef'][f'y{y}'])} | {_f(ev['se'][f'y{y}'])} | "
+            f"{_f(float(panel.ln_gold[j]))} |"
+        )
+    lines += [
+        "",
+        f"Lead ratio (|mean 1990-2001| / |mean 2002-2024|): {_f(pl_['lead_ratio'])}.",
+        "",
+        "### Other blocks",
+        "",
+    ]
+    for name, block in sec.items():
+        lines.append(
+            f"- Outcome `{name}`: beta {_f(block['beta'])}, SE {_f(block['se'])}, "
+            f"RI p {_f(block['ri_p'])}"
+        )
+    lines += [
+        f"- Exposure `title_gold_pre2000_share`: beta {_f(rb['titles']['beta'])}, "
+        f"SE {_f(rb['titles']['se'])}, F {_f(rb['titles']['f_cluster'])}",
+        f"- Exposure `geo_exposed` (binary): beta {_f(rb['binary']['beta'])}, "
+        f"SE {_f(rb['binary']['se'])}, F {_f(rb['binary']['f_cluster'])}",
+        f"- Placebo price (soy): beta {_f(pl_['soy_beta'])}, SE {_f(pl_['soy_se'])}",
+        f"- Placebo exposure (sand titles): beta {_f(pl_['sand_beta'])}, SE {_f(pl_['sand_se'])}",
+        f"- Regime R1 (1990-2013): beta {_f(rg['r1']['beta'])}, SE {_f(rg['r1']['se'])}",
+        f"- Regime R2 (2014-2022): beta {_f(rg['r2']['beta'])}, SE {_f(rg['r2']['se'])}",
+        f"- Regime R3 (2023-2024, two years only): beta {_f(rg['r3']['beta'])}, "
+        f"SE {_f(rg['r3']['se'])}",
+        f"- R2 minus R1: beta {_f(rg['r2_minus_r1']['beta'])}, SE {_f(rg['r2_minus_r1']['se'])}",
+        f"- Access (D x share of gold occurrences in Indigenous land): beta {_f(ac['beta'])}, "
+        f"SE {_f(ac['se'])}",
+        "",
+        "Regimes and access are secondary: reported, not claimed.",
+        "",
+        f"### Sample: {sm['n_kept']:,} of {sm['n_half']:,} municipalities kept",
+        "",
+    ]
+    if sm["dropped"]:
+        lines += [f"- dropped, {reason}: {n:,}" for reason, n in sm["dropped"].items()]
+    else:
+        lines.append("- none dropped")
+    lines += ["", f"All numbers finite: {results['estimates']['finite']}."]
+    return "\n".join(lines)
+
+
+# --- Reading from GCS
+
+
+def _paths(manifest: str, pattern: str) -> list[str]:
+    data = json.loads((MANIFESTS / f"{manifest}.json").read_text(encoding="utf-8"))
+    hits = sorted(
+        f["path"]
+        for f in data["files"]
+        if re.search(pattern, f["path"]) and not f["path"].startswith("sealed/")
+    )
+    if not hits:
+        raise SystemExit(f"{manifest}: no file matches {pattern}")
+    return hits
+
+
+def read_one(
+    store: GCSStore, tmp: Path, manifest: str, pattern: str, columns: list[str]
+) -> pl.DataFrame:
+    """One built file with named columns; the caller restricts."""
+    remote = _paths(manifest, pattern)[0]
+    local = tmp / Path(remote).name
+    store.download(remote, local)
+    frame = pl.read_parquet(local, columns=columns)
+    local.unlink()
+    return frame
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("--out-dir", type=Path, required=True)
+    args = parser.parse_args()
+
+    store = GCSStore(os.environ["TERRAIN_BUCKET"])
+    half = exploration_municipalities(store, national=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        where = Path(tmp)
+        exposure = read_one(
+            store, where, "gold_exposure", r"gold_exposure\.parquet$", EXPOSURE_COLUMNS
+        )
+        prices = read_one(store, where, "gold_exposure", r"gold_prices\.parquet$", PRICE_COLUMNS)
+        mining = pl.concat(
+            [
+                restrict(
+                    read_one(
+                        store, where, "mining_panel", rf"mining_panel_{y}\.parquet$", MINING_COLUMNS
+                    ),
+                    half,
+                )
+                for y in YEARS
+            ]
+        )
+    results, panel = build_results(mining, exposure, prices, half)
+    write_results(args.out_dir, _summary(results, panel), results)
+
+
+if __name__ == "__main__":
+    main()
