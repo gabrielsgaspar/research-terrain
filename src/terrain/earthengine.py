@@ -125,6 +125,8 @@ def export_params(entry: dict[str, Any]) -> dict[str, Any]:
         "bands": {y: str(block["band"]).replace("<year>", str(y)) for y in years},
         "files": {y: str(block["file"]).replace("<year>", str(y)) for y in years},
     }
+    if "unmask" in block and mode == "log1p_mean":
+        raise EarthEngineError("unmask is only for the shares and groups modes")
     if mode == "shares":
         codes = [int(c) for c in block["codes"]]
         params.update(asset=block["asset"], codes=codes, shape=(y1 - y0, x1 - x0, len(codes)))
@@ -136,6 +138,11 @@ def export_params(entry: dict[str, Any]) -> dict[str, Any]:
         params.update(year_assets=_collections(block, years), shape=(y1 - y0, x1 - x0, 1))
     else:
         raise EarthEngineError(f"unknown export mode {mode!r}")
+    if "unmask" in block and mode in ("shares", "groups"):
+        # Maps that hold only some pixels (mining): fill the rest with this value, so the
+        # 1 km mean runs over every pixel and not only the unmasked ones.
+        value = block["unmask"]
+        params["unmask"] = value if isinstance(value, int) else float(value)
     return params
 
 
@@ -439,6 +446,8 @@ class RealEarthEngine:
                 .toUint16()
             )
         img = ee.Image(params["asset"]).select(band)
+        if "unmask" in params:
+            img = img.unmask(params["unmask"])
         if params["mode"] == "groups":
             parts = [
                 img.remap(codes, [1] * len(codes), 0).rename(name)
