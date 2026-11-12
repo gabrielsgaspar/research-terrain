@@ -592,3 +592,136 @@ def test_mapbiomas_image_source_keeps_its_size(tmp_path):
     assert m["sources"][0]["bytes"] == 123
     src = earthengine.source(dataset(NAME), {"updateTime": "t", "sizeBytes": 7})
     assert src["bytes"] == 7 and src["etag"] == "995bac2efc56b887"
+
+
+# --- the unmask key and the mapbiomas_mining entry (campaign 0007, step s10) ----
+
+
+def test_coverage_national_params_and_source_are_pinned():
+    entry = dataset("mapbiomas_coverage_national")
+    p = export_params(entry)
+    assert p["asset"] == (
+        "projects/mapbiomas-public/assets/brazil/lulc/collection10/"
+        "mapbiomas_brazil_collection10_coverage_v2"
+    )
+    assert p["mode"] == "groups"
+    assert p["crs_transform"] == [1000, 0, 2813000, 0, -1000, 11912000]
+    assert p["dimensions"] == "4587x4312"
+    assert p["file_dimensions"] == [4608, 4352]
+    assert p["min_share_with_data"] == 0.35
+    assert p["groups"] == {"urban": [24], "native": [3, 4, 5, 6, 49, 11, 12, 32, 29, 50]}
+    assert p["shape"] == (4312, 4587, 2)
+    assert "unmask" not in p and "unmask" not in export_params(dataset(NAME))
+    src = earthengine.source(entry, {"updateTime": "t", "sizeBytes": 1})
+    assert src["etag"] == "e71cccf9adb0a178"
+
+
+class Chain:
+    """A fake `ee` object that records every call, in order, and returns itself."""
+
+    def __init__(self, log):
+        self.log = log
+
+    def __getattr__(self, name):
+        def call(*args, **kwargs):
+            self.log.append((name, args))
+            return self
+
+        return call
+
+
+class FakeImageModule(Chain):
+    """Stands in for the `ee` module: `ee.Image(...)`, `ee.Image.cat`, `ee.Reducer.mean`."""
+
+    def __init__(self, log):
+        super().__init__(log)
+        chain = Chain(log)
+
+        def image(asset):
+            log.append(("Image", (asset,)))
+            return chain
+
+        def cat(parts):
+            log.append(("cat", (len(parts),)))
+            return chain
+
+        image.cat = cat
+        self.Image = image
+        self.Reducer = Chain(log)
+
+
+def image_calls(entry):
+    log = []
+    real = object.__new__(earthengine.RealEarthEngine)
+    real._ee = FakeImageModule(log)
+    real._bucket = "bucket"
+    real._image(2004, export_params(entry))
+    return [name for name, _ in log], log
+
+
+def test_unmask_comes_before_remap_in_groups():
+    entry = groups_entry()
+    entry["earthengine"]["unmask"] = 0
+    names, log = image_calls(entry)
+    assert ("unmask", (0,)) in log
+    assert names.index("select") < names.index("unmask") < names.index("remap")
+
+
+def test_unmask_comes_before_eq_in_shares():
+    entry = small_entry()
+    entry["earthengine"]["unmask"] = 0
+    names, _ = image_calls(entry)
+    assert names.index("unmask") < names.index("eq")
+
+
+@pytest.mark.parametrize("make", [small_entry, groups_entry])
+def test_no_unmask_when_the_key_is_absent(make):
+    names, _ = image_calls(make())
+    assert "unmask" not in names
+
+
+def test_unmask_in_log1p_mean_raises():
+    entry = log_entry()
+    entry["earthengine"]["unmask"] = 0
+    with pytest.raises(EarthEngineError, match="unmask"):
+        export_params(entry)
+
+
+def test_check_file_four_bands_near_the_share_threshold(tmp_path):
+    arr = np.zeros((100, 200, 4), dtype=np.uint16)  # 20,000 cells: 0.00005 needs 1 cell
+    arr[0, :2, 0] = 5000
+    assert check_file(write_tif(tmp_path, arr), arr.shape, 10000, "groups", 0.00005)[0] == 2
+    arr = np.zeros((200, 200, 4), dtype=np.uint16)  # 40,000 cells: 0.00005 needs 2 cells
+    arr[0, 0, 1] = 5000
+    with pytest.raises(EarthEngineError, match="only 1 of 40000"):
+        check_file(write_tif(tmp_path, arr), arr.shape, 10000, "groups", 0.00005)
+
+
+def test_mapbiomas_mining_entry_loads():
+    entry = dataset("mapbiomas_mining")
+    assert entry["gcs"] == "data/raw/mapbiomas/mining/"
+    p = export_params(entry)
+    assert p["mode"] == "groups" and p["unmask"] == 0
+    assert list(p["groups"]) == [
+        "garimpo_gold",
+        "garimpo_other",
+        "industrial_gold",
+        "industrial_other",
+    ]
+    g = p["groups"]
+    assert g["garimpo_gold"] == [1115, 1215] and g["industrial_gold"] == [2115, 2215]
+    for name, first in (("garimpo_other", 11), ("industrial_other", 21)):
+        codes = g[name]
+        assert len(codes) == 104 and len(set(codes)) == 104
+        assert all(1000 <= c <= 9999 for c in codes)
+        assert all(c // 100 in (first, first + 1) for c in codes)
+        assert all(c % 100 != 15 for c in codes)
+        assert sorted(codes) == codes
+    # the two "other" lists carry the same 52 substances
+    assert {c % 1000 for c in g["garimpo_other"]} == {c % 1000 for c in g["industrial_other"]}
+    assert len({c % 100 for c in g["garimpo_other"]}) == 52
+    assert p["years"] == list(range(1985, 2026)) and p["scale"] == 10000
+    assert p["dimensions"] == "4587x4312" and p["shape"] == (4312, 4587, 4)
+    assert p["file_dimensions"] == [4608, 4352] and p["min_share_with_data"] == 0.00005
+    assert p["bands"][1985] == "classification_1985"
+    assert p["files"][2025] == "mining_shares_2025.tif"

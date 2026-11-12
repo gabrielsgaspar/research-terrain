@@ -583,6 +583,53 @@ datasets:
       min_share_with_data: 0.35
       file: coverage_shares_<year>.tif
 
+  - name: mapbiomas_mining
+    source: >-
+      MapBiomas Brasil Collection 11, mining by type and mined substance
+      (Mineração: Industrial, Garimpo e Substância), Earth Engine asset below
+    licence: >-
+      CC BY 4.0 (MapBiomas: 'uso público, aberto e gratuito mediante
+      referência', brasil.mapbiomas.org/uso-de-dados); cite MapBiomas
+      Collection 11
+    gcs: data/raw/mapbiomas/mining/
+    status: planned
+    notes: >
+      Idea 0007, campaign 0007 step s10. Four bands per year, each the share
+      of the 30 m pixels of an IBGE 1 km cell (x 10,000, uint16): garimpo_gold,
+      garimpo_other, industrial_gold, industrial_other. Garimpo is
+      small-scale and artisanal mining; industrial is company mining. The
+      footprint is exposed soil plus revegetation (legend codes start 11 or 12
+      for garimpo, 21 or 22 for industrial; the last two digits are the
+      substance, 15 = gold). MapBiomas assigns the substance by crossing its
+      maps with the SGB (CPRM) mineral database; it does not classify the
+      activity itself. The legend CSV lists the four code-52 rows twice and
+      labels both 51 and 52 "Vanadium". The map holds only mining pixels, so
+      the export unmasks everything else to 0 before the 1 km mean; without
+      that a cell with one mining pixel would read 1.0. One GeoTIFF per year
+      1985-2025 on the project's Albers 1 km grid over all of Brazil (same
+      grid and extent as mapbiomas_coverage_national). Outcome data: raw holds
+      both halves and no exploration account can read raw (decisions 0003,
+      0011). Fallbacks if the asset or a year is missing: the Collection 10
+      asset projects/mapbiomas-public/assets/brazil/lulc/collection10/mapbiomas_brazil_collection10_mining_substances_v3
+      (whether it is still public is unconfirmed), then Collection 10 coverage
+      class 30, Mineração, which has no garimpo or substance split.
+    earthengine:
+      asset: projects/mapbiomas-public/assets/brazil/lulc/collection11/mapbiomas_brazil_collection11_mining_substances_v1
+      band: classification_<year>
+      mode: groups
+      unmask: 0
+      groups:
+        garimpo_gold: [1115, 1215]
+        garimpo_other: [1102, 1103, 1104, 1105, 1106, 1107, 1108, 1109, 1110, 1111, 1112, 1113, 1114, 1117, 1118, 1119, 1120, 1121, 1122, 1124, 1125, 1127, 1128, 1129, 1130, 1131, 1132, 1133, 1134, 1135, 1136, 1137, 1138, 1139, 1142, 1143, 1144, 1145, 1146, 1147, 1148, 1149, 1150, 1151, 1152, 1153, 1154, 1155, 1156, 1157, 1158, 1159, 1202, 1203, 1204, 1205, 1206, 1207, 1208, 1209, 1210, 1211, 1212, 1213, 1214, 1217, 1218, 1219, 1220, 1221, 1222, 1224, 1225, 1227, 1228, 1229, 1230, 1231, 1232, 1233, 1234, 1235, 1236, 1237, 1238, 1239, 1242, 1243, 1244, 1245, 1246, 1247, 1248, 1249, 1250, 1251, 1252, 1253, 1254, 1255, 1256, 1257, 1258, 1259]
+        industrial_gold: [2115, 2215]
+        industrial_other: [2102, 2103, 2104, 2105, 2106, 2107, 2108, 2109, 2110, 2111, 2112, 2113, 2114, 2117, 2118, 2119, 2120, 2121, 2122, 2124, 2125, 2127, 2128, 2129, 2130, 2131, 2132, 2133, 2134, 2135, 2136, 2137, 2138, 2139, 2142, 2143, 2144, 2145, 2146, 2147, 2148, 2149, 2150, 2151, 2152, 2153, 2154, 2155, 2156, 2157, 2158, 2159, 2202, 2203, 2204, 2205, 2206, 2207, 2208, 2209, 2210, 2211, 2212, 2213, 2214, 2217, 2218, 2219, 2220, 2221, 2222, 2224, 2225, 2227, 2228, 2229, 2230, 2231, 2232, 2233, 2234, 2235, 2236, 2237, 2238, 2239, 2242, 2243, 2244, 2245, 2246, 2247, 2248, 2249, 2250, 2251, 2252, 2253, 2254, 2255, 2256, 2257, 2258, 2259]
+      years: [1985, 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]
+      scale: 10000
+      grid_km: {x0: 2813, x1: 7400, y0: 7600, y1: 11912}
+      file_dimensions: [4608, 4352]
+      min_share_with_data: 0.00005
+      file: mining_shares_<year>.tif
+
   - name: viirs_annual
     source: NOAA / Earth Observation Group, VIIRS Nighttime Lights annual composites (VNL V2.1 and V2.2), Earth Engine collections below
     licence: >-
