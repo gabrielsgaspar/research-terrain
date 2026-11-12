@@ -130,5 +130,8 @@ writes the manifest. The manifest notes hold:
   points outside every polygon, each also as gold occurrences only;
 - the ANM rows, gold titles, and gold and sand titles without a polygon;
 - the polygons repaired (ANM gold and sand titles, Indigenous lands);
+- the polygons repaired again after projection to Albers km (municipalities, ANM gold and
+  sand titles, Indigenous lands): a polygon valid in degrees can be invalid in km, for example
+  a hole touching its shell's northern edge at one point;
 - the price years, first to last, and their number.
 - the CPI months filled (`cpi_months_filled=2025-10`, or `none`).

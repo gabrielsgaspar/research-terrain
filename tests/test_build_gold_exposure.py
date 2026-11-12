@@ -74,6 +74,19 @@ def bowtie_wkb(x0: float, y0: float, x1: float, y1: float) -> bytes:
     return polygon.wkb
 
 
+def touching_hole(x0: float, y0: float, x1: float, y1: float) -> Polygon:
+    """A box in degrees with a hole touching its northern edge at one point: valid in
+    degrees, invalid in Albers km (the edge's point moves across it)."""
+    lon, lat = grid.km_to_lonlat([x0, x1], [y0, y1])
+    w, s_, e, n = float(lon[0]), float(lat[0]), float(lon[1]), float(lat[1])
+    mid, dx, dy = (w + e) / 2, (e - w) / 10, (n - s_) / 2
+    polygon = Polygon(
+        [(w, s_), (e, s_), (e, n), (w, n)], [[(mid, n), (mid - dx, n - dy), (mid + dx, n - dy)]]
+    )
+    assert polygon.is_valid and not grid.to_albers_km(polygon).is_valid
+    return polygon
+
+
 def at(x: float, y: float) -> tuple[str, str]:
     lon, lat = grid.km_to_lonlat([x], [y])
     return repr(float(lon[0])), repr(float(lat[0]))
@@ -133,7 +146,7 @@ def sgb_csv() -> bytes:
     return ("\n".join(lines) + "\n").encode("utf-8")
 
 
-def anm_parquet() -> bytes:
+def anm_parquet(extra: tuple = ()) -> bytes:
     titles = [
         # (subs, fase, ano, geometry)
         ("OURO", "LAVRA GARIMPEIRA", 1990, wkb(5000, 10000, 5006, 10005)),  # 30 km²
@@ -146,6 +159,7 @@ def anm_parquet() -> bytes:
         ("OURO PIGMENTO", "LAVRA GARIMPEIRA", 1970, wkb(5000, 10008, 5002, 10010)),  # not gold
         ("OURO", "LAVRA GARIMPEIRA", 1990, None),  # gold without a polygon
         ("OURO", "AUTORIZAÇÃO DE PESQUISA", None, wkb(5012, 10000, 5014, 10002)),  # no year
+        *extra,
     ]
     frame = pl.DataFrame(
         {
@@ -487,6 +501,45 @@ def test_workbook_without_the_sheet_or_a_header_stops(tmp_path):
     headerless = _write(tmp_path / "bad.xlsx", price_xlsx(gold_header="Gold (nominal)"))
     with pytest.raises(BuildError, match="no column 'Gold'"):
         read_prices_xlsx(headerless)
+
+
+def broken_pair() -> list[Polygon]:
+    """Two overlapping titles, each valid in degrees and invalid in km, whose km union
+    GEOS refuses. About 100 x 80 km, so they cover municipalities A, B and C."""
+    first = touching_hole(4995, 9995, 5095, 10075)
+    return [first, shapely.affinity.translate(first, 0.003, 0.002)]
+
+
+def test_a_polygon_valid_in_degrees_is_repaired_after_projection():
+    # run 43123467616: GEOS refused the union of titles that only the projection broke
+    titles = broken_pair()
+    with pytest.raises(shapely.errors.GEOSException, match="side location conflict"):
+        shapely.union_all(ge.to_km(titles))
+    valid, repaired = ge.to_valid_km(titles)
+    assert repaired == 2 and all(shapely.is_valid(g) for g in valid)
+    for before, after in zip(ge.to_km(titles), valid, strict=True):
+        assert shapely.area(after) == pytest.approx(shapely.area(before), rel=1e-4)
+    assert shapely.is_valid(shapely.union_all(valid))
+
+
+def test_build_survives_titles_that_the_projection_makes_invalid(tmp_path):
+    extra = tuple(("OURO", "LAVRA GARIMPEIRA", 1990, t.wkb) for t in broken_pair())
+    inputs = Inputs(tmp_path, anm=anm_parquet(extra))
+    manifest = inputs.build()
+    assert (
+        "repaired_after_projection: municipalities=0, anm_gold_and_sand_titles=2, "
+        "indigenous_lands=0" in manifest["notes"]
+    )
+    exposure = read(inputs, manifest, "gold_exposure.parquet")
+    shares = dict(exposure.select("cd_ibge", "title_gold_pre2000_share").iter_rows())
+    assert shares[A] == shares[B] == shares[C] == pytest.approx(1.0)
+
+
+def test_notes_count_no_projection_repairs_on_clean_inputs(inputs):
+    assert (
+        "repaired_after_projection: municipalities=0, anm_gold_and_sand_titles=0, "
+        "indigenous_lands=0" in inputs.build()["notes"]
+    )
 
 
 def test_cpi_with_a_bad_date_stops(tmp_path):

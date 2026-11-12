@@ -191,6 +191,18 @@ def to_km(geometries: list[Any]) -> list[Any]:
     return list(grid.to_albers_km(np.array(geometries, dtype=object)))
 
 
+def to_valid_km(geometries: list[Any]) -> tuple[list[Any | None], int]:
+    """`to_km`, then `repair`: valid polygonal geometries in Albers km, and how many the
+    projection made invalid.
+
+    A polygon valid in degrees can be invalid in km: a parallel becomes an arc, so a hole
+    that touches its shell's northern edge at one point ends up across it (a self-
+    intersection), and GEOS then refuses the union ("side location conflict", run
+    43123467616).
+    """
+    return repair(to_km(geometries))
+
+
 def assign_points(
     lon: np.ndarray, lat: np.ndarray, polygons: list[Any], codes: list[str]
 ) -> tuple[np.ndarray, int]:
@@ -600,7 +612,7 @@ def build(
         raise BuildError("a municipality appears twice in the municipalities table")
     codes = munis["cd_ibge"].to_list()
     degrees = _polygons(store, boundaries_entry, tmp_dir, codes)
-    polygons = to_km(degrees)
+    polygons, muni_projection_repaired = to_valid_km(degrees)
     area = np.array([shapely.area(p) for p in polygons])
     if not (area > 0).all():
         raise BuildError("a municipality polygon has no area")
@@ -669,7 +681,8 @@ def build(
     del raw
     present = np.array([g is not None for g in title_deg], dtype=bool)
     title_km = np.empty(len(title_deg), dtype=object)
-    title_km[present] = to_km([g for g in title_deg if g is not None])
+    title_valid_km, title_projection_repaired = to_valid_km([g for g in title_deg if g is not None])
+    title_km[present] = title_valid_km
 
     def select(*columns: str) -> list[Any]:
         mask = present.copy()
@@ -704,11 +717,13 @@ def build(
         "title_n_gold_pre2000": count_intersecting(polygons, select("gold", "pre2000")),
         "title_n_garimpo_pre2000": count_intersecting(polygons, select("garimpo", "pre2000")),
     }
+    indigenous_km, indigenous_projection_repaired = to_valid_km(indigenous_deg)
+    indigenous_km = [g for g in indigenous_km if g is not None]
     shares = {
         "title_gold_pre2000_share": union_share(polygons, select("gold", "pre2000")),
         "title_garimpo_pre2000_share": union_share(polygons, select("garimpo", "pre2000")),
         "title_sand_pre2000_share": union_share(polygons, select("sand", "pre2000")),
-        "indigenous_share": union_share(polygons, to_km(indigenous_deg)),
+        "indigenous_share": union_share(polygons, indigenous_km),
     }
     exposure = exposure.with_columns(
         *(pl.Series(k, v, dtype=pl.Int64) for k, v in counts.items()),
@@ -746,6 +761,9 @@ def build(
         f"gold_and_sand_titles_without_geometry={no_geometry}",
         f"repaired_polygons: anm_gold_and_sand_titles={title_repaired}, "
         f"indigenous_lands={indigenous_repaired}",
+        f"repaired_after_projection: municipalities={muni_projection_repaired}, "
+        f"anm_gold_and_sand_titles={title_projection_repaired}, "
+        f"indigenous_lands={indigenous_projection_repaired}",
         f"price_years={prices['year'].min()}-{prices['year'].max()} ({prices.height} years)",
         "cpi_months_filled="
         + (", ".join(f"{y}-{m:02d}" for y, m in cpi_filled) or "none")
