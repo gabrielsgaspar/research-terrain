@@ -1,0 +1,94 @@
+{
+  "candidates": {
+    "n_council_not_in_half": {
+      "y2000": 183196,
+      "y2004": 183793,
+      "y2008": 173476,
+      "y2012": 223471,
+      "y2016": 229955,
+      "y2020": 257345,
+      "y2024": 215690
+    },
+    "n_desc_garimpeiro": {
+      "y2000": 62,
+      "y2004": 47,
+      "y2008": 43,
+      "y2012": 36,
+      "y2016": 27,
+      "y2020": 29,
+      "y2024": 27
+    },
+    "n_mining_occupation": {
+      "y2000": 62,
+      "y2004": 95,
+      "y2008": 76,
+      "y2012": 60,
+      "y2016": 45,
+      "y2020": 46,
+      "y2024": 44
+    }
+  },
+  "estimates": {
+    "finite": true
+  },
+  "exposure": {
+    "by_state": {
+      "AC": 1,
+      "AL": 1,
+      "AM": 3,
+      "AP": 5,
+      "BA": 25,
+      "CE": 4,
+      "ES": 2,
+      "GO": 35,
+      "MA": 4,
+      "MG": 49,
+      "MS": 1,
+      "MT": 16,
+      "PA": 24,
+      "PB": 5,
+      "PE": 3,
+      "PR": 3,
+      "RJ": 2,
+      "RN": 4,
+      "RO": 16,
+      "RR": 6,
+      "RS": 4,
+      "SC": 3,
+      "SE": 1,
+      "SP": 7,
+      "TO": 7
+    },
+    "n_munis_both": 108,
+    "n_munis_exposed": 231,
+    "n_munis_half": 2783,
+    "n_munis_title_exposed": 191,
+    "n_states_10plus": 6,
+    "top_state": "MG",
+    "top_state_share": 0.21212121212121213
+  },
+  "pairs": {
+    "n_050_exposed": 2862,
+    "n_050_exposed_by_year": {
+      "y2008": 507,
+      "y2012": 569,
+      "y2016": 577,
+      "y2020": 661,
+      "y2024": 548
+    }
+  },
+  "price": {
+    "first_year": 1985,
+    "last_year": 2025,
+    "max_real": 3350.8329809942516,
+    "max_year": 2025,
+    "min_real": 479.88658115635053,
+    "min_year": 2001,
+    "n_years": 41
+  },
+  "titles": {
+    "n_garimpo_pre2000": 6953,
+    "n_pre2000": 10055,
+    "share_dated": 1.0
+  }
+}
