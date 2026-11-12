@@ -724,15 +724,22 @@ datasets:
     licence: CC BY 4.0 (MapBiomas), with attribution
     derived: data/derived/mining_panel/
     sealed: sealed/outcomes/mining_panel/
+    contract: data/contracts/mining_panel.md
     status: planned
     notes: >
       Idea 0007 and decisions 0003 and 0011: MapBiomas mining area (garimpo
       and industrial, gold and other substances) per municipality and year
-      1985-2025, all of Brazil. Exploration-half rows (both exploration
-      lists) in derived, all other rows only in sealed, like cell_outcomes.
-      Name, derived and sealed are fixed by the campaign 0007 PR (the sealed
-      line is pinned in tests/test_split.py); the build task is campaign
-      0007 step s12, which adds the contract and the rest.
+      1985-2025, all of Brazil, in hectares, plus the 2004 native-vegetation
+      share as a baseline control. One file per year, one row per municipality
+      (5,571). A cell belongs to the municipality that contains its centre;
+      a municipality with no centre gets the cell of its representative
+      point. Exploration-half rows (both exploration lists) in derived, all
+      other rows only in sealed, like cell_outcomes. Built by campaign 0007
+      step s12 (src/terrain/builds/mining_panel.py), run in step s13. The
+      build stops if the four bands of a cell sum to more than 10,000, if a
+      year is missing, or if national garimpo in 2022 is outside 100,000 to
+      1,000,000 ha. Name, derived and sealed are fixed by the campaign 0007 PR
+      (the sealed line is pinned in tests/test_split.py).
 
   - name: politics_panel
     source: built from tse_candidates, tse_results, municipalities, sim_homicides, ibge_population_annual and tse_receipts, split by half
