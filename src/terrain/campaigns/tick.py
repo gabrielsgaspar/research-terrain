@@ -25,6 +25,10 @@ Retries and the run after a repair follow the same limits (`RunSlots`).
 
 A run step whose run ended 'failure' or 'timed_out' is started again by the
 tick, at most MAX_AUTO_RETRIES times per step, before the owner is asked.
+A data-pipeline run that stopped only because its exports are still running
+(its log says `still exporting: N of M done`, `terrain.earthengine`) is no
+failure: it is started again without using a retry, while N grows from one
+such run to the next, at most MAX_CONTINUES times per step.
 In a campaign with `self_repair: true`, a pipeline_run step that still fails
 then gets one repair task (`terrain.campaigns.repair`, decision 0014); once
 it merges, the step runs once more, and only then is the owner asked.
@@ -78,6 +82,11 @@ BLOCK_GRACE = dt.timedelta(hours=24)  # time the owner has to unblock a step bef
 # use them up). Only these conclusions are retried: 'cancelled' means someone stopped it.
 MAX_AUTO_RETRIES = 2
 RETRY_CONCLUSIONS = {"failure", "timed_out"}
+# A run that ran out of time with exports still running prints this line; the tick
+# starts it again (`<step>:continue:<k>:<N>` in the ledger) without using a retry,
+# only while N grows, at most MAX_CONTINUES times per step.
+STILL_EXPORTING = re.compile(r"still exporting: (\d+) of (\d+) done")
+MAX_CONTINUES = 10
 
 # The circuit breaker (see the module docstring). Only block events of the newer
 # kind, `<step>:blocked:<id>`, count; the close-out's blocks do not.
@@ -142,6 +151,7 @@ IN_FLIGHT = {
     "running",
     "recording",
     "retry_waiting",  # a failed run to start again once the run limits allow
+    "resume_waiting",  # a run still exporting, to start again once the run limits allow
     "repair_waiting",  # a repair to file once no other task of the campaign is in flight
     "repair_filing",  # a repair filed, its issue not seen yet
     "repair_merged",  # a merged repair: the run starts again once the run limits allow
@@ -163,6 +173,8 @@ class StepState:
     record: str = ""  # path of the explore-run record, once merged
     run_again: str = ""  # for a failed run: the workflow and inputs to start it again
     retry: int = 0  # for a failed run the tick may start again: the number of that retry
+    # for a run still exporting the tick starts again: (k, N done, M in all)
+    resume: tuple[int, int, int] | None = None
     repair: Issue | None = None  # for a pipeline_run step: its repair issue, once seen
     repairing: bool = False  # the repair task (not a run) is what is in flight
 
@@ -376,6 +388,43 @@ def _retries(sid: str, events: dict[str, str]) -> int:
     return sum(1 for k in range(1, MAX_AUTO_RETRIES + 1) if f"{sid}:retry:{k}" in events)
 
 
+def _continues(sid: str, events: dict[str, str]) -> list[tuple[int, int]]:
+    """(k, N done) of each time the tick started step `sid` again while it was exporting."""
+    pattern = re.compile(rf"{re.escape(sid)}:continue:(\d+):(\d+)")
+    found = [m for m in map(pattern.fullmatch, events) if m]
+    return sorted((int(m.group(1)), int(m.group(2))) for m in found)
+
+
+def _continue_event(sid: str, events: dict[str, str]) -> str:
+    """The ledger event of the last time step `sid` was started again while exporting."""
+    before = _continues(sid, events)
+    return f"{sid}:continue:{before[-1][0]}:{before[-1][1]}" if before else ""
+
+
+def _still_exporting(
+    s: Step, run: Run, snap: Snapshot, events: dict[str, str]
+) -> tuple[tuple[int, int, int] | None, str]:
+    """(k, N, M) when failed run `run` was still exporting and may be started again.
+
+    Otherwise None, with why not when its log does say it was still exporting.
+    """
+    if s.kind != "pipeline_run" or run.conclusion != "failure":
+        return None, ""
+    found = STILL_EXPORTING.findall(snap.run_logs.get(run.id, ""))
+    if not found:
+        return None, ""
+    done, total = (int(x) for x in found[-1])
+    before = _continues(s.id, events)
+    if len(before) >= MAX_CONTINUES:
+        return None, f"still exporting ({done} of {total} done) after {MAX_CONTINUES} more runs"
+    if before and done <= before[-1][1]:
+        return None, (
+            f"still exporting, but {done} of {total} done is no more than the "
+            f"{before[-1][1]} of the run before"
+        )
+    return (len(before) + 1, done, total), ""
+
+
 def _repair_event(sid: str, stage: str = "") -> str:
     """The ledger event of a stage of step `sid`'s repair: "" (filing), filed, merged, run."""
     base = f"{sid}:repair:{repair.MAX_PER_STEP}"
@@ -397,7 +446,8 @@ def _run_state(
     retries = _retries(s.id, events)
     retried = events.get(f"{s.id}:retry:{retries}", "") if retries else ""
     repaired = events.get(_repair_event(s.id, "run"), "")
-    restarted = max((t for t in (retried, repaired) if t), key=_time, default="")
+    resumed = events.get(_continue_event(s.id, events), "")
+    restarted = max((t for t in (retried, repaired, resumed) if t), key=_time, default="")
     if restarted and _time(restarted) > _time(run.created_at):
         # the newest run is older than the newest restart: the fresh run has not appeared yet
         if _older(snap.now, restarted, RUN_APPEAR_TIMEOUT):
@@ -414,6 +464,13 @@ def _run_state(
         done += ["repaired once"] if repaired else []
         if done:
             st.detail += ". " + ", ".join(done)[0].upper() + ", ".join(done)[1:] + "."
+        st.resume, why_not = _still_exporting(s, run, snap, events)
+        if st.resume:
+            _, n, m = st.resume
+            st.detail = f"run {run.id} is still exporting ({n} of {m} done)"
+            return st
+        if why_not:
+            st.detail = f"{st.detail.rstrip('.')}. It was {why_not}."
         if run.conclusion in RETRY_CONCLUSIONS and retries < MAX_AUTO_RETRIES and not repaired:
             st.retry = retries + 1
         return st
@@ -528,6 +585,7 @@ def _no_repair(c: Campaign, s: Step, st: StepState, v: CampaignView, gctx: GateC
         and st.run is not None
         and st.run.conclusion in RETRY_CONCLUSIONS
         and not st.retry
+        and not st.resume
         and _retries(s.id, v.events) >= MAX_AUTO_RETRIES
         and st.repair is None
         and _repair_event(s.id) not in v.events
@@ -1165,6 +1223,26 @@ def _advance(
                         f"{s.id}:retry:{st.retry}",
                         f"{s.id}: run {st.run.id} ended '{st.run.conclusion}'. Retrying by "
                         f"itself ({st.retry} of {MAX_AUTO_RETRIES}) with a fresh run.",
+                    )
+                    doing.append(run_dispatch(c, s))
+                    slots.take(c, s)
+                    st = StepState("waiting_run", run=st.run)
+                v.states[s.id] = st
+            if st.resume and can_start:
+                k, n, m = st.resume
+                if held or slots.wait(c, s):
+                    st = StepState(
+                        "resume_waiting",
+                        f"run {st.run.id} is still exporting ({n} of {m} done); it starts "
+                        f"again {breaker_wait if held else slots.wait(c, s)}",
+                        run=st.run,
+                    )
+                else:
+                    event(
+                        f"{s.id}:continue:{k}:{n}",
+                        f"{s.id}: run {st.run.id} is still exporting ({n} of {m} done). "
+                        f"Starting it again by itself ({k} of at most {MAX_CONTINUES}); "
+                        "this is no failure and uses no retry.",
                     )
                     doing.append(run_dispatch(c, s))
                     slots.take(c, s)

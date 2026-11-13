@@ -3,17 +3,29 @@
 Earth Engine sits behind the small `EarthEngine` protocol, so tests use a fake.
 Earth Engine writes each year straight into the dated raw folder; this module
 then checks every file and returns the manifest, which `run_script` writes
-last. Right after starting its exports a run writes `exports.json` (the source and
-a year-to-task map) beside them. A run that times out leaves it, and the next run
-with the same source resumes that folder's tasks instead of starting new ones. A
-folder with a failed or cancelled task is not resumed: the next run uses a new
-dated folder. Nothing here computes a statistic of any code: the files hold
-outcome data for both halves.
+last.
+
+Resuming (campaign 0007 step s11, runs 43185081032 to 43234259734): a run first
+writes `exports.json` (the source and a hash of the export code and parameters)
+into its folder. A folder with `exports.json` and no manifest is unfinished. A
+run reuses the oldest unfinished folder with the same source and export code,
+whatever its date or suffix, and starts a new folder only when there is none.
+In that folder a year is done once its file is in the bucket, whatever its
+task's state: raw is write-once (the acquire account cannot delete), so a task
+Earth Engine retries after the file was written fails on the overwrite and
+leaves the good file. A year without a file gets a new export only when Earth
+Engine has no queued, running or finished task for it: tasks are found by their
+description, `<dataset>_<folder>_<year>`, and by the task ids that `exports.json`
+lists in folders written before descriptions carried the folder. If the wait
+runs out, the run stops with `still exporting: N of M done`, which the campaign
+tick starts again without counting it as a failure. Nothing here computes a
+statistic of any code: the files hold outcome data for both halves.
 """
 
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
 import os
 import re
@@ -52,13 +64,28 @@ SHARD_SIZE = 128
 FILE_DIMENSIONS = [3584, 2816]  # multiples of SHARD_SIZE: one file per year
 MIN_SHARE_WITH_DATA = 0.5
 DONE = "COMPLETED"
-STOPPED = ("FAILED", "CANCELLED")
+STOPPED = ("FAILED", "CANCELLED", "CANCEL_REQUESTED")  # will never write the file
 EXPORTS_NAME = "exports.json"
 _FOLDER = re.compile(r"(\d{4}-\d{2}-\d{2})(?:-(\d+))?")
 
 
 class EarthEngineError(RuntimeError):
     """An export or a file check failed; no manifest is written."""
+
+
+class StillExporting(EarthEngineError):
+    """The wait ran out with exports still queued or running; no manifest is written.
+
+    Not a failure: the next run resumes the same folder. The campaign tick reads
+    `still exporting: N of M done` from the run's log (`terrain.campaigns.tick`).
+    """
+
+    def __init__(self, done: int, total: int, prefix: str, minutes: float) -> None:
+        super().__init__(
+            f"still exporting: {done} of {total} done after {minutes:.0f} minutes; "
+            f"the next run resumes {prefix}"
+        )
+        self.done, self.total, self.prefix = done, total, prefix
 
 
 class EarthEngine(Protocol):
@@ -78,7 +105,9 @@ class EarthEngine(Protocol):
         """Ids of the images of `collection` whose start date is in `year`."""
         ...
 
-    def start_export(self, year: int, params: dict[str, Any], bucket_prefix: str) -> str:
+    def start_export(
+        self, year: int, params: dict[str, Any], bucket_prefix: str, description: str
+    ) -> str:
         """Start the batch export of `year` into `bucket_prefix`; return the task id.
 
         For `log1p_mean`, `params["images"][year]` is the year's single image id.
@@ -87,6 +116,13 @@ class EarthEngine(Protocol):
 
     def task_state(self, task_id: str) -> tuple[str, str]:
         """`(state, error_message)` of the task."""
+        ...
+
+    def tasks(self, description_prefix: str) -> list[dict[str, str]]:
+        """Every task Earth Engine lists whose description starts with the prefix.
+
+        Each is `{"id", "description", "state", "error"}`, states as `task_state` gives.
+        """
         ...
 
 
@@ -216,11 +252,10 @@ def check_file(
     return n, short
 
 
-def _write_pending(
-    store: Store, prefix: str, current: dict[str, Any], tasks: dict[int, str]
-) -> None:
-    record = {"sources": [current], "tasks": {str(y): t for y, t in tasks.items()}}
-    store.create(prefix + EXPORTS_NAME, json.dumps(record, sort_keys=True).encode("utf-8"))
+def export_code(params: dict[str, Any]) -> str:
+    """Hash of what decides the exported pixels: the image code and every parameter."""
+    image_code = inspect.getsource(RealEarthEngine._image)
+    return content_hash(image_code + json.dumps(params, sort_keys=True, default=str))
 
 
 def _folder_order(folder: str) -> tuple[str, int]:
@@ -229,13 +264,15 @@ def _folder_order(folder: str) -> tuple[str, int]:
     return match.group(1), int(match.group(2) or 1)
 
 
-def _pending(
-    store: Store, ee: EarthEngine, root: str, current: dict[str, Any]
+def _unfinished(
+    store: Store, root: str, current: dict[str, Any], code: str
 ) -> tuple[str, dict[int, str]] | None:
-    """The newest resumable folder under `root`, or None.
+    """The oldest unfinished folder under `root` for this source and code, or None.
 
-    A folder qualifies if it has `exports.json`, no manifest, no failed or
-    cancelled task, and the same source as `current`.
+    Unfinished: it has `exports.json` and no manifest. Returns the prefix and the
+    year-to-task map that folders written before task descriptions carried the
+    folder list (empty for newer folders). Folders that old carry no code hash;
+    they match on the source alone.
     """
     names: dict[str, set[str]] = {}
     for path in store.list(root):
@@ -243,20 +280,59 @@ def _pending(
         if name and _FOLDER.fullmatch(folder):
             names.setdefault(folder, set()).add(name)
     open_folders = [f for f, n in names.items() if EXPORTS_NAME in n and MANIFEST_NAME not in n]
-    for folder in sorted(open_folders, key=_folder_order, reverse=True):
+    for folder in sorted(open_folders, key=_folder_order):
         prefix = f"{root}{folder}/"
         rec = json.loads(store.read_bytes(prefix + EXPORTS_NAME).decode("utf-8"))
-        tasks = {int(y): str(t) for y, t in rec["tasks"].items()}
-        if any(ee.task_state(t)[0] in STOPPED for t in tasks.values()):
-            continue
-        if _unchanged({"sources": rec["sources"]}, [current]):
-            return prefix, tasks
-        return None
+        if (
+            _unchanged({"sources": rec["sources"]}, [current])
+            and rec.get("export_code", code) == code
+        ):
+            return prefix, {int(y): str(t) for y, t in rec.get("tasks", {}).items()}
     return None
 
 
-def _wait(
+def _description_base(entry: dict[str, Any], root: str, prefix: str) -> str:
+    return f"{entry['name']}_{prefix.removeprefix(root).rstrip('/')}"
+
+
+def _start_missing(
+    store: Store,
     ee: EarthEngine,
+    params: dict[str, Any],
+    prefix: str,
+    base: str,
+    old_tasks: dict[int, str],
+) -> dict[int, str]:
+    """Year -> the task to wait on, for each year whose file is not in the bucket.
+
+    Reuses a queued, running or finished task Earth Engine already has for the
+    year; starts an export only when every task it has for the year has stopped,
+    or it has none.
+    """
+    present = set(store.list(prefix))
+    known: dict[int, list[tuple[str, str]]] = {}
+    for year, task_id in old_tasks.items():
+        known.setdefault(year, []).append((task_id, ee.task_state(task_id)[0]))
+    for task in ee.tasks(base + "_"):
+        year = task["description"].removeprefix(base + "_")
+        if year.isdigit():
+            known.setdefault(int(year), []).append((task["id"], task["state"]))
+    waiting: dict[int, str] = {}
+    for year in params["years"]:
+        if prefix + params["files"][year] in present:
+            continue
+        live = [t for t, state in known.get(year, []) if state not in STOPPED]
+        if live:
+            waiting[year] = live[0]
+        else:
+            waiting[year] = ee.start_export(year, params, prefix, f"{base}_{year}")
+    return waiting
+
+
+def _wait(
+    store: Store,
+    ee: EarthEngine,
+    params: dict[str, Any],
     prefix: str,
     tasks: dict[int, str],
     sleep: Callable[[float], None],
@@ -264,21 +340,31 @@ def _wait(
     poll_s: float,
     limit_s: float,
 ) -> None:
+    """Wait until every year's file is in the bucket.
+
+    A year whose file is there is done, whatever its task says. A stopped task
+    without its file, or a finished one without it, raises.
+    """
     start = clock()
+    total = len(params["years"])
     while True:
-        done = 0
+        present = set(store.list(prefix))
+        done = sum(prefix + params["files"][y] in present for y in params["years"])
         for year, task_id in tasks.items():
+            remote = prefix + params["files"][year]
+            if remote in present:
+                continue
             state, message = ee.task_state(task_id)
-            if state in STOPPED:
+            if state in STOPPED + (DONE,) and store.exists(remote):
+                done += 1  # written since the listing above
+            elif state in STOPPED:
                 raise EarthEngineError(f"export {year} {state}: {message}")
-            done += state == DONE
-        if done == len(tasks):
+            elif state == DONE:
+                raise EarthEngineError(f"{remote}: export finished but the file is missing")
+        if done == total:
             return
         if clock() - start >= limit_s:
-            raise EarthEngineError(
-                f"exports not finished after {limit_s / 60:.0f} minutes "
-                f"({done} of {len(tasks)} completed); run again to resume {prefix}"
-            )
+            raise StillExporting(done, total, prefix, limit_s / 60)
         sleep(poll_s)
 
 
@@ -346,24 +432,26 @@ def acquire_mapbiomas(
             code_commit=code_commit,
         )
 
-    resumed = _pending(store, ee, root, current)
+    code = export_code(params)
+    resumed = _unfinished(store, root, current, code)
     images = _check_inputs(ee, params)  # before any export starts
     params["images"] = images
     if resumed is not None:
-        prefix, tasks = resumed
+        prefix, old_tasks = resumed
     else:
-        prefix = _free_prefix(store, root, today)
-        tasks = {y: ee.start_export(y, params, prefix) for y in params["years"]}
-        _write_pending(store, prefix, current, tasks)
-    _wait(ee, prefix, tasks, sleep, clock, poll_s, limit_s)
+        prefix, old_tasks = _free_prefix(store, root, today), {}
+        # written before any export, so a run that stops early leaves a folder to resume
+        record = {"sources": [current], "export_code": code}
+        store.create(prefix + EXPORTS_NAME, json.dumps(record, sort_keys=True).encode("utf-8"))
+    base = _description_base(entry, root, prefix)
+    tasks = _start_missing(store, ee, params, prefix, base, old_tasks)
+    _wait(store, ee, params, prefix, tasks, sleep, clock, poll_s, limit_s)
 
     tmp_dir.mkdir(parents=True, exist_ok=True)
     files: list[dict[str, Any]] = []
     cells: list[str] = []
     for year in params["years"]:
         remote = prefix + params["files"][year]
-        if not store.exists(remote):
-            raise EarthEngineError(f"{remote}: export finished but the file is missing")
         local = tmp_dir / params["files"][year]
         store.download(remote, local)
         n, short = check_file(
@@ -463,13 +551,15 @@ class RealEarthEngine:
             .toUint16()
         )
 
-    def start_export(self, year: int, params: dict[str, Any], bucket_prefix: str) -> str:
+    def start_export(
+        self, year: int, params: dict[str, Any], bucket_prefix: str, description: str
+    ) -> str:
         ee = self._ee
         shares = self._image(year, params)
         name = params["files"][year].removesuffix(".tif")
         task = ee.batch.Export.image.toCloudStorage(
             image=shares,
-            description=f"mapbiomas_{year}",
+            description=description,
             bucket=self._bucket,
             fileNamePrefix=bucket_prefix + name,
             crs=params["crs"],
@@ -486,6 +576,21 @@ class RealEarthEngine:
     def task_state(self, task_id: str) -> tuple[str, str]:
         status = self._ee.data.getTaskStatus(task_id)[0]
         return str(status.get("state", "")), str(status.get("error_message", ""))
+
+    def tasks(self, description_prefix: str) -> list[dict[str, str]]:
+        found = []
+        for t in self._ee.data.getTaskList():  # every task of the project, in task states
+            description = str(t.get("description", ""))
+            if description.startswith(description_prefix):
+                found.append(
+                    {
+                        "id": str(t["id"]),
+                        "description": description,
+                        "state": str(t.get("state", "")),
+                        "error": str(t.get("error_message", "")),
+                    }
+                )
+        return found
 
 
 def run_script(name: str) -> None:
@@ -514,6 +619,8 @@ def run_script(name: str) -> None:
                 args.manifest_out.write_text(
                     json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
                 )
+    except StillExporting as err:
+        raise SystemExit(str(err)) from err  # the campaign tick starts it again
     except EarthEngineError as err:
         raise SystemExit(f"acquire failed: {err}") from err
     print(json.dumps({"status": manifest["status"], "gcs_prefix": manifest["gcs_prefix"]}))

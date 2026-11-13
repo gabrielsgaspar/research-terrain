@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from terrain.campaigns import markers
+from terrain.campaigns import markers, tick
 from terrain.campaigns.closeout import NOTE_BANNED, REPORT_OPENING, REPORT_SECTIONS, number_word
 from terrain.campaigns.codeowners import CodeOwners
 from terrain.campaigns.facts import Comment, Issue, PullRequest, Review, Run, Snapshot, parse_review
@@ -3206,3 +3206,84 @@ def test_review_of_a_repair_gets_the_issue_without_its_log(tmp_path, monkeypatch
     plain = "# Task\n\n## The failing run\n\n```text\nkeep me\n```\n"
     code, issue = run_review_issue_script(tmp_path / "plain", monkeypatch, plain)
     assert code is None and issue == plain
+
+
+# --- a data-pipeline run still exporting is started again without a retry ------
+# (campaign 0007 step s11: Earth Engine exports outlasted three 160-minute runs)
+
+
+def exporting_log(done: int, total: int = 41) -> str:
+    return (
+        "2026-11-10T09:59:58.1Z acquire running\n"
+        f"2026-11-10T10:00:00.1Z still exporting: {done} of {total} done after 160 minutes; "
+        "the next run resumes data/raw/x/2026-11-10/\n"
+        "2026-11-10T10:00:00.2Z ##[error]Process completed with exit code 1.\n"
+    )
+
+
+def continue_events(actions) -> set[str]:
+    return markers.parse_ledger(actions[0]["body"])[1]
+
+
+@pytest.mark.parametrize("self_repair", [True, None])
+def test_tick_starts_a_still_exporting_run_again_without_a_retry(tmp_path, self_repair):
+    root = repair_repo(tmp_path, self_repair="true" if self_repair else None)
+    actions = repair_tick(root, ["s2:dispatched"], logs={557: exporting_log(30)})
+    assert types(actions) == ["comment", "dispatch"]
+    assert continue_events(actions) == {"s2:continue:1:30"}
+    body = actions[0]["body"]
+    assert body.startswith(
+        "- s2: run 557 is still exporting (30 of 41 done). Starting it again by itself "
+        f"(1 of at most {tick.MAX_CONTINUES}); this is no failure and uses no retry.\n"
+    )
+    assert f"@{OWNER}" not in body and "**blocked**" not in body
+
+
+def test_tick_still_exporting_after_both_retries_needs_no_repair(tmp_path):
+    root = repair_repo(tmp_path)
+    actions = repair_tick(root, retried("s2"), logs={557: exporting_log(30)})
+    assert types(actions) == ["comment", "dispatch"]
+    assert continue_events(actions) == {"s2:continue:1:30"}
+
+
+def test_tick_waits_for_the_fresh_run_after_a_continue(tmp_path):
+    root = repair_repo(tmp_path)
+    logs = {557: exporting_log(30)}
+    assert repair_tick(root, ["s2:dispatched"], logs=logs, late=["s2:continue:1:30"]) == []
+
+
+def test_tick_continues_only_while_exports_progress(tmp_path):
+    root = repair_repo(tmp_path)
+    before = ["s2:dispatched", "s2:continue:1:30"]
+    # more done than the run before: started again, still no retry
+    actions = repair_tick(root, before, logs={557: exporting_log(33)})
+    assert continue_events(actions) == {"s2:continue:2:33"}
+    # no more done: a failure like any other, so it uses a retry
+    actions = repair_tick(root, before, logs={557: exporting_log(30)})
+    assert types(actions) == ["comment", "dispatch"]
+    assert continue_events(actions) == {"s2:retry:1"}
+    # with both retries used: a repair, as for any failure
+    used = [*before, "s2:retry:1", "s2:retry:2"]
+    actions = repair_tick(root, used, logs={557: exporting_log(30)})
+    assert "campaign-repair: 0001/s2/1" in json.dumps(actions)
+    # without self_repair the owner is asked, and told why it was not started again
+    plain = repair_repo(tmp_path / "plain", self_repair=None)
+    actions = repair_tick(plain, used, logs={557: exporting_log(30)})
+    assert (
+        "It was still exporting, but 30 of 41 done is no more than the 30 of the run before."
+        in failed_block_line(actions)
+    )
+
+
+def test_tick_continues_at_most_max_continues_times(tmp_path):
+    root = repair_repo(tmp_path)
+    before = [f"s2:continue:{k}:{k}" for k in range(1, tick.MAX_CONTINUES + 1)]
+    actions = repair_tick(root, ["s2:dispatched", *before], logs={557: exporting_log(40)})
+    assert continue_events(actions) == {"s2:retry:1"}
+
+
+def test_tick_ignores_still_exporting_in_a_timed_out_run(tmp_path):
+    root = repair_repo(tmp_path)
+    runs = [pipe_run(557, "s2", "timed_out", "2026-11-10T10:00:00Z")]
+    actions = repair_tick(root, ["s2:dispatched"], runs=runs, logs={557: exporting_log(30)})
+    assert continue_events(actions) == {"s2:retry:1"}

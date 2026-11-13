@@ -11,8 +11,15 @@ import pytest
 import tifffile
 
 from terrain import earthengine
+from terrain.campaigns import tick
 from terrain.catalog import dataset
-from terrain.earthengine import EarthEngineError, acquire_mapbiomas, check_file, export_params
+from terrain.earthengine import (
+    EarthEngineError,
+    StillExporting,
+    acquire_mapbiomas,
+    check_file,
+    export_params,
+)
 from terrain.manifest import validate_manifest, write_manifest
 from terrain.storage import MemoryStore
 
@@ -43,13 +50,21 @@ def tif_bytes(arr):
 
 
 class FakeEE:
+    """Earth Engine with a task list. A task gets the state sequence `states[year]`
+    holds when it starts (default: COMPLETED), the last state repeating; its file is
+    written at once unless `write_files` is off or the year is in `unwritten`."""
+
     def __init__(self, store, arrays=None, states=None, update_time="2025-08-09T18:24:56Z"):
         self.store = store
         self.arrays = arrays or {}
         self.states = states or {}  # year -> list of (state, message), last one repeats
         self.update_time = update_time
         self.started = []
+        self.descriptions = []
         self.write_files = True
+        self.unwritten = set()
+        self.later = {}  # task id -> (year, path): the file is written once it completes
+        self.task_list = {}  # task id -> [description, list of (state, message)]
 
     bands = None  # None: every band exists; else the list of existing bands
     images = None  # year -> list of image ids; None: one image per year
@@ -67,20 +82,40 @@ class FakeEE:
             return self.images.get(year, [])
         return [f"{collection}/{year}"]
 
-    def start_export(self, year, params, bucket_prefix):
+    def add_task(self, task_id, description, seq):
+        self.task_list[task_id] = [description, list(seq)]
+
+    def start_export(self, year, params, bucket_prefix, description):
         self.started.append((year, bucket_prefix))
+        self.descriptions.append(description)
         self.params = params
-        if self.write_files:
-            arr = self.arrays.get(year, good_array())
-            self.store.create(bucket_prefix + params["files"][year], tif_bytes(arr))
-        return str(year)
+        task_id = f"T{len(self.task_list) + 1}"
+        self.add_task(task_id, description, self.states.get(year, [("COMPLETED", "")]))
+        path = bucket_prefix + params["files"][year]
+        if self.write_files and year not in self.unwritten:
+            self.write(year, path)
+        elif self.write_files:
+            self.later[task_id] = (year, path)
+        return task_id
+
+    def write(self, year, path):
+        self.store.create(path, tif_bytes(self.arrays.get(year, good_array())))
 
     def task_state(self, task_id):
-        seq = self.states.get(int(task_id), [("COMPLETED", "")])
+        seq = self.task_list[task_id][1]
         state = seq[0]
         if len(seq) > 1:
             seq.pop(0)
+        if state[0] == "COMPLETED" and task_id in self.later:
+            self.write(*self.later.pop(task_id))
         return state
+
+    def tasks(self, description_prefix):
+        return [
+            {"id": t, "description": d, "state": seq[0][0], "error": seq[0][1]}
+            for t, (d, seq) in self.task_list.items()
+            if d.startswith(description_prefix)
+        ]
 
 
 class Clock:
@@ -143,6 +178,7 @@ def test_created_run(tmp_path):
 def test_polls_until_completed(tmp_path):
     store = MemoryStore()
     ee = FakeEE(store, states={2004: [("RUNNING", ""), ("RUNNING", ""), ("COMPLETED", "")]})
+    ee.unwritten = {2004}  # written when its task completes
     clock = Clock()
     m = run(store, ee, small_entry(), tmp_path, clock=clock)
     assert m["status"] == "created" and clock.sleeps == 2
@@ -171,15 +207,17 @@ def test_unchanged_and_new_versions(tmp_path):
 def test_stopped_task_raises(tmp_path, state):
     store = MemoryStore()
     ee = FakeEE(store, states={2005: [(state, "quota exceeded")]})
+    ee.unwritten = {2005}
     with pytest.raises(EarthEngineError, match="quota exceeded"):
         run(store, ee, small_entry(), tmp_path)
     assert not any(p.endswith("_MANIFEST.json") for p in store.list(""))
 
 
-def test_timeout_raises(tmp_path):
+def test_timeout_raises_still_exporting(tmp_path):
     store = MemoryStore()
     ee = FakeEE(store, states={2004: [("RUNNING", "")]})
-    with pytest.raises(EarthEngineError, match="not finished after 160 minutes"):
+    ee.unwritten = {2004}
+    with pytest.raises(StillExporting, match="still exporting: 1 of 2 done after 160 minutes"):
         run(store, ee, small_entry(), tmp_path)
     assert not any(p.endswith("_MANIFEST.json") for p in store.list(""))
 
@@ -191,24 +229,33 @@ def has_manifest(store):
     return any(p.endswith("_MANIFEST.json") for p in store.list(""))
 
 
-def test_timeout_then_resume(tmp_path):
+def test_exports_json_is_written_first_and_descriptions_name_the_folder(tmp_path):
+    store = MemoryStore()
+    ee = FakeEE(store)
+    run(store, ee, small_entry(), tmp_path)
+    rec = json.loads(store.read_bytes(PREFIX + "exports.json"))
+    assert set(rec) == {"sources", "export_code"}
+    assert rec["sources"][0]["last_modified"] == "2025-08-09T18:24:56Z"
+    assert rec["export_code"] == earthengine.export_code(export_params(small_entry()))
+    assert ee.descriptions == [f"{NAME}_2026-11-05_2004", f"{NAME}_2026-11-05_2005"]
+
+
+def test_timeout_then_resume_on_a_later_day(tmp_path):
     store = MemoryStore()
     entry = small_entry()
-    first = FakeEE(store, states={2004: [("RUNNING", "")]})
-    msg = (
-        r"exports not finished after 160 minutes \(1 of 2 completed\); "
-        r"run again to resume " + PREFIX
-    )
-    with pytest.raises(EarthEngineError, match=msg):
-        run(store, first, entry, tmp_path)
-    rec = json.loads(store.read_bytes(PREFIX + "exports.json"))
-    assert rec["tasks"] == {"2004": "2004", "2005": "2005"}
-    assert rec["sources"][0]["last_modified"] == "2025-08-09T18:24:56Z"
+    ee = FakeEE(store, states={2004: [("RUNNING", "")]})
+    ee.unwritten = {2004}
+    with pytest.raises(StillExporting, match=r"1 of 2 done .* resumes " + PREFIX):
+        run(store, ee, entry, tmp_path)
     assert not has_manifest(store)
-
-    second = FakeEE(store)
-    m = run(store, second, entry, tmp_path)
-    assert second.started == []
+    # Earth Engine still runs 2004: found by its description, so not started again
+    with pytest.raises(StillExporting, match="1 of 2 done"):
+        run(store, ee, entry, tmp_path, today=date(2026, 11, 6))
+    assert len(ee.started) == 2
+    # it finishes: the next run, days later, completes the first folder
+    ee.write(2004, PREFIX + "mapbiomas_shares_2004.tif")
+    m = run(store, ee, entry, tmp_path, today=date(2026, 11, 9))
+    assert len(ee.started) == 2
     assert m["status"] == "created" and m["gcs_prefix"] == PREFIX
     assert [f["path"] for f in m["files"]] == [
         PREFIX + "mapbiomas_shares_2004.tif",
@@ -216,26 +263,97 @@ def test_timeout_then_resume(tmp_path):
     ]
 
 
+@pytest.mark.parametrize("state", ["READY", "RUNNING", "COMPLETED"])
+def test_a_task_earth_engine_has_is_never_started_again(tmp_path, state):
+    store = MemoryStore()
+    entry = small_entry()
+    store.create(PREFIX + "exports.json", exports_record(entry))
+    ee = FakeEE(store)
+    ee.add_task("old", f"{NAME}_2026-11-05_2004", [(state, "")])
+    ee.write(2005, PREFIX + "mapbiomas_shares_2005.tif")
+    with pytest.raises(EarthEngineError, match="still exporting|file is missing"):
+        run(store, ee, entry, tmp_path, limit_s=60)
+    assert ee.started == []
+
+
+def exports_record(entry, **extra):
+    current = earthengine.source(entry, {"updateTime": "2025-08-09T18:24:56Z", "sizeBytes": 123})
+    rec = {"sources": [current], **extra}
+    if "tasks" not in extra:
+        rec["export_code"] = earthengine.export_code(export_params(entry))
+    return json.dumps(rec).encode("utf-8")
+
+
+def test_campaign_0007_s11_two_folders_with_failed_overwrites(tmp_path):
+    """The state run 43234259734 left: the first folder has every file, though some
+    tasks failed on the overwrite (no delete on raw) and one still runs; a second
+    folder was started beside it. Old records list task ids and no code hash."""
+    store = MemoryStore()
+    entry = small_entry()
+    first, second = PREFIX, PREFIX.replace("05/", "05-2/")
+    store.create(first + "exports.json", exports_record(entry, tasks={"2004": "a", "2005": "b"}))
+    store.create(second + "exports.json", exports_record(entry, tasks={"2004": "c", "2005": "d"}))
+    ee = FakeEE(store)
+    denied = "terrain-acquire does not have storage.objects.delete access"
+    for task_id, seq in (("a", [("FAILED", denied)]), ("b", [("RUNNING", "")])):
+        ee.add_task(task_id, "mapbiomas_2004", seq)
+    for task_id in ("c", "d"):
+        ee.add_task(task_id, "mapbiomas_2005", [("READY", "")])
+    for year in (2004, 2005):
+        ee.write(year, first + f"mapbiomas_shares_{year}.tif")
+    ee.write(2004, second + "mapbiomas_shares_2004.tif")
+    m = run(store, ee, entry, tmp_path, today=date(2026, 11, 13))
+    assert ee.started == []
+    assert m["status"] == "created" and m["gcs_prefix"] == first
+
+
+def test_a_failed_export_without_its_file_starts_again_in_the_same_folder(tmp_path):
+    store = MemoryStore()
+    entry = small_entry()
+    ee = FakeEE(store, states={2005: [("FAILED", "quota exceeded")]})
+    ee.unwritten = {2005}
+    with pytest.raises(EarthEngineError, match="quota exceeded"):
+        run(store, ee, entry, tmp_path)
+    ee.states, ee.unwritten = {}, set()
+    m = run(store, ee, entry, tmp_path, today=date(2026, 11, 6))
+    assert ee.started == [(2004, PREFIX), (2005, PREFIX), (2005, PREFIX)]
+    assert m["gcs_prefix"] == PREFIX
+
+
+def test_a_failed_task_whose_file_is_there_counts_as_done(tmp_path):
+    store = MemoryStore()
+    ee = FakeEE(store, states={2005: [("RUNNING", ""), ("FAILED", "no delete access")]})
+    m = run(store, ee, small_entry(), tmp_path)
+    assert m["status"] == "created" and m["gcs_prefix"] == PREFIX
+
+
 def test_new_version_does_not_resume(tmp_path):
     store = MemoryStore()
     entry = small_entry()
-    with pytest.raises(EarthEngineError):
-        run(store, FakeEE(store, states={2004: [("RUNNING", "")]}), entry, tmp_path)
+    first = FakeEE(store, states={2004: [("RUNNING", "")]})
+    first.unwritten = {2004}
+    with pytest.raises(StillExporting):
+        run(store, first, entry, tmp_path)
     newer = FakeEE(store, update_time="2026-01-01T00:00:00Z")
     m = run(store, newer, entry, tmp_path)
     assert m["gcs_prefix"] == "data/raw/mapbiomas/2026-11-05-2/"
     assert [y for y, _ in newer.started] == [2004, 2005]
 
 
-def test_failed_pending_folder_not_resumed(tmp_path):
+def test_new_export_code_does_not_resume(tmp_path, monkeypatch):
     store = MemoryStore()
     entry = small_entry()
-    with pytest.raises(EarthEngineError, match="quota"):
-        run(store, FakeEE(store, states={2005: [("FAILED", "quota exceeded")]}), entry, tmp_path)
-    again = FakeEE(store, states={2005: [("FAILED", "quota exceeded")]})
-    with pytest.raises(EarthEngineError, match="quota"):
-        run(store, again, entry, tmp_path)
-    assert [p for _, p in again.started] == [PREFIX.replace("05/", "05-2/")] * 2
+    first = FakeEE(store, states={2004: [("RUNNING", "")]})
+    first.unwritten = {2004}
+    with pytest.raises(StillExporting):
+        run(store, first, entry, tmp_path)
+
+    def other_image(self, year, params):  # a changed pixel computation
+        return None
+
+    monkeypatch.setattr(earthengine.RealEarthEngine, "_image", other_image)
+    m = run(store, FakeEE(store), entry, tmp_path)
+    assert m["gcs_prefix"] == "data/raw/mapbiomas/2026-11-05-2/"
 
 
 def test_folder_with_manifest_not_resumed(tmp_path):
@@ -255,6 +373,53 @@ def test_missing_file_raises(tmp_path):
     with pytest.raises(EarthEngineError, match="missing"):
         run(store, ee, small_entry(), tmp_path)
     assert store.list("") == ["data/raw/mapbiomas/2026-11-05/exports.json"]
+
+
+def test_run_script_prints_still_exporting(monkeypatch, tmp_path):
+    def stuck(*args, **kwargs):
+        raise StillExporting(30, 41, "data/raw/mapbiomas/mining/2026-11-12/", 160)
+
+    monkeypatch.setattr(earthengine, "GCSStore", lambda bucket: None)
+    monkeypatch.setattr(earthengine, "RealEarthEngine", lambda bucket: None)
+    monkeypatch.setattr(earthengine, "acquire_mapbiomas", stuck)
+    monkeypatch.setenv("TERRAIN_BUCKET", "bucket")
+    monkeypatch.setattr("sys.argv", ["x", "--manifest-out", str(tmp_path / "m.json")])
+    with pytest.raises(SystemExit) as exit_info:
+        earthengine.run_script("mapbiomas_mining")
+    text = str(exit_info.value.code)
+    assert text.startswith("still exporting: 30 of 41 done after 160 minutes")
+    assert tick.STILL_EXPORTING.search("2026-11-13T01:53:38Z " + text).groups() == ("30", "41")
+
+
+def test_real_tasks_filters_by_description():
+    class Data:
+        def getTaskList(self):  # noqa: N802 (Earth Engine's name)
+            return [
+                {"id": "1", "description": "mapbiomas_mining_2026-11-12_1985", "state": "READY"},
+                {
+                    "id": "2",
+                    "description": "mapbiomas_mining_2026-11-12-2_1985",
+                    "state": "RUNNING",
+                },
+                {
+                    "id": "3",
+                    "description": "mapbiomas_1985",
+                    "state": "FAILED",
+                    "error_message": "x",
+                },
+            ]
+
+    real = object.__new__(earthengine.RealEarthEngine)
+    real._ee = type("EE", (), {"data": Data()})()
+    found = real.tasks("mapbiomas_mining_2026-11-12_")
+    assert found == [
+        {
+            "id": "1",
+            "description": "mapbiomas_mining_2026-11-12_1985",
+            "state": "READY",
+            "error": "",
+        }
+    ]
 
 
 def bad_arrays():
