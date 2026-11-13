@@ -1,0 +1,35 @@
+{
+  "dataset": "tse_receipts",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/tse/receipts/2026-11-13/",
+  "created_at": "2026-11-13T20:14:03.695696+00:00",
+  "code_commit": "4edae61212e96ba965801c50f46f9381d5f0f942",
+  "sources": [
+    {
+      "fonte": "basedosdados",
+      "url": null,
+      "table": "basedosdados.br_tse_eleicoes.receitas_candidato",
+      "query": "SELECT ano, sigla_uf, id_municipio, cargo, cnae_2_doador, COUNT(*) AS n_receitas, SUM(CAST(valor_receita AS FLOAT64)) AS sum_valor_receita FROM `basedosdados.br_tse_eleicoes.receitas_candidato` WHERE sigla_uf IN ('AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MG', 'MS', 'MT', 'PA', 'PB', 'PE', 'PI', 'PR', 'RJ', 'RN', 'RO', 'RR', 'RS', 'SC', 'SE', 'SP', 'TO') AND ano BETWEEN 2004 AND 2012 GROUP BY ano, sigla_uf, id_municipio, cargo, cnae_2_doador ORDER BY ano, sigla_uf, id_municipio, cargo, cnae_2_doador",
+      "location": "US",
+      "rows": 92200,
+      "total_bytes_processed": 267465604,
+      "job_id": "job_Rw_NDKea07dxg0yoakJhLqcRe6ZE",
+      "rows_per_year": {
+        "2004": 10704,
+        "2006": 108,
+        "2008": 11117,
+        "2010": 164,
+        "2012": 70107
+      }
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/tse/receipts/2026-11-13/tse_receipts.parquet",
+      "sha256": "21f274bde56fe6eea28e9cfa75d65cb13d7f773ad04cfa1bf91bcb2da0b00444",
+      "bytes": 578135
+    }
+  ],
+  "notes": "rows: 92200\nrows per ano: 2004=10704, 2006=108, 2008=11117, 2010=164, 2012=70107"
+}
