@@ -13,7 +13,7 @@ import pytest
 
 from terrain.acquire import AcquireError
 from terrain.basedosdados import execute
-from terrain.bigquery import build_query, build_summary_query
+from terrain.bigquery import aggregate_columns, build_query, build_summary_query
 from terrain.catalog import dataset
 from terrain.storage import MemoryStore
 
@@ -278,3 +278,56 @@ def test_ibge_population_annual_entry_and_query():
         "SELECT COUNT(*) AS n FROM `basedosdados.br_ibge_populacao.municipio` "
         f"WHERE sigla_uf IN ({STATES_SQL}) AND ano BETWEEN 1991 AND 2025"
     )
+
+
+def test_tse_receipts_entry_and_query():
+    entry = dataset("tse_receipts")
+    bq = entry["bigquery"]
+    assert entry["gcs"] == "data/raw/tse/receipts/"
+    assert entry["status"] == "planned"
+    assert "page" not in bq
+    inep = dataset("inep_schools")["bigquery"]
+    for key in ("endpoint", "scope", "location", "maximum_bytes_billed"):
+        assert bq[key] == inep[key]
+    assert bq["table"] == "basedosdados.br_tse_eleicoes.receitas_candidato"
+    assert bq["states"] == STATES
+    assert bq["years"] == [2004, 2012]
+    assert bq["min_rows"] == 10000
+    assert bq["aggregate"] == {
+        "group_by": ["ano", "sigla_uf", "id_municipio", "cargo", "cnae_2_doador"],
+        "count": "n_receitas",
+        "sums": ["valor_receita"],
+    }
+    inner = (
+        "SELECT ano, sigla_uf, id_municipio, cargo, cnae_2_doador, COUNT(*) AS n_receitas, "
+        "SUM(CAST(valor_receita AS FLOAT64)) AS sum_valor_receita "
+        "FROM `basedosdados.br_tse_eleicoes.receitas_candidato` "
+        f"WHERE sigla_uf IN ({STATES_SQL}) AND ano BETWEEN 2004 AND 2012 "
+        "GROUP BY ano, sigla_uf, id_municipio, cargo, cnae_2_doador"
+    )
+    order = " ORDER BY ano, sigla_uf, id_municipio, cargo, cnae_2_doador"
+    assert build_query(bq) == inner + order
+    assert build_summary_query(bq) == f"SELECT COUNT(*) AS n FROM ({inner})"
+    assert aggregate_columns(bq) == [
+        "ano",
+        "sigla_uf",
+        "id_municipio",
+        "cargo",
+        "cnae_2_doador",
+        "n_receitas",
+        "sum_valor_receita",
+    ]
+
+
+@pytest.mark.parametrize("column", ["cpf_cnpj_doador", "nome_doador", "nome_candidato"])
+def test_tse_receipts_refuses_a_donor_identifier(column):
+    grouped = copy.deepcopy(dataset("tse_receipts")["bigquery"])
+    grouped["aggregate"]["group_by"].append(column)
+    with pytest.raises(AcquireError):
+        build_query(grouped)
+    with pytest.raises(AcquireError):
+        build_summary_query(grouped)
+    summed = copy.deepcopy(dataset("tse_receipts")["bigquery"])
+    summed["aggregate"]["sums"].append(column)
+    with pytest.raises(AcquireError):
+        build_query(summed)

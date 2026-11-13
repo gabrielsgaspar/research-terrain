@@ -746,17 +746,25 @@ datasets:
     licence: public (TSE, DATASUS, IBGE), as its sources
     derived: data/derived/politics_panel/
     sealed: sealed/outcomes/politics_panel/
+    contract: data/contracts/politics_panel.md
     status: planned
     notes: >
-      Idea 0007 and decisions 0003 and 0011: one row per municipality and
-      municipal election 2000-2024 with council entry, competition, who wins,
-      mining-sector campaign money and homicides per 100,000. The electoral
-      inputs are public TSE files that cannot be sealed; the panel is split
-      anyway, so explore code can read only the exploration half.
-      Exploration-half rows (both exploration lists) in derived, all other
-      rows only in sealed. Name, derived and sealed are fixed by the campaign
-      0007 PR (the sealed line is pinned in tests/test_split.py); the build
-      task is campaign 0007 step s19, which adds the contract and the rest.
+      Idea 0008 and decisions 0003 and 0011: one row per municipality and
+      municipal election 2000-2024 with council entry (candidates per seat,
+      mining-occupation candidates and councillors), competition (effective
+      number of mayoral candidates, margin), seat turnover, incumbent
+      re-election, mining-sector campaign money (2004, 2008 and 2012 only)
+      and homicides per 100,000. The electoral inputs are public TSE files
+      that cannot be sealed; the panel is split anyway, so explore code can
+      read only the exploration half. Exploration-half rows (both
+      exploration lists) in derived, all other rows only in sealed, one
+      Parquet per election. Incumbents are linked by candidate CPF in memory
+      only; no CPF, name or hash is written. The notes of the manifest count
+      exploration-half rows only: rows and unlinked CPFs per election, and
+      the years with any receipt CNAE. Name, derived and sealed are fixed by
+      the campaign 0007 PR (the sealed line is pinned in tests/test_split.py);
+      the build is campaign 0008 step s6 (src/terrain/builds/politics_panel.py)
+      and its run is step s8.
 
   - name: funai_indigenous_lands
     source: FUNAI indigenous land boundaries
@@ -1067,6 +1075,39 @@ datasets:
       states: [AC, AL, AM, AP, BA, CE, DF, ES, GO, MA, MG, MS, MT, PA, PB, PE, PI, PR, RJ, RN, RO, RR, RS, SC, SE, SP, TO]
       years: [1991, 2025]
       min_rows: 150000
+
+  - name: tse_receipts
+    source: "TSE candidate campaign receipts, via Base dos Dados: basedosdados.br_tse_eleicoes.receitas_candidato; summed by year, municipality, office and donor CNAE"
+    licence: "TSE open data: CC BY (dadosabertos.tse.jus.br); Base dos Dados lists no licence"
+    gcs: data/raw/tse/receipts/
+    status: planned
+    notes: >
+      Campaign receipts of candidates, 2004-2012, summed in BigQuery by year,
+      municipality, office and donor CNAE, so only sums and counts are
+      downloaded (idea 0008, campaign 0008 step s6; read by politics_panel).
+      The columns come from Base dos Dados' metadata (2026-11-11). It has 55
+      columns, including ano, sigla_uf, id_municipio (IBGE), cargo,
+      cnae_2_doador and valor_receita; it is partitioned by ano. Donor
+      CPF/CNPJ and names are never selected; terrain.bigquery refuses them.
+      Which years have cnae_2_doador filled is unconfirmed. TSE's own files
+      carry a donor sector only in 2012, as text. Company donations were
+      banned from 2015, so the series stops at 2012. The general elections of
+      2006 and 2010 fall in the year range, and the build keeps only
+      municipal offices. Fallback: TSE's zips (prestacao_contas_2004.zip,
+      _2008.zip, prestacao_final_2012.zip). They carry no CNAE.
+    bigquery:
+      endpoint: https://bigquery.googleapis.com/bigquery/v2/
+      scope: https://www.googleapis.com/auth/bigquery
+      table: basedosdados.br_tse_eleicoes.receitas_candidato
+      location: US
+      maximum_bytes_billed: 50000000000
+      states: [AC, AL, AM, AP, BA, CE, DF, ES, GO, MA, MG, MS, MT, PA, PB, PE, PI, PR, RJ, RN, RO, RR, RS, SC, SE, SP, TO]
+      years: [2004, 2012]
+      aggregate:
+        group_by: [ano, sigla_uf, id_municipio, cargo, cnae_2_doador]
+        count: n_receitas
+        sums: [valor_receita]
+      min_rows: 10000
 
   - name: anm_sigmine
     source: "ANM SIGMINE, ArcGIS feature service, layer 0 'Processos minerários ativos' (active processes only)"
