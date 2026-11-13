@@ -1,0 +1,92 @@
+{
+  "dataset": "politics_panel",
+  "stage": "build",
+  "status": "created",
+  "gcs_prefix": "data/derived/politics_panel/8c416551e437c416/",
+  "created_at": "2026-11-13T20:20:10.021306+00:00",
+  "code_commit": "7ccbce6b2bf35c7effb50b09475d1443864d7937",
+  "sources": [],
+  "files": [
+    {
+      "path": "data/derived/politics_panel/8c416551e437c416/politics_panel_2000.parquet",
+      "sha256": "d5d549ed4edd03e39713c6bd403a977dbc398bb38688fc886028bd17e6dbb101",
+      "bytes": 92326
+    },
+    {
+      "path": "data/derived/politics_panel/8c416551e437c416/politics_panel_2004.parquet",
+      "sha256": "efcfc19e731709c28c8aadd90b60f0322948df158817d97483f39fb917fca782",
+      "bytes": 113672
+    },
+    {
+      "path": "data/derived/politics_panel/8c416551e437c416/politics_panel_2008.parquet",
+      "sha256": "f566750252a2fabf84c9762ce70516dda07c4cd4c4bc2ea6dd96c3701c23accb",
+      "bytes": 114908
+    },
+    {
+      "path": "data/derived/politics_panel/8c416551e437c416/politics_panel_2012.parquet",
+      "sha256": "0d1888a5e3a9e9111352996604047150b4bab2d4e834510fb4dc6849e6f5ee5d",
+      "bytes": 137674
+    },
+    {
+      "path": "data/derived/politics_panel/8c416551e437c416/politics_panel_2016.parquet",
+      "sha256": "c136536c0e3c5bdc1df6eebeb1dc49d9101012e807ae0a4b479ac1e24591d530",
+      "bytes": 104703
+    },
+    {
+      "path": "data/derived/politics_panel/8c416551e437c416/politics_panel_2020.parquet",
+      "sha256": "7f5673caae5fab4ceaef362461b3c8fe0eb0cdf9a4fc4bbc77dec51b35089aee",
+      "bytes": 105280
+    },
+    {
+      "path": "data/derived/politics_panel/8c416551e437c416/politics_panel_2024.parquet",
+      "sha256": "bd9487eb28b84f9bfe39d806eb8e6f16488f06e58efdc1228081e02665bc448e",
+      "bytes": 100828
+    }
+  ],
+  "notes": "E2000: rows=2772, unlinked_cpfs=126; E2004: rows=2775, unlinked_cpfs=21; E2008: rows=2777, unlinked_cpfs=52; E2012: rows=2781, unlinked_cpfs=7297; E2016: rows=2780, unlinked_cpfs=0; E2020: rows=2780, unlinked_cpfs=0; E2024: rows=2781, unlinked_cpfs=29107; years_with_receipt_cnae=2012",
+  "inputs": [
+    "data/derived/tse_candidates/73af2aca241094a0/_MANIFEST.json",
+    "data/derived/tse_results/6f2af3d28c84af90/_MANIFEST.json",
+    "data/derived/municipalities/03690186b97be705/_MANIFEST.json",
+    "data/raw/sim/homicides/2026-11-13/_MANIFEST.json",
+    "data/raw/ibge/population_annual/2026-11-13/_MANIFEST.json",
+    "data/raw/tse/receipts/2026-11-13/_MANIFEST.json"
+  ],
+  "sealed_files": [
+    {
+      "path": "sealed/outcomes/politics_panel/8c416551e437c416/politics_panel_2000.parquet",
+      "sha256": "1f9ce99c745e65e18f904148547bfa2737a9e8c7dd477324d656ed0b37a5ecc0",
+      "bytes": 93177
+    },
+    {
+      "path": "sealed/outcomes/politics_panel/8c416551e437c416/politics_panel_2004.parquet",
+      "sha256": "184703d50787f8afff924e90c5e4076b3a73cc127ab20ac7eeb3cf840ac27cd2",
+      "bytes": 113927
+    },
+    {
+      "path": "sealed/outcomes/politics_panel/8c416551e437c416/politics_panel_2008.parquet",
+      "sha256": "9261911ee6ef3cf00313ecac5363c419cae28040db2befd986b1a5633d6a6e0f",
+      "bytes": 115280
+    },
+    {
+      "path": "sealed/outcomes/politics_panel/8c416551e437c416/politics_panel_2012.parquet",
+      "sha256": "fab0af7447ebfb4bafede52a170b1fc05a97cc5d3848784ac030b7185b2e6866",
+      "bytes": 137485
+    },
+    {
+      "path": "sealed/outcomes/politics_panel/8c416551e437c416/politics_panel_2016.parquet",
+      "sha256": "f42d05a02609c0e32dae4aa47363c60a05672db98453883299dc4ec3c8dbc2ce",
+      "bytes": 104931
+    },
+    {
+      "path": "sealed/outcomes/politics_panel/8c416551e437c416/politics_panel_2020.parquet",
+      "sha256": "32debc51352037d111dadaaefcfd2960b0351904e8c892890622d1a35e1d057a",
+      "bytes": 105579
+    },
+    {
+      "path": "sealed/outcomes/politics_panel/8c416551e437c416/politics_panel_2024.parquet",
+      "sha256": "f051bb9e514af7b3c805dc304ac5c74446fe60103321398040552805cc138b40",
+      "bytes": 100827
+    }
+  ]
+}
