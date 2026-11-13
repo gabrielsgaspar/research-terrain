@@ -27,6 +27,7 @@ from terrain.acquire import AcquireError
 IDENTIFIER = re.compile(r"[a-z_][a-z0-9_]*")
 TABLE = re.compile(r"[a-z0-9_-]+\.[a-z0-9_]+\.[a-z0-9_]+")
 STATE = re.compile(r"[A-Z]{2}")
+FILTER_VALUE = re.compile(r"[A-Za-z0-9_]{1,20}")
 PROJECT = re.compile(r"[A-Za-z0-9][A-Za-z0-9:._-]*")
 FORBIDDEN_PREFIXES = ("cpf_cnpj", "nome")
 FORBIDDEN_NAMES = ("geometria", "telefone")
@@ -89,15 +90,89 @@ def _table(bq: dict[str, Any]) -> str:
     return f"`{table}`"
 
 
+def _filter_value(value: object) -> str:
+    if not isinstance(value, str) or not FILTER_VALUE.fullmatch(value):
+        raise AcquireError("bigquery: a filter value is not 1-20 letters, digits or underscores")
+    return value
+
+
+def _filters(bq: dict[str, Any]) -> str:
+    """Extra `AND ...` clauses for the block's optional `filters`; empty when it has none."""
+    filters = bq.get("filters")
+    if filters is None:
+        return ""
+    if not isinstance(filters, list):
+        raise AcquireError("bigquery: filters must be a list")
+    allowed = ALLOWED_BY_TABLE.get(str(bq.get("table")), frozenset())
+    clauses: list[str] = []
+    for item in filters:
+        if not isinstance(item, dict):
+            raise AcquireError("bigquery: a filter must be a mapping")
+        column = _identifier(item.get("column"), allowed)
+        if "prefix_between" in item and "in" not in item:
+            bounds = item["prefix_between"]
+            length = item.get("length")
+            if not isinstance(bounds, list) or len(bounds) != 2:
+                raise AcquireError("bigquery: prefix_between needs exactly two values")
+            if not isinstance(length, int) or isinstance(length, bool) or length < 1:
+                raise AcquireError("bigquery: a prefix filter needs a positive integer length")
+            low, high = (_filter_value(v) for v in bounds)
+            clauses.append(f"SUBSTR({column}, 1, {length}) BETWEEN '{low}' AND '{high}'")
+        elif "in" in item and "prefix_between" not in item:
+            values = item["in"]
+            if not isinstance(values, list) or not values:
+                raise AcquireError("bigquery: an in filter needs a non-empty list")
+            listed = ", ".join(f"'{_filter_value(v)}'" for v in values)
+            clauses.append(f"{column} IN ({listed})")
+        else:
+            raise AcquireError("bigquery: a filter needs exactly one of prefix_between and in")
+    return "".join(f" AND {c}" for c in clauses)
+
+
+def _where_all(bq: dict[str, Any]) -> str:
+    return _where(bq) + _filters(bq)
+
+
+def _aggregate(bq: dict[str, Any], aggregate: Any, order: bool) -> str:
+    """The grouped count query for the block's `aggregate`, with or without ORDER BY."""
+    if not isinstance(aggregate, dict):
+        raise AcquireError("bigquery: aggregate must be a mapping")
+    allowed = ALLOWED_BY_TABLE.get(str(bq.get("table")), frozenset())
+    group_by = [_identifier(c, allowed) for c in aggregate.get("group_by") or []]
+    if not group_by:
+        raise AcquireError("bigquery: aggregate lists no group_by column")
+    count = _identifier(aggregate.get("count"))
+    sums = [_identifier(c, allowed) for c in aggregate.get("sums") or []]
+    groups = ", ".join(group_by)
+    parts = [*group_by, f"COUNT(*) AS {count}"]
+    parts += [f"SUM(CAST({s} AS FLOAT64)) AS sum_{s}" for s in sums]
+    text = f"SELECT {', '.join(parts)} FROM {_table(bq)} {_where_all(bq)} GROUP BY {groups}"
+    return f"{text} ORDER BY {groups}" if order else text
+
+
+def aggregate_columns(bq: dict[str, Any]) -> list[str]:
+    """The columns an `aggregate` query returns, in order; checked like the query."""
+    aggregate = bq["aggregate"]
+    _aggregate(bq, aggregate, order=True)
+    return [
+        *aggregate["group_by"],
+        aggregate["count"],
+        *(f"sum_{s}" for s in aggregate.get("sums") or []),
+    ]
+
+
 def build_query(bq: dict[str, Any]) -> str:
     """The SELECT for the catalog's `bigquery:` block; raises on a refused name."""
+    if bq.get("aggregate") is not None:
+        return _aggregate(bq, bq["aggregate"], order=True)
     allowed = ALLOWED_BY_TABLE.get(str(bq.get("table")), frozenset())
     columns = [_identifier(c, allowed) for c in bq["columns"]]
     order_by = [_identifier(c, allowed) for c in bq["order_by"]]
     if not columns:
         raise AcquireError("bigquery: no columns listed")
     return (
-        f"SELECT {', '.join(columns)} FROM {_table(bq)} {_where(bq)} ORDER BY {', '.join(order_by)}"
+        f"SELECT {', '.join(columns)} FROM {_table(bq)} {_where_all(bq)} "
+        f"ORDER BY {', '.join(order_by)}"
     )
 
 
@@ -105,12 +180,15 @@ def build_summary_query(bq: dict[str, Any]) -> str:
     """Row count over the same rows as `build_query`.
 
     When the block names a `freshness_column`, the latest value of it comes too.
+    With `aggregate`, it counts the aggregated rows.
     """
+    if bq.get("aggregate") is not None:
+        return f"SELECT COUNT(*) AS n FROM ({_aggregate(bq, bq['aggregate'], order=False)})"
     freshness = bq.get("freshness_column")
     if freshness is None:
-        return f"SELECT COUNT(*) AS n FROM {_table(bq)} {_where(bq)}"
+        return f"SELECT COUNT(*) AS n FROM {_table(bq)} {_where_all(bq)}"
     column = _identifier(freshness)
-    return f"SELECT MAX({column}) AS max_{column}, COUNT(*) AS n FROM {_table(bq)} {_where(bq)}"
+    return f"SELECT MAX({column}) AS max_{column}, COUNT(*) AS n FROM {_table(bq)} {_where_all(bq)}"
 
 
 _TYPES: dict[str, Callable[[str], Any]] = {
