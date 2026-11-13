@@ -36,7 +36,7 @@ EXPLORE_LIST = "data/derived/split/explore_municipalities.csv"
 EXPLORE_LIST_NON_AMAZON = "data/derived/split/explore_municipalities_non_amazon.csv"
 # Every exploration list of a national idea (decision 0011), in reading order.
 EXPLORE_LISTS_NATIONAL = (EXPLORE_LIST, EXPLORE_LIST_NON_AMAZON)
-NATIONAL_IDEAS = ("0006", "0007")
+NATIONAL_IDEAS = ("0006", "0007", "0008")
 EXPLORE_ROOT = "data/explore/"
 SUMMARY_MAX_BYTES = 20_000
 RESULTS_MAX_BYTES = 200_000
