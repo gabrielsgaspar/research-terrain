@@ -20,6 +20,20 @@ budget:
 referee_not_applicable_ok: [R5]   # referee rows that may be "Not applicable" (R5 cannot be checked before a run)
 self_repair: false       # true lets the tick file one repair task for a data-pipeline step that still fails after two retries (decision 0014)
 # oversize_reason: "..."  # needed when there are more than 8 steps: why it cannot be split, in the owner's words
+# forks:                 # optional (decision 0015); leave it out and the campaign never forks
+#   max_forks: 5              # variants agents may add in all (hard cap 5)
+#   per_point: 3              # at most this many proposed at one fork point
+#   max_new_datasets: 2       # new datasets across all forks (hard cap 2), approved publishers only
+#   max_steps_per_fork: 4     # tasks plus runs in one fork (hard cap 6)
+#   types: [transform, sample, spec, measure, question]
+#   max_question_forks: 1     # forks asking a related question (hard cap 2)
+#   on: [killed, survived]    # which verdicts open a fork point
+#   fork_points: all          # or a list of explore_run step ids; "all": every explore run with a rule other than finite
+#   budget:                   # the forks' own budget, never the plan's
+#     max_tasks: 10
+#     max_explore_runs: 7
+#     max_pipeline_runs: 6
+#     max_model_jobs: 45      # one ideation job per fork point, plus each fork task's plans and reviews
 datasets: []             # new data this campaign may acquire or build; nothing else may be added
 #  - name: some_dataset          # its data/catalog.yaml name
 #    source: https://...         # where it comes from

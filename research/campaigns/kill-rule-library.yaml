@@ -1,0 +1,66 @@
+# The kill-rule library (decision 0015). Owned by Gabriel in .github/CODEOWNERS.
+#
+# A fork never writes a threshold. Its explore run inherits the kill rules of
+# the step it varies, copied unchanged by code (`inherits: sNN`). Only where
+# those rules cannot read the fork's results (a `question` fork) does it name
+# rules from this file instead, with the thresholds written here. Code also
+# adds `min_clusters` to every `sample` fork (F6).
+#
+# Each rule: a dotted field of the run's results.json, a comparison and a
+# value, as in a campaign's kill_rules; a met rule kills the run. `from` says
+# where the rule was set and confirmed. A rule with `confirmed: false` cannot
+# be used by an active campaign until Gabriel sets it to true.
+# `counts: false` marks "finite": it never counts as the "rule other than
+# finite" that every fork run needs (F4).
+#
+# Generic field names: a fork's script writes the key at exactly this path
+# (for example `power.mde_sd`), whatever the parent's own field was called.
+rules:
+  - name: first_stage_strength
+    says: "The municipality-clustered first-stage F statistic is below 10"
+    field: first_stage.f_cluster
+    op: "<"
+    value: 10
+    from: "campaign 0007, s15 k1, confirmed by Gabriel 2026-11-11 (field and threshold as there)"
+    confirmed: true
+
+  - name: pretrend_ratio
+    says: "The absolute mean pre-period event-study coefficient is more than half the absolute mean post-period coefficient"
+    field: placebo.lead_ratio
+    op: ">"
+    value: 0.5
+    from: "campaign 0007, s15 k2, confirmed by Gabriel 2026-11-11 (field and threshold as there)"
+    confirmed: true
+
+  - name: power_mde_sd
+    says: "The minimum detectable effect at 80% power (5%, two-sided) is above 0.10 standard deviations of the outcome"
+    field: power.mde_sd
+    op: ">"
+    value: 0.10
+    from: "campaign 0006, s17 k6, confirmed by Gabriel (there the field was power.mde_sd_school, for the school count)"
+    confirmed: true
+
+  - name: power_mde_share
+    says: "The minimum detectable effect at 80% power (5%, two-sided) is above 25% of the outcome's baseline mean"
+    field: power.mde_share
+    op: ">"
+    value: 0.25
+    from: "campaign 0004, s7 k3, confirmed by Gabriel (there the field was power.mde_share_025, at the 0.25% window)"
+    confirmed: true
+
+  - name: finite
+    says: "Some estimate, standard error or p-value is not a finite number"
+    field: estimates.finite
+    op: "!="
+    value: true
+    from: "every campaign since 0004 (0004 s9, 0005 and 0006 s19, 0007 s15 and s23)"
+    confirmed: true
+    counts: false
+
+  - name: min_clusters
+    says: "Fewer than 100 clusters (municipalities) are left in the sub-sample"
+    field: sample.n_clusters
+    op: "<"
+    value: 100
+    from: "new, proposed; confirm or change. Until confirmed: true, no sample fork can run (decision 0015, F6)"
+    confirmed: false

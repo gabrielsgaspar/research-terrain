@@ -128,11 +128,12 @@ def phases(c: Campaign) -> list[tuple[list[Step], Step | None]]:
     """
     out: list[tuple[list[Step], Step | None]] = []
     taken: set[str] = set()
-    for gate in (s for s in c.steps if s.kind == "explore_run"):
+    steps = c.main_steps  # the plan; forks have their own line under Limits
+    for gate in (s for s in steps if s.kind == "explore_run"):
         ids = (ancestors(c, gate.id) | {gate.id}) - taken
         taken |= ids
-        out.append(([s for s in c.steps if s.id in ids], gate))
-    rest = [s for s in c.steps if s.id not in taken]
+        out.append(([s for s in steps if s.id in ids], gate))
+    rest = [s for s in steps if s.id not in taken]
     if rest:
         out.append((rest, None))
     return out
@@ -250,7 +251,7 @@ def render_card(root: Path, campaign_id: str) -> str:
         f"**Campaign {c.id}: {c.title}**",
         "",
         f"Idea {c.idea} · ends {c.end_by} (created {c.created}) · status {c.status} · "
-        f"{len(c.steps)} steps.",
+        f"{len(c.main_steps)} steps.",
         f"Printed by `uv run python scripts/campaign.py card {c.id}` from {n_files} plan "
         f"files ({round(size / 1024)} KB, SHA-256 {digest}); no model wrote it.",
         "",
@@ -261,7 +262,7 @@ def render_card(root: Path, campaign_id: str) -> str:
         out.append(_phase_line(n, steps, gate))
 
     out += ["", "### What stops it", ""]
-    rules = [(s, r) for s in c.steps if s.kind == "explore_run" for r in s.kill_rules]
+    rules = [(s, r) for s in c.main_steps if s.kind == "explore_run" for r in s.kill_rules]
     out += [_rule_line(s, r) for s, r in rules] or ["- No kill rules."]
     p_rules = [r for _, r in rules if is_p_rule(r)]
     if p_rules:
@@ -286,12 +287,13 @@ def render_card(root: Path, campaign_id: str) -> str:
         f"{_n(b.get('max_pipeline_runs'), 'pipeline run')} and "
         f"{_n(b.get('max_model_jobs'), 'model job')}.",
         f"- Self-repair: {SELF_REPAIR_YES if c.self_repair else 'no'}.",
+        f"- Forks: {forks_line(c)}.",
     ]
     fm_reason = _oversize_reason(text)
     if fm_reason:
-        out.append(f"- Why {len(c.steps)} steps, in {c.owner}'s words: “{fm_reason}”")
+        out.append(f"- Why {len(c.main_steps)} steps, in {c.owner}'s words: “{fm_reason}”")
 
-    paths = sorted({p for s in c.steps for p in s.allowed_paths})
+    paths = sorted({p for s in c.main_steps for p in s.allowed_paths})
     unusual = sorted(p for p in paths if not p.startswith(USUAL_DIRS))
     globs = [p for p in paths if "*" in p]
     out += ["", "### What an agent may touch", ""]
@@ -302,7 +304,7 @@ def render_card(root: Path, campaign_id: str) -> str:
     out.append(line + ".")
     if unusual:
         for p in unusual:
-            where = ", ".join(s.id for s in c.steps if p in s.allowed_paths)
+            where = ", ".join(s.id for s in c.main_steps if p in s.allowed_paths)
             out.append(f"- Outside {', '.join(USUAL_DIRS)}: `{p}` ({where}).")
     else:
         out.append(f"- None outside {', '.join(USUAL_DIRS)}.")
@@ -311,6 +313,31 @@ def render_card(root: Path, campaign_id: str) -> str:
     lines = read_first_lines(text)
     out += lines if lines else ["The campaign file has no such section."]
     return "\n".join(out) + "\n"
+
+
+def forks_line(c: Campaign) -> str:
+    """The fork envelope in one line (decision 0015), or "no" without one."""
+    env = c.forks
+    if env is None:
+        return "no (no `forks:` block, so variants are only suggestions in the report)"
+    points = (
+        "every explore run with a rule other than finite"
+        if env.fork_points is None
+        else (", ".join(env.fork_points))
+    )
+    b = env.budget
+    on_record = f"; {_n(len(c.fork_files), 'fork')} on record" if c.fork_files else ""
+    return (
+        f"yes, at most {_n(env.max_forks, 'variant')} ({env.per_point} per point, "
+        f"{_n(env.max_question_forks, 'question fork')}, {_n(env.max_steps_per_fork, 'step')} "
+        f"each, {_n(env.max_new_datasets, 'new dataset')} from approved publishers) of kinds "
+        f"{', '.join(env.types)}, after a {' or '.join(env.on)} verdict at {points}; "
+        f"their own budget: {_n(b.get('max_tasks'), 'task')}, "
+        f"{_n(b.get('max_explore_runs'), 'explore run')}, "
+        f"{_n(b.get('max_pipeline_runs'), 'pipeline run')}, "
+        f"{_n(b.get('max_model_jobs'), 'model job')}. Each fork run inherits its parent's "
+        f"kill rules; no agent sets a threshold (decision 0015){on_record}"
+    )
 
 
 def _oversize_reason(text: str) -> str:

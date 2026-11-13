@@ -6,7 +6,8 @@ issues, the harness plans, builds and reviews, the gate checks, the tick
 merges and runs, kill rules are applied by code, and a close-out report comes
 back at the end. The rules are in `research/decisions/0010-campaigns.md` and
 `AGENTS.md` ("Campaigns"); decision 0012 changes how the close-out is
-accepted.
+accepted, and decision 0015 lets a campaign run variants of its own steps
+(forks) inside an envelope you approve.
 
 ## Layout
 
@@ -14,9 +15,12 @@ accepted.
 research/campaigns/
   TEMPLATE.md             the campaign file, with every field explained
   DRAFT_TEMPLATE.md       an issue draft for a task step
+  kill-rule-library.yaml  named kill rules a `question` fork may use (owned)
   NNNN-slug/
     campaign.md           the plan: steps, kill rules, budget, datasets (owned)
     drafts/sN.md          one issue draft per task step (owned)
+    forks/fK.md           a fork, written by code from the ideation job (append-only)
+    forks/fK/drafts/sN.md the fork's issue drafts (append-only)
     ledger.md             written by the close-out task
     report.md             written by the close-out task
 ```
@@ -85,6 +89,40 @@ are never repaired. A log cut to fit says so on its first line, for example
 the agent review of the repair gets the issue with the log replaced by one
 line, so text printed by an outside server never reaches the agent that
 judges the fix.
+
+## Forks
+
+A campaign file may carry a `forks:` envelope (decision 0015; see
+`TEMPLATE.md`): how many variants agents may add (at most 5), how many new
+datasets (at most 2, only from `data/approved-publishers.yaml`), which kinds
+(`transform`, `sample`, `spec`, `measure`, `question`), which verdicts open a
+fork point, and a budget of their own. Without it, nothing changes.
+
+1. **Fork point.** When an explore run of the plan gets a verdict the
+   envelope lists, the tick starts one ideation job (`campaign-ideate`, a
+   model that only reads). It proposes up to `per_point` forks in priority
+   order, or says none is advisable.
+2. **Checked by code.** `scripts/campaign.py forks-from-json` checks every
+   proposal against the envelope and writes those that pass as
+   `forks/fK.md` with their drafts, in a pull request the tick merges once
+   the gate passes. Proposals that fail are posted on the tracking issue and
+   go into the report as suggestions. No result after two hours: "no
+   forks" and the campaign goes on.
+3. **Running.** Fork steps are ordinary steps (plan, build, review, gate,
+   merge, run, kill rules), started only when no step of the plan can
+   start. A fork's run inherits its parent's kill rules, copied by code; a
+   `question` fork names rules from `kill-rule-library.yaml`. No fork file
+   holds a threshold.
+4. **Adoption.** If the plan's step was killed and a fork survives, the
+   first surviving fork in the declared order adopts the steps that kill
+   skipped: their issues are the approved drafts plus a "Fork delta" section.
+5. **The report** has a section "Forks": every fork, its verdict and
+   numbers, and for each point how many were proposed, refused, run and
+   survived. A fork's result is never a finding, and at most one design is
+   recommended for the confirmation half.
+
+Fork files are not owned (the tick merges them), but the gate refuses any
+change to a merged fork file unless you open the pull request.
 
 ## The status page
 

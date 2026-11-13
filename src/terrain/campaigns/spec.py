@@ -15,7 +15,8 @@ from __future__ import annotations
 import datetime as dt
 import fnmatch
 import re
-from dataclasses import dataclass, field
+from collections.abc import Mapping
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -118,6 +119,11 @@ class Step:
     stage: str = ""
     target: str = ""
     dataset: str = ""
+    # a fork's step (decision 0015): the fork's id, and for an explore run the
+    # step whose kill rules it inherits or the library rules it names
+    fork: str = ""
+    inherits: str = ""
+    library_rules: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -136,10 +142,32 @@ class Campaign:
     referee_not_applicable_ok: tuple[str, ...] = ("R5",)
     # May the tick file a repair task for a failing pipeline_run step (decision 0014)?
     self_repair: bool = False
+    # The fork envelope (decision 0015; None: no forks) and the forks on main,
+    # whose steps follow the plan's in `steps`, each marked with its fork's id
+    forks: Any = None
+    fork_files: tuple = ()
     problems: tuple[str, ...] = field(default=())
 
     def step(self, step_id: str) -> Step | None:
         return next((s for s in self.steps if s.id == step_id), None)
+
+    @property
+    def main_steps(self) -> tuple[Step, ...]:
+        """The plan's own steps, without any fork's."""
+        return tuple(s for s in self.steps if not s.fork)
+
+    def fork(self, fork_id: str) -> Any:
+        return next((f for f in self.fork_files if f.id == fork_id), None)
+
+    def forks_at(self, step_id: str) -> list:
+        """The forks at fork point `step_id`, in their declared order."""
+        at = (f for f in self.fork_files if f.parent_step == step_id)
+        return sorted(at, key=lambda f: f.order)
+
+    @property
+    def all_datasets(self) -> tuple[dict[str, Any], ...]:
+        """The plan's datasets and every fork's."""
+        return self.datasets + tuple(d for f in self.fork_files for d in f.datasets)
 
     def dependents(self, step_id: str) -> set[str]:
         """Every step that depends on `step_id`, directly or not."""
@@ -335,6 +363,8 @@ def _check_against_repo(c: Campaign, root: Path, owners: CodeOwners, problems: l
         problems.append(f"{where}: idea {c.idea} has no file in research/ideas/")
     dataset_names = {str(d.get("name")) for d in c.datasets if isinstance(d, dict)}
     for s in c.steps:
+        if s.fork and s.kind != "explore_run":
+            continue  # a fork's tasks and data runs: terrain.campaigns.forks.check
         if s.kind == "task":
             draft = root / s.draft
             if not draft.is_file():
@@ -433,8 +463,12 @@ def _check_datasets(c: Campaign, problems: list[str]) -> None:
             problems.append(f"{where}: dataset '{name}' identifiers must be none or hashed")
 
 
-def parse_campaign(root: Path, folder: Path) -> Campaign:
-    """Read one campaign folder. Problems are collected on the result, never raised."""
+def parse_campaign(root: Path, folder: Path, overlay: Mapping[str, str] | None = None) -> Campaign:
+    """Read one campaign folder. Problems are collected on the result, never raised.
+
+    `overlay` adds fork files by path and text (the gate's view of a fork plan
+    pull request, read through the API).
+    """
     rel = folder.relative_to(root).as_posix()
     problems: list[str] = []
     path = folder / "campaign.md"
@@ -498,6 +532,11 @@ def parse_campaign(root: Path, folder: Path) -> Campaign:
     ):
         problems.append(f"{where}: self_repair must be true or false")
         self_repair = False
+    envelope = None
+    if "forks" in fm:
+        from terrain.campaigns.forks import parse_envelope
+
+        envelope = parse_envelope(fm["forks"], where, problems)
     datasets = tuple(fm.get("datasets") or ()) if isinstance(fm.get("datasets", []), list) else ()
     if not isinstance(fm.get("datasets", []), list):
         problems.append(f"{where}: datasets must be a list")
@@ -531,9 +570,16 @@ def parse_campaign(root: Path, folder: Path) -> Campaign:
         steps=tuple(steps),
         referee_not_applicable_ok=na_ok,
         self_repair=self_repair,
+        forks=envelope,
     )
+    from terrain.campaigns.forks import attach
+
+    fork_list, fork_steps = attach(root, c, problems, overlay)
+    if fork_list:
+        c = replace(c, steps=c.steps + tuple(fork_steps), fork_files=fork_list)
     _check_graph(c, problems)
     _check_datasets(c, problems)
+    # the plan's own steps; forks have the envelope's budget (decision 0015, F12)
     tasks = sum(1 for s in steps if s.kind == "task")
     runs = sum(1 for s in steps if s.kind == "explore_run")
     pipes = sum(1 for s in steps if s.kind == "pipeline_run")
@@ -552,9 +598,12 @@ def load_campaigns(root: Path) -> list[Campaign]:
 
 def validate(root: Path) -> list[str]:
     """Every problem in every campaign, plus the rules across campaigns."""
+    from terrain.campaigns import forks
+
     owners = CodeOwners.from_repo(root)
     campaigns = load_campaigns(root)
-    problems: list[str] = []
+    problems: list[str] = forks.check_records(root)
+    library, publishers = forks.load_library(root), forks.load_publishers(root)
     seen_ids: dict[str, str] = {}
     for c in campaigns:
         problems += list(c.problems)
@@ -564,6 +613,7 @@ def validate(root: Path) -> list[str]:
         if not c.problems:
             extra: list[str] = []
             _check_against_repo(c, root, owners, extra)
+            extra += forks.check(root, c, owners, library=library, publishers=publishers)
             problems += extra
     active = [c for c in campaigns if c.status == "active"]
     if len(active) > MAX_ACTIVE:
