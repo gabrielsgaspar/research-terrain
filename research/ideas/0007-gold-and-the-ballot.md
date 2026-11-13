@@ -1,9 +1,9 @@
 ---
 id: "0007"
 title: "Gold, crime and the ballot box: does the gold price reshape local democracy where gold lies?"
-status: exploring
+status: dead
 created: 2026-11-11
-updated: 2026-11-11
+updated: 2026-11-13
 datasets:
   - mining_panel
   - politics_panel
@@ -109,6 +109,7 @@ New (campaign 0007): `anm_sigmine`, `sgb_gold_occurrences`, `gold_price`,
 
 - 2026-11-11: proposed. Campaign 0007 drafted
   (`research/campaigns/0007-gold-and-the-ballot/`).
+- 2026-11-13: dead, the recommendation of campaign 0007's close-out report (`research/campaigns/0007-gold-and-the-ballot/report.md`); Gabriel accepts it by approving this pull request. The first stage failed its pre-stated test (clustered F 2.436, below 10), so the politics step never ran.
 
 ## Log
 

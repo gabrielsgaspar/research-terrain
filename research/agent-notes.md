@@ -14,7 +14,12 @@ checks this file.
 
 ## Notes
 
+- [N001] (builder) After a failed pipeline run, read the log of that run for the cause before retrying, because four steps each failed several times in a row. From: campaign 0007, runs of s4, s5, s7 and s11 ending in failure. Added 2026-11-13.
+- [N002] (planner) For a repair task, restate the failing run's error and the files it touches so the plan is never "Needs clarification". From: campaign 0007, s5 repair answered 'Needs clarification - no plan yet'. Added 2026-11-13.
+- [N003] (design) Put the build that a long chain needs early, because one pipeline step waited 11.8 hours after both repairs were used. From: campaign 0007, s11 blocked for 11.8 hours. Added 2026-11-13.
+
 ## Scoreboard
 
 | Campaign | Steps | Blocks | Fix rounds | Retries | Hours from start to finish | Notes added |
 | --- | --- | --- | --- | --- | --- | --- |
+| 0007 | 23 | 8 | 1 | 15 | 45.1 | 3 |
