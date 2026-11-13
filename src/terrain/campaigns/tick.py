@@ -33,6 +33,15 @@ In a campaign with `self_repair: true`, a pipeline_run step that still fails
 then gets one repair task (`terrain.campaigns.repair`, decision 0014); once
 it merges, the step runs once more, and only then is the owner asked.
 
+Forks (decision 0015), only in a campaign with a `forks:` envelope: when an
+explore run of the plan gets a verdict the envelope lists, the tick starts one
+ideation job (`campaign-ideate.yml`) for that fork point and merges the fork
+plan pull request the gate passes; fork steps then start only when no step of
+the plan can (F13), within the envelope's budget (F12); every declared fork at
+a point runs (F3); and once every fork at a killed point has a verdict, the
+first surviving fork in the declared order adopts the steps that kill skipped
+(F9), fixed by one ledger event (`adopt:fK:sNN:...`).
+
 A circuit breaker per campaign: while BREAKER_BLOCKS or more of its blocks,
 posted within BREAKER_WINDOW and not unblocked since, are in the ledger, the
 tick starts nothing new in it (no step, no retry, no repair, no run after a
@@ -50,7 +59,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from terrain.campaigns import markers, repair
+from terrain.campaigns import forks, markers, repair
 from terrain.campaigns.closeout import closeout_issue, table
 from terrain.campaigns.codeowners import CodeOwners
 from terrain.campaigns.facts import (
@@ -68,6 +77,7 @@ from terrain.campaigns.spec import Campaign, Step, is_protected, path_allowed
 GATE_WORKFLOW = "campaign-gate.yml"
 EXPLORE_WORKFLOW = "explore-run.yml"
 PIPELINE_WORKFLOW = "data-pipeline.yml"
+IDEATE_WORKFLOW = "campaign-ideate.yml"
 # Each run workflow's name as GitHub shows it in the Actions tab (its `name:`).
 WORKFLOW_NAMES = {EXPLORE_WORKFLOW: "Explore run", PIPELINE_WORKFLOW: "Data pipeline"}
 
@@ -76,6 +86,12 @@ BUILD_TIMEOUT = dt.timedelta(hours=12)
 RUN_APPEAR_TIMEOUT = dt.timedelta(hours=2)
 RECORD_TIMEOUT = dt.timedelta(hours=3)
 BLOCK_GRACE = dt.timedelta(hours=24)  # time the owner has to unblock a step before close-out
+# Forks (decision 0015): an ideation job with no result after IDEATION_TIMEOUT, or a
+# fork plan pull request not merged FORK_PLAN_TIMEOUT after the ideation started,
+# means "no forks at this point"; ideation never blocks a campaign.
+IDEATION_TIMEOUT = dt.timedelta(hours=2)
+FORK_PLAN_TIMEOUT = dt.timedelta(hours=6)
+IDEATE_EVENT = re.compile(r"^s\d{1,2}:ideate$")
 
 # A failed run step is started again by itself this many times, counted from the
 # ledger's `<step>:retry:<k>` events (not from runs, so runs started by hand do not
@@ -200,9 +216,13 @@ class CampaignView:
     closeout: Issue | None
     states: dict[str, StepState]
     events: dict[str, str]  # ledger event -> time it was posted
-    used: dict[str, int]
+    used: dict[str, int]  # the plan's budget used (adopted steps included, forks not)
     # the blocks that hold the circuit breaker; empty while it does not hold
     breaker: tuple[str, ...] = ()
+    # forks (decision 0015): the envelope's budget used, and the adoption, if any:
+    # (fork id, fork point, the adopted steps)
+    fork_used: dict[str, int] = field(default_factory=dict)
+    adoption: tuple[str, str, tuple[str, ...]] | None = None
 
 
 @dataclass
@@ -618,9 +638,35 @@ def _model_jobs(issue: Issue) -> int:
     return _plans(issue) + (2 * len(issue.pr.reviews) if issue.pr else 0)
 
 
-def view(c: Campaign, snap: Snapshot, gctx: GateContext) -> CampaignView:
+ADOPT_EVENT = re.compile(r"^adopt:(f[1-9]):(s\d{1,2}):((?:s\d{1,2},?)+)$")
+
+
+def adoption_event(fid: str, point: str, steps: Sequence[str]) -> str:
+    """The ledger event that fixes an adoption: `adopt:f1:s15:s16,s17,...` (F9)."""
+    return f"adopt:{fid}:{point}:{','.join(steps)}"
+
+
+def _adoption_of(events: dict[str, str]) -> tuple[str, str, tuple[str, ...]] | None:
+    """The campaign's adoption from its ledger (at most one per campaign)."""
+    found = sorted((events[e], e) for e in events if ADOPT_EVENT.match(e))
+    if not found:
+        return None
+    m = ADOPT_EVENT.match(found[0][1])
+    return m.group(1), m.group(2), tuple(m.group(3).split(","))
+
+
+def view(
+    c: Campaign,
+    snap: Snapshot,
+    gctx: GateContext,
+    adoption: tuple[str, str, tuple[str, ...]] | None = None,
+) -> CampaignView:
+    """Every step's state. `adoption` (else the ledger's) un-skips the adopted steps."""
     mine, tracking, closeout = _own_issues(c, snap)
     events = _ledger_events(tracking, c.id, snap.app_bot)
+    adoption = adoption or _adoption_of(events)
+    adopted = set(adoption[2]) if adoption else set()
+    point = adoption[1] if adoption else ""
     by_step: dict[str, Issue] = {}
     by_repair: dict[str, Issue] = {}
     for i in mine:
@@ -644,10 +690,15 @@ def view(c: Campaign, snap: Snapshot, gctx: GateContext) -> CampaignView:
                 st = _repair_state(c, s, st, by_repair.get(s.id), snap, gctx, events)
         if st.status == "unstarted":
             deps = [states[a] for a in s.after]
-            if stop_all:
+            # a stop holds the plan's steps, never a fork's (forks at that point still
+            # run) and never a step a fork adopted (F9)
+            if stop_all and not s.fork and s.id not in adopted:
                 st = StepState("skipped", "an earlier kill rule stopped the campaign")
+            parent = c.fork(s.fork).parent_step if s.fork and c.fork(s.fork) else ""
             for a in s.after:
                 dep, dep_step = states[a], c.step(a)
+                if a == parent or (s.id in adopted and a == point):
+                    continue  # a fork point: its verdict, whatever it is, is what forks follow
                 if dep.status == "skipped":
                     st = StepState("skipped", f"step {a} was skipped")
                 elif (
@@ -658,34 +709,400 @@ def view(c: Campaign, snap: Snapshot, gctx: GateContext) -> CampaignView:
                     st = StepState("skipped", f"step {a} was killed")
             if st.status == "unstarted" and not all(d.status == "done" for d in deps):
                 st.status = "waiting"
-        if st.status == "done" and st.verdict == "killed" and s.on_kill == "stop":
+        if (
+            st.status == "done"
+            and st.verdict == "killed"
+            and s.on_kill == "stop"
+            and not s.fork
+            and s.id != point
+        ):
             stop_all = True
         states[s.id] = st
     if stop_all:
         for s in c.steps:
-            if states[s.id].status in ("unstarted", "waiting"):
+            if states[s.id].status in ("unstarted", "waiting") and not (s.fork or s.id in adopted):
                 states[s.id] = StepState("skipped", "an earlier kill rule stopped the campaign")
+
+    def started(s: Step) -> bool:
+        return bool(states[s.id].run) or f"{s.id}:dispatched" in events
+
+    def runs_of(kind: str, fork: bool) -> int:
+        return sum(1 for s in c.steps if s.kind == kind and bool(s.fork) == fork and started(s))
+
+    plan_issues = [by_step[s.id] for s in c.steps if s.id in by_step and not s.fork]
+    fork_issues = [by_step[s.id] for s in c.steps if s.id in by_step and s.fork]
     used = {
-        "max_tasks": sum(1 for s in c.steps if s.kind == "task" and states[s.id].issue),
-        "max_explore_runs": sum(
-            1
-            for s in c.steps
-            if s.kind == "explore_run" and (states[s.id].run or f"{s.id}:dispatched" in events)
+        "max_tasks": sum(
+            1 for s in c.steps if s.kind == "task" and not s.fork and states[s.id].issue
         ),
-        "max_pipeline_runs": sum(
-            1
-            for s in c.steps
-            if s.kind == "pipeline_run" and (states[s.id].run or f"{s.id}:dispatched" in events)
+        "max_explore_runs": runs_of("explore_run", False),
+        "max_pipeline_runs": runs_of("pipeline_run", False),
+        "max_model_jobs": sum(
+            _model_jobs(i)
+            for i in [*plan_issues, *by_repair.values(), *([closeout] if closeout else [])]
         ),
-        "max_model_jobs": 0,
     }
-    used["max_model_jobs"] = sum(
-        _model_jobs(i)
-        for i in [*by_step.values(), *by_repair.values(), *([closeout] if closeout else [])]
-    )
+    fork_used = {
+        "max_tasks": sum(1 for s in c.steps if s.kind == "task" and s.fork and states[s.id].issue),
+        "max_explore_runs": runs_of("explore_run", True),
+        "max_pipeline_runs": runs_of("pipeline_run", True),
+        # each fork task's plans and reviews, and one job per ideation (F12)
+        "max_model_jobs": sum(_model_jobs(i) for i in fork_issues)
+        + sum(1 for e in events if IDEATE_EVENT.match(e)),
+    }
     recent = breaker_blocks(events, snap.now)
     breaker = recent if len(recent) >= BREAKER_BLOCKS else ()
-    return CampaignView(c, tracking, closeout, states, events, used, breaker)
+    return CampaignView(c, tracking, closeout, states, events, used, breaker, fork_used, adoption)
+
+
+# -- forks (decision 0015) ---------------------------------------------------------------
+
+
+@dataclass
+class PointState:
+    """A fork point: open (ideation not started), ideating, plan (a fork plan pull
+    request in flight) or closed (forks on main, none advisable, timed out, failed)."""
+
+    step: str
+    status: str
+    detail: str = ""
+    pr: PullRequest | None = None
+    facts: dict = field(default_factory=dict)  # the ideation comment's counts
+
+
+def ideation_comment(v: CampaignView, sid: str, app_bot: str) -> tuple[dict, str] | None:
+    """The newest ideation comment of fork point `sid` on the tracking issue: (facts, body)."""
+    found = None
+    for cm in v.tracking.comments if v.tracking else ():
+        parsed = markers.parse_ideation(cm.body) if cm.author == app_bot else None
+        if parsed and parsed[:2] == (v.campaign.id, sid):
+            found = (parsed[2], cm.body)
+    return found
+
+
+def _fork_plan_pr(c: Campaign, sid: str, snap: Snapshot) -> PullRequest | None:
+    prefix = f"forks/{c.id}-{sid}-"
+    prs = [pr for pr in snap.fork_prs.values() if pr.head_ref.startswith(prefix)]
+    return max(prs, key=lambda pr: pr.number, default=None)
+
+
+def point_state(v: CampaignView, sid: str, snap: Snapshot, gctx: GateContext) -> PointState:
+    c = v.campaign
+    at = c.forks_at(sid)
+    if at:
+        return PointState(sid, "closed", "forks " + ", ".join(f.id for f in at))
+    found = ideation_comment(v, sid, snap.app_bot)
+    facts = found[0] if found else {}
+    pr = _fork_plan_pr(c, sid, snap)
+    started = v.events.get(f"{sid}:ideate", "")
+    if pr is not None:
+        if pr.merged:
+            # merged after this tick's checkout: the next tick reads the fork files
+            return PointState(sid, "plan", "merged; the fork files are read next", pr, facts)
+        if pr.state != "open":
+            return PointState(sid, "closed", f"PR #{pr.number} was closed", pr, facts)
+        if started and _older(snap.now, started, FORK_PLAN_TIMEOUT):
+            return PointState(sid, "closed", f"PR #{pr.number} did not merge in time", pr, facts)
+        st = _pr_state(StepState("in_review"), pr, gctx)
+        if st.status == "blocked":
+            return PointState(sid, "closed", f"PR #{pr.number}: {st.detail}", pr, facts)
+        return PointState(sid, "plan", st.status, pr, facts)
+    if found and not facts.get("forks"):
+        return PointState(sid, "closed", "none", None, facts)
+    if f"{sid}:ideate:skip" in v.events:
+        return PointState(sid, "closed", "skipped")
+    if started:
+        if _older(snap.now, started, IDEATION_TIMEOUT):
+            return PointState(sid, "closed", "timeout", None, facts)
+        return PointState(sid, "ideating", "", None, facts)
+    return PointState(sid, "open")
+
+
+def open_points(v: CampaignView, root: Path) -> list[str]:
+    """The fork points of the plan whose verdict the envelope lists (F11: never a fork's)."""
+    c = v.campaign
+    if c.forks is None:
+        return []
+    library = forks.load_library(root)
+    return [
+        sid
+        for sid in forks.fork_points(c, library)
+        if v.states[sid].status == "done" and v.states[sid].verdict in c.forks.on
+    ]
+
+
+def budget_left(v: CampaignView, s: Step) -> bool:
+    """May step `s` start within its budget: the envelope's for a fork's step (F12),
+    the plan's for any other (adopted steps included)."""
+    c = v.campaign
+    if s.fork:
+        b, u = (c.forks.budget if c.forks else {}), v.fork_used
+    else:
+        b, u = c.budget, v.used
+    if s.kind == "task":
+        return u.get("max_tasks", 0) < b.get("max_tasks", 0) and u.get("max_model_jobs", 0) < b.get(
+            "max_model_jobs", 0
+        )
+    key = "max_explore_runs" if s.kind == "explore_run" else "max_pipeline_runs"
+    return u.get(key, 0) < b.get(key, 0)
+
+
+def fork_outcome(v: CampaignView, fork_id: str, can_start: bool, now: str) -> str:
+    """survived, killed, cannot run, or pending: what fork `fork_id` came to so far."""
+    c = v.campaign
+    f = c.fork(fork_id)
+    steps = [c.step(sid) for sid in f.step_ids if c.step(sid)]
+    states = [v.states[s.id] for s in steps]
+    runs = [v.states[s.id] for s in steps if s.kind == "explore_run"]
+    if any(st.status == "done" and st.verdict == "killed" for st in runs):
+        return "killed"
+    if runs and all(st.status == "done" for st in states):
+        return "survived" if all(st.verdict == "survived" for st in runs) else "cannot run"
+    if any(st.status in IN_FLIGHT for st in states):
+        return "pending"
+    for s, st in zip(steps, states, strict=True):
+        if st.status == "blocked":
+            when = v.events.get(_holding_block(s.id, st, v.events), "")
+            if not when or not _older(now, when, BLOCK_GRACE):
+                return "pending"
+            return "cannot run"
+    waiting = [
+        s for s, st in zip(steps, states, strict=True) if st.status in ("unstarted", "waiting")
+    ]
+    if not waiting or not can_start or any(st.status == "skipped" for st in states):
+        return "cannot run"
+    nxt = next((s for s in waiting if v.states[s.id].status == "unstarted"), None)
+    if nxt is not None and not budget_left(v, nxt):
+        return "cannot run"
+    return "pending"
+
+
+def find_adoption(
+    v: CampaignView, can_start: bool, now: str
+) -> tuple[str, str, tuple[str, ...]] | None:
+    """The adoption to make now (F9), or None.
+
+    Only at a killed fork point of the plan, once every fork there has a
+    verdict or cannot run (F3: no stop at the first survivor); the first
+    surviving fork in the declared order with `adopts_downstream` adopts the
+    steps that kill skipped and that never started. At most one per campaign.
+    """
+    c = v.campaign
+    if v.adoption or not c.fork_files:
+        return None
+    for s in c.main_steps:
+        st = v.states[s.id]
+        if s.kind != "explore_run" or st.status != "done" or st.verdict != "killed":
+            continue
+        at = c.forks_at(s.id)
+        if not at:
+            continue
+        outcomes = {f.id: fork_outcome(v, f.id, can_start, now) for f in at}
+        if "pending" in outcomes.values():
+            return None
+        adopter = next(
+            (f for f in at if outcomes[f.id] == "survived" and f.adopts_downstream), None
+        )
+        if adopter is None:
+            continue
+        steps = tuple(
+            sid
+            for sid in forks.adoptable(c, s.id)
+            if v.states[sid].status == "skipped"
+            and v.states[sid].issue is None
+            and v.states[sid].run is None
+            and f"{sid}:dispatched" not in v.events
+        )
+        if steps:
+            return adopter.id, s.id, steps
+    return None
+
+
+def verdict_words(c: Campaign, s: Step, st: StepState) -> str:
+    """A step's verdict as reports print it: a fork's reads "survived (fork)" (F8)."""
+    if s.fork and s.kind == "explore_run" and st.verdict in ("killed", "survived"):
+        return f"{st.verdict} (fork)"
+    return st.verdict
+
+
+def fork_note(c: Campaign, s: Step) -> str:
+    """After a fork run's verdict: which fork, and how many were tried at its point (F8)."""
+    f = c.fork(s.fork) if s.fork else None
+    if f is None:
+        return ""
+    n = len(c.forks_at(f.parent_step))
+    return (
+        f" Fork {f.id} ({f.type}: {f.dimension}) is one of {n} tried at {f.parent_step}; "
+        "a fork result is never a finding."
+    )
+
+
+def _point_closed_events(v: CampaignView, ps: PointState) -> list[tuple[str, str]]:
+    sid, d = ps.step, ps.detail
+    if d.startswith("forks "):
+        return [
+            (
+                f"{sid}:ideate:merged",
+                f"{sid}: {d} on main; they run after the plan's own steps (decision 0015).",
+            )
+        ]
+    if d == "none":
+        n, r = ps.facts.get("proposed", 0), ps.facts.get("refused", 0)
+        return [
+            (
+                f"{sid}:ideate:none",
+                f"{sid}: ideation found no fork to run ({n} proposed, {r} refused by the "
+                "envelope check); its comment above says why.",
+            )
+        ]
+    if d == "timeout":
+        return [(f"{sid}:ideate:timeout", f"{sid}: ideation timed out; no forks at {sid}.")]
+    if d == "skipped":
+        return []
+    return [
+        (f"{sid}:ideate:failed", f"{sid}: the fork plan did not merge ({d}); no forks at {sid}.")
+    ]
+
+
+def task_issue(
+    c: Campaign, s: Step, root: Path, adoption: tuple[str, str, tuple[str, ...]] | None
+) -> dict:
+    """The create_issue action for task step `s`: its draft, word for word.
+
+    A fork's task also carries the fork's marker. A step a fork adopted gets the
+    approved draft plus a section holding the fork's delta, and the adopted
+    marker (F9); the gate checks both.
+    """
+    title, body = markers.draft_body((root / s.draft).read_text(encoding="utf-8"))
+    tail = [markers.step_marker(c.id, s.id)]
+    if s.fork:
+        tail.append(markers.fork_marker(c.id, s.fork))
+    if adoption and s.id in adoption[2] and c.fork(adoption[0]):
+        fid = adoption[0]
+        body = f"{body}\n\n{markers.delta_section(fid, c.fork(fid).delta)}"
+        tail.append(markers.adopted_marker(c.id, s.id, fid))
+    labels = ["campaign", "explore"] if s.type == "explore" else ["campaign"]
+    return {
+        "type": "create_issue",
+        "title": title,
+        "body": f"{body}\n\n" + "\n".join(tail) + "\n",
+        "labels": labels,
+        "then_labels": ["agent-plan"],
+    }
+
+
+def _listed(body: str, heading: str) -> list[str]:
+    """The `- ` items under `heading` in an ideation comment, made safe to copy."""
+    out, inside = [], False
+    for line in body.replace("\r\n", "\n").split("\n"):
+        if line.startswith("#"):
+            inside = line.strip().lstrip("#").strip() == heading
+        elif inside and line.startswith("- "):
+            item = line[2:].replace("<!--", "&lt;!--").replace("-->", "--&gt;").strip()
+            out.append(item if len(item) <= 300 else item[:299] + "…")
+    return out
+
+
+REFUSED_HEADING = "Refused by the envelope check"
+SUGGESTED_HEADING = "Suggestions outside the envelope"
+
+
+def forks_facts(v: CampaignView, snap: Snapshot, root: Path) -> str:
+    """The forks, for the close-out report, written by code (decision 0015, F8)."""
+    c = v.campaign
+
+    def why(f) -> str:  # noqa: ANN001 (a Fork)
+        lines = f.body.replace("\r\n", "\n").split("\n")
+        start = next((i for i, ln in enumerate(lines) if ln.startswith("## Why")), None)
+        text = next((ln.strip() for ln in lines[start + 1 :] if ln.strip()), "") if start else ""
+        return text if len(text) <= 200 else text[:199] + "…"
+
+    rows = []
+    for f in c.fork_files:
+        steps = [c.step(sid) for sid in f.step_ids if c.step(sid)]
+        runs = [s for s in steps if s.kind == "explore_run"]
+        outcome = fork_outcome(v, f.id, False, snap.now)
+        verdict = f"{outcome} (fork)" if outcome in ("survived", "killed") else outcome
+        numbers = "; ".join(ln for s in runs for ln in v.states[s.id].verdict_lines) or "none"
+        rows.append(
+            [
+                f.id,
+                f.parent_step,
+                f.type,
+                f.dimension,
+                why(f),
+                ", ".join(f.step_ids),
+                verdict,
+                numbers,
+            ]
+        )
+    tried = []
+    points = sorted({f.parent_step for f in c.fork_files} | set(open_points(v, root)), key=_num)
+    for sid in points:
+        found = ideation_comment(v, sid, snap.app_bot)
+        facts = found[0] if found else {}
+        at = c.forks_at(sid)
+        ran = [f for f in at if any(_begun(v, c.step(x)) for x in f.step_ids if c.step(x))]
+        survived = [f for f in at if fork_outcome(v, f.id, False, snap.now) == "survived"]
+        proposed = facts.get("proposed", len(at))
+        refused = facts.get("refused", 0)
+        note = "" if found else " (no ideation comment: the numbers are the forks on main)"
+        tried.append(
+            f"- {sid}: {proposed} proposed, {refused} refused by the envelope check, "
+            f"{len(ran)} ran, {len(survived)} survived{note}."
+        )
+    if not tried:
+        tried = ["- None: no fork point opened."]
+    refused_lines, suggested = [], []
+    for sid in points:
+        found = ideation_comment(v, sid, snap.app_bot)
+        if found:
+            refused_lines += [f"{sid}: {x}" for x in _listed(found[1], REFUSED_HEADING)]
+            suggested += [f"{sid}: {x}" for x in _listed(found[1], SUGGESTED_HEADING)]
+    adoption = (
+        f"Fork {v.adoption[0]} adopted {_id_range(v.adoption[2])} after {v.adoption[1]} was killed."
+        if v.adoption
+        else "No fork adopted the plan's skipped steps."
+    )
+    header = [
+        "Fork",
+        "Parent step",
+        "Type",
+        "What changed",
+        "Why",
+        "Steps",
+        "Verdict",
+        "The numbers its kill rules read",
+    ]
+    return f"""### Forks table
+
+{table(header, rows) if rows else "None: no fork was declared."}
+
+{adoption}
+
+### How many were tried
+
+{chr(10).join(tried)}
+
+A pass among several variants is weaker evidence than one test set in advance: each
+fork that survived is one of the number tried at its point, on the exploration half.
+
+### Refused and suggested variants
+
+{chr(10).join(f"- {x}" for x in refused_lines + suggested) or "None."}"""
+
+
+def _num(sid: str) -> int:
+    return int(sid[1:]) if sid[1:].isdigit() else 0
+
+
+def _begun(v: CampaignView, s: Step) -> bool:
+    st = v.states[s.id]
+    return bool(st.issue or st.run) or f"{s.id}:dispatched" in v.events
+
+
+def _id_range(ids: Sequence[str]) -> str:
+    return ids[0] if len(ids) == 1 else f"{ids[0]} to {ids[-1]}"
 
 
 def _tasks_in_flight(v: CampaignView) -> int:
@@ -1048,7 +1465,11 @@ def _reason(v: CampaignView, stopped: bool, today: dt.date) -> str:
     c, states = v.campaign, v.states
     if stopped:
         return "the owner stopped it"
-    if any(s.verdict == "killed" and c.step(k).on_kill == "stop" for k, s in states.items()):
+    point = v.adoption[1] if v.adoption else ""
+    if any(
+        s.verdict == "killed" and c.step(k).on_kill == "stop" and not c.step(k).fork and k != point
+        for k, s in states.items()
+    ):
         return "a kill rule stopped it"
     if today > dt.date.fromisoformat(c.end_by):
         return f"its end date ({c.end_by}) passed"
@@ -1264,7 +1685,7 @@ def _advance(
                 event(
                     f"{s.id}:verdict",
                     f"{s.id}: run {st.run.id} recorded (PR #{st.pr.number}). Verdict: "
-                    f"**{st.verdict}**.\n{lines}",
+                    f"**{verdict_words(c, s, st)}**.{fork_note(c, s)}\n{lines}",
                 )
             if st.status == "done" and s.kind == "pipeline_run":
                 event(f"{s.id}:recorded", f"{s.id}: {s.stage} {s.target} recorded ({st.links()}).")
@@ -1294,37 +1715,102 @@ def _advance(
                     }
                 )
 
+        # forks (decision 0015): fork points, their ideation and fork plans
+        points_busy = points_waiting = False
+        ideating = 0
+        for sid in open_points(v, root) if not stopped and v.closeout is None else []:
+            ps = point_state(v, sid, snap, gctx)
+            if ps.status == "closed":
+                for name, line in _point_closed_events(v, ps):
+                    event(name, line)
+            elif ps.status == "plan":
+                points_busy = True
+                event(
+                    f"{sid}:ideate:pr",
+                    f"{sid}: the ideation proposed forks in PR #{ps.pr.number}; the gate checks "
+                    "them and the tick merges it.",
+                )
+                if ps.detail == "mergeable":
+                    doing.append({"type": "merge", "pr": ps.pr.number, "sha": ps.pr.head_sha})
+                elif ps.detail == "awaiting_gate":
+                    doing.append(
+                        {
+                            "type": "dispatch",
+                            "workflow": GATE_WORKFLOW,
+                            "inputs": {"pr": str(ps.pr.number)},
+                        }
+                    )
+            elif ps.status == "ideating":
+                points_busy = True
+            elif not can_start:
+                pass  # past the end date: no new ideation
+            elif len(c.fork_files) >= c.forks.max_forks:
+                event(
+                    f"{sid}:ideate:skip",
+                    f"{sid}: fork point, but the envelope's {c.forks.max_forks} forks are all "
+                    "used; no ideation.",
+                )
+            elif v.fork_used["max_model_jobs"] + ideating >= c.forks.budget["max_model_jobs"]:
+                event(
+                    f"{sid}:ideate:skip",
+                    f"{sid}: fork point, but the forks' model-job budget is used up; no ideation.",
+                )
+            elif held:
+                points_waiting = True
+            else:
+                event(f"{sid}:ideate", f"{sid}: fork point; ideation started.")
+                doing.append(
+                    {
+                        "type": "dispatch",
+                        "workflow": IDEATE_WORKFLOW,
+                        "inputs": {"campaign": c.id, "step": sid},
+                    }
+                )
+                ideating += 1
+                points_busy = True
+        if not stopped and v.closeout is None:
+            found = find_adoption(v, can_start, snap.now)
+            if found:
+                fid, point, steps = found
+                event(
+                    adoption_event(fid, point, steps),
+                    f"{fid} adopts {_id_range(steps)}: the plan's step {point} was killed and "
+                    f"fork {fid} survived (fork), the first in the declared order of "
+                    f"{len(c.forks_at(point))} tried there. Their issues are the approved drafts "
+                    f"plus the fork's delta.",
+                )
+                adopted = view(c, snap, gctx, found)
+                v.states.update(
+                    {sid: adopted.states[sid] for sid in steps if v.states[sid].status == "skipped"}
+                )
+                v.adoption, v.used = found, adopted.used
+
         tasks_in_flight = _tasks_in_flight(v)
         started = filed_repair  # anything started this tick
         paced = filed_repair  # a task, explore run or repair: one per campaign per tick
+        # F13: a fork's step starts only when no step of the plan can start
+        plan_startable = any(
+            v.states[s.id].status == "unstarted" and budget_left(v, s) for s in c.main_steps
+        )
         for s in c.steps:
             st = v.states[s.id]
             if not can_start or held or st.status != "unstarted":
                 continue
             if paced and (s.kind != "pipeline_run" or filed_repair):
                 continue
+            if s.fork and plan_startable:
+                continue
+            if not budget_left(v, s):
+                continue
+            used = v.fork_used if s.fork else v.used
             if s.kind == "task":
-                if (
-                    tasks_in_flight
-                    or v.used["max_tasks"] >= c.budget["max_tasks"]
-                    or v.used["max_model_jobs"] >= c.budget["max_model_jobs"]
-                ):
+                if tasks_in_flight:
                     continue
-                title, body = markers.draft_body((root / s.draft).read_text(encoding="utf-8"))
-                labels = ["campaign", "explore"] if s.type == "explore" else ["campaign"]
-                doing.append(
-                    {
-                        "type": "create_issue",
-                        "title": title,
-                        "body": f"{body}\n\n{markers.step_marker(c.id, s.id)}\n",
-                        "labels": labels,
-                        "then_labels": ["agent-plan"],
-                    }
-                )
+                doing.append(task_issue(c, s, root, v.adoption))
                 started = paced = True
             else:
                 key = "max_explore_runs" if s.kind == "explore_run" else "max_pipeline_runs"
-                if slots.wait(c, s) or v.used[key] >= c.budget[key]:
+                if slots.wait(c, s):
                     continue
                 doing.append(run_dispatch(c, s))
                 event(
@@ -1332,25 +1818,16 @@ def _advance(
                     f"{s.id}: started `{s.script or s.stage + ' ' + s.target}`.",
                 )
                 slots.take(c, s)
-                v.used[key] += 1  # several pipeline runs may start in one tick
+                used[key] += 1  # several pipeline runs may start in one tick
                 started = True
                 paced |= s.kind == "explore_run"
 
-        in_flight = any(st.status in IN_FLIGHT for st in v.states.values())
-        startable = False
+        in_flight = any(st.status in IN_FLIGHT for st in v.states.values()) or points_busy
+        startable = points_waiting
         if can_start and not started:
             for s in c.steps:
-                st = v.states[s.id]
-                if st.status != "unstarted":
-                    continue
-                if s.kind == "task":
-                    startable |= (
-                        v.used["max_tasks"] < c.budget["max_tasks"]
-                        and v.used["max_model_jobs"] < c.budget["max_model_jobs"]
-                    )
-                else:
-                    key = "max_explore_runs" if s.kind == "explore_run" else "max_pipeline_runs"
-                    startable |= v.used[key] < c.budget[key]
+                if v.states[s.id].status == "unstarted":
+                    startable |= budget_left(v, s)
         finished = (not in_flight and not started and not startable) or (stopped and not in_flight)
         if stopped and in_flight:
             finished = True  # nothing in flight will merge now; close out what there is
@@ -1369,10 +1846,10 @@ def _advance(
             if v.closeout is None:
                 rows = [
                     {
-                        "step": s.id,
+                        "step": s.id + (f" ({s.fork})" if s.fork else ""),
                         "kind": s.kind,
                         "status": v.states[s.id].status,
-                        "verdict": v.states[s.id].verdict or v.states[s.id].detail,
+                        "verdict": verdict_words(c, s, v.states[s.id]) or v.states[s.id].detail,
                         "links": v.states[s.id].links(),
                     }
                     for s in c.steps
@@ -1392,6 +1869,7 @@ def _advance(
                     applied,
                     friction_facts(v, snap, new),
                     checks_not_run(v),
+                    forks_facts(v, snap, root) if c.forks else "",
                 )
                 doing.append(
                     {

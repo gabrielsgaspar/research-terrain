@@ -1451,6 +1451,7 @@ def test_github_reader_builds_the_facts(tmp_path):
             ]
         },
         "/actions/workflows/data-pipeline.yml/runs": {"workflow_runs": []},
+        "/actions/workflows/campaign-ideate.yml/runs": {"workflow_runs": []},
         "/pulls?head=o%3Aexplore%2F0003_count-555": [],
     }
     gh = FakeGitHub(answers)
@@ -3494,6 +3495,7 @@ def test_snapshot_reads_only_what_the_tick_needs(tmp_path):
         "/pulls?head=o%3Aagent%2Fissue-2": [],
         "/actions/workflows/explore-run.yml/runs": {"workflow_runs": []},
         "/actions/workflows/data-pipeline.yml/runs": {"workflow_runs": []},
+        "/actions/workflows/campaign-ideate.yml/runs": {"workflow_runs": []},
     }
     gh = FakeGitHub(answers)  # any other request fails the test
     s = gh.snapshot(

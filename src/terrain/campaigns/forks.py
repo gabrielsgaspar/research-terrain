@@ -906,6 +906,8 @@ def check(
         if f.type not in env.types:
             problems.append(f"{where}: type {f.type} is not in forks.types")
         steps = [c.step(sid) for sid in f.step_ids]
+        if not any(s.kind == "explore_run" for s in steps):
+            problems.append(f"{where}: a fork needs an explore run, which gives it its verdict")
         if len(steps) > env.max_steps_per_fork:
             problems.append(
                 f"{where}: {len(steps)} steps, more than forks.max_steps_per_fork "

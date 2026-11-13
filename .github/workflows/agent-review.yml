@@ -233,6 +233,14 @@ jobs:
           fi
           printf 'Task type: %s\n' "${task_type}" > "${work}/data/task.md"
           echo "task_type=${task_type}" >> "${GITHUB_OUTPUT}"
+          # A fork's task (decision 0015) also gets referee row R8, fork discipline.
+          fork="$(gh api "repos/${REPO}/issues/${ISSUE}" \
+            --jq '[(.body // "") | scan("<!-- campaign-fork: [0-9]{4}/(f[1-9]) -->")] | .[0][0] // ""')"
+          [[ -z "${fork}" || "${fork}" =~ ^f[1-9]$ ]] || fork=""
+          if [ -n "${fork}" ]; then
+            printf 'Fork task: %s (decision 0015): add referee row R8.\n' "${fork}" >> "${work}/data/task.md"
+          fi
+          echo "fork=${fork}" >> "${GITHUB_OUTPUT}"
 
           python3 -I - <<'EOF'
           import json, os, re, sys
@@ -551,6 +559,7 @@ jobs:
           STRUCTURED: ${{ steps.claude.outputs.structured_output }}
           PLAN_URL: ${{ steps.plan.outputs.plan_url }}
           TASK_TYPE: ${{ steps.plan.outputs.task_type }}
+          FORK: ${{ steps.plan.outputs.fork }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
@@ -603,9 +612,11 @@ jobs:
                   fail("The reviewer did not return a usable result.")
               checked.setdefault(entry["id"].strip(), entry)
 
-          REFEREE = ("R1", "R2", "R3", "R4", "R5", "R6", "R7")
-          REFEREE_STATUS = {"ok": "OK", "problem": "Problem", "not_applicable": "Not applicable"}
           explore = os.environ.get("TASK_TYPE") == "explore"
+          fork = bool(os.environ.get("FORK"))
+          # R1-R7 for explore tasks; R8 (fork discipline) for a fork's tasks (decision 0015)
+          REFEREE = (("R1", "R2", "R3", "R4", "R5", "R6", "R7") if explore else ()) + (("R8",) if fork else ())
+          REFEREE_STATUS = {"ok": "OK", "problem": "Problem", "not_applicable": "Not applicable"}
           referee = {}
           raw_referee = result.get("referee", [])
           if not isinstance(raw_referee, list):
@@ -616,8 +627,10 @@ jobs:
               if not all(isinstance(entry.get(k), str) for k in ("id", "note")):
                   fail("The reviewer did not return a usable result.")
               referee.setdefault(entry["id"].strip(), entry)
-          referee_missing = [r for r in REFEREE if r not in referee] if explore else []
-          referee_problems = [r for r in REFEREE if referee.get(r, {}).get("status") == "problem"] if explore else []
+          referee_missing = [r for r in REFEREE if r not in referee]
+          referee_problems = [r for r in REFEREE if referee.get(r, {}).get("status") == "problem"]
+          if fork and referee.get("R8", {}).get("status") == "not_applicable":
+              must_fix.append("Referee R8: fork discipline is never Not applicable for a fork's task (found by the workflow).")
           if referee_missing:
               must_fix.append("Referee check incomplete: no entry for " + ", ".join(referee_missing) + " (found by the workflow).")
           for r in referee_problems:
@@ -658,11 +671,13 @@ jobs:
               status = STATUS[entry["status"]] if entry else "Not checked"
               how = cell(entry["how"]) if entry else ""
               lines.append(f"| {item['id']} | {cell(item['item'])} | {status} | {how} |")
-          if explore:
-              lines += ["", "### Referee (explore task)", "", "| | Check | Status | Note |", "| --- | --- | --- | --- |"]
+          if REFEREE:
+              kind = "explore task" + (", fork" if fork else "") if explore else "fork task"
+              lines += ["", f"### Referee ({kind})", "", "| | Check | Status | Note |", "| --- | --- | --- | --- |"]
               names = {
                   "R1": "Exploration half only", "R2": "No outcome data", "R3": "Definitions as stated",
                   "R4": "Level and inference", "R5": "Plausible magnitudes", "R6": "Claims", "R7": "Forking paths",
+                  "R8": "Fork discipline",
               }
               for r in REFEREE:
                   entry = referee.get(r)

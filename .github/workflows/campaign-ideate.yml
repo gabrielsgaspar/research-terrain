@@ -1,0 +1,328 @@
+name: Campaign ideate
+
+# The ideation job of a fork point (decision 0015). The campaign tick starts
+# it when an explore run of a campaign with a `forks:` envelope gets a
+# verdict the envelope lists; Gabriel may start it by hand, and with
+# dry_run: true it only posts what it would propose.
+#
+#   ideate   A model job that only reads: the same action, token and sandbox as
+#            agent-plan.yml, its instructions in harness/roles/ideation.md. It
+#            reads the page `scripts/campaign.py ideation-context` writes, then
+#            the repository, and returns JSON in a fixed schema
+#            (terrain.campaigns.ideation.SCHEMA). It changes nothing.
+#   publish  Runs no model. `scripts/campaign.py forks-from-json` assigns fork
+#            and step ids, writes every file from that JSON, and keeps only
+#            proposals that pass the same checks CI and the gate run. Then, with
+#            the agent App's token: a pull request adding the fork files
+#            (branch forks/NNNN-sNN-<run id>), which the gate checks and the
+#            tick merges, and one comment on the tracking issue with what was
+#            proposed, refused and suggested. With no fork to write, only the
+#            comment ("no fork is advisable" and why), which the tick reads.
+#
+# The model's text is data: code writes every file, and the comment and the
+# files are scanned for credential prefixes with agent-review's pattern
+# before anything is posted.
+on:
+  workflow_dispatch:
+    inputs:
+      campaign:
+        description: "Campaign, e.g. 0007 (set by the campaign tick)"
+        type: string
+        required: true
+      step:
+        description: "The fork point, an explore-run step such as s15"
+        type: string
+        required: true
+      dry_run:
+        description: "Only post the proposals as a comment; write and open nothing"
+        type: boolean
+        default: false
+
+# The tick and the gate find a run by this title (terrain.campaigns.markers.ideation_run_title).
+run-name: ${{ inputs.dry_run && format('Ideate (dry run) campaign {0}/{1}', inputs.campaign, inputs.step) || format('Ideate campaign {0}/{1}', inputs.campaign, inputs.step) }}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: campaign-ideate-${{ inputs.campaign }}-${{ inputs.step }}
+  cancel-in-progress: false
+
+jobs:
+  ideate:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      # 1. Guard: the agent App (the tick) or a person with write access, and
+      #    inputs of the fixed shapes. Nothing else runs if it fails.
+      - name: Guard - the agent App or a person with write access
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          ACTOR: ${{ github.actor }}
+          APP_BOT: ${{ vars.AGENT_APP_BOT }}
+          CAMPAIGN: ${{ inputs.campaign }}
+          STEP: ${{ inputs.step }}
+        run: |
+          set -euo pipefail
+          [[ "${CAMPAIGN}" =~ ^[0-9]{4}$ ]] || { echo "::error::campaign must look like 0007"; exit 1; }
+          [[ "${STEP}" =~ ^s[0-9]{1,2}$ ]] || { echo "::error::step must look like s15"; exit 1; }
+          if [ -n "${APP_BOT}" ] && [ "${ACTOR}" = "${APP_BOT}" ]; then
+            echo "Started by the agent App (the campaign tick)."
+            exit 0
+          fi
+          permission="$(gh api "repos/${REPO}/collaborators/${ACTOR}/permission" --jq .permission)"
+          case "${permission}" in
+            admin | write) echo "${ACTOR} has ${permission}." ;;
+            *) echo "::error::${ACTOR} needs admin or write access."; exit 1 ;;
+          esac
+
+      # 1b. The same sandbox set-up as agent-plan.yml (see the reasons there).
+      - name: Install sandbox dependencies (bubblewrap, socat)
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends bubblewrap socat
+
+          sandbox_err="${RUNNER_TEMP}/sandbox.err"
+          failed=""
+          # Outer: the user namespace bwrap makes for every sandboxed command.
+          bwrap_ok() {
+            bwrap --ro-bind / / --proc /proc --dev /dev --unshare-user --unshare-pid true 2> "${sandbox_err}"
+          }
+          # Nested: what apply-seccomp does inside that sandbox. unshare with
+          # --map-current-user writes setgroups "deny" and an identity uid/gid
+          # map (needs CAP_SYS_ADMIN in the new namespace), then makes new PID
+          # and mount namespaces, as the helper does.
+          nested_ok() {
+            bwrap --ro-bind / / --proc /proc --dev /dev --unshare-user --unshare-pid --unshare-net --cap-drop ALL \
+              unshare --user --map-current-user --pid --mount --fork true 2> "${sandbox_err}"
+          }
+          sandbox_ok() {
+            failed="outer"
+            bwrap_ok || return 1
+            failed="nested"
+            nested_ok || return 1
+            failed=""
+          }
+
+          restrict="$(sysctl -n kernel.apparmor_restrict_unprivileged_userns 2>/dev/null || echo absent)"
+          echo "kernel.apparmor_restrict_unprivileged_userns: ${restrict}"
+          if [ "${restrict}" = "1" ]; then
+            if [ -f /etc/apparmor.d/bwrap-userns-restrict ]; then
+              echo "Removing bwrap-userns-restrict (it moves bwrap's commands into unpriv_bwrap)."
+              sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns-restrict
+              sudo ln -sf /etc/apparmor.d/bwrap-userns-restrict /etc/apparmor.d/disable/
+            fi
+            echo "Loading the documented AppArmor profile for /usr/bin/bwrap."
+            sudo tee /etc/apparmor.d/bwrap > /dev/null <<'EOF'
+          abi <abi/4.0>,
+          include <tunables/global>
+
+          profile bwrap /usr/bin/bwrap flags=(unconfined) {
+            userns,
+            include if exists <local/bwrap>
+          }
+          EOF
+            sudo apparmor_parser -r /etc/apparmor.d/bwrap
+          fi
+
+          if ! sandbox_ok; then
+            echo "AppArmor label of a command bwrap starts: $(bwrap --ro-bind / / --proc /proc --dev /dev --unshare-user --unshare-pid cat /proc/self/attr/current 2>/dev/null || echo unknown)"
+            echo "Loaded AppArmor profiles with bwrap in the name:"
+            sudo grep -i bwrap /sys/kernel/security/apparmor/profiles || echo "  none"
+            if [ "${failed}" = "outer" ]; then
+              echo "::error::bubblewrap cannot create its user namespace, so the Claude Code sandbox cannot start. bwrap said: $(< "${sandbox_err}")"
+            else
+              echo "::error::The sandbox's nested user namespace gets no capabilities, so apply-seccomp would fail every sandboxed Bash command (write /proc/self/setgroups). unshare said: $(< "${sandbox_err}")"
+            fi
+            exit 1
+          fi
+          echo "bubblewrap and the nested user namespace work."
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: false
+
+      - run: uv sync --locked
+
+      # 2. The page the model reads first, written by code. It refuses a step
+      #    that is no fork point with a verdict the envelope lists.
+      - name: Write the fork point's page
+        env:
+          CAMPAIGN: ${{ inputs.campaign }}
+          STEP: ${{ inputs.step }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          extra=()
+          [ "${DRY_RUN}" = "true" ] && extra=(--dry-run)
+          uv run python scripts/campaign.py ideation-context --campaign "${CAMPAIGN}" --step "${STEP}" --out .ideate "${extra[@]}"
+
+      - name: Load the ideation instructions
+        id: role
+        run: python3 -I scripts/role.py ideation
+
+      # 3. Claude, read-only, with the same tools and limits as the planner.
+      - name: Ideate
+        id: claude
+        uses: anthropics/claude-code-action@d535f5172dec02b204866b393d6b20b9b2aaf98d # v1.0.266
+        env:
+          CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          allowed_bots: terrain-agent[bot]
+          settings: '{"permissions":{"blockReadsOutsideWorkingDirectories":true},"sandbox":{"autoAllowBashIfSandboxed":false}}'
+          claude_args: |
+            --model ${{ steps.role.outputs.model }}
+            --max-turns ${{ steps.role.outputs.max_turns }}
+            --tools "Read,Grep,Glob,Bash"
+            --allowedTools "Read" "Grep" "Glob" "Bash(git log *)"
+            --disallowedTools "mcp__*" "Edit" "Write" "NotebookEdit" "Bash(* --output*)" "Bash(git diff --no-index*)" "Bash(* --no-index*)" "Read(//proc/**)" "Read(//etc/**)" "Read(//root/**)" "Read(//tmp/**)" "Read(//home/runner/.*)" "Read(//home/runner/.*/**)" "Read(//home/runner/work/_temp/**)" "Read(//home/runner/work/_actions/**)" "Read(//home/runner/work/_tool/**)" "Read(//home/runner/runners/**)"
+            --json-schema '{"type":"object","properties":{"decision":{"type":"string","enum":["fork","none"]},"reason":{"type":"string"},"forks":{"type":"array","items":{"type":"object","properties":{"type":{"type":"string","enum":["transform","sample","spec","measure","question"]},"title":{"type":"string"},"dimension":{"type":"string"},"rationale":{"type":"string"},"pass_fail":{"type":"string"},"evidence":{"type":"array","items":{"type":"string"}},"headline":{"type":"string"},"sample_on":{"type":"string"},"datasets":{"type":"array","items":{"type":"object","properties":{"name":{"type":"string"},"source":{"type":"string"},"licence":{"type":"string"},"max_size_gb":{"type":"number"},"publisher":{"type":"string"}},"required":["name","source","licence","max_size_gb","publisher"]}},"steps":{"type":"array","items":{"type":"object","properties":{"kind":{"type":"string","enum":["task","explore_run","pipeline_run"]},"type":{"type":"string","enum":["explore","build"]},"title":{"type":"string"},"draft":{"type":"string"},"allowed_paths":{"type":"array","items":{"type":"string"}},"script":{"type":"string"},"stage":{"type":"string","enum":["acquire","build"]},"target":{"type":"string"},"dataset":{"type":"string"},"rules":{"type":"array","items":{"type":"string"}},"after":{"type":"array","items":{"type":"integer"}}},"required":["kind","after"]}},"adopts_downstream":{"type":"boolean"},"delta":{"type":"string"},"cost":{"type":"object","properties":{"tasks":{"type":"integer"},"runs":{"type":"integer"}}}},"required":["type","title","dimension","rationale","pass_fail","evidence","steps","adopts_downstream"]}},"suggestions":{"type":"array","items":{"type":"object","properties":{"title":{"type":"string"},"why_not_run":{"type":"string"}},"required":["title","why_not_run"]}}},"required":["decision","reason","forks","suggestions"]}'
+          prompt: ${{ steps.role.outputs.prompt }}
+
+      # 4. The answer goes to the publish job as a file; this job posts nothing.
+      - name: Keep the answer
+        env:
+          STRUCTURED: ${{ steps.claude.outputs.structured_output }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/answer"
+          printf '%s' "${STRUCTURED:-}" > "${RUNNER_TEMP}/answer/answer.json"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ideation-answer
+          path: ${{ runner.temp }}/answer/answer.json
+          retention-days: 7
+
+  publish:
+    needs: ideate
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ideation-answer
+          path: ${{ runner.temp }}/answer
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: false
+
+      - run: uv sync --locked
+
+      # 5. Plain code turns the answer into files that pass every check.
+      - name: Write the fork files from the answer
+        env:
+          CAMPAIGN: ${{ inputs.campaign }}
+          STEP: ${{ inputs.step }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          extra=()
+          [ "${DRY_RUN}" = "true" ] && extra=(--dry-run)
+          uv run python scripts/campaign.py forks-from-json --campaign "${CAMPAIGN}" --step "${STEP}" \
+            --run-id "${RUN_ID}" --in "${RUNNER_TEMP}/answer/answer.json" --out "${RUNNER_TEMP}/forks" \
+            --run-url "${RUN_URL}" "${extra[@]}" | tee -a "${GITHUB_STEP_SUMMARY}"
+
+      # 6. The one credential scan, with agent-review's own pattern, read from
+      #    that workflow on main, so no second copy of it exists. Nothing is
+      #    posted if the pattern is missing or anything matches.
+      - name: Scan for credentials
+        env:
+          OUT: ${{ runner.temp }}/forks
+        run: |
+          set -euo pipefail
+          python3 -I - <<'PY'
+          import json, os, re, sys
+          text = open(".github/workflows/agent-review.yml", encoding="utf-8").read()
+          m = re.search(r'TOKEN_PREFIX = re\.compile\(r"([^"]+)"\)', text)
+          if not m:
+              print("::error::agent-review.yml has no TOKEN_PREFIX pattern; nothing is posted.")
+              sys.exit(1)
+          scan = re.compile(m.group(1))
+          out = os.environ["OUT"]
+          result = json.load(open(os.path.join(out, "result.json"), encoding="utf-8"))
+          paths = [os.path.join(out, n) for n in ("comment.md", "pr-body.md")] + result["files"]
+          for path in paths:
+              if scan.search(open(path, encoding="utf-8").read()):
+                  print(f"::error::{path} holds text that looks like a credential; nothing is posted.")
+                  sys.exit(1)
+          print(f"Scanned {len(paths)} files.")
+          PY
+
+      - name: Get a GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.AGENT_APP_CLIENT_ID }}
+          private-key: ${{ secrets.AGENT_APP_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
+
+      # 7. The fork plan pull request (only fork files, all new), then the comment.
+      #    The token reaches git through a credential helper reading an env var.
+      - name: Open the fork plan pull request and comment
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PUSH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPO: ${{ github.repository }}
+          APP_BOT: ${{ vars.AGENT_APP_BOT }}
+          CAMPAIGN: ${{ inputs.campaign }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          OUT: ${{ runner.temp }}/forks
+          BASE: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          branch="$(jq -r '.branch' "${OUT}/result.json")"
+          title="$(jq -r '.title' "${OUT}/result.json")"
+          [[ "${branch}" =~ ^forks/[0-9]{4}-s[0-9]{1,2}-[0-9]+$ ]] || { echo "::error::bad branch ${branch}"; exit 1; }
+          if [ "${DRY_RUN}" != "true" ] && [ "$(jq '.files | length' "${OUT}/result.json")" != "0" ]; then
+            mapfile -t files < <(jq -r '.files[]' "${OUT}/result.json")
+            for f in "${files[@]}"; do
+              [[ "${f}" =~ ^research/campaigns/${CAMPAIGN}-[a-z0-9-]+/forks/ ]] || { echo "::error::${f} is outside the forks folder"; exit 1; }
+            done
+            g() { git -c core.hooksPath=/dev/null -c user.name="${APP_BOT}" -c user.email="${APP_BOT}@users.noreply.github.com" "$@"; }
+            g switch -c "${branch}"
+            g add -- "${files[@]}"
+            [ -z "$(git status --porcelain --untracked-files=no -- . ':!research/campaigns/*/forks/*')" ] || { echo "::error::something else changed"; exit 1; }
+            g commit -q -m "${title}" -m "Written by code from the ideation job of this run (decision 0015)."
+            # shellcheck disable=SC2016
+            helper='!f() { echo username=x-access-token; echo "password=${PUSH_TOKEN}"; }; f'
+            git -c core.hooksPath=/dev/null -c credential.helper= -c "credential.helper=${helper}" \
+              push "https://github.com/${REPO}.git" "refs/heads/${branch}:refs/heads/${branch}"
+            pr="$(gh api --method POST "repos/${REPO}/pulls" -f title="${title}" -f head="${branch}" \
+              -f base="${BASE}" -F body=@"${OUT}/pr-body.md" --jq .number)"
+            echo "Opened PR #${pr}."
+          fi
+          tracking="$(gh api --paginate "repos/${REPO}/issues?labels=campaign&state=all&per_page=100" \
+            --jq ".[] | select(.user.login == \"${APP_BOT}\" and ((.body // \"\") | contains(\"<!-- campaign-tracking: ${CAMPAIGN} -->\"))) | .number" | head -n 1)"
+          if [[ "${tracking}" =~ ^[0-9]+$ ]]; then
+            gh api --method POST "repos/${REPO}/issues/${tracking}/comments" -F body=@"${OUT}/comment.md" > /dev/null
+            echo "Commented on #${tracking}."
+          else
+            echo "::warning::No tracking issue found for campaign ${CAMPAIGN}; the comment is in the summary only."
+          fi
+          cat "${OUT}/comment.md" >> "${GITHUB_STEP_SUMMARY}"

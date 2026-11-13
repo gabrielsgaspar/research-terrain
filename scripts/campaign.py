@@ -16,6 +16,14 @@
         and the status page's.
     GH_TOKEN=$(gh auth token) uv run python scripts/campaign.py page
         Print the status page as the tick would write it now (reads GitHub).
+    uv run python scripts/campaign.py ideation-context --campaign 0007 --step s15 --out DIR
+        Write the page the ideation model reads first for that fork point (offline).
+    uv run python scripts/campaign.py forks-from-json --campaign 0007 --step s15 \
+            --run-id N --in answer.json --out DIR [--dry-run] [--run-url URL]
+        Turn the ideation job's answer into fork files that pass every check
+        (written into the checkout, unless --dry-run), and write DIR/result.json,
+        DIR/comment.md and DIR/pr-body.md (offline; decision 0015). With
+        --dry-run a campaign without a `forks:` block gets the default envelope.
 
 The GitHub commands read GITHUB_REPOSITORY, GH_TOKEN (read-only is enough),
 AGENT_APP_BOT (the agent App's login, e.g. terrain-agent[bot]) and, for
@@ -269,6 +277,97 @@ def cmd_page(root: Path) -> int:
     return 0
 
 
+def _ideation_campaign(root: Path, cid: str, sid: str, dry_run: bool):  # noqa: ANN202
+    """(campaign, base overlay, problem) for an ideation command."""
+    from terrain.campaigns import forks
+    from terrain.campaigns.ideation import parent_verdict, with_envelope
+    from terrain.campaigns.spec import parse_campaign
+
+    if not re.fullmatch(r"\d{4}", cid) or not re.fullmatch(r"s\d{1,2}", sid):
+        return None, {}, "campaign must look like 0007 and step like s15"
+    found = [c for c in load_campaigns(root) if c.id == cid]
+    if not found:
+        return None, {}, f"no campaign {cid}"
+    c, base = found[0], {}
+    if dry_run and c.forks is None:
+        base = with_envelope(root, c, forks.default_envelope())
+        c = parse_campaign(root, root / c.folder, base)
+    if c.problems:
+        return None, {}, f"campaign {cid} has problems: {c.problems[0]}"
+    if c.forks is None:
+        return None, {}, f"campaign {cid} has no forks envelope"
+    if not dry_run and c.status != "active":
+        return None, {}, f"campaign {cid} is not active"
+    if sid not in forks.fork_points(c, forks.load_library(root)):
+        return None, {}, f"{sid} is not a fork point of campaign {cid}"
+    _, verdict, _ = parent_verdict(root, c, sid)
+    if verdict not in c.forks.on:
+        return None, {}, f"{sid}'s verdict on record ({verdict or 'none'}) opens no fork point"
+    return c, base, ""
+
+
+def cmd_ideation_context(root: Path, args: argparse.Namespace) -> int:
+    from terrain.campaigns.ideation import brief
+
+    c, _, problem = _ideation_campaign(root, args.campaign, args.step, args.dry_run)
+    if problem:
+        print(problem, file=sys.stderr)
+        return 1
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "point.md").write_text(brief(root, c, args.step, args.dry_run), encoding="utf-8")
+    print(f"Wrote {out / 'point.md'}.")
+    return 0
+
+
+def cmd_forks_from_json(root: Path, args: argparse.Namespace) -> int:
+    from terrain.campaigns.ideation import Built, build, comment
+
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    c, base, problem = _ideation_campaign(root, args.campaign, args.step, args.dry_run)
+    if problem:
+        print(problem, file=sys.stderr)
+        return 1
+    try:
+        data = json.loads(Path(args.inp).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        data = None
+    b = build(root, c, args.step, data, base) if data is not None else None
+    b = b or Built("none", "the ideation job returned no usable answer", 0)
+    if not args.dry_run:
+        for path, text in sorted(b.files.items()):
+            target = root / path
+            if target.exists():
+                print(f"{path} exists already; fork files are append-only", file=sys.stderr)
+                return 1
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(text, encoding="utf-8")
+    fids = [f for f, _, _ in b.written]
+    text = comment(b, c, args.step, args.run_url, args.dry_run)
+    (out / "comment.md").write_text(text, encoding="utf-8")
+    title = f"Forks: campaign {c.id} step {args.step} ({', '.join(fids) or 'none'})"
+    pr_body = (
+        f"The ideation job for fork point {args.step} of campaign {c.id} (decision 0015). "
+        "Code wrote every file from its answer and checked each against the envelope; the "
+        "campaign gate checks them again, and the tick merges this when it passes.\n\n" + text
+    )
+    (out / "pr-body.md").write_text(pr_body, encoding="utf-8")
+    result = {
+        "decision": b.decision,
+        "proposed": b.proposed,
+        "refused": len(b.refused),
+        "forks": fids,
+        "files": sorted(b.files),
+        "branch": f"forks/{c.id}-{args.step}-{args.run_id}",
+        "title": title,
+        "dry_run": bool(args.dry_run),
+    }
+    (out / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+    print(text)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -286,6 +385,19 @@ def main(argv: list[str] | None = None) -> int:
     d = sub.add_parser("decide")
     d.add_argument("--out", required=True)
     sub.add_parser("page")
+    i = sub.add_parser("ideation-context")
+    i.add_argument("--campaign", required=True)
+    i.add_argument("--step", required=True)
+    i.add_argument("--out", required=True)
+    i.add_argument("--dry-run", action="store_true")
+    f = sub.add_parser("forks-from-json")
+    f.add_argument("--campaign", required=True)
+    f.add_argument("--step", required=True)
+    f.add_argument("--run-id", required=True)
+    f.add_argument("--in", dest="inp", required=True)
+    f.add_argument("--out", required=True)
+    f.add_argument("--dry-run", action="store_true")
+    f.add_argument("--run-url", default="")
     args = parser.parse_args(argv)
     root = REPO
     if args.cmd == "validate":
@@ -296,6 +408,12 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_card(root, args.id)
     if args.cmd == "page":
         return cmd_page(root)
+    if args.cmd == "ideation-context":
+        return cmd_ideation_context(root, args)
+    if args.cmd == "forks-from-json":
+        if not re.fullmatch(r"\d{1,20}", args.run_id):
+            parser.error("--run-id must be a run number")
+        return cmd_forks_from_json(root, args)
     if args.cmd == "gate":
         if not args.pr and not (args.branch and args.sha):
             parser.error("gate needs --pr, or --branch and --sha")

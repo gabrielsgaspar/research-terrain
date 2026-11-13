@@ -479,7 +479,7 @@ def parse_campaign(root: Path, folder: Path, overlay: Mapping[str, str] | None =
     if not path.is_file():
         problems.append(f"{rel}: missing campaign.md")
         return Campaign(cid, rel, "", "draft", "", "", "", "", {}, (), (), problems=tuple(problems))
-    text = path.read_text(encoding="utf-8")
+    text = (overlay or {}).get(f"{rel}/campaign.md") or path.read_text(encoding="utf-8")
     fm = read_front_matter(text)
     if isinstance(fm, str):
         problems.append(f"{rel}/campaign.md: {fm}")
