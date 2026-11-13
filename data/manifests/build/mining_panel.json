@@ -1,0 +1,429 @@
+{
+  "dataset": "mining_panel",
+  "stage": "build",
+  "status": "created",
+  "gcs_prefix": "data/derived/mining_panel/054c1bd052417b8b/",
+  "created_at": "2026-11-13T13:50:20.439999+00:00",
+  "code_commit": "5b87bfbad6cfb2beab4609029c4c272e9c81baf6",
+  "sources": [],
+  "files": [
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_1985.parquet",
+      "sha256": "275d08f0ef04f7fdef87f333d3aae1788ea3c28dae2044fd46cab60dd070c092",
+      "bytes": 45333
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_1986.parquet",
+      "sha256": "282be26cff2bfc47ade97fd14b258ddc25f94fe41e62701e51746e2159ebf57a",
+      "bytes": 45669
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_1987.parquet",
+      "sha256": "d44ae4a7494245e1a30907e559fef844ccffd1101fdf4c7072f7aa853f17c26d",
+      "bytes": 46031
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_1988.parquet",
+      "sha256": "65914b388f25e5575c7652be0e38a20e0f4d838480b7859b7ca1149ad54af4b3",
+      "bytes": 46293
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_1989.parquet",
+      "sha256": "7da0575f1c20b394c8dc73740e5ca25962ea1907f2b6866af83ec47ac6e06fe5",
+      "bytes": 46596
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_1990.parquet",
+      "sha256": "7b882d805c223ec0dfc3d15923e9f577b65f112b0c8e63dd4e810a7a7e237e7b",
+      "bytes": 46668
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_1991.parquet",
+      "sha256": "c58e6a38cc57a4b9a2000aeaa908472caa5dde2469a33aa25e0464e1d22f2a0f",
+      "bytes": 46834
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_1992.parquet",
+      "sha256": "f74c375250412cd7edd8fe3873fe9d62d9ead01064aafdcdcdd70b3c63fa0312",
+      "bytes": 46821
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_1993.parquet",
+      "sha256": "e968d71ff4029678af2abfa807efa415aaa4afaf96bf2ac09b84abeeddf57aac",
+      "bytes": 46780
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_1994.parquet",
+      "sha256": "02c98ba5bbbfab22f782bb1af69085a37ada9a9900e964011567383c7a150d41",
+      "bytes": 47007
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_1995.parquet",
+      "sha256": "9c65ed7b9f7eb496f58659af4cd99ac6a6e0d015481085de0fb3e7d626335925",
+      "bytes": 47083
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_1996.parquet",
+      "sha256": "c0175a6b166785c0998b07954f380993272dec88b36f55d1b613775e97b047c9",
+      "bytes": 47155
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_1997.parquet",
+      "sha256": "f4147c73e6faa6f79e08af8189d009bd83ff34aac8fd643b5bac574bce7a208f",
+      "bytes": 47212
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_1998.parquet",
+      "sha256": "337de1097dbfa9b1f2912aca61cbfa0c64e4ca88fcc4e2cf190db26ce9f22422",
+      "bytes": 47436
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_1999.parquet",
+      "sha256": "56aea6edd7571f5ec25ece462d0ce580d50e293840e5d66a47d95ecdb7ff2381",
+      "bytes": 47463
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2000.parquet",
+      "sha256": "a56404410e03a644016c29de5b34add74040f55a72834b82c67ec9ce5b2347c6",
+      "bytes": 47476
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2001.parquet",
+      "sha256": "a6c140e5be2ec58681e78e101506371f78b7f68e2c3d371c257501d5814ddd6e",
+      "bytes": 47447
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2002.parquet",
+      "sha256": "24ccf4bd97341a5e3ea80aace8719075c787fff29b2287fcea96fd98ae044062",
+      "bytes": 47609
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2003.parquet",
+      "sha256": "8714f04600076968a18ac19b4daacee076f8219baa0b6d6238ce2cab57c3db66",
+      "bytes": 47644
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2004.parquet",
+      "sha256": "e73829ddd810034099868b44e89f9610048d99107fcc9391046594baece3744f",
+      "bytes": 47640
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2005.parquet",
+      "sha256": "fe8481cab452eb2cf34bf36d507fdd0bb24e90f203d3c1256f226b4cd6ab9f7d",
+      "bytes": 47747
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2006.parquet",
+      "sha256": "694932c1f9fea8ee026ffe534be95ebe8db01c5ba7c973ac9c8d0fb3f993e7c9",
+      "bytes": 47747
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2007.parquet",
+      "sha256": "f3d57524d3a4c13f833c28687290b6be2b6ddbc9c19f8a913759c37e5717e783",
+      "bytes": 47913
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2008.parquet",
+      "sha256": "e180207dbb3c76c5b5a726e15f465f3bb30fd545b5addf48672fa370c5919434",
+      "bytes": 48029
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2009.parquet",
+      "sha256": "8702f29301ec5adc5fe5da03ce23ac04d4921775d42a42b661907a1ccec985f5",
+      "bytes": 48004
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2010.parquet",
+      "sha256": "5def1cf9630b5775460d4dae2dbd73e91d4bddcdaec920293d4e4563b341d40c",
+      "bytes": 47972
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2011.parquet",
+      "sha256": "afa07ecc3b84c8707ca84f4180c36a08ee114f4fb70864ddd69ec6d742b9d6fd",
+      "bytes": 48135
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2012.parquet",
+      "sha256": "5db649c4920f6c33768152ab224d566f0cb5434a8446973ed17e9387854dd23a",
+      "bytes": 48079
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2013.parquet",
+      "sha256": "8e4bd8a509a11119271de50d6f0247dd8d4a6edf14f7f792bdf6c01517b25045",
+      "bytes": 48125
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2014.parquet",
+      "sha256": "eddd2dc852ae0bc439ee5587f307d403bece032f867f4c7f2c9846652e2e4532",
+      "bytes": 48135
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2015.parquet",
+      "sha256": "e4db244d4a06fcc6ed71d4beb5141d5bece49f9bb016ebee24451736cadf0bd6",
+      "bytes": 48154
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2016.parquet",
+      "sha256": "ff6b93efce176531eddc2a1ee4438c87758129d4a868ccb2a3570e684209bb4f",
+      "bytes": 48196
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2017.parquet",
+      "sha256": "e54c3ad8f1bbe11ae8134f50563e54d3358a667c93f020cd32bad748615de19c",
+      "bytes": 48277
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2018.parquet",
+      "sha256": "f081309d054c4a2e099d798ca161f1c5d47c0ccd68d45efa53b4e8d302056c4a",
+      "bytes": 48257
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2019.parquet",
+      "sha256": "0761a6ed6ba877ebfa107502d7bb3c6fe78a9b9bc70342abefd3183bcf88fcdd",
+      "bytes": 48201
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2020.parquet",
+      "sha256": "c768a0da74a8f4891241891bb70aa862563f3e6260eaae9be86b6bba7f5548bd",
+      "bytes": 48528
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2021.parquet",
+      "sha256": "045c6a5ff5c8ed30602ed8e0f033fc1cfc6a6fda7b7668983a2d143785610683",
+      "bytes": 48533
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2022.parquet",
+      "sha256": "47a91708b8b2b241261611a8a965f74df30935b456e55f4249055a0898a7de2e",
+      "bytes": 48699
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2023.parquet",
+      "sha256": "51f17f92d1c3015aadab420c523693a3fd4339abe674339e21bf94308f2fb915",
+      "bytes": 48790
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2024.parquet",
+      "sha256": "4c7ced4ba4aac75c52a56799b0818ccce25648c50c2e316f42647a6075b8dbe3",
+      "bytes": 48798
+    },
+    {
+      "path": "data/derived/mining_panel/054c1bd052417b8b/mining_panel_2025.parquet",
+      "sha256": "4a7f3f1e6d95991a4ac96a5b0afcfcfae66f67ea0b379b4ac76badab7c1e55e4",
+      "bytes": 48800
+    }
+  ],
+  "notes": "municipalities=2783; small_municipalities=0; y1985: garimpo_ha=22466.24; y2000: garimpo_ha=113493.29; y2012: garimpo_ha=131129.61; y2024: garimpo_ha=291077.78",
+  "inputs": [
+    "data/raw/mapbiomas/mining/2026-11-12/_MANIFEST.json",
+    "data/raw/mapbiomas/coverage/2026-11-10/_MANIFEST.json",
+    "data/raw/ibge/boundaries_2024/2026-11-04/_MANIFEST.json"
+  ],
+  "sealed_files": [
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_1985.parquet",
+      "sha256": "cda68466fb26c37dbf2ace070464d4e2fa3602aefca92553dadc073ac5baa0f2",
+      "bytes": 44476
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_1986.parquet",
+      "sha256": "4f1bc44a88729c279a05248be526819af0ac4d95b7cac41bc89d68c074064862",
+      "bytes": 44834
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_1987.parquet",
+      "sha256": "9dc4a1b38955d4a831f4fc80856698a91d003526b55f661fae4dc7e968902bf0",
+      "bytes": 45028
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_1988.parquet",
+      "sha256": "505943e8f5c2fd5bd7c78a291597c03b7c7bf815ec744d076e09eb3a63578c63",
+      "bytes": 45264
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_1989.parquet",
+      "sha256": "beefb952e32c3f36a91797e277413b25eb8edd12ca652f77810671e8a2062020",
+      "bytes": 45736
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_1990.parquet",
+      "sha256": "638f27b463cce5413859d9a4ef6d55d0851c63794c6add76c3ae567b647fb13c",
+      "bytes": 45851
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_1991.parquet",
+      "sha256": "c28ed54e024cab7490e5a9e054d505fa0f6a02f3f7c86db38f4c1b497a43fb26",
+      "bytes": 46002
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_1992.parquet",
+      "sha256": "e1e9ee33bfad53c23ca09d0fb5dd5bb449cf4f2aca0c229e3328bcff5819eaec",
+      "bytes": 46141
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_1993.parquet",
+      "sha256": "683f1bfb980caaf2c87a791ebf78c51ac9cbb8f4c2e4db0d920502be2bbd63f0",
+      "bytes": 46153
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_1994.parquet",
+      "sha256": "b89daad447dcf409419a9bc13d30e987e6751034eccaa53ceed4becddb5a2027",
+      "bytes": 46246
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_1995.parquet",
+      "sha256": "782786f6d35819a8b2f1890466719ede8f4d39cf89f32bd373896342186effc4",
+      "bytes": 46320
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_1996.parquet",
+      "sha256": "2add913275cf2c9c01ebed3e006e3cf430c38dda8a192dcf5b66cfaeacf4da41",
+      "bytes": 46458
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_1997.parquet",
+      "sha256": "29bfad96e42390c1cde9c9e276ac4e68dcbe0166cc2923abfde34bba359928ab",
+      "bytes": 46406
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_1998.parquet",
+      "sha256": "f4e6d9368d6c0084d8255b79ab43f89fb265992480cd254ff5cfa508de274c7a",
+      "bytes": 46430
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_1999.parquet",
+      "sha256": "bf5fb9ed57070fedb3a3bb899c39ef0f5b23e6c7361cdf3527ceed867a434bcd",
+      "bytes": 46588
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2000.parquet",
+      "sha256": "95a965a7177f3173939700942e7231f3040748e27ac27f0f7f398490eb3fa3a8",
+      "bytes": 46644
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2001.parquet",
+      "sha256": "26c1df7f2347b4f1c2ae6f3013e1a5d5c28510144352d108edc64f3fceb9e39e",
+      "bytes": 46699
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2002.parquet",
+      "sha256": "99187ec5856a52a3e5eb33965b8ca72f6c270bacc5cfe2c6d2ecbf2d286aec87",
+      "bytes": 46756
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2003.parquet",
+      "sha256": "f264fd3b738c90275932f525cc753173b20363a1f7627d01a6cbba9bd8c62686",
+      "bytes": 46745
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2004.parquet",
+      "sha256": "abdf169215df0b5cca4fcfbb47195e6c3022a264159a5483aa278d65767c3ba7",
+      "bytes": 46779
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2005.parquet",
+      "sha256": "d31b7f463ecf5e70545adbde2e9a219b375f6c8f7fbd7ba1be3298512ed24921",
+      "bytes": 46849
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2006.parquet",
+      "sha256": "29f028f0f8017debe68045e3bedb10dadb0d698edb75001d5634cf0fc559de52",
+      "bytes": 46854
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2007.parquet",
+      "sha256": "1b63b94bec891de7cc469b35592138bf053e0bf10d2378e66621e53dde8da007",
+      "bytes": 46910
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2008.parquet",
+      "sha256": "7c36abe0ade53560ea70bc204728b7ed6a2839755717684769f51640347c4072",
+      "bytes": 46945
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2009.parquet",
+      "sha256": "abed88d0cd71ac1f24e0c94f2699922c46874cab7a0408fcde457056c65928b9",
+      "bytes": 47079
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2010.parquet",
+      "sha256": "60ad7f729dfe7cb399d7016384237ffbc1f1462869960b5b6f7ff23c2619ebae",
+      "bytes": 47153
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2011.parquet",
+      "sha256": "49a233c749b9bffa4162a29a8739f16361d11575883ba0248b4c7eecdf31a187",
+      "bytes": 47223
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2012.parquet",
+      "sha256": "c0c7d461cb313f61eaeb33654c19c99f52ab0dd0c641482fe2a5ed9a5f642d8e",
+      "bytes": 47226
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2013.parquet",
+      "sha256": "c8899664f665ca82c083f183edac0f0a82b939f51644e4e8ef2c26ae9ed69454",
+      "bytes": 47286
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2014.parquet",
+      "sha256": "aa80d2bfae43ae65ef77a116416801c3e85e25d92e3a249380b593e30baed410",
+      "bytes": 47351
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2015.parquet",
+      "sha256": "2aa800fa35e50323939fa7e1269e1f2d6d03fd8dcd907fb8edce3de4511bdcd3",
+      "bytes": 47322
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2016.parquet",
+      "sha256": "4cfac3b4b773b5da4e7ad4ea49c0a87ad2aad17be550af69c54f401722f428a4",
+      "bytes": 47537
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2017.parquet",
+      "sha256": "3d865b04266da60d985d7415e22147b7f5041e128063a8ae5667f183e2ff83bb",
+      "bytes": 47499
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2018.parquet",
+      "sha256": "e7b073f17bcabeba7382ca08b5f965c81a1ec62b068a5ca406148d5bc0c1cd4c",
+      "bytes": 47569
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2019.parquet",
+      "sha256": "7705d866da69f1d99b24aeae2b7289995616352e052b3137fb5e8985b464b095",
+      "bytes": 47634
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2020.parquet",
+      "sha256": "8a25701aa01eb914801a59bee3e5c66128488911eaab0a4418c5f16f9d4a02f9",
+      "bytes": 47797
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2021.parquet",
+      "sha256": "cb09170a0e00b4ebba291e336a2b6e6d3b5c260b8d7bcaa327857ac8cda04359",
+      "bytes": 47803
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2022.parquet",
+      "sha256": "37005efe5e978c09fb1b70b650d61d69c8ae03ddb34844cfb1bf249df8d642b9",
+      "bytes": 47906
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2023.parquet",
+      "sha256": "fad445b05fb6b7f6d42c44c49704fc4bf6ee93c3c55e702205ae820865827eb9",
+      "bytes": 47960
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2024.parquet",
+      "sha256": "a7f2cd5770bc3f501bd54c37987894f84978b8c3ca6418a7def96af0c973c015",
+      "bytes": 48096
+    },
+    {
+      "path": "sealed/outcomes/mining_panel/054c1bd052417b8b/mining_panel_2025.parquet",
+      "sha256": "e3e810a2f9714cb61f31e013b5aa2875519c10a9d2dffbb54cd69e3765ef9425",
+      "bytes": 48109
+    }
+  ]
+}
