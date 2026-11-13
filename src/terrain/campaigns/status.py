@@ -37,6 +37,7 @@ from terrain.campaigns.tick import (
     _task_state,
     _time,
     breaker_line,
+    fork_outcome,
 )
 
 STATUS_TITLE = "Research Terrain: status"
@@ -217,6 +218,16 @@ def _now(v: CampaignView, cst: StepState | None, snap: Snapshot) -> str:
     return "; ".join(parts)
 
 
+def fork_state(v: CampaignView, fork_id: str, snap: Snapshot) -> str:
+    """A fork's state in a few words, for the Running table (decision 0015)."""
+    outcome = fork_outcome(v, fork_id, True, snap.now)
+    if outcome in ("survived", "killed"):
+        return f"{outcome} (fork)"
+    if v.adoption and v.adoption[0] == fork_id:
+        return "adopted the plan's skipped steps"
+    return "running" if outcome == "pending" else outcome
+
+
 def running(
     views: Sequence[CampaignView], snap: Snapshot, gctx: GateContext, root: Path
 ) -> list[list[str]]:
@@ -228,11 +239,16 @@ def running(
         skipped = sum(1 for st in v.states.values() if st.status == "skipped")
         steps = f"{done} of {len(c.steps)}" + (f" ({skipped} skipped)" if skipped else "")
         last = max(v.events.values(), key=_time, default="")
+        now = _now(v, _closeout_state(v, snap, gctx, root), snap)
+        if c.forks is not None:
+            steps += f"; forks: {len(c.fork_files)} of {c.forks.max_forks}"
+            states = [f"{f.id} {fork_state(v, f.id, snap)}" for f in c.fork_files]
+            now += "; forks: " + (", ".join(states) if states else "none yet")
         rows.append(
             [
                 _campaign(c, v.tracking),
                 steps,
-                _now(v, _closeout_state(v, snap, gctx, root), snap),
+                now,
                 _when(last) if last else "none yet",
                 f"{v.used['max_model_jobs']} of {c.budget['max_model_jobs']}",
                 c.end_by,

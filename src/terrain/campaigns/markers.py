@@ -15,6 +15,10 @@ _TRACKING = re.compile(r"<!-- campaign-tracking: (\d{4}) -->")
 _CLOSEOUT = re.compile(r"<!-- campaign-closeout: (\d{4}) -->")
 _STATUS = re.compile(r"<!-- campaign-status: 0000 -->")
 _REPAIR = re.compile(r"<!-- campaign-repair: (\d{4})/(s\d{1,2})/(\d) -->")
+# Forks (decision 0015): a fork's task, a step a fork adopted, an ideation result.
+_FORK = re.compile(r"<!-- campaign-fork: (\d{4})/(f[1-9]) -->")
+_ADOPTED = re.compile(r"<!-- campaign-adopted: (\d{4})/(s\d{1,2})/(f[1-9]) -->")
+_IDEATION = re.compile(r"<!-- campaign-ideation: (\d{4})/(s\d{1,2}) (\{.*?\}) -->", re.S)
 _LEDGER = re.compile(r"<!-- campaign-ledger: (\d{4}) (\[.*?\]) -->", re.S)
 _AGENT_FILES = re.compile(r"<!-- agent-files: (\[.*?\]) -->", re.S)
 _RUN_TITLE = re.compile(r" campaign (\d{4})/(s\d{1,2})$")
@@ -35,6 +39,47 @@ def closeout_marker(cid: str) -> str:
 def repair_marker(cid: str, sid: str, n: int) -> str:
     """The marker of repair task `n` of run step `sid` (decision 0014)."""
     return f"<!-- campaign-repair: {cid}/{sid}/{n} -->"
+
+
+def fork_marker(cid: str, fid: str) -> str:
+    """The marker of a fork's task issue (beside its step marker)."""
+    return f"<!-- campaign-fork: {cid}/{fid} -->"
+
+
+def adopted_marker(cid: str, sid: str, fid: str) -> str:
+    """The marker of the issue of plan step `sid`, adopted by fork `fid` (F9)."""
+    return f"<!-- campaign-adopted: {cid}/{sid}/{fid} -->"
+
+
+def ideation_marker(cid: str, sid: str, facts: dict) -> str:
+    """The marker of the ideation job's comment on the tracking issue, with its counts."""
+    return f"<!-- campaign-ideation: {cid}/{sid} {json.dumps(facts, separators=(',', ':'))} -->"
+
+
+def parse_fork(body: str) -> tuple[str, str] | None:
+    m = _FORK.search(body or "")
+    return (m.group(1), m.group(2)) if m else None
+
+
+def parse_adopted(body: str) -> tuple[str, str, str] | None:
+    m = _ADOPTED.search(body or "")
+    return (m.group(1), m.group(2), m.group(3)) if m else None
+
+
+def parse_ideation(body: str) -> tuple[str, str, dict] | None:
+    m = _IDEATION.search(body or "")
+    if not m:
+        return None
+    try:
+        facts = json.loads(m.group(3))
+    except ValueError:
+        return None
+    return (m.group(1), m.group(2), facts) if isinstance(facts, dict) else None
+
+
+def ideation_run_title(cid: str, sid: str) -> str:
+    """The run-name campaign-ideate.yml gives a run (a dry run says so first)."""
+    return f"Ideate campaign {cid}/{sid}"
 
 
 def status_marker() -> str:
@@ -113,13 +158,18 @@ def parse_run_title(title: str) -> tuple[str, str] | None:
 
 
 def strip_marker(body: str) -> str:
-    """The issue body without the step marker line, for comparing with its draft."""
+    """The issue body without its marker lines (step, fork, adopted), to compare with its draft."""
     lines = [
         ln
         for ln in (body or "").replace("\r\n", "\n").split("\n")
-        if not _STEP.fullmatch(ln.strip())
+        if not any(m.fullmatch(ln.strip()) for m in (_STEP, _FORK, _ADOPTED))
     ]
     return "\n".join(lines).strip()
+
+
+def delta_section(fid: str, delta: str) -> str:
+    """The section an adopted step's issue adds to its approved draft (F9)."""
+    return f"## Fork delta ({fid})\n\n{delta.strip()}"
 
 
 def draft_body(draft_text: str) -> tuple[str, str]:

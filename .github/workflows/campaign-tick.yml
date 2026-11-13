@@ -18,7 +18,8 @@ name: Campaign tick
 #
 # Triggers (coordination report 2026-11-08, section 4):
 #   workflow_run       The end of every workflow a campaign step waits on:
-#                      Explore run and Data pipeline (a step's run), CI (a
+#                      Explore run and Data pipeline (a step's run), Campaign
+#                      ideate (a fork point's proposals, decision 0015), CI (a
 #                      record PR's checks, and main's after a merge), Agent
 #                      plan and Agent build (a close-out's plan and PR),
 #                      Agent review (its verdict) and Campaign gate, only
@@ -70,7 +71,7 @@ name: Campaign tick
 # that arrived while the current one ran.
 on:
   workflow_run:
-    workflows: [Explore run, Data pipeline, CI, Agent plan, Agent build, Agent review, Campaign gate]
+    workflows: [Explore run, Data pipeline, CI, Agent plan, Agent build, Agent review, Campaign gate, Campaign ideate]
     types: [completed]
   schedule:
     - cron: "41 * * * *" # backup only, hourly (see above)
@@ -192,6 +193,8 @@ jobs:
               "data-pipeline.yml": {"stage": r"^(acquire|build)$", "target": r"^[a-z][a-z0-9_]{0,63}$",
                                     "campaign": r"^[0-9]{4}/s[0-9]{1,2}$"},
               "campaign-gate.yml": {"pr": r"^[0-9]{1,7}$"},
+              # a fork point's ideation job (decision 0015); never a dry run from here
+              "campaign-ideate.yml": {"campaign": r"^[0-9]{4}$", "step": r"^s[0-9]{1,2}$"},
           }
           MARKER = re.compile(r"<!-- campaign-(step|tracking|closeout|ledger|repair|status): [0-9]{4}")
           TRACKING = re.compile(r"<!-- campaign-tracking: [0-9]{4} -->")

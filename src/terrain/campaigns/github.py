@@ -22,6 +22,7 @@ open, the close-out's pull request.
 
 from __future__ import annotations
 
+import base64
 import datetime as dt
 import json
 import os
@@ -42,13 +43,15 @@ from terrain.campaigns.facts import (
     Snapshot,
     parse_review,
 )
-from terrain.campaigns.gate import MANIFEST_BRANCH, RECORD_BRANCH, TASK_BRANCH
+from terrain.campaigns.gate import FORK_BRANCH, MANIFEST_BRANCH, RECORD_BRANCH, TASK_BRANCH
 
 _NEXT = re.compile(r'<([^>]+)>;\s*rel="next"')
 REVIEW_BOT = "github-actions[bot]"
 LOG_TAIL_BYTES = 64 * 1024  # of a job log, kept while reading; the rest is dropped
 LOG_TAIL_LINES = 200
 FAILED = ("failure", "timed_out")
+IDEATE_WORKFLOW = "campaign-ideate.yml"
+MAX_FORK_PLAN_FILES = 40  # a fork plan adds at most a few forks' files
 
 
 class RateLimited(RuntimeError):  # noqa: N818 (a state to wait out, not a fault)
@@ -242,7 +245,13 @@ class GitHub:
         pr = self.get(f"/pulls/{number}")
         head_ref, head_sha = pr["head"]["ref"], pr["head"]["sha"]
         self.seen_head = (number, head_sha)
-        files = tuple(f["filename"] for f in self.pages(f"/pulls/{number}/files", limit=5))
+        raw_files = self.pages(f"/pulls/{number}/files", limit=5)
+        files = tuple(f["filename"] for f in raw_files)
+        changes = tuple((f["filename"], str(f.get("status", ""))) for f in raw_files) + tuple(
+            (f["previous_filename"], "renamed-from")
+            for f in raw_files
+            if f.get("previous_filename")
+        )
         checks = self.get(f"/commits/{head_sha}/check-runs", check_name="test").get(
             "check_runs", []
         )
@@ -268,16 +277,21 @@ class GitHub:
             ):
                 latest[rv["user"]["login"]] = rv["state"]
         approvals = tuple(sorted(u for u, s in latest.items() if s == "APPROVED"))
-        issue_body = issue_title = run_title = ""
+        issue_body = issue_title = run_title = run_workflow = ""
         run_conclusion = None
+        added: tuple[tuple[str, str], ...] = ()
         m = TASK_BRANCH.match(head_ref)
         if m and with_issue:
             issue = self.get(f"/issues/{m.group(1)}")
             issue_body, issue_title = issue.get("body") or "", issue.get("title") or ""
         m = RECORD_BRANCH.match(head_ref) or MANIFEST_BRANCH.match(head_ref)
+        m = m or FORK_BRANCH.match(head_ref)
         if m:
             run = self.get(f"/actions/runs/{m.group(m.lastindex)}")
             run_title, run_conclusion = run.get("display_title", ""), run.get("conclusion")
+            run_workflow = str(run.get("path", ""))
+        if FORK_BRANCH.match(head_ref):
+            added = self._added_texts(changes, head_sha)
         return PullRequest(
             number=number,
             author=pr["user"]["login"],
@@ -298,7 +312,32 @@ class GitHub:
             run_conclusion=run_conclusion,
             created_at=pr.get("created_at", ""),
             merged_at=pr.get("merged_at") or "",
+            changes=changes,
+            run_workflow=run_workflow,
+            added_texts=added,
         )
+
+    def _added_texts(
+        self, changes: tuple[tuple[str, str], ...], sha: str
+    ) -> tuple[tuple[str, str], ...]:
+        """(path, text) of the files a fork plan adds under a campaign's forks/, at `sha`.
+
+        Read through the contents API, so the gate never checks out the pull
+        request. At most MAX_FORK_PLAN_FILES; a file that cannot be decoded is
+        left out (and then missing, which the checks refuse).
+        """
+        out = []
+        for path, status in changes[:MAX_FORK_PLAN_FILES]:
+            if status != "added" or "/forks/" not in path:
+                continue
+            got = self.get(f"/contents/{urllib.parse.quote(path)}", ref=sha)
+            if isinstance(got, dict) and got.get("encoding") == "base64":
+                try:
+                    text = base64.b64decode(got.get("content", "")).decode("utf-8")
+                except (ValueError, UnicodeDecodeError):
+                    continue
+                out.append((path, text))
+        return tuple(out)
 
     def pr_for_branch(self, branch: str, with_issue: bool = True) -> PullRequest | None:
         owner = self.repo.split("/")[0]
@@ -393,6 +432,15 @@ class GitHub:
                 )
             )
         runs = self.runs("explore-run.yml", since) + self.runs("data-pipeline.yml", since)
+        ideations = self.runs(IDEATE_WORKFLOW, since)
+        fork_prs: dict[int, PullRequest] = {}
+        for r in ideations:
+            found = markers.parse_run_title(r.title)
+            if not found or (active is not None and found[0] not in active):
+                continue
+            pr = self.pr_for_branch(f"forks/{found[0]}-{found[1]}-{r.id}")
+            if pr:
+                fork_prs[r.id] = pr
         record_prs: dict[int, PullRequest] = {}
         for r in runs:
             if r.status != "completed" or r.conclusion != "success" or " campaign " not in r.title:
@@ -428,7 +476,17 @@ class GitHub:
         )
         logs = self.run_logs(runs, log_campaigns) if log_campaigns else {}
         return Snapshot(
-            now, enabled, app_bot, issues, runs, record_prs, results, on_main, logs, repo_url
+            now,
+            enabled,
+            app_bot,
+            issues,
+            runs + ideations,
+            record_prs,
+            results,
+            on_main,
+            logs,
+            repo_url,
+            fork_prs,
         )
 
 

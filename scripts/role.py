@@ -44,6 +44,7 @@ WORKFLOWS = {
     "planner": ".github/workflows/agent-plan.yml",
     "builder": ".github/workflows/agent-build.yml",
     "reviewer": ".github/workflows/agent-review.yml",
+    "ideation": ".github/workflows/campaign-ideate.yml",
 }
 REQUIRED = ("role", "model", "max_turns", "workflow")
 OPTIONAL = ("notes",)

@@ -1,4 +1,4 @@
-"""harness/roles/ and scripts/role.py: the planner, builder and reviewer instructions.
+"""harness/roles/ and scripts/role.py: the planner, builder, reviewer and ideation instructions.
 
 The prompt bodies are pinned by SHA-256 below. They were moved unchanged from
 the inline `prompt: |` blocks of the three agent workflows. Changing a role
@@ -46,7 +46,15 @@ EXPECTED = {
         "Review",
         "claude-opus-5-5",
         "50",
-        "ca801993075c577e744336f043cb64f274d887e7b5b5ecd52f7846cdacec07a2",
+        "4aa735da90073e9ddf75dd3b874a0c1d53d30fb82c5fec9f4d1c741ca7f79544",
+    ),
+    "ideation": (
+        "campaign-ideate.yml",
+        "ideate",
+        "Ideate",
+        "claude-opus-5-5",
+        "40",
+        "ac0292130b951ad66d68ce316254785010280fbb35a7bac24d52c13355fe1b3d",
     ),
 }
 
@@ -112,10 +120,11 @@ def test_builder_keeps_the_history_of_its_turn_limit():
     )
 
 
-def test_roles_folder_holds_exactly_the_three_roles_and_a_readme():
+def test_roles_folder_holds_exactly_the_four_roles_and_a_readme():
     assert sorted(p.name for p in ROLES.iterdir()) == [
         "README.md",
         "builder.md",
+        "ideation.md",
         "planner.md",
         "reviewer.md",
     ]

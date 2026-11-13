@@ -106,8 +106,10 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
   separate build task first.
 - Explore PRs also get a referee section in the review (R1-R7: exploration
   half only, no outcome data, definitions as stated, level and inference,
-  plausible magnitudes, claims, forking paths). A referee problem is a
-  must-fix item, so it goes back to the builder like any other.
+  plausible magnitudes, claims, forking paths). A fork's task also gets R8,
+  fork discipline (decision 0015), which is never "Not applicable". A
+  referee problem is a must-fix item, so it goes back to the builder like
+  any other.
 - Planners and reviewers read `research/INDEX.md` after this file, and cite
   by path the records (ideas, decisions, lessons) a plan or finding rests on.
   The index is generated on demand and is not in git: their workflows build

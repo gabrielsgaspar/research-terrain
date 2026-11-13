@@ -36,6 +36,19 @@ REPORT_SECTIONS = (
 )
 
 
+# A campaign with a forks envelope (decision 0015) has one more section, after
+# "Kill rules applied", holding the tick's fork facts unchanged.
+FORKS_SECTION = "Forks"
+
+
+def report_sections(c: Campaign) -> tuple[str, ...]:
+    """The report's sections, in order, for campaign `c`."""
+    if c.forks is None:
+        return REPORT_SECTIONS
+    i = REPORT_SECTIONS.index("Kill rules applied") + 1
+    return (*REPORT_SECTIONS[:i], FORKS_SECTION, *REPORT_SECTIONS[i:])
+
+
 # The statuses a close-out may recommend for its idea, and then writes to the idea file.
 RECOMMENDED_STATUSES = ("promising", "parked", "dead")
 
@@ -96,6 +109,42 @@ def ledger_table(rows: list[dict[str, str]]) -> str:
     )
 
 
+def _forks_block(forks: str) -> str:
+    if not forks:
+        return ""
+    return f"""## Forks (written by the tick; copy as is)
+
+The variants this campaign ran inside its envelope (decision 0015), how many
+were tried at each fork point, and those refused or only suggested.
+
+{forks}
+
+"""
+
+
+def _forks_rules(forks: str) -> str:
+    if not forks:
+        return ""
+    return """
+  - "Forks" holds the "Forks (written by the tick)" section above unchanged,
+    and next to any fork that survived, the number of forks tried at its
+    point. A fork's result is never a finding.
+  - In "Decisions for Gabriel": recommend `dead` only if the plan's path and
+    every fork failed. If only a fork survived, recommend `promising` and say:
+    "the idea as first written met its kill criterion; the surviving variant
+    is fK" (with its id). Recommend at most one design for the confirmation
+    half, and say that its registration must list every fork tried
+    (decision 0015, F10)."""
+
+
+def _variants_rule(forks: str) -> str:
+    if not forks:
+        return ""
+    return """ Add a section `## Variants tried` that lists every
+  fork of the Forks table (id, parent step, what changed, verdict), one item
+  each."""
+
+
 def closeout_issue(
     c: Campaign,
     root: Path,
@@ -107,6 +156,7 @@ def closeout_issue(
     applied: list[str] | None = None,
     friction: str = "None given.",
     not_run: list[str] | None = None,
+    forks: str = "",
 ) -> tuple[str, str]:
     """(title, body) of the close-out issue.
 
@@ -120,9 +170,9 @@ def closeout_issue(
     used = ", ".join(
         f"{k} {budget_used.get(k, 0)} of {c.budget.get(k, 0)}" for k in sorted(c.budget)
     )
-    sections = "\n".join(f"   - `## {s}`" for s in REPORT_SECTIONS)
+    sections = "\n".join(f"   - `## {s}`" for s in report_sections(c))
     opening = "\n".join(f"   - `{line}`" for line in REPORT_OPENING)
-    n_sections = number_word(len(REPORT_SECTIONS))
+    n_sections = number_word(len(report_sections(c)))
     rules = "\n".join(f"- {line}" for line in (applied or [])) or "- No kill rule was applied."
     checks = "\n".join(f"- {line}" for line in (not_run or [])) or "None."
     roles = ", ".join(NOTE_ROLES)
@@ -170,7 +220,7 @@ round is one agent review after the first.
 
 {friction}
 
-## Checks not run (written by the tick; copy as is)
+{_forks_block(forks)}## Checks not run (written by the tick; copy as is)
 
 Every step that did not finish, every kill rule that was never applied
 because its step did not run to a result, and every referee row a review
@@ -211,7 +261,7 @@ in this campaign marked "Not applicable", each with its reason.
     next in the repository: the idea's status, whether to register a design
     for the confirmation half, or whether to open a follow-up campaign or
     task. No question about unused budget. The first is always the idea's
-    status, with the options {statuses} and one of them recommended.
+    status, with the options {statuses} and one of them recommended.{_forks_rules(forks)}
 - `{NOTES_PATH}`: advice for later campaigns, which every agent reads.
   - Add at most {number_word(MAX_NEW_NOTES)} notes under `## Notes`. Each answers one row
     of the friction facts above (a row of a table, or the wall-clock line)
@@ -240,8 +290,8 @@ in this campaign marked "Not applicable", each with its reason.
 - `{idea_file}`: the idea's status follows the report. In the front matter,
   `status` becomes the status the report recommends in its first decision
   (one of {statuses}) and `updated` today's date; `kill_criteria` and every
-  other key stay as they are. Add one dated line under `## Status`, in this
-  shape, on one item:
+  other key stay as they are.{_variants_rule(forks)} Add one dated line under
+  `## Status`, in this shape, on one item:
 
   ```markdown
   {status_line}

@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 
 _REVIEW_HEAD = re.compile(r"^## Agent review: (Approve|Changes needed)", re.M)
 _REVIEWED_SHA = re.compile(r"Reviewed commit `([0-9a-f]{7,40})`")
-_REFEREE_ROW = re.compile(r"^\| (R[1-7]) \| [^|]*\| ([^|]+?) \|", re.M)
+_REFEREE_ROW = re.compile(r"^\| (R[1-8]) \| [^|]*\| ([^|]+?) \|", re.M)
 PLAN_PREFIX = "## Agent plan: "
 
 
@@ -26,7 +26,7 @@ class Comment:
 class Review:
     verdict: str  # "approve" or "changes"
     sha: str  # reviewed commit as printed (12 characters)
-    referee: dict[str, str]  # R1..R7 -> "OK", "Problem", "Not applicable", "Not checked"
+    referee: dict[str, str]  # R1..R8 -> "OK", "Problem", "Not applicable", "Not checked"
     created_at: str
 
 
@@ -80,6 +80,12 @@ class PullRequest:
     run_conclusion: str | None = None
     created_at: str = ""
     merged_at: str = ""
+    # (path, GitHub's status: added, modified, removed, renamed, ...) of each file, and
+    # for a renamed file also its old path, as ("old path", "renamed-from")
+    changes: tuple[tuple[str, str], ...] = ()
+    run_workflow: str = ""  # for explore/, data/ and forks/ branches: the run's workflow file
+    # for a fork plan pull request: (path, text) of each added file, read at the head
+    added_texts: tuple[tuple[str, str], ...] = ()
 
     def review_of_head(self) -> Review | None:
         mine = [r for r in self.reviews if self.head_sha.startswith(r.sha)]
@@ -129,3 +135,5 @@ class Snapshot:
     # the repository's web address (server and owner/name), for links on the status
     # page; "" gives plain paths instead of links
     repo_url: str = ""
+    # ideation run id -> its fork plan pull request (branch forks/NNNN-sNN-<run id>)
+    fork_prs: dict[int, PullRequest] = field(default_factory=dict)
