@@ -66,8 +66,8 @@ How to choose:
 - `adopts_downstream: true` only at a killed point, when the surviving
   variant should carry the plan on; then `delta` says, in at most 600
   characters, what the skipped steps' drafts must read differently (for
-  example: "Use geo_exposed (yes/no) wherever the draft says
-  geo_gold_per_km2.").
+  example: "Use the outcome in logs wherever the draft says the outcome in
+  levels.").
 - Write each task's `draft` as the issue body a planner will read: Goal,
   Idea, In scope (the exact files, the keys the script writes to
   results.json), Out of scope, `## What differs from the parent`, and
