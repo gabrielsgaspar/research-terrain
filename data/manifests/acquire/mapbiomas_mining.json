@@ -1,0 +1,224 @@
+{
+  "dataset": "mapbiomas_mining",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/mapbiomas/mining/2026-11-12/",
+  "created_at": "2026-11-13T13:40:51.247116+00:00",
+  "code_commit": "ef96e28f7be4148a9fe667ffed30f13170e6317d",
+  "sources": [
+    {
+      "url": "projects/mapbiomas-public/assets/brazil/lulc/collection11/mapbiomas_brazil_collection11_mining_substances_v1",
+      "last_modified": "2026-08-05T18:29:31.431101Z",
+      "etag": "da2a3da71529dcd3",
+      "bytes": 263444696
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_1985.tif",
+      "sha256": "7df5feb806f589ad9462bae7f74c01d36d6d7e27d36e6d9eec638fa02a4dd19f",
+      "bytes": 447012
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_1986.tif",
+      "sha256": "00e1ce68dca9099ca1465d5fa973bf22a1f60d7c6e40d7aefcdf15e301455085",
+      "bytes": 455864
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_1987.tif",
+      "sha256": "3747c7373696f329e2b436034ce022e9b7bfe1bd31d9ceb63b7321a6bbc1524b",
+      "bytes": 463695
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_1988.tif",
+      "sha256": "b2d73d3b15a5bb6dd203a0cf1ea23421c4593cab22e69779113a587880dd7b2f",
+      "bytes": 473790
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_1989.tif",
+      "sha256": "d662b818c86a9fc5512acb775d0e02ec3c4ecf53de28de26fa81863900fc89b7",
+      "bytes": 487622
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_1990.tif",
+      "sha256": "58068a6b8532cbab01e0c2a814b4dc955597734d208eb66d39a6d6329597f1a8",
+      "bytes": 494522
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_1991.tif",
+      "sha256": "2ac09c7e854f0066e5e0c06590d3dae1bf6d5efe2982b328f5fa367fc59e1a07",
+      "bytes": 497530
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_1992.tif",
+      "sha256": "26c36bc3333e0a7a8618bbc52b20187c21716fbdc5143944252c48147cd1b3e7",
+      "bytes": 499373
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_1993.tif",
+      "sha256": "f0f301d5bc90241d3b1cb1745ae1ec35949bce4d520152662742cecfa84e60eb",
+      "bytes": 501623
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_1994.tif",
+      "sha256": "57d5aa794f8ae5e2d14542912ce1dad555d2b2cc606c873af90cbfb994fffa00",
+      "bytes": 504088
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_1995.tif",
+      "sha256": "fc01a8142aac0cf9ddf8025cb1e30afc7c679eb30c9c9f7ad11ad7346d614783",
+      "bytes": 504908
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_1996.tif",
+      "sha256": "cbc500f8618526cc8e6c574230fe772b6d9be890ccc1b413580da0f0189c4088",
+      "bytes": 505972
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_1997.tif",
+      "sha256": "538f395a9d2c9b95b7018b477007322c666b1fbf6512154074a8b90760875457",
+      "bytes": 506753
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_1998.tif",
+      "sha256": "3f02f57c07c94ffea4b7f25c4ad07ee8058687aaf4b278f3dd894e37eff72611",
+      "bytes": 507447
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_1999.tif",
+      "sha256": "41965ce9a6f057113a945882baf6dc78369d87f832fcdedaf9c033bc77e83591",
+      "bytes": 509101
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2000.tif",
+      "sha256": "b22ad76d13d62fa38953246e49e8e542241315906934a3ed06d039941be743e6",
+      "bytes": 509551
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2001.tif",
+      "sha256": "cf47915c3906c40f121b3fe81d292571164206d75d6234a3411d5205a211f025",
+      "bytes": 511062
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2002.tif",
+      "sha256": "7d738167c49f90a6ca21e3f24fdbbe21c441cae43bddd11c30beac85ec870fc9",
+      "bytes": 511604
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2003.tif",
+      "sha256": "a66284b7e394a692e95de62019182fb21130bfababb00f18bdd74db7cbb1d8d1",
+      "bytes": 512571
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2004.tif",
+      "sha256": "fb30a730bc8730f5fea55713e7e3947ef25bbe2326de1fc0146ed39d9c8613c5",
+      "bytes": 513158
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2005.tif",
+      "sha256": "ed82521a094245e97f2b82421aade255c47e3e49427c80bb6719a4c37b1b9057",
+      "bytes": 514614
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2006.tif",
+      "sha256": "6e06f5c7af5819373c721e2724e8f83bcd0fa1dc01817403bc700478b274362d",
+      "bytes": 515217
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2007.tif",
+      "sha256": "1cd0518e53fc3a2f50dfbcee38a3b8b3ddd6ffd7eedc675e673e2412b4a101d0",
+      "bytes": 517095
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2008.tif",
+      "sha256": "6180006e5766f46f52582da366ea76370e3fc3c2c0f43894f4f826de30d49d1c",
+      "bytes": 518576
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2009.tif",
+      "sha256": "112548350fd35bc4a8d7f38e1ef2a1786f34c9dea09f4da7da2ad25a8cd79251",
+      "bytes": 519561
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2010.tif",
+      "sha256": "d6521f5ab9b75631a1c396faddd66a3f293e701f03463129253bd875bf0a4354",
+      "bytes": 520563
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2011.tif",
+      "sha256": "8f3ed29e0fe65c010796da2f88f065c0729745deb1c5c55dc436034e421fe36a",
+      "bytes": 522558
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2012.tif",
+      "sha256": "c18ab61238b0c9b51529f691295eae2055543f2de53be86b0674ee1df30fc825",
+      "bytes": 524175
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2013.tif",
+      "sha256": "220be1c8c242eb58479f174ccbfd0d98b9b129d3724070eae59a29f89787311f",
+      "bytes": 527566
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2014.tif",
+      "sha256": "b2eb3c80e117e5e59eb60df0f26746fbbe36c20db266a164031727cf2a632c14",
+      "bytes": 529277
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2015.tif",
+      "sha256": "147ca2c9696d42788a95ad1df643a0ebb1b29daaf320902eb8992a656c96223d",
+      "bytes": 531431
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2016.tif",
+      "sha256": "b9cfde36ffa10d7b23c1468221953df49fe04d881d390b70f6b384b90ccb8726",
+      "bytes": 534704
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2017.tif",
+      "sha256": "eead62ed2ba9d6f272bbb4e873043a20b4947d7dee41d9d8eb348dd9bd22a931",
+      "bytes": 538509
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2018.tif",
+      "sha256": "cc210b55d3ad1f061c6b8a69b645090a0c7b5eef15d30047e72aa35e22d0ca82",
+      "bytes": 541605
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2019.tif",
+      "sha256": "c29ed63c2d16c4c8cd678e108112e02ba8e6228b8315384cff72d19e4008277d",
+      "bytes": 546575
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2020.tif",
+      "sha256": "4ad44c10094a9f13b28b1e99c4c6b540c9eab41826a78473f7e69bfb7030f230",
+      "bytes": 557506
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2021.tif",
+      "sha256": "77c66d97bcfe49b5db55a9355a3690d68012b7bc0cb7ddd4ebdca16eef39e6c7",
+      "bytes": 566290
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2022.tif",
+      "sha256": "d3da7d34bb4673b6a45ed1de0566d992365fd41422a84567df5325b94e06ed55",
+      "bytes": 574919
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2023.tif",
+      "sha256": "197ab19ccdb8a13365a9140867c93f3e5a83f351255cc151f0360e01fd9b1eca",
+      "bytes": 581497
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2024.tif",
+      "sha256": "fcf72f45ab3bc4417684aa6c5b4c820d8cfb37ea429d1bee5d1af044afeb1f34",
+      "bytes": 583779
+    },
+    {
+      "path": "data/raw/mapbiomas/mining/2026-11-12/mining_shares_2025.tif",
+      "sha256": "5733eb017738fb3de8b24dd2385d8ddcd7d1554a923cfb82b6365642eaef3e8b",
+      "bytes": 589609
+    }
+  ],
+  "notes": "cells with data per year: 1985=7602 (7599 partly unclassified), 1986=9653 (9649 partly unclassified), 1987=11376 (11371 partly unclassified), 1988=14234 (14229 partly unclassified), 1989=17731 (17725 partly unclassified), 1990=19494 (19488 partly unclassified), 1991=20042 (20036 partly unclassified), 1992=20765 (20757 partly unclassified), 1993=21481 (21475 partly unclassified), 1994=22175 (22167 partly unclassified), 1995=22414 (22404 partly unclassified), 1996=22602 (22593 partly unclassified), 1997=22763 (22751 partly unclassified), 1998=22979 (22970 partly unclassified), 1999=23221 (23215 partly unclassified), 2000=23302 (23295 partly unclassified), 2001=23495 (23487 partly unclassified), 2002=23690 (23680 partly unclassified), 2003=23870 (23859 partly unclassified), 2004=24017 (24005 partly unclassified), 2005=24238 (24225 partly unclassified), 2006=24463 (24448 partly unclassified), 2007=24798 (24777 partly unclassified), 2008=25107 (25082 partly unclassified), 2009=25365 (25341 partly unclassified), 2010=25663 (25638 partly unclassified), 2011=26051 (26020 partly unclassified), 2012=26490 (26455 partly unclassified), 2013=27174 (27138 partly unclassified), 2014=27830 (27790 partly unclassified), 2015=28531 (28488 partly unclassified), 2016=29410 (29369 partly unclassified), 2017=30515 (30472 partly unclassified), 2018=31504 (31468 partly unclassified), 2019=32619 (32580 partly unclassified), 2020=35978 (35925 partly unclassified), 2021=38574 (38516 partly unclassified), 2022=41118 (41061 partly unclassified), 2023=42731 (42665 partly unclassified), 2024=43765 (43695 partly unclassified), 2025=45460 (45370 partly unclassified)"
+}
