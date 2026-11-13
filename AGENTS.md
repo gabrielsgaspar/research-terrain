@@ -243,8 +243,35 @@ workflow carries it out; the `campaign-gate` check decides what may merge.
 - Never, in a campaign or not: the confirmation half, `confirm/`, accepted
   decisions, kill criteria in idea files, analysis that a step does not
   list, deleting data, personal identifiers in Git.
-- New ideas and variations an agent thinks of go into the close-out report
-  as suggestions. They are never run in the same campaign.
+- Forks (decision 0015): variants of a step, run in the same campaign only
+  inside the `forks:` envelope Gabriel approved with the plan. Any other new
+  idea or variation goes into the close-out report as a suggestion.
+  - Exploration half only; fork code follows every explore rule, and every
+    file a fork writes is new and named `*_fK`.
+  - A fork is a file on main (`forks/fK.md`) before any of its steps starts,
+    written by code from the ideation job's output. Fork files are never
+    edited or deleted afterwards, except by Gabriel.
+  - Every fork declared at a point runs, not only until one passes; only
+    the budget or the end date stops them, and the report says so.
+  - A fork's run inherits its parent step's kill rules, copied by code; a
+    `question` fork names rules from `research/campaigns/kill-rule-library.yaml`.
+    Agents never write a threshold, and each fork run needs a rule other
+    than "finite".
+  - One type and one dimension per fork; nothing else differs from the
+    parent (the reviewer's R8 checks it).
+  - A sample fork filters only on things fixed before the outcome, never on
+    outcomes, and gets the library rule `min_clusters`.
+  - New data only from `data/approved-publishers.yaml`, with no identifiers
+    and at most 5 GB.
+  - A fork's result is never a finding: "survived (fork)" or "killed
+    (fork)", next to the number of forks tried at that point.
+  - If the plan's step was killed and a fork survives, the first surviving
+    fork in the declared order adopts the skipped steps, unchanged but for
+    its delta text; at most once per campaign.
+  - At most one design per idea is recommended for the confirmation half,
+    and its registration lists every fork tried.
+  - No forks of forks. Fork steps use the envelope's budget, never the
+    plan's, and start only when no step of the plan can.
 - Circuit breaker: while 3 step blocks posted in the last 24 hours still hold,
   nothing new starts in that campaign (no step, retry or repair); work in flight
   and gate merges go on. Every report lists its "Checks not run" from the tick's

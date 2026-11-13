@@ -20,6 +20,7 @@
 /src/terrain/campaigns/ @gabrielsgaspar
 /scripts/campaign.py @gabrielsgaspar
 /tests/test_campaigns.py @gabrielsgaspar
+/tests/test_forks.py @gabrielsgaspar
 
 # Registered analyses and the confirmation runner (frozen once registered)
 /src/terrain/registered/ @gabrielsgaspar
@@ -40,7 +41,11 @@
 /research/campaigns/DRAFT_TEMPLATE.md @gabrielsgaspar
 /research/campaigns/*/campaign.md @gabrielsgaspar
 /research/campaigns/*/drafts/ @gabrielsgaspar
+/research/campaigns/kill-rule-library.yaml @gabrielsgaspar
 /research/agent-notes.md @gabrielsgaspar
+# Fork files (research/campaigns/*/forks/) are not owned: the tick merges the
+# ones the ideation job proposes, after the gate checks them; the gate refuses
+# any later change to one (decision 0015, F2).
 
 # Human-only by AGENTS.md
 /confirm/ @gabrielsgaspar
@@ -48,6 +53,7 @@
 /overleaf/ @gabrielsgaspar
 /data/fixtures/ @gabrielsgaspar
 /data/reference/ @gabrielsgaspar
+/data/approved-publishers.yaml @gabrielsgaspar
 
 # The sample split, the exploration restriction and GCP setup
 /src/terrain/explore.py @gabrielsgaspar

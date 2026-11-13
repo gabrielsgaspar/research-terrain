@@ -1,0 +1,145 @@
+# Approved publishers for new data a fork may bring (decision 0015, F7).
+# Owned by Gabriel in .github/CODEOWNERS.
+#
+# A fork's dataset must name one of these ids as its `publisher`, say
+# `identifiers: none` and stay within `max_size_gb: 5`. Anything else is a
+# suggestion in the close-out report, never a run. A campaign's own datasets
+# (in campaign.md) are approved by Gabriel one by one, as before; this list
+# is only for forks.
+#
+# Built on 2026-11-13 from the publishers behind data/catalog.yaml.
+# `hosts` are the hosts a GitHub runner has actually reached: each appears
+# in the `sources` of a manifest in data/manifests/acquire/ (written only by
+# the data-pipeline workflow). An empty list means no runner has fetched
+# from it yet, so a fork's first step should be its acquire. Earth Engine
+# and BigQuery are reached through their APIs with Workload Identity
+# Federation, not through a web host.
+# `catalog` lists the catalog entries from that publisher; `rules` are
+# conditions every fork dataset from it must meet, read by the ideation job,
+# the planner and the reviewer.
+publishers:
+  - id: tse
+    name: "Tribunal Superior Eleitoral (TSE), open electoral data"
+    hosts: [cdn.tse.jus.br]
+    catalog: [tse_votes_by_section, tse_polling_places, tse_results, tse_candidates, tse_candidates_complementar]
+    rules:
+      - "Never store CPF numbers, voter ID numbers (nr_titulo_eleitoral) or names tied to either; a fork dataset has identifiers: none (AGENTS.md, Personal identifiers)."
+
+  - id: ibge
+    name: "Instituto Brasileiro de Geografia e Estatística (IBGE)"
+    hosts: [geoftp.ibge.gov.br, ftp.ibge.gov.br]
+    catalog: [ibge_municipalities, ibge_population_2022, ibge_localities, ibge_urbanized_areas, ibge_grid_2022, ibge_grid_2010, ibge_boundaries_2024]
+    rules: []
+
+  - id: mapbiomas
+    name: "MapBiomas, through Google Earth Engine"
+    hosts: []
+    catalog: [mapbiomas_deforestation, mapbiomas_coverage_national, mapbiomas_mining]
+    rules:
+      - "Public Earth Engine assets under projects/mapbiomas-public only; read through terrain.earthengine."
+
+  - id: noaa_eog
+    name: "NOAA / Earth Observation Group (VIIRS night lights), through Google Earth Engine"
+    hosts: []
+    catalog: [viirs_annual]
+    rules:
+      - "Public Earth Engine catalogue assets only (NOAA/...); read through terrain.earthengine."
+
+  - id: base_dos_dados
+    name: "Base dos Dados, public tables on BigQuery (project basedosdados)"
+    hosts: [basedosdados.org]
+    catalog: [ibama_autos, ibama_embargos, inep_schools, inep_school_catalogue]
+    rules:
+      - "Public tables of the basedosdados project only, read through terrain.bigquery."
+      - "Never select name, CPF, CNPJ, phone or e-mail columns (nome, cpf, cnpj, telefone, email and the like)."
+      - "Store aggregates by municipality (or coarser) and year, as the plan's own Base dos Dados datasets do."
+
+  - id: datasus
+    name: "DATASUS (Ministry of Health), through Base dos Dados on BigQuery"
+    hosts: []
+    catalog: []
+    rules:
+      - "Through base_dos_dados only, with its rules; counts by municipality and year, never a record of a person."
+      - "No catalog entry yet: campaign 0007 listed sim_homicides (basedosdados.br_ms_sim.microdados) but never fetched it."
+
+  - id: inep
+    name: "Instituto Nacional de Estudos e Pesquisas Educacionais (INEP), through Base dos Dados"
+    hosts: []
+    catalog: []
+    rules:
+      - "Through base_dos_dados only, with its rules (the catalog's INEP tables are listed there)."
+
+  - id: ibama
+    name: "IBAMA enforcement records (open-data portal; fallback Base dos Dados)"
+    hosts: []
+    catalog: []
+    rules:
+      - "Through base_dos_dados, which every IBAMA manifest so far used; the portal itself has not been reached by a runner."
+      - "No names, CPF or CNPJ of those fined (they are in the portal's files and never stored)."
+
+  - id: world_bank
+    name: "World Bank Commodity Price Data (the Pink Sheet)"
+    hosts: [thedocs.worldbank.org]
+    catalog: [gold_price]
+    rules: []
+
+  - id: fred
+    name: "Federal Reserve Bank of St. Louis, FRED"
+    hosts: [fred.stlouisfed.org]
+    catalog: [gold_price]
+    rules:
+      - "FRED's terms ask users not to scrape: one file per series, downloaded once."
+
+  - id: imf
+    name: "International Monetary Fund, primary commodity prices"
+    hosts: []
+    catalog: []
+    rules:
+      - "Named in the catalog as gold_price's fallback source; never fetched by a runner."
+
+  - id: anm
+    name: "Agência Nacional de Mineração (ANM), SIGMINE"
+    hosts: [geo.anm.gov.br]
+    catalog: [anm_sigmine]
+    rules:
+      - "Mining-title holders' names, CPF and CNPJ are never stored; only municipality-level counts and shares."
+
+  - id: sgb
+    name: "Serviço Geológico do Brasil (SGB/CPRM), the Geological Survey"
+    hosts: [geoservicos.sgb.gov.br]
+    catalog: [sgb_gold_occurrences]
+    rules:
+      - "Without the geologist-name field (forbid_columns, as in the catalog)."
+
+  - id: sfb
+    name: "Serviço Florestal Brasileiro, Cadastro Nacional de Florestas Públicas"
+    hosts: [mapas.florestal.gov.br]
+    catalog: [cnfp_public_forests]
+    rules: []
+
+  - id: funai
+    name: "Fundação Nacional dos Povos Indígenas (FUNAI), indigenous land boundaries"
+    hosts: []
+    catalog: [funai_indigenous_lands]
+    rules:
+      - "Catalog entry planned; no runner has fetched it yet."
+
+  - id: incra
+    name: "Instituto Nacional de Colonização e Reforma Agrária (INCRA), settlements"
+    hosts: []
+    catalog: [incra_settlements]
+    rules:
+      - "Catalog entry planned; no runner has fetched it yet. Settlement boundaries only, never beneficiaries' names."
+
+  - id: natural_earth
+    name: "Natural Earth"
+    hosts: [naciscdn.org]
+    catalog: [naturalearth_basemap]
+    rules: []
+
+  - id: geocode_br_polling_stations
+    name: "Hidalgo and others, geocoded Brazilian polling stations (GitHub releases)"
+    hosts: [github.com]
+    catalog: [polling_stations_geocoded]
+    rules:
+      - "Release files of the fdhidalgo/geocode_br_polling_stations repository only."
