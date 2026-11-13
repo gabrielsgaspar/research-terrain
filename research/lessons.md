@@ -16,6 +16,22 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-13: Gold exposure times the gold price gives a weak first stage on garimpo (idea 0007, issue #336)
+- Tried: a first stage of garimpo area share on gold exposure x ln real gold
+  price (t-1), 1990-2024, on the exploration half (2,783 municipalities),
+  after a feasibility run that counted exposure
+  (`research/explore-runs/0007/43181711849.md`,
+  `research/explore-runs/0007/43438404852.md`).
+- Result: beta 0.00439, clustered SE 0.002812, F 2.436, below the 10 the idea
+  required; randomisation-inference p 0.000999; lead ratio 0.04995. Feasibility
+  passed: 231 exposed municipalities in 6 states, top-state share 0.2121.
+- Why: the clustered errors are large against a common price shock. The
+  binary exposure gives F 12.28, but it was not the pre-stated one, so it is a
+  forking path.
+- Implication: the campaign stopped at its kill rule and the politics step
+  never ran. Nothing here is a finding. See
+  `research/campaigns/0007-gold-and-the-ballot/report.md`.
+
 ## 2026-11-11: The 2,216 pairs missing from campaign 0006's primary were never lost; the runs count different things (idea 0006)
 - Tried: reading `explore/0006_feasibility.py` and `explore/0006_effects.py`
   to explain why the feasibility run (42935501189) reports 23,132 close pairs
