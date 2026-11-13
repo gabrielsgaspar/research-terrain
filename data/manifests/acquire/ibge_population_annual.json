@@ -1,0 +1,65 @@
+{
+  "dataset": "ibge_population_annual",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/ibge/population_annual/2026-11-13/",
+  "created_at": "2026-11-13T19:51:28.711437+00:00",
+  "code_commit": "ad36fdd46437c22b25ef0930faa57c7a4b05010c",
+  "sources": [
+    {
+      "fonte": "basedosdados",
+      "url": null,
+      "table": "basedosdados.br_ibge_populacao.municipio",
+      "query": "SELECT ano, sigla_uf, id_municipio, populacao FROM `basedosdados.br_ibge_populacao.municipio` WHERE sigla_uf IN ('AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MG', 'MS', 'MT', 'PA', 'PB', 'PE', 'PI', 'PR', 'RJ', 'RN', 'RO', 'RR', 'RS', 'SC', 'SE', 'SP', 'TO') AND ano BETWEEN 1991 AND 2025 ORDER BY ano, id_municipio",
+      "location": "US",
+      "rows": 191098,
+      "total_bytes_processed": 5537586,
+      "job_id": "job_Ofr8cgTLTFDOuIbLAN7C28wiF0r9",
+      "rows_per_year": {
+        "1991": 4491,
+        "1992": 4974,
+        "1993": 4974,
+        "1994": 4974,
+        "1995": 4974,
+        "1996": 5507,
+        "1997": 5507,
+        "1998": 5507,
+        "1999": 5507,
+        "2000": 5507,
+        "2001": 5560,
+        "2002": 5560,
+        "2003": 5560,
+        "2004": 5564,
+        "2005": 5564,
+        "2006": 5564,
+        "2007": 5564,
+        "2008": 5565,
+        "2009": 5565,
+        "2010": 5565,
+        "2011": 5565,
+        "2012": 5570,
+        "2013": 5570,
+        "2014": 5570,
+        "2015": 5570,
+        "2016": 5570,
+        "2017": 5570,
+        "2018": 5570,
+        "2019": 5570,
+        "2020": 5570,
+        "2021": 5570,
+        "2022": 5570,
+        "2023": 5570,
+        "2024": 5570,
+        "2025": 5570
+      }
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/ibge/population_annual/2026-11-13/ibge_population_annual.parquet",
+      "sha256": "b85bd6d659a82e390ba0515f2570865fcb6f33f408fb74fc0edaa4f4913130db",
+      "bytes": 731718
+    }
+  ],
+  "notes": "rows: 191098\nrows per ano: 1991=4491, 1992=4974, 1993=4974, 1994=4974, 1995=4974, 1996=5507, 1997=5507, 1998=5507, 1999=5507, 2000=5507, 2001=5560, 2002=5560, 2003=5560, 2004=5564, 2005=5564, 2006=5564, 2007=5564, 2008=5565, 2009=5565, 2010=5565, 2011=5565, 2012=5570, 2013=5570, 2014=5570, 2015=5570, 2016=5570, 2017=5570, 2018=5570, 2019=5570, 2020=5570, 2021=5570, 2022=5570, 2023=5570, 2024=5570, 2025=5570"
+}
