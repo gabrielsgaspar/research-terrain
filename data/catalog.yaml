@@ -1006,6 +1006,68 @@ datasets:
       none). Keys, scores and rede only; no names or addresses. Idea 0006,
       decision 0011, campaign 0006 step s9.
 
+  - name: sim_homicides
+    source: "DATASUS, Sistema de Informações sobre Mortalidade (SIM), via Base dos Dados: basedosdados.br_ms_sim.microdados; deaths by assault (CID-10 X85-Y09) counted by year and municipality of occurrence"
+    licence: "Base dos Dados lists 'desconhecida'; DATASUS publishes SIM as public data. Only municipality-year counts are stored."
+    gcs: data/raw/sim/homicides/
+    status: planned
+    notes: >
+      Deaths by assault per year and municipality of occurrence, 1996-2024,
+      counted in BigQuery from the SIM microdata (36.7 million rows), so only
+      counts are downloaded (idea 0008, campaign 0008 step s3). The columns
+      come from Base dos Dados' metadata (GraphQL API, 2026-11-11), ano,
+      sigla_uf, id_municipio_ocorrencia and id_municipio_residencia (7-digit
+      IBGE codes), and causa_basica (CID-10). The table is partitioned by ano
+      and sigla_uf. Whether sigla_uf is the state of residence or of
+      occurrence is unconfirmed; all 27 states are listed, so it does not
+      matter. CID-10 X85-Y09 is "agressões", the usual homicide definition;
+      Y35-Y36 (legal intervention) are left out. The metadata's coverage to
+      2026 is implausible. The manifest records rows per year, and the final
+      SIM data run to 2024. Fallbacks are
+      basedosdados.br_ms_sim.municipio_causa, which counts by municipality of
+      residence, not occurrence, and DATASUS' own .dbc files, which need a
+      decompressor the project does not have. Outcome data for both halves;
+      it stays in raw, which no exploration account reads.
+    bigquery:
+      endpoint: https://bigquery.googleapis.com/bigquery/v2/
+      scope: https://www.googleapis.com/auth/bigquery
+      table: basedosdados.br_ms_sim.microdados
+      location: US
+      maximum_bytes_billed: 50000000000
+      states: [AC, AL, AM, AP, BA, CE, DF, ES, GO, MA, MG, MS, MT, PA, PB, PE, PI, PR, RJ, RN, RO, RR, RS, SC, SE, SP, TO]
+      years: [1996, 2024]
+      filters:
+        - column: causa_basica
+          prefix_between: [X85, Y09]
+          length: 3
+      aggregate:
+        group_by: [ano, id_municipio_ocorrencia]
+        count: n_obitos
+      min_rows: 50000
+
+  - name: ibge_population_annual
+    source: "IBGE municipal population (estimates and census counts), via Base dos Dados: basedosdados.br_ibge_populacao.municipio"
+    licence: "public (IBGE); Base dos Dados lists no licence"
+    gcs: data/raw/ibge/population_annual/
+    status: planned
+    notes: >
+      Population per municipality and year, 1991-2025 (idea 0008, campaign
+      0008 step s3). The columns come from Base dos Dados' metadata
+      (2026-11-11). The table is partitioned by ano, id_municipio and
+      sigla_uf. Fallback: basedosdados.br_ms_populacao.municipio, 2000-2025,
+      by age and sex.
+    bigquery:
+      endpoint: https://bigquery.googleapis.com/bigquery/v2/
+      scope: https://www.googleapis.com/auth/bigquery
+      table: basedosdados.br_ibge_populacao.municipio
+      location: US
+      maximum_bytes_billed: 50000000000
+      columns: [ano, sigla_uf, id_municipio, populacao]
+      order_by: [ano, id_municipio]
+      states: [AC, AL, AM, AP, BA, CE, DF, ES, GO, MA, MG, MS, MT, PA, PB, PE, PI, PR, RJ, RN, RO, RR, RS, SC, SE, SP, TO]
+      years: [1991, 2025]
+      min_rows: 150000
+
   - name: anm_sigmine
     source: "ANM SIGMINE, ArcGIS feature service, layer 0 'Processos minerários ativos' (active processes only)"
     licence: "No dataset licence found; ANM publishes SIGMINE as open data (gov.br/anm dados abertos); the gov.br site footer states CC BY-ND 3.0. Only municipality-level shares are published."

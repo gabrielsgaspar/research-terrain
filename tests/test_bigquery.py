@@ -86,6 +86,151 @@ def test_query_selects_exactly_the_listed_columns_and_filters():
     assert s.split(" FROM ")[1] == q.split(" FROM ")[1].split(" ORDER BY ")[0]
 
 
+IBAMA_STATES = "'AC', 'AM', 'AP', 'MA', 'MT', 'PA', 'RO', 'RR', 'TO'"
+SCHOOL_STATES = (
+    "'AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MG', 'MS', 'MT', 'PA', 'PB', "
+    "'PE', 'PI', 'PR', 'RJ', 'RN', 'RO', 'RR', 'RS', 'SC', 'SE', 'SP', 'TO'"
+)
+
+
+def test_catalog_blocks_without_filters_or_aggregate_give_todays_queries():
+    autos = dataset("ibama_autos")["bigquery"]
+    assert build_query(autos) == (
+        "SELECT ano, data_auto, id_auto, id_municipio, sigla_uf, latitude, longitude, "
+        "tipo_infracao, tipo_auto, situacao_auto, indicador_cancelado, gravidade, "
+        "indicador_coordenada_valida, data_extracao "
+        "FROM `basedosdados.br_ibama_fiscalizacao.auto_infracao` "
+        f"WHERE sigla_uf IN ({IBAMA_STATES}) AND ano BETWEEN 2000 AND 2025 "
+        "ORDER BY ano, id_auto"
+    )
+    assert build_summary_query(autos) == (
+        "SELECT MAX(data_extracao) AS max_data_extracao, COUNT(*) AS n "
+        "FROM `basedosdados.br_ibama_fiscalizacao.auto_infracao` "
+        f"WHERE sigla_uf IN ({IBAMA_STATES}) AND ano BETWEEN 2000 AND 2025"
+    )
+    schools = dataset("inep_schools")["bigquery"]
+    assert build_query(schools) == (
+        "SELECT ano, id_escola, id_municipio, sigla_uf, rede, tipo_localizacao, "
+        "agua_rede_publica, esgoto_rede_publica, energia_rede_publica, internet, "
+        "biblioteca_sala_leitura, laboratorio_ciencias, laboratorio_informatica, "
+        "quadra_esportes, dependencia_pne, acessibilidade_inexistente "
+        "FROM `basedosdados.br_inep_censo_escolar.escola` "
+        f"WHERE sigla_uf IN ({SCHOOL_STATES}) AND ano BETWEEN 2007 AND 2024 "
+        "ORDER BY ano, id_escola"
+    )
+    assert build_summary_query(schools) == (
+        "SELECT COUNT(*) AS n FROM `basedosdados.br_inep_censo_escolar.escola` "
+        f"WHERE sigla_uf IN ({SCHOOL_STATES}) AND ano BETWEEN 2007 AND 2024"
+    )
+
+
+BASE = {
+    "table": "p.d.t",
+    "states": ["AC"],
+    "years": [2000, 2001],
+    "columns": ["ano", "x"],
+    "order_by": ["ano"],
+}
+WHERE = "WHERE sigla_uf IN ('AC') AND ano BETWEEN 2000 AND 2001"
+
+
+def test_prefix_between_filter():
+    bq = {**BASE, "filters": [{"column": "causa", "prefix_between": ["X85", "Y09"], "length": 3}]}
+    clause = "SUBSTR(causa, 1, 3) BETWEEN 'X85' AND 'Y09'"
+    assert build_query(bq) == f"SELECT ano, x FROM `p.d.t` {WHERE} AND {clause} ORDER BY ano"
+    assert build_summary_query(bq) == f"SELECT COUNT(*) AS n FROM `p.d.t` {WHERE} AND {clause}"
+
+
+def test_in_filter_and_two_filters_are_joined_with_and():
+    bq = {
+        **BASE,
+        "filters": [
+            {"column": "tipo", "in": ["a", "B_2"]},
+            {"column": "causa", "prefix_between": ["X85", "Y09"], "length": 3},
+        ],
+    }
+    assert build_summary_query(bq) == (
+        f"SELECT COUNT(*) AS n FROM `p.d.t` {WHERE} AND tipo IN ('a', 'B_2') "
+        "AND SUBSTR(causa, 1, 3) BETWEEN 'X85' AND 'Y09'"
+    )
+
+
+@pytest.mark.parametrize("value", ["a'b", "a b", "a-b", "", "x" * 21, 5, 'a"b', "a;b"])
+def test_a_filter_value_that_is_not_plain_raises(value):
+    with pytest.raises(AcquireError):
+        build_query({**BASE, "filters": [{"column": "c", "in": [value]}]})
+    with pytest.raises(AcquireError):
+        build_query(
+            {**BASE, "filters": [{"column": "c", "prefix_between": ["A", value], "length": 1}]}
+        )
+
+
+@pytest.mark.parametrize(
+    "item",
+    [
+        {"column": "c", "prefix_between": ["A"], "length": 1},
+        {"column": "c", "prefix_between": ["A", "B", "C"], "length": 1},
+        {"column": "c", "prefix_between": ["A", "B"], "length": 0},
+        {"column": "c", "prefix_between": ["A", "B"]},
+        {"column": "c", "in": []},
+        {"column": "c"},
+        {"column": "c", "in": ["a"], "prefix_between": ["A", "B"], "length": 1},
+        {"column": "nome_x", "in": ["a"]},
+        {"column": "C d", "in": ["a"]},
+        {"in": ["a"]},
+    ],
+)
+def test_a_malformed_filter_raises(item):
+    with pytest.raises(AcquireError):
+        build_query({**BASE, "filters": [item]})
+
+
+AGG = {"group_by": ["ano", "mun"], "count": "n_obitos"}
+
+
+def test_aggregate_query_and_summary():
+    bq = {**BASE, "aggregate": AGG}
+    inner = f"SELECT ano, mun, COUNT(*) AS n_obitos FROM `p.d.t` {WHERE} GROUP BY ano, mun"
+    assert build_query(bq) == inner + " ORDER BY ano, mun"
+    assert build_summary_query(bq) == f"SELECT COUNT(*) AS n FROM ({inner})"
+
+
+def test_aggregate_with_sums_filters_and_no_columns_or_order_by():
+    bq = {k: v for k, v in BASE.items() if k not in ("columns", "order_by")}
+    bq["filters"] = [{"column": "tipo", "in": ["a"]}]
+    bq["aggregate"] = {"group_by": ["ano"], "count": "n", "sums": ["area", "valor"]}
+    inner = (
+        "SELECT ano, COUNT(*) AS n, SUM(CAST(area AS FLOAT64)) AS sum_area, "
+        f"SUM(CAST(valor AS FLOAT64)) AS sum_valor FROM `p.d.t` {WHERE} AND tipo IN ('a') "
+        "GROUP BY ano"
+    )
+    assert build_query(bq) == inner + " ORDER BY ano"
+    assert build_summary_query(bq) == f"SELECT COUNT(*) AS n FROM ({inner})"
+
+
+@pytest.mark.parametrize(
+    "aggregate",
+    [
+        {"group_by": ["cpf_cnpj_doador"], "count": "n"},
+        {"group_by": ["ano", "nome_doador"], "count": "n"},
+        {"group_by": ["ano"], "count": "nome_n"},
+        {"group_by": ["ano"], "count": "n", "sums": ["cpf_cnpj_doador"]},
+        {"group_by": ["ano"], "count": "n", "sums": ["nome_doador"]},
+        {"group_by": ["geometria"], "count": "n"},
+        {"group_by": ["telefone"], "count": "n"},
+        {"group_by": [], "count": "n"},
+        {"group_by": ["ano"], "count": "n; DROP"},
+        {"group_by": ["a b"], "count": "n"},
+    ],
+)
+def test_aggregate_refuses_identifiers_and_odd_names(aggregate):
+    bq = {**BASE, "aggregate": aggregate}
+    with pytest.raises(AcquireError):
+        build_query(bq)
+    with pytest.raises(AcquireError):
+        build_summary_query(bq)
+
+
 @pytest.mark.parametrize(
     "bad",
     [
