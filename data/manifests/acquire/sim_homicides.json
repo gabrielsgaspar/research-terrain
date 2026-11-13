@@ -1,0 +1,59 @@
+{
+  "dataset": "sim_homicides",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/sim/homicides/2026-11-13/",
+  "created_at": "2026-11-13T19:51:24.712206+00:00",
+  "code_commit": "ad36fdd46437c22b25ef0930faa57c7a4b05010c",
+  "sources": [
+    {
+      "fonte": "basedosdados",
+      "url": null,
+      "table": "basedosdados.br_ms_sim.microdados",
+      "query": "SELECT ano, id_municipio_ocorrencia, COUNT(*) AS n_obitos FROM `basedosdados.br_ms_sim.microdados` WHERE sigla_uf IN ('AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MG', 'MS', 'MT', 'PA', 'PB', 'PE', 'PI', 'PR', 'RJ', 'RN', 'RO', 'RR', 'RS', 'SC', 'SE', 'SP', 'TO') AND ano BETWEEN 1996 AND 2024 AND SUBSTR(causa_basica, 1, 3) BETWEEN 'X85' AND 'Y09' GROUP BY ano, id_municipio_ocorrencia ORDER BY ano, id_municipio_ocorrencia",
+      "location": "US",
+      "rows": 95429,
+      "total_bytes_processed": 919101084,
+      "job_id": "job_baKny_eC1NIMZrpST7OjK2UkrtYu",
+      "rows_per_year": {
+        "1996": 2210,
+        "1997": 2618,
+        "1998": 2591,
+        "1999": 2626,
+        "2000": 2693,
+        "2001": 2798,
+        "2002": 2910,
+        "2003": 3001,
+        "2004": 3109,
+        "2005": 3149,
+        "2006": 3195,
+        "2007": 3175,
+        "2008": 3281,
+        "2009": 3359,
+        "2010": 3377,
+        "2011": 3399,
+        "2012": 3504,
+        "2013": 3541,
+        "2014": 3609,
+        "2015": 3696,
+        "2016": 3788,
+        "2017": 3864,
+        "2018": 3704,
+        "2019": 3673,
+        "2020": 3726,
+        "2021": 3750,
+        "2022": 3715,
+        "2023": 3720,
+        "2024": 3648
+      }
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/sim/homicides/2026-11-13/sim_homicides.parquet",
+      "sha256": "0b3b286705a811ee0dbee5da0bec49022b6acb260386dd8d729170d6786ceef1",
+      "bytes": 198780
+    }
+  ],
+  "notes": "rows: 95429\nrows per ano: 1996=2210, 1997=2618, 1998=2591, 1999=2626, 2000=2693, 2001=2798, 2002=2910, 2003=3001, 2004=3109, 2005=3149, 2006=3195, 2007=3175, 2008=3281, 2009=3359, 2010=3377, 2011=3399, 2012=3504, 2013=3541, 2014=3609, 2015=3696, 2016=3788, 2017=3864, 2018=3704, 2019=3673, 2020=3726, 2021=3750, 2022=3715, 2023=3720, 2024=3648"
+}
