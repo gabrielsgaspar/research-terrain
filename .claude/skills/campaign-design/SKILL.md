@@ -214,6 +214,30 @@ counts. Propose `max_tasks`, `max_explore_runs`, `max_pipeline_runs`,
 `max_model_jobs` and `end_by`, and explain each in one line. Let him
 change them.
 
+Then ask about forks (decision 0015), as one question:
+
+> May this campaign explore variants on its own? Reply yes for the
+> defaults, no, or change a number.
+
+Before asking, say what it means in three lines:
+- after an explore run's verdict, one read-only model job may propose variants (another transformation, sample, specification, measure or related question); code checks each against the envelope and puts it in the repository before it runs;
+- each variant inherits the kill rules of the step it varies (no agent sets a threshold) and starts only when no step of the plan can, on a budget of its own;
+- if the plan's step is killed and a variant survives, the first one in order carries the plan on; the report lists every variant and how many were tried.
+
+The defaults: `max_forks: 5`, `per_point: 3`, `max_new_datasets: 2`
+(approved publishers only), `max_steps_per_fork: 4`, all five `types`,
+`max_question_forks: 1`, `on: [killed, survived]`, `fork_points: all`, and
+a budget sized from the plan: for five forks `max_tasks: 10`,
+`max_explore_runs: 7`, `max_pipeline_runs: 6`, `max_model_jobs: 45`
+(about two tasks, one or two runs and nine model jobs per fork, plus one
+ideation job per fork point); scale it with `max_forks`. The hard caps are
+5 forks, 2 new datasets, 6 steps per fork and 2 question forks. If he says
+yes or changes a number, write the `forks:` block (`TEMPLATE.md` shows it)
+and a Provenance line in his words, for example "Forks: the defaults, set
+by Gabriel on YYYY-MM-DD ('yes')". If he says no, leave the block out and
+write "Forks: none (Gabriel, YYYY-MM-DD)". Do not suggest forks for a probe
+campaign of four steps or fewer unless he asks: a probe should stay small.
+
 ### 9. Check the plan against the repo
 
 Read `references/writing-the-files.md`, "Check the plan against the
