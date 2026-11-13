@@ -65,10 +65,17 @@ jobs:
           APP_BOT: ${{ vars.AGENT_APP_BOT }}
           CAMPAIGN: ${{ inputs.campaign }}
           STEP: ${{ inputs.step }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          REF: ${{ github.ref }}
+          DEFAULT: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
           [[ "${CAMPAIGN}" =~ ^[0-9]{4}$ ]] || { echo "::error::campaign must look like 0007"; exit 1; }
           [[ "${STEP}" =~ ^s[0-9]{1,2}$ ]] || { echo "::error::step must look like s15"; exit 1; }
+          if [ "${DRY_RUN}" != "true" ] && [ "${REF}" != "refs/heads/${DEFAULT}" ]; then
+            echo "::error::Only a dry run may start from a branch other than ${DEFAULT}."
+            exit 1
+          fi
           if [ -n "${APP_BOT}" ] && [ "${ACTOR}" = "${APP_BOT}" ]; then
             echo "Started by the agent App (the campaign tick)."
             exit 0
@@ -142,9 +149,11 @@ jobs:
           fi
           echo "bubblewrap and the nested user namespace work."
 
+      # A real run reads main only. A dry run reads the branch it was started on,
+      # so a change can be tried before it merges; it writes and opens nothing.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.repository.default_branch }}
+          ref: ${{ inputs.dry_run && github.ref || github.event.repository.default_branch }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -218,9 +227,11 @@ jobs:
           name: ideation-answer
           path: ${{ runner.temp }}/answer
 
+      # A real run reads main only. A dry run reads the branch it was started on,
+      # so a change can be tried before it merges; it writes and opens nothing.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.repository.default_branch }}
+          ref: ${{ inputs.dry_run && github.ref || github.event.repository.default_branch }}
           persist-credentials: false
 
       - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
