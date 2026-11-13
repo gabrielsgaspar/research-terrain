@@ -62,6 +62,7 @@ PLAIN = {
     "running": "the run is going",
     "recording": "the run ended; its record is being written",
     "retry_waiting": "the run failed; it starts again once the run limits allow",
+    "resume_waiting": "the run is still exporting; it starts again once the run limits allow",
     "repair_waiting": "the run still fails; a repair task is filed once no other task is going",
     "repair_filing": "a repair task was just filed",
     "repair_merged": "the repair merged; the run starts again",

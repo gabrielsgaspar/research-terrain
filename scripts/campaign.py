@@ -137,8 +137,10 @@ def _snapshot(root: Path, ctx: GateContext, enabled: bool):  # noqa: ANN202 (a S
     since = min(c.created for c in campaigns) if campaigns else now[:10]
     repo = _env("GITHUB_REPOSITORY")
     server = os.environ.get("GITHUB_SERVER_URL", "").strip() or "https://github.com"
-    # Failed runs' log lines, for repair tasks (decision 0014): self_repair campaigns only.
-    repairs = frozenset(c.id for c in campaigns if c.self_repair)
+    # Failed data-pipeline runs' log lines: every campaign reads them for "still
+    # exporting" (an Earth Engine run started again without a retry); only
+    # self_repair campaigns put them in repair tasks (decision 0014).
+    logged = frozenset(c.id for c in campaigns)
     return safe_snapshot(
         GitHub(repo),
         now=now,
@@ -146,7 +148,7 @@ def _snapshot(root: Path, ctx: GateContext, enabled: bool):  # noqa: ANN202 (a S
         app_bot=ctx.app_bot,
         since=since,
         root=root,
-        log_campaigns=repairs,
+        log_campaigns=logged,
         repo_url=f"{server.rstrip('/')}/{repo}",
     )
 
