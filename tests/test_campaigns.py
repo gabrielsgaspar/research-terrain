@@ -3287,3 +3287,223 @@ def test_tick_ignores_still_exporting_in_a_timed_out_run(tmp_path):
     runs = [pipe_run(557, "s2", "timed_out", "2026-11-10T10:00:00Z")]
     actions = repair_tick(root, ["s2:dispatched"], runs=runs, logs={557: exporting_log(30)})
     assert continue_events(actions) == {"s2:retry:1"}
+
+
+# -- GitHub's rate limit: try again later, never a crash -------------------------------
+
+
+def http_error(code: int, headers: dict[str, str] | None = None, body: str = ""):
+    import email.message
+    import io
+    import urllib.error
+
+    msg = email.message.Message()
+    for k, v in (headers or {}).items():
+        msg[k] = v
+    return urllib.error.HTTPError(
+        "https://api.github.com/x", code, "x", msg, io.BytesIO(body.encode())
+    )
+
+
+@pytest.mark.parametrize(
+    "code, headers, body, limited",
+    [
+        (429, {}, "", True),
+        (403, {"x-ratelimit-remaining": "0"}, "", True),
+        (403, {"retry-after": "60"}, "", True),
+        (403, {"x-ratelimit-remaining": "12"}, "You have exceeded a secondary rate limit", True),
+        (403, {"x-ratelimit-remaining": "12"}, "Resource not accessible by integration", False),
+        (404, {"x-ratelimit-remaining": "0"}, "", False),
+    ],
+)
+def test_rate_limit_answers_are_recognised(code, headers, body, limited):
+    from terrain.campaigns.github import rate_limited
+
+    err = http_error(code, headers, body)
+    assert rate_limited(err.code, err.headers, body) is limited
+
+
+def reader_answering(monkeypatch, answer):
+    """A GitHub reader whose every request gets `answer` (an exception, or JSON and headers)."""
+    import io
+    import urllib.request
+
+    from terrain.campaigns.github import GitHub
+
+    class Resp(io.BytesIO):
+        def __init__(self, data, headers):
+            super().__init__(data)
+            self.headers = headers
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    def urlopen(req, timeout=0):
+        if isinstance(answer, Exception):
+            raise answer
+        data, headers = answer
+        return Resp(json.dumps(data).encode(), headers)
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    return GitHub("o/r", token="t", api="https://api.github.com")
+
+
+def test_reader_raises_rate_limited_and_keeps_the_allowance(monkeypatch):
+    from terrain.campaigns.github import RateLimited
+
+    gh = reader_answering(
+        monkeypatch,
+        (
+            {"number": 1},
+            {
+                "x-ratelimit-limit": "1000",
+                "x-ratelimit-remaining": "998",
+                "x-ratelimit-reset": "1763035200",
+            },
+        ),
+    )
+    assert gh.get("/pulls/1") == {"number": 1}
+    assert (gh.rate.limit, gh.rate.remaining, gh.rate.used) == (1000, 998, 1)
+    assert gh.rate.line().startswith("GitHub API: 998 of 1000 requests left this hour (renews at")
+    assert gh.rate.line().endswith("this run made 1.")
+    gh = reader_answering(
+        monkeypatch, http_error(403, {"x-ratelimit-remaining": "0", "x-ratelimit-limit": "1000"})
+    )
+    with pytest.raises(RateLimited) as caught:
+        gh.get("/pulls/1")
+    assert caught.value.rate.remaining == 0 and "try again later" in str(caught.value)
+    # any other refusal stays an HTTP error
+    import urllib.error
+
+    gh = reader_answering(monkeypatch, http_error(403, {}, "Resource not accessible"))
+    with pytest.raises(urllib.error.HTTPError):
+        gh.get("/pulls/1")
+
+
+def test_a_rate_limited_log_read_is_not_taken_for_an_empty_log(monkeypatch):
+    """A swallowed limit would read as "no log": a retry used, a repair filed blind."""
+    from terrain.campaigns.github import RateLimited
+
+    gh = reader_answering(monkeypatch, http_error(429))
+    run = Run(
+        7,
+        "data-pipeline.yml",
+        markers.pipeline_run_title("build", "x", "0001", "s2"),
+        "completed",
+        "failure",
+        NOW,
+    )
+    with pytest.raises(RateLimited):
+        gh.run_logs([run], frozenset({"0001"}))
+
+
+def load_campaign_script():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("campaign_cli", REPO / "scripts" / "campaign.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+@pytest.mark.parametrize("seen", [True, False])
+def test_gate_posts_pending_or_nothing_when_rate_limited(tmp_path, monkeypatch, seen):
+    from terrain.campaigns import github
+    from terrain.campaigns.github import RateLimited
+
+    cli = load_campaign_script()
+
+    def pull_request(self, number, with_issue=True):
+        if seen:
+            self.seen_head = (number, SHA)
+        raise RateLimited("GitHub's API rate limit was reached (HTTP 429); try again later")
+
+    monkeypatch.setattr(github.GitHub, "pull_request", pull_request)
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    monkeypatch.setenv("GITHUB_API_URL", "https://api.github.com")
+    summary = tmp_path / "summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    out = tmp_path / "gate.json"
+    assert cli.main(["gate", "--pr", "20", "--out", str(out)]) == 0
+    result = json.loads(out.read_text(encoding="utf-8"))
+    if seen:
+        assert result == {
+            "skip": False,
+            "pr": 20,
+            "sha": SHA,
+            "state": "pending",
+            "description": cli.RATE_PENDING,
+            "details": [],
+        }
+        assert len(cli.RATE_PENDING) <= 140
+    else:
+        assert result == {"skip": True}
+    text = summary.read_text(encoding="utf-8")
+    assert "rate limit was reached" in text and "GitHub API: " in text
+
+
+def test_tick_does_nothing_when_rate_limited(tmp_path, monkeypatch, capsys):
+    from terrain.campaigns.github import RateLimited
+
+    cli = load_campaign_script()
+    root = make_repo(tmp_path)
+    monkeypatch.setattr(cli, "REPO", root)
+    monkeypatch.setattr(cli, "_context", lambda r: ctx(r))
+
+    def limited(*a, **k):
+        raise RateLimited("GitHub's API rate limit was reached (HTTP 403); try again later")
+
+    monkeypatch.setattr(cli, "_snapshot", limited)
+    monkeypatch.setenv("CAMPAIGNS_ENABLED", "true")
+    out = tmp_path / "actions.json"
+    assert cli.main(["decide", "--out", str(out)]) == 0
+    assert json.loads(out.read_text(encoding="utf-8")) == []
+    assert "This tick does nothing; the next one reads GitHub again." in capsys.readouterr().out
+
+
+def test_snapshot_reads_only_what_the_tick_needs(tmp_path):
+    """Issues of a finished campaign are not read in full: no PR or comment lookups."""
+    root = make_repo(tmp_path)
+
+    def raw(number, body, state="open"):
+        return {
+            "number": number,
+            "title": f"#{number}",
+            "body": body,
+            "state": state,
+            "labels": [{"name": "campaign"}],
+            "user": {"login": BOT},
+            "created_at": NOW,
+        }
+
+    answers = {
+        "/issues?labels=campaign": [
+            raw(1, markers.tracking_marker("0001")),
+            raw(2, markers.step_marker("0001", "s1")),
+            raw(3, markers.tracking_marker("0009"), state="closed"),  # finished, closed
+            raw(4, markers.step_marker("0009", "s1"), state="closed"),
+            raw(5, markers.closeout_marker("0009"), state="closed"),
+            raw(6, markers.status_marker()),
+        ],
+        "/issues/1/comments": [],
+        "/issues/2/comments": [],
+        "/issues/3/comments": [],
+        "/pulls?head=o%3Aagent%2Fissue-2": [],
+        "/actions/workflows/explore-run.yml/runs": {"workflow_runs": []},
+        "/actions/workflows/data-pipeline.yml/runs": {"workflow_runs": []},
+    }
+    gh = FakeGitHub(answers)  # any other request fails the test
+    s = gh.snapshot(
+        now=NOW,
+        enabled=True,
+        app_bot=BOT,
+        since="2026-11-08",
+        root=root,
+        active=frozenset({"0001"}),
+        ended=frozenset({"0009"}),
+    )
+    assert [i.number for i in s.issues] == [1, 2, 3, 4, 5, 6]
+    assert all(i.pr is None for i in s.issues)

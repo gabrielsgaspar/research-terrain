@@ -19,7 +19,11 @@
 
 The GitHub commands read GITHUB_REPOSITORY, GH_TOKEN (read-only is enough),
 AGENT_APP_BOT (the agent App's login, e.g. terrain-agent[bot]) and, for
-decide, CAMPAIGNS_ENABLED (`true` to run). They never write to GitHub. For
+decide, CAMPAIGNS_ENABLED (`true` to run). They never write to GitHub. Each
+prints how much of GitHub's request allowance is left (the gate also writes
+it to the run's summary). When GitHub says a rate limit was reached, the gate
+posts `pending` (or nothing, if it could not read the pull request's head)
+and the tick does nothing this run; both try again later, and exit 0. For
 `page` on your own machine, GITHUB_REPOSITORY defaults to the `origin`
 remote, AGENT_APP_BOT to terrain-agent[bot] and the API to github.com.
 """
@@ -99,19 +103,56 @@ def cmd_card(root: Path, campaign_id: str) -> int:
     return 0
 
 
+RATE_PENDING = "GitHub's API rate limit was reached; the gate checks again within the hour."
+
+
+def _summary(line: str) -> None:
+    """Print a line, and add it to the run's summary when there is one (Actions)."""
+    print(line)
+    path = os.environ.get("GITHUB_STEP_SUMMARY", "").strip()
+    if path:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(f"{line}\n\n")
+
+
 def cmd_gate(root: Path, args: argparse.Namespace) -> int:
-    from terrain.campaigns.github import GitHub
+    from terrain.campaigns.github import GitHub, RateLimited
 
     gh = GitHub(_env("GITHUB_REPOSITORY"))
-    if args.pr:
-        pr = gh.pull_request(int(args.pr))
-    else:
-        found = gh.pr_for_branch(args.branch)
-        if found is None or found.state != "open" or found.head_sha != args.sha:
-            print("No open pull request with that head; nothing to do.")
-            Path(args.out).write_text(json.dumps({"skip": True}), encoding="utf-8")
-            return 0
-        pr = found
+    try:
+        if args.pr:
+            pr = gh.pull_request(int(args.pr))
+        else:
+            found = gh.pr_for_branch(args.branch)
+            if found is None or found.state != "open" or found.head_sha != args.sha:
+                print("No open pull request with that head; nothing to do.")
+                Path(args.out).write_text(json.dumps({"skip": True}), encoding="utf-8")
+                _summary(gh.rate.line())
+                return 0
+            pr = found
+    except RateLimited as exc:
+        # Pending needs the head commit: from --sha, or from the pull request if it
+        # was read before the limit. Without it nothing is posted, and the hourly
+        # sweep evaluates the pull request again.
+        number, sha = gh.seen_head or (int(args.pr or 0), args.sha or "")
+        sha = sha if re.fullmatch(r"[0-9a-f]{40}", sha or "") else ""
+        out = (
+            {
+                "skip": False,
+                "pr": number,
+                "sha": sha,
+                "state": "pending",
+                "description": RATE_PENDING,
+                "details": [],
+            }
+            if sha
+            else {"skip": True}
+        )
+        Path(args.out).write_text(json.dumps(out, indent=2), encoding="utf-8")
+        _summary(f"{exc}. " + ("Posting pending." if sha else "Nothing is posted this run."))
+        _summary(gh.rate.line())
+        return 0
+    _summary(gh.rate.line())
     result = evaluate(pr, _context(root))
     out = {
         "skip": False,
@@ -141,16 +182,22 @@ def _snapshot(root: Path, ctx: GateContext, enabled: bool):  # noqa: ANN202 (a S
     # exporting" (an Earth Engine run started again without a retry); only
     # self_repair campaigns put them in repair tasks (decision 0014).
     logged = frozenset(c.id for c in campaigns)
-    return safe_snapshot(
-        GitHub(repo),
-        now=now,
-        enabled=enabled,
-        app_bot=ctx.app_bot,
-        since=since,
-        root=root,
-        log_campaigns=logged,
-        repo_url=f"{server.rstrip('/')}/{repo}",
-    )
+    gh = GitHub(repo)
+    try:
+        return safe_snapshot(
+            gh,
+            now=now,
+            enabled=enabled,
+            app_bot=ctx.app_bot,
+            since=since,
+            root=root,
+            log_campaigns=logged,
+            repo_url=f"{server.rstrip('/')}/{repo}",
+            active=logged,
+            ended=frozenset(c.id for c in finished_campaigns(root)),
+        )
+    finally:
+        print(gh.rate.line())
 
 
 def cmd_decide(root: Path, args: argparse.Namespace) -> int:
@@ -160,8 +207,16 @@ def cmd_decide(root: Path, args: argparse.Namespace) -> int:
     finished = finished_campaigns(root)
     actions: list[dict] = []
     if (campaigns or finished) and enabled:
-        snap = _snapshot(root, ctx, enabled)
-        actions = decide(campaigns, snap, ctx, root, finished, status_page=True)
+        from terrain.campaigns.github import RateLimited
+
+        try:
+            snap = _snapshot(root, ctx, enabled)
+        except RateLimited as exc:
+            # Nothing is decided from half a picture: no action this run.
+            print(f"{exc}. This tick does nothing; the next one reads GitHub again.")
+            snap = None
+        if snap is not None:
+            actions = decide(campaigns, snap, ctx, root, finished, status_page=True)
     elif not enabled:
         print("CAMPAIGNS_ENABLED is not 'true': nothing to do.")
     else:
