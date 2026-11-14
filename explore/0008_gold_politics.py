@@ -7,9 +7,11 @@ municipality, else 0. Fixed effects: municipality and state x election. Controls
 `indigenous_share`, each times election dummies. See `research/ideas/0008-gold-ballot-yes-no.md` and
 the campaign file `research/campaigns/0008-gold-ballot-yes-no/campaign.md`, step s9.
 
-Nine outcomes of `politics_panel`, each on its own elections. Each outcome is estimated on the
-municipalities that have a non-missing value at every one of its elections (a balanced panel);
-`n_munis` says how many. Outcome 8, `mining_money_share`, is estimated only if at least two of the
+Nine outcomes of `politics_panel`, each on its own elections. A missing value drops that
+municipality x election row only (an unbalanced panel); fixed effects, controls and clustered
+scores use the rows that remain, and `summary.md` reports the dropped rows per outcome. An outcome
+that cannot be estimated gets null values and `estimates.finite` false; it never stops the run.
+Outcome 8, `mining_money_share`, is estimated only if at least two of the
 elections 2004, 2008 and 2012 have at least 1,000 exploration-half receipts with a CNAE (a rule
 fixed before any run); otherwise `money.skipped` is true and it leaves the family.
 
@@ -150,26 +152,37 @@ def demean_two_way(
     return out
 
 
-def control_matrix(controls: np.ndarray, n_periods: int) -> np.ndarray:
-    """Municipality controls (M x c) times period dummies, first dropped: (M*T) x c(T-1)."""
+def control_matrix(controls: np.ndarray, period: np.ndarray, n_periods: int) -> np.ndarray:
+    """Controls of each row's municipality times period dummies, first dropped: N x c(T-1)."""
     dummies = np.eye(n_periods)[:, 1:]
-    full = controls[:, None, :, None] * dummies[None, :, None, :]
-    return full.reshape(controls.shape[0] * n_periods, -1)
+    full = controls[:, :, None] * dummies[period][:, None, :]
+    return full.reshape(len(period), -1)
 
 
 class Design:
-    """The fixed part of every regression: fixed effects and partialled controls."""
+    """The fixed part of every regression, on the observed (unbalanced) rows.
 
-    def __init__(self, state: np.ndarray, n_periods: int, controls: np.ndarray) -> None:
+    `muni` and `period` give each row's municipality (0..G-1) and period (0..T-1);
+    `state` and `controls` have one entry per municipality.
+    """
+
+    def __init__(
+        self,
+        muni: np.ndarray,
+        period: np.ndarray,
+        state: np.ndarray,
+        n_periods: int,
+        controls: np.ndarray,
+    ) -> None:
+        self.mi, self.ti = muni, period
         self.n_muni = len(state)
         self.n_periods = n_periods
-        self.n_obs = self.n_muni * n_periods
-        muni = np.repeat(np.arange(self.n_muni), n_periods)
-        raw = np.repeat(state, n_periods) * n_periods + np.tile(np.arange(n_periods), self.n_muni)
+        self.n_obs = len(muni)
+        raw = state[muni] * n_periods + period
         _, sy = np.unique(raw, return_inverse=True)
         self.muni = Grouper(muni)
         self.state_year = Grouper(sy.reshape(-1))
-        c_t = self.demean(control_matrix(controls, n_periods))
+        c_t = self.demean(control_matrix(controls[muni], period, n_periods))
         if c_t.shape[1] == 0:
             self.basis, self.rank = np.zeros((self.n_obs, 0)), 0
         else:
@@ -185,13 +198,22 @@ class Design:
         out = self.demean(x)
         return out - self.basis @ (self.basis.T @ out)
 
+    def shock(self, exposure: np.ndarray, price: np.ndarray) -> np.ndarray:
+        """D = exposure_m x price_t on the rows, as an N x 1 column."""
+        return (exposure[self.mi] * price[self.ti]).reshape(-1, 1)
+
+    def event_matrix(self, exposure: np.ndarray) -> np.ndarray:
+        """E_m x 1[period = t] for every period but the first: N x (T-1)."""
+        dummies = (self.ti[:, None] == np.arange(1, self.n_periods)[None, :]).astype(float)
+        return exposure[self.mi][:, None] * dummies
+
 
 @dataclass
 class Fit:
     beta: np.ndarray  # k
     cov: np.ndarray  # k x k, with the small-sample factor
     dtd: np.ndarray  # k x k
-    scores: np.ndarray  # M x k
+    scores: np.ndarray  # G x k
 
     @property
     def se(self) -> np.ndarray:
@@ -209,7 +231,10 @@ def fit(design: Design, d_res: np.ndarray, y_res: np.ndarray) -> Fit:
     beta = np.linalg.lstsq(dtd, d_res.T @ y_res, rcond=None)[0]
     inv = np.linalg.pinv(dtd)
     resid = y_res - d_res @ beta
-    scores = (d_res * resid[:, None]).reshape(design.n_muni, design.n_periods, k).sum(axis=1)
+    contrib = d_res * resid[:, None]
+    scores = np.column_stack(
+        [np.bincount(design.mi, weights=contrib[:, j], minlength=design.n_muni) for j in range(k)]
+    )
     cov_raw = inv @ (scores.T @ scores) @ inv
     g, n = design.n_muni, design.n_obs
     dof = n - (k + design.rank)
@@ -224,20 +249,6 @@ def conley_se(scores: np.ndarray, dtd: float, xy: np.ndarray, cutoff_km: float) 
         near = ((xy[lo : lo + 500, None, :] - xy[None, :, :]) ** 2).sum(axis=2) <= cutoff_km**2
         total += float(scores[lo : lo + 500] @ (near @ scores))
     return math.sqrt(total) / dtd if total >= 0 and dtd > 0 else float("nan")
-
-
-def shock(exposure: np.ndarray, price: np.ndarray) -> np.ndarray:
-    """D_me = E_m x price_e as an (M*T) x 1 column, municipality-major."""
-    return (exposure[:, None] * price[None, :]).reshape(-1, 1)
-
-
-def event_matrix(exposure: np.ndarray, elections: tuple[int, ...], base: int) -> np.ndarray:
-    """E_m x 1[election = e] for every election but `base`: (M*T) x (T-1)."""
-    cols = [j for j, e in enumerate(elections) if e != base]
-    out = np.zeros((len(exposure), len(elections), len(cols)))
-    for k, j in enumerate(cols):
-        out[:, j, k] = exposure
-    return out.reshape(len(exposure) * len(elections), -1)
 
 
 def ri_p_value(observed: float, draws: np.ndarray) -> float:
@@ -267,7 +278,7 @@ def ri_p(
         permuted = exposure.copy()
         for idx in groups:
             permuted[idx] = exposure[rng.permutation(idx)]
-        d_res = design.residualise(shock(permuted, price))[:, 0]
+        d_res = design.residualise(design.shock(permuted, price))[:, 0]
         den = float(d_res @ d_res)
         if den > 1e-12:
             draws[i] = float(d_res @ y_res) / den
@@ -404,6 +415,36 @@ def _diff(f: Fit) -> tuple[float, float]:
     return beta, se
 
 
+def null_block(elections: tuple[int, ...]) -> dict[str, Any]:
+    """An outcome that cannot be estimated: every number is None, so `estimates.finite` is false.
+
+    Only the blocks the outcome's own election list rules out are left absent (regimes).
+    """
+    later = [f"e{e}" for e in elections[1:]]
+    block: dict[str, Any] = {
+        k: None
+        for k in (
+            "beta",
+            "se",
+            "ri_p",
+            "mean",
+            "sd",
+            "n_obs",
+            "n_munis",
+            *(f"conley_se_{km}km" for km in CUTOFFS_KM),
+        )
+    }
+    block["event"] = {"coef": dict.fromkeys(later), "se": dict.fromkeys(later)}
+    block["placebo"] = dict.fromkeys(("soy_beta", "soy_se", "sand_beta", "sand_se"))
+    block["robust"] = dict.fromkeys(("density_beta", "density_se", "titles_beta", "titles_se"))
+    if any(e <= PRE_LAST for e in elections) and any(e >= GOODFAITH_FIRST for e in elections):
+        block["regimes"] = dict.fromkeys(
+            ("pre_beta", "pre_se", "goodfaith_beta", "goodfaith_se", "diff_beta", "diff_se")
+        )
+    block["access"] = dict.fromkeys(("beta", "se"))
+    return block
+
+
 def estimate_outcome(
     panel: Panel,
     name: str,
@@ -411,25 +452,36 @@ def estimate_outcome(
     n_draws: int = N_DRAWS,
     seed: int = SEED,
 ) -> dict[str, Any]:
-    """Every block of one outcome, on the municipalities observed at all its elections."""
+    """Every block of one outcome, on its observed municipality x election rows.
+
+    A missing value drops that row only; the fixed effects, controls and municipality scores
+    use the rows that remain (an unbalanced panel). With too few rows, `null_block` is returned.
+    """
     cols = [ELECTIONS.index(e) for e in elections]
     y_all = panel.outcomes[name][:, cols]
-    keep = np.isfinite(y_all).all(axis=1)
-    if int(keep.sum()) < 2:
-        raise PoliticsError(f"{name}: fewer than two municipalities have every election")
+    mask = np.isfinite(y_all)
+    present = np.flatnonzero(mask.any(axis=0))
+    munis = np.flatnonzero(mask.any(axis=1))
+    if len(munis) < 2 or len(present) < 1 or int(mask.sum()) < 3:
+        return null_block(elections)
+    elections = tuple(elections[j] for j in present)
+    cols = [cols[j] for j in present]
+    mask = mask[np.ix_(munis, present)]
+    values_all = y_all[np.ix_(munis, present)]
+    mi, ti = np.nonzero(mask)
     n_t = len(elections)
-    state, xy = panel.state[keep], panel.xy[keep]
-    exp = {k: v[keep] for k, v in panel.exposures.items()}
+    state, xy = panel.state[munis], panel.xy[munis]
+    exp = {k: v[munis] for k, v in panel.exposures.items()}
     price, soy = panel.ln_gold[cols], panel.ln_soy[cols]
-    design = Design(state, n_t, panel.controls[keep])
-    y_res = design.residualise(y_all[keep].reshape(-1, 1))[:, 0]
+    design = Design(mi, ti, state, n_t, panel.controls[munis])
+    values = values_all[mask]
+    y_res = design.residualise(values.reshape(-1, 1))[:, 0]
 
     def one(exposure: np.ndarray, p: np.ndarray) -> Fit:
-        return fit(design, design.residualise(shock(exposure, p)), y_res)
+        return fit(design, design.residualise(design.shock(exposure, p)), y_res)
 
     main = one(exp["binary"], price)
     observed = float(main.beta[0])
-    values = y_all[keep]
     block: dict[str, Any] = {
         "beta": observed,
         "se": float(main.se[0]),
@@ -443,7 +495,7 @@ def estimate_outcome(
         block[f"conley_se_{km}km"] = conley_se(main.scores[:, 0], float(main.dtd[0, 0]), xy, km)
 
     base = elections[0]
-    d_event = design.residualise(event_matrix(exp["binary"], elections, base))
+    d_event = design.residualise(design.event_matrix(exp["binary"]))
     event = fit(design, d_event, y_res)
     later = [e for e in elections if e != base]
     block["event"] = {
@@ -469,7 +521,9 @@ def estimate_outcome(
     pre = np.array([1.0 if e <= PRE_LAST else 0.0 for e in elections])
     post = np.array([1.0 if e >= GOODFAITH_FIRST else 0.0 for e in elections])
     if pre.any() and post.any():
-        d_reg = np.hstack([shock(exp["binary"], price * pre), shock(exp["binary"], price * post)])
+        d_reg = np.hstack(
+            [design.shock(exp["binary"], price * pre), design.shock(exp["binary"], price * post)]
+        )
         reg = fit(design, design.residualise(d_reg), y_res)
         diff_beta, diff_se = _diff(reg)
         block["regimes"] = {
@@ -482,7 +536,10 @@ def estimate_outcome(
         }
 
     d_access = np.hstack(
-        [shock(exp["binary"], price), shock(exp["binary"] * exp["indigenous"], price)]
+        [
+            design.shock(exp["binary"], price),
+            design.shock(exp["binary"] * exp["indigenous"], price),
+        ]
     )
     access = fit(design, design.residualise(d_access), y_res)
     block["access"] = {"beta": float(access.beta[1]), "se": float(access.se[1])}
@@ -520,7 +577,7 @@ def estimate(
     """Every block of `results.json`, before `finalize`."""
     family = {n: es for n, es in OUTCOMES.items() if not (n == MONEY and skipped)}
     outcomes = {n: estimate_outcome(panel, n, es, n_draws, seed) for n, es in family.items()}
-    q = bh([outcomes[n]["ri_p"] for n in family])
+    q = bh([float("nan") if outcomes[n]["ri_p"] is None else outcomes[n]["ri_p"] for n in family])
     for n, value in zip(family, q, strict=True):
         outcomes[n]["q_bh"] = value
     return {
@@ -555,6 +612,12 @@ def _f(x: Any, digits: int = 4) -> str:
     return "n/a" if x is None else f"{x:.{digits}g}"
 
 
+def _dropped(panel: Panel, name: str) -> int:
+    """Municipality x election rows of the outcome with a missing value."""
+    cols = [ELECTIONS.index(e) for e in OUTCOMES[name]]
+    return int((~np.isfinite(panel.outcomes[name][:, cols])).sum())
+
+
 def _summary(results: dict[str, Any], panel: Panel) -> str:
     outcomes, money = results["outcomes"], results["money"]
     lines = [
@@ -581,8 +644,14 @@ def _summary(results: dict[str, Any], panel: Panel) -> str:
         f"- {results['family']['n_outcomes']} outcomes in the family; RI: 1,000 draws, "
         f"seed {SEED}, E permuted within state; q is Benjamini-Hochberg on the RI p.",
         f"- {len(panel.codes):,} of {panel.n_half:,} exploration-half municipalities have the "
-        "exposure and controls; each outcome uses those observed at all its elections "
-        "(`n_munis` in `results.json`).",
+        "exposure and controls; each outcome uses its observed municipality x election rows.",
+        "",
+        "### Rows dropped for a missing outcome",
+        "",
+        *[
+            f"- `{n}`: {_dropped(panel, n):,} of {len(panel.codes) * len(OUTCOMES[n]):,} rows"
+            for n in outcomes
+        ],
         "",
         "### Money rule (fixed before any run)",
         "",

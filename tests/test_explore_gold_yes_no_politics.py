@@ -148,6 +148,35 @@ def test_outcomes_that_start_in_2004_use_it_as_the_event_base():
 # Done when 2
 
 
+def test_a_missing_value_drops_only_its_row_and_the_count_is_reported():
+    politics, exposure, prices, half = synthetic()
+    for e, rows in ((2008, range(0, 10)), (2016, range(5, 12))):
+        values = politics[e]["homicide_rate"].to_list()
+        for i in rows:
+            values[i] = None
+        politics[e] = politics[e].with_columns(pl.Series("homicide_rate", values, dtype=pl.Float64))
+    results, panel = gp.build_results(politics, exposure, prices, half, n_draws=10)
+    o = results["outcomes"]["homicide_rate"]
+    assert o["n_obs"] == 60 * 7 - 17
+    assert o["n_munis"] == 60
+    assert o["beta"] is not None and o["se"] is not None
+    assert gp._dropped(panel, "homicide_rate") == 17
+    assert "- `homicide_rate`: 17 of 420 rows" in gp._summary(results, panel)
+
+
+def test_an_outcome_with_no_data_gets_nulls_and_does_not_stop_the_run():
+    politics, exposure, prices, half = synthetic()
+    for e in ELECTIONS:
+        politics[e] = politics[e].with_columns(pl.lit(None, dtype=pl.Float64).alias("margin_mayor"))
+    results, _ = gp.build_results(politics, exposure, prices, half, n_draws=10)
+    o = results["outcomes"]["margin_mayor"]
+    assert o["beta"] is None and o["ri_p"] is None and o["q_bh"] is None
+    assert o["event"]["coef"]["e2024"] is None and o["regimes"]["diff_beta"] is None
+    assert results["estimates"]["finite"] is False
+    assert results["outcomes"][PLANTED]["beta"] is not None
+    json.dumps(results, allow_nan=False)
+
+
 def test_bh_matches_a_hand_computation():
     # sorted: .01 .02 .03 .04 .50; p * 5 / rank = .05 .05 .05 .05 .50
     p = [0.04, 0.01, 0.50, 0.03, 0.02]
