@@ -457,13 +457,14 @@ def estimate_outcome(
     A missing value drops that row only; the fixed effects, controls and municipality scores
     use the rows that remain (an unbalanced panel). With too few rows, `null_block` is returned.
     """
+    listed = elections  # the outcome's own list decides the base and which blocks exist
     cols = [ELECTIONS.index(e) for e in elections]
     y_all = panel.outcomes[name][:, cols]
     mask = np.isfinite(y_all)
     present = np.flatnonzero(mask.any(axis=0))
     munis = np.flatnonzero(mask.any(axis=1))
     if len(munis) < 2 or len(present) < 1 or int(mask.sum()) < 3:
-        return null_block(elections)
+        return null_block(listed)
     elections = tuple(elections[j] for j in present)
     cols = [cols[j] for j in present]
     mask = mask[np.ix_(munis, present)]
@@ -494,14 +495,16 @@ def estimate_outcome(
     for km in CUTOFFS_KM:
         block[f"conley_se_{km}km"] = conley_se(main.scores[:, 0], float(main.dtd[0, 0]), xy, km)
 
-    base = elections[0]
-    d_event = design.residualise(design.event_matrix(exp["binary"]))
-    event = fit(design, d_event, y_res)
-    later = [e for e in elections if e != base]
-    block["event"] = {
-        "coef": {f"e{e}": float(b) for e, b in zip(later, event.beta, strict=True)},
-        "se": {f"e{e}": float(s) for e, s in zip(later, event.se, strict=True)},
-    }
+    # Base = the first election on the outcome's list. A listed election with no data, or a base
+    # with no data, gives null (so `estimates.finite` is false); it never removes a key.
+    coef: dict[str, float | None] = {f"e{e}": None for e in listed[1:]}
+    ses: dict[str, float | None] = dict(coef)
+    if elections[0] == listed[0] and len(elections) > 1:
+        d_event = design.residualise(design.event_matrix(exp["binary"]))
+        event = fit(design, d_event, y_res)
+        for e, b, s in zip(elections[1:], event.beta, event.se, strict=True):
+            coef[f"e{e}"], ses[f"e{e}"] = float(b), float(s)
+    block["event"] = {"coef": coef, "se": ses}
 
     soy_fit, sand_fit = one(exp["binary"], soy), one(exp["sand"], price)
     block["placebo"] = {
@@ -520,6 +523,9 @@ def estimate_outcome(
 
     pre = np.array([1.0 if e <= PRE_LAST else 0.0 for e in elections])
     post = np.array([1.0 if e >= GOODFAITH_FIRST else 0.0 for e in elections])
+    regime_keys = ("pre_beta", "pre_se", "goodfaith_beta", "goodfaith_se", "diff_beta", "diff_se")
+    if any(e <= PRE_LAST for e in listed) and any(e >= GOODFAITH_FIRST for e in listed):
+        block["regimes"] = dict.fromkeys(regime_keys)  # null unless both sides have data
     if pre.any() and post.any():
         d_reg = np.hstack(
             [design.shock(exp["binary"], price * pre), design.shock(exp["binary"], price * post)]
@@ -552,7 +558,10 @@ def _clean(value: Any, bad: list[int]) -> Any:
         return {str(k): _clean(v, bad) for k, v in value.items()}
     if isinstance(value, (list, tuple)):
         return [_clean(v, bad) for v in value]
-    if value is None or isinstance(value, (bool, str)):
+    if value is None:  # a number that could not be computed
+        bad.append(1)
+        return None
+    if isinstance(value, (bool, str)):
         return value
     if isinstance(value, (int, np.integer)):
         return int(value)

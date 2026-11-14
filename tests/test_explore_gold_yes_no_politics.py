@@ -177,6 +177,49 @@ def test_an_outcome_with_no_data_gets_nulls_and_does_not_stop_the_run():
     json.dumps(results, allow_nan=False)
 
 
+def _null_in(election: int, name: str = "homicide_rate"):
+    politics, exposure, prices, half = synthetic()
+    politics[election] = politics[election].with_columns(pl.lit(None, dtype=pl.Float64).alias(name))
+    return gp.build_results(politics, exposure, prices, half, n_draws=10)[0]
+
+
+def test_an_election_on_the_list_with_no_data_gives_null_keys_and_clears_the_flag():
+    results = _null_in(2024)
+    o = results["outcomes"]["homicide_rate"]
+    assert set(o["event"]["coef"]) == {f"e{e}" for e in ELECTIONS[1:]}
+    assert set(o["event"]["se"]) == set(o["event"]["coef"])
+    assert o["event"]["coef"]["e2024"] is None and o["event"]["se"]["e2024"] is None
+    assert o["event"]["coef"]["e2020"] is not None
+    assert set(o["regimes"]) == {
+        "pre_beta",
+        "pre_se",
+        "goodfaith_beta",
+        "goodfaith_se",
+        "diff_beta",
+        "diff_se",
+    }
+    assert o["beta"] is not None
+    assert results["estimates"]["finite"] is False
+
+
+def test_no_data_on_one_side_of_the_split_gives_null_regimes_not_absent_ones():
+    politics, exposure, prices, half = synthetic()
+    for e in (2016, 2020, 2024):
+        politics[e] = politics[e].with_columns(
+            pl.lit(None, dtype=pl.Float64).alias("homicide_rate")
+        )
+    results = gp.build_results(politics, exposure, prices, half, n_draws=10)[0]
+    o = results["outcomes"]["homicide_rate"]
+    assert o["regimes"]["pre_beta"] is None and o["regimes"]["diff_se"] is None
+    assert results["estimates"]["finite"] is False
+
+
+def test_a_missing_base_election_gives_null_event_keys():
+    o = _null_in(2000)["outcomes"]["homicide_rate"]
+    assert set(o["event"]["coef"]) == {f"e{e}" for e in ELECTIONS[1:]}
+    assert all(v is None for v in o["event"]["coef"].values())
+
+
 def test_bh_matches_a_hand_computation():
     # sorted: .01 .02 .03 .04 .50; p * 5 / rank = .05 .05 .05 .05 .50
     p = [0.04, 0.01, 0.50, 0.03, 0.02]
