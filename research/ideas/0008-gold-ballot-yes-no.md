@@ -1,9 +1,9 @@
 ---
 id: "0008"
 title: "Gold and the ballot, yes/no: does the gold price move garimpo and local politics in municipalities that have gold?"
-status: exploring
+status: parked
 created: 2026-11-13
-updated: 2026-11-13
+updated: 2026-11-14
 datasets:
   - mining_panel
   - gold_exposure
@@ -112,6 +112,7 @@ whose catalog entry exists, sealed by half).
   (`research/campaigns/0008-gold-ballot-yes-no/`).
 - 2026-11-13: exploring. Campaign 0008 (`research/campaigns/0008-gold-ballot-yes-no/`)
   starts when this pull request merges.
+- 2026-11-14: parked, the recommendation of campaign 0008's close-out report (`research/campaigns/0008-gold-ballot-yes-no/report.md`); Gabriel accepts it by approving this pull request. The yes/no first stage passed (clustered F 12.28, lead ratio 0.2337) on a measure chosen after campaign 0007's results, and the eight politics reduced forms had no q below 0.17.
 
 ## Log
 

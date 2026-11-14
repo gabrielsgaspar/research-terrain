@@ -1,7 +1,7 @@
 ---
 id: "0008"
 title: "Gold and the ballot, yes/no: does the gold price move garimpo and politics where any gold lies?"
-status: active
+status: done
 idea: "0008"
 owner: gabrielsgaspar
 created: 2026-11-13
