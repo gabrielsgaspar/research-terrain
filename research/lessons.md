@@ -16,6 +16,22 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-14: The yes/no gold first stage clears its test, and politics shows nothing after correction (idea 0008, issue #377)
+- Tried: a first stage of garimpo area share on D x ln real gold price (t-1),
+  D = 1 if the Survey records gold, 1990-2024, then eight politics reduced
+  forms on elections, on the exploration half (2,783 municipalities)
+  (`research/explore-runs/0008/43493015138.md`,
+  `research/explore-runs/0008/43605456014.md`).
+- Result: first stage beta 0.0001346, clustered F 12.28, RI p 0.000999, lead
+  ratio 0.2337; F is 5.125 leaving out PA and 1.319 on 1990-2012. Politics:
+  no q below 0.17; smallest RI p `homicide_rate` 0.02198 (q 0.1758), with a
+  negative sign. `mining_money_share` was not estimated (too few receipts).
+- Why: the first stage is carried by the later years and by a few states. The
+  measure was chosen after campaign 0007's results, so it is a forking path.
+- Implication: nothing here is a finding. The report recommends `parked` and no
+  registered design. See
+  `research/campaigns/0008-gold-ballot-yes-no/report.md`.
+
 ## 2026-11-13: Gold exposure times the gold price gives a weak first stage on garimpo (idea 0007, issue #336)
 - Tried: a first stage of garimpo area share on gold exposure x ln real gold
   price (t-1), 1990-2024, on the exploration half (2,783 municipalities),
