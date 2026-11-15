@@ -224,6 +224,7 @@ SEALED = {
     "place_outcomes": "sealed/outcomes/place_outcomes/",
     "mining_panel": "sealed/outcomes/mining_panel/",
     "politics_panel": "sealed/outcomes/politics_panel/",
+    "amendments_panel": "sealed/outcomes/amendments_panel/",
 }
 
 

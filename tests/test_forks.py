@@ -228,10 +228,18 @@ def test_publisher_hosts_are_bare_names(tmp_path):
 # -- the envelope -------------------------------------------------------------------------
 
 
+# Real campaigns that carry a `forks:` envelope Gabriel approved (decision 0015).
+WITH_ENVELOPE = {"0009"}
+
+
 def test_campaigns_without_forks_are_unchanged():
-    """Every real campaign: no envelope, no fork files, the plan's steps only."""
+    """Every real campaign without an envelope: no fork files, the plan's steps only."""
     assert validate(REPO) == []
-    for c in load_campaigns(REPO):
+    campaigns = load_campaigns(REPO)
+    assert {c.id for c in campaigns if c.forks is not None} == WITH_ENVELOPE
+    for c in campaigns:
+        if c.id in WITH_ENVELOPE:
+            continue
         assert c.forks is None and c.fork_files == () and c.main_steps == c.steps
         assert "- Forks: no (no `forks:` block" in render_card(REPO, c.id)
 
