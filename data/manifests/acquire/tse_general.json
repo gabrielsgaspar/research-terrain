@@ -1,0 +1,112 @@
+{
+  "dataset": "tse_general",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/tse/general/2026-11-16/",
+  "created_at": "2026-11-16T16:07:04.518375+00:00",
+  "code_commit": "ab340e00a9c16ef45d84740340d12ddec9a54a14",
+  "sources": [
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_candidato_munzona/votacao_candidato_munzona_2014.zip",
+      "last_modified": "Fri, 03 Sep 2021 20:11:58 GMT",
+      "etag": "\"1d735ec8-5cb1ce958ff80\"",
+      "bytes": 494100168
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_candidato_munzona/votacao_candidato_munzona_2018.zip",
+      "last_modified": "Wed, 13 Nov 2024 16:25:44 GMT",
+      "etag": "\"17912960-626cdc9223858\"",
+      "bytes": 395389280
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_candidato_munzona/votacao_candidato_munzona_2022.zip",
+      "last_modified": "Sat, 14 Nov 2026 07:25:17 GMT",
+      "etag": "\"22634c6e-660377255371a\"",
+      "bytes": 576932974
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_candidato_munzona/votacao_candidato_munzona_2026.zip",
+      "last_modified": "Mon, 16 Nov 2026 12:10:35 GMT",
+      "etag": "\"1b216192-66063aa5270e0\"",
+      "bytes": 455172498
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_2010.zip",
+      "last_modified": "Wed, 01 Sep 2021 14:02:29 GMT",
+      "etag": "\"4b5e92-5caef844a2740\"",
+      "bytes": 4939410
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_2014.zip",
+      "last_modified": "Tue, 26 Aug 2025 16:59:56 GMT",
+      "etag": "\"45215f-63d479a022107\"",
+      "bytes": 4530527
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_2018.zip",
+      "last_modified": "Wed, 13 Nov 2024 16:20:54 GMT",
+      "etag": "\"481010-626cdb7da9ee2\"",
+      "bytes": 4722704
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_2022.zip",
+      "last_modified": "Mon, 16 Nov 2026 14:19:26 GMT",
+      "etag": "\"43bbbe-66065771b16ed\"",
+      "bytes": 4438974
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_2026.zip",
+      "last_modified": "Mon, 16 Nov 2026 11:35:34 GMT",
+      "etag": "\"322e70-660632d0d8b6f\"",
+      "bytes": 3288688
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/tse/general/2026-11-16/votacao_candidato_munzona_2014.zip",
+      "sha256": "f41bceb427820c068b2b14b87befa69d8c333638644eea0e8337534f9b349fd3",
+      "bytes": 494100168
+    },
+    {
+      "path": "data/raw/tse/general/2026-11-16/votacao_candidato_munzona_2018.zip",
+      "sha256": "f880848ef4ba340b15cb91ff0754aa370d34ca7b7e605d6607c0f2a75009adc8",
+      "bytes": 395389280
+    },
+    {
+      "path": "data/raw/tse/general/2026-11-16/votacao_candidato_munzona_2022.zip",
+      "sha256": "86f6743f780ba7c31ab68491d0ccef270773a5a1772b2b3cc3fb5702f5b16249",
+      "bytes": 576932974
+    },
+    {
+      "path": "data/raw/tse/general/2026-11-16/votacao_candidato_munzona_2026.zip",
+      "sha256": "fe06e96ae7335f58aade545e4a27fd4c508c18ad66cf4873258259fa75b67e88",
+      "bytes": 455172498
+    },
+    {
+      "path": "data/raw/tse/general/2026-11-16/consulta_cand_2010.zip",
+      "sha256": "761c8eb2683b0ccdfab535dc92452384bcfc95b1ca7dba9579081ea352281328",
+      "bytes": 4939410
+    },
+    {
+      "path": "data/raw/tse/general/2026-11-16/consulta_cand_2014.zip",
+      "sha256": "ad31cc36d9a6c89eac3d034533fffe1964aaf038697acaf32320cb9a09151087",
+      "bytes": 4530527
+    },
+    {
+      "path": "data/raw/tse/general/2026-11-16/consulta_cand_2018.zip",
+      "sha256": "57f6881f1aa036142886ae548afd275e7ee6695643a2ab62826f2ee232d3fd44",
+      "bytes": 4722704
+    },
+    {
+      "path": "data/raw/tse/general/2026-11-16/consulta_cand_2022.zip",
+      "sha256": "27c9b06df782553e95af58a7507e525eec90261cbe2c88223732b5391fccc0ec",
+      "bytes": 4438974
+    },
+    {
+      "path": "data/raw/tse/general/2026-11-16/consulta_cand_2026.zip",
+      "sha256": "1b0070a49a87c005566a384238428d368918d20f60396a1f2a2a841c6cbb8278",
+      "bytes": 3288688
+    }
+  ],
+  "notes": ""
+}
