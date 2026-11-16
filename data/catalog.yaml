@@ -766,6 +766,24 @@ datasets:
       the build is campaign 0008 step s6 (src/terrain/builds/politics_panel.py)
       and its run is step s8.
 
+  - name: amendments_panel
+    source: built from tse_general, cgu_amendments, tse_results, tse_candidates, municipalities and ibge_population_annual, split by half
+    licence: public (TSE, CGU, IBGE), as its sources
+    derived: data/derived/amendments_panel/
+    sealed: sealed/outcomes/amendments_panel/
+    status: planned
+    notes: >
+      Idea 0009 and decisions 0003 and 0011: one row per federal deputy,
+      municipality and cycle (mayors 2016, 2020, 2024) where the deputy's
+      party had a mayoral finalist, with the race, the deputy's individual
+      amendment payments to the municipality before and after it, and the
+      deputy's vote share there at the general elections before and after.
+      Exploration-half rows (both exploration lists) in derived, all other
+      rows only in sealed. Name, derived and sealed are fixed by the
+      campaign 0009 PR (the sealed line is pinned in tests/test_split.py);
+      the build task is campaign 0009 step s4, which adds the contract and
+      the rest.
+
   - name: funai_indigenous_lands
     source: FUNAI indigenous land boundaries
     licence: public
