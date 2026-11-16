@@ -1,0 +1,24 @@
+{
+  "dataset": "cgu_amendments",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/cgu/amendments/2026-11-16/",
+  "created_at": "2026-11-16T16:03:48.207876+00:00",
+  "code_commit": "ab340e00a9c16ef45d84740340d12ddec9a54a14",
+  "sources": [
+    {
+      "url": "https://dadosabertos-download.cgu.gov.br/PortalDaTransparencia/saida/emendas-parlamentares/EmendasParlamentares.zip",
+      "last_modified": "Fri, 13 Nov 2026 19:24:48 GMT",
+      "etag": "\"f492e5606620af1e3c2ae6695d6af773-6\"",
+      "bytes": 47094995
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/cgu/amendments/2026-11-16/EmendasParlamentares.zip",
+      "sha256": "ad1075230ce3c3f3b908fa03e7fa38d25c0f597d6f32ebd367389cfd5b9215b4",
+      "bytes": 47094995
+    }
+  ],
+  "notes": ""
+}
