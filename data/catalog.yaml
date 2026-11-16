@@ -772,6 +772,7 @@ datasets:
     derived: data/derived/amendments_panel/
     sealed: sealed/outcomes/amendments_panel/
     status: planned
+    contract: data/contracts/amendments_panel.md
     notes: >
       Idea 0009 and decisions 0003 and 0011: one row per federal deputy,
       municipality and cycle (mayors 2016, 2020, 2024) where the deputy's
@@ -781,8 +782,11 @@ datasets:
       Exploration-half rows (both exploration lists) in derived, all other
       rows only in sealed. Name, derived and sealed are fixed by the
       campaign 0009 PR (the sealed line is pinned in tests/test_split.py);
-      the build task is campaign 0009 step s4, which adds the contract and
-      the rest.
+      the build is campaign 0009 step s4 (src/terrain/builds/amendments_panel.py)
+      and its run is step s5. Individual amendments only, paid by payment
+      month (CGU PorFavorecido) to the municipality of the recipient; the
+      deputy key is the TSE sq_candidato of the t0 candidacy, never a CPF,
+      name or hash of one. author_link.parquet (counts only) is in derived.
 
   - name: funai_indigenous_lands
     source: FUNAI indigenous land boundaries
