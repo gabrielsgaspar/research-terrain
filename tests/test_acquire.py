@@ -165,10 +165,24 @@ def test_expansion_of_the_synthetic_entry():
         ("ibge_boundaries_2024", 3),
         ("gold_price", 2),
         ("sgb_gold_occurrences", 1),
+        ("tse_general", 9),
+        ("cgu_amendments", 1),
     ],
 )
 def test_real_catalog_url_counts(name, count):
     assert len(expand_urls(dataset(name))) == count
+
+
+def test_real_tse_general_urls_in_order():
+    base = "https://cdn.tse.jus.br/estatistica/sead/odsele/"
+    expected = [
+        *(
+            f"{base}votacao_candidato_munzona/votacao_candidato_munzona_{y}.zip"
+            for y in (2014, 2018, 2022, 2026)
+        ),
+        *(f"{base}consulta_cand/consulta_cand_{y}.zip" for y in (2010, 2014, 2018, 2022, 2026)),
+    ]
+    assert [f.url for f in expand_urls(dataset("tse_general"))] == expected
 
 
 def test_ibge_grid_2010_stored_names():
