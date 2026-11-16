@@ -1127,6 +1127,76 @@ datasets:
         sums: [valor_receita]
       min_rows: 10000
 
+  - name: tse_general
+    source: "TSE open data (cdn.tse.jus.br), general elections: votacao_candidato_munzona 2014-2026 and consulta_cand 2010-2026"
+    licence: "TSE open data: CC BY (dadosabertos.tse.jus.br)"
+    gcs: data/raw/tse/general/
+    status: planned
+    contract: data/contracts/tse_general.md
+    notes: >
+      Facts checked on 2026-11-15 from the zips' directories and header rows,
+      with no data row read. Each zip has 30 members: one CSV per state (27,
+      DF included), _BR, _BRASIL (every row again) and leiame.pdf. Read only
+      *_BRASIL.csv. Zipped sizes: munzona 494, 395, 577 and 454 MB (2014,
+      2018, 2022, 2026), 7.4 to 8.6 GB unzipped each; consulta_cand 3 to 5 MB
+      each. CSVs are ;-separated, quoted, Latin-1. Munzona columns include
+      ANO_ELEICAO, NR_TURNO, SG_UF, CD_MUNICIPIO (TSE code), CD_CARGO,
+      SQ_CANDIDATO, NR_PARTIDO, SG_PARTIDO, QT_VOTOS_NOMINAIS and
+      CD_SIT_TOT_TURNO. 2018, 2022 and 2026 also have NR_FEDERACAO,
+      QT_VOTOS_NOMINAIS_VALIDOS and NM_TIPO_DESTINACAO_VOTOS; 2014 has
+      neither of the last two. consulta_cand columns include SQ_CANDIDATO,
+      CD_CARGO, SG_UF, NM_CANDIDATO, NM_URNA_CANDIDATO, NR_PARTIDO,
+      SG_PARTIDO, NR_CPF_CANDIDATO, NR_TITULO_ELEITORAL_CANDIDATO and
+      CD_SIT_TOT_TURNO. The raw zips hold CPF and voter-ID numbers as TSE
+      publishes them. They are stored as fetched, like tse_candidates' raw
+      zips. Builds may use them only in memory (AGENTS.md, "Personal
+      identifiers"). The 2026 files were regenerated on 2026-11-15 and can
+      change with court rulings; the dated raw folder is the snapshot.
+      Fallback: Base dos Dados br_tse_eleicoes. Campaign 0009 steps s1 and s2.
+    acquire:
+      files:
+        - url: https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_candidato_munzona/votacao_candidato_munzona_<year>.zip
+          years: [2014, 2018, 2022, 2026]
+          check: {type: zip, member: "*_BRASIL.csv"}
+        - url: https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_<year>.zip
+          years: [2010, 2014, 2018, 2022, 2026]
+          check: {type: zip, member: "*_BRASIL.csv"}
+
+  - name: cgu_amendments
+    source: "CGU Portal da Transparência (dadosabertos-download.cgu.gov.br), EmendasParlamentares.zip"
+    licence: "Portal da Transparência open data (federal open-data policy); licence not stated by the publisher, accepted by Gabriel on 2026-11-15 for research use"
+    gcs: data/raw/cgu/amendments/
+    status: planned
+    contract: data/contracts/cgu_amendments.md
+    notes: >
+      The target of the 302 redirect from
+      portaldatransparencia.gov.br/download-de-dados/emendas-parlamentares/UNICO.
+      It sends a Content-Length (47,094,995 bytes on 2026-11-13). Six CSVs
+      (;-separated, quoted, Latin-1 to be confirmed by the build).
+      EmendasParlamentares.csv (49 MB): one row per amendment, with Código da
+      Emenda, Ano da Emenda, Tipo de Emenda, Código do Autor da Emenda, Nome
+      do Autor da Emenda, Código Município IBGE, the budget classification,
+      and the committed, liquidated and paid values.
+      EmendasParlamentares_PorFavorecido.csv (184 MB): Código da Emenda,
+      Código do Autor da Emenda, Nome do Autor da Emenda, Número da emenda,
+      Tipo de Emenda, Ano/Mês, Código do Favorecido, Favorecido, Natureza
+      Jurídica, Tipo Favorecido, UF Favorecido, Município Favorecido, Valor
+      Recebido. _Convenios, _Parcerias, _PlanodeTrabalhoParcerias and
+      _PlanodeTrabalhoTransferenciasEspeciais are not used. Código do
+      Favorecido and Favorecido can identify people: no build may write them
+      to derived data, logs or results. The CGU guide says amendments are
+      covered from 2014; the first Ano/Mês is unconfirmed and step s4's build
+      checks it. No GitHub runner has fetched from this host before (campaign
+      0009, step s3, is the first). Fallbacks: Base dos Dados
+      basedosdados.br_cgu_emendas_parlamentares.microdados (budget years
+      2013-2026, no payment date); Tesouro Transparente
+      emendas-parlamentares.csv (payment orders, with dates and a
+      Transferência Especial flag, but no author code).
+    acquire:
+      files:
+        - url: https://dadosabertos-download.cgu.gov.br/PortalDaTransparencia/saida/emendas-parlamentares/EmendasParlamentares.zip
+          check: {type: zip, member: "EmendasParlamentares_PorFavorecido.csv"}
+
   - name: anm_sigmine
     source: "ANM SIGMINE, ArcGIS feature service, layer 0 'Processos minerários ativos' (active processes only)"
     licence: "No dataset licence found; ANM publishes SIGMINE as open data (gov.br/anm dados abertos); the gov.br site footer states CC BY-ND 3.0. Only municipality-level shares are published."
