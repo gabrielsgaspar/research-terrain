@@ -71,10 +71,14 @@ or exception message.
 ## Recipient municipality
 
 (`UF Favorecido`, normalised `Município Favorecido`) is matched to (`uf`, normalised
-`name_ibge`). Rows with an empty municipality (state or federal recipients) have no row in the
-panel and are counted per year. Of the rows that name a municipality, those that match nothing
-have no row either, are counted per year, and stop the build if they exceed 2% in a year.
-Only individual payments inside a window of a cycle are checked.
+`name_ibge`). Rows with no municipality have no row in the panel and are counted per year: an
+empty municipality (state or federal recipients), or CGU's placeholder for a recipient it does
+not identify, a normalised `Município Favorecido` of exactly `SEM INFORMACAO` with a stripped
+`UF Favorecido` of "" or "-1" (mostly Pix transfers of national, state-wide or
+multi-municipality amendments). `Sem informação` with a real UF still names a municipality. Of
+the rows that name a municipality, those that match nothing have no row either, are counted per
+year, and stop the build if they exceed 2% in a year. Only individual payments inside a window
+of a cycle are checked.
 
 ## Columns
 
@@ -127,7 +131,9 @@ Each raises `BuildError` with counts only, before anything is uploaded.
 4. Fewer than 5,000 or more than 300,000 rows in a cycle.
 5. The earliest payment month of the CGU file after 2015-01, or the latest before 2026-09.
 6. No individual Pix payment from 2020-01 on.
-7. More than 2% of the rows naming a municipality failing to match, in any year.
+7. More than 2% of the rows naming a municipality failing to match, in any year. A row with an
+   empty municipality, or with `Sem informação` and a UF of "" or "-1" (CGU's placeholder), names
+   no municipality; `Sem informação` with a real UF names one and counts if it fails.
 8. No encoding (UTF-8, then Latin-1) that gives the CGU header, or an `Ano/Mês` in none of the
    three formats, or a `Valor Recebido` that is not a Brazilian decimal number.
 9. In a mayoral year, no candidate with `cd_genero` "4" or no candidate with `cd_grau_instrucao`
@@ -141,5 +147,9 @@ municipalities share a state and a normalised name, or if a t0 candidacy appears
 
 Per cycle: rows and deputies (exploration-half rows only); the author link counts; unlinked
 CPFs; t0 deputies whose party number has no first-round mayoral candidate at m (mergers); vote
-rows dropped (abroad, other). Then the dropped recipient rows per year (empty municipality, no
-match), the first and last payment months, and the CGU rows without a payment month.
+rows dropped (abroad, other). Then the dropped recipient rows per year (no municipality,
+placeholders included; no match); per year, the placeholder rows, their value (BRL, sum of
+`Valor Recebido`) and its share of the year's value; per year, the 10 most frequent unmatched
+(UF, normalised municipality name) pairs with their row counts; the first and last payment
+months, and the CGU rows without a payment month. Notes name municipalities only, never a
+`Favorecido` or `Código do Favorecido`.

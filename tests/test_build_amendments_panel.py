@@ -8,6 +8,7 @@ R1 (exploration list 1) and C1 (list 2) are in the exploration half; the rest go
 """
 
 import csv
+import functools
 import hashlib
 import io
 import json
@@ -610,9 +611,33 @@ def test_manifest_notes(built):
     notes = manifest["notes"]
     assert "dropped_recipient_rows_no_municipality=2017:1" in notes
     assert "dropped_recipient_rows_unmatched=none" in notes
+    assert "placeholder_recipient_rows=none" in notes
+    assert "top_unmatched_recipients=none" in notes
     assert "first_payment_month=2015-01, last=2026-09" in notes
     note = next(n for n in notes.split("; ") if n.startswith("A:"))
     assert note.startswith("A: rows=4, deputies=4")  # exploration half: R1 (3 deputies) and C1
+
+
+def test_manifest_notes_carry_placeholders_and_top_unmatched(tmp_path, monkeypatch):
+    """Two placeholders and a `Sem informação` with a real UF, in 2017; the 2% stop is lifted."""
+    loose = functools.partial(ap.match_recipients, max_unmatched=1.0)
+    monkeypatch.setattr(ap, "match_recipients", loose)
+    data = cgu_rows() + [
+        pay("100", "João da Mata", IND, "2017/07", "", "Sem informação", "1.000,00"),
+        pay("100", "João da Mata", IND, "2017/07", "-1", "SEM INFORMAÇÃO", "500,00"),
+        pay("100", "João da Mata", IND, "2017/07", "SP", "Sem informação", "1,00"),
+    ]
+    store = MemoryStore()
+    manifests = stage(store, cgu=cgu_zip(data))
+    notes = run(store, manifests, tmp_path)["notes"].split("; ")
+    assert "dropped_recipient_rows_no_municipality=2017:3" in notes  # the state row too
+    assert "dropped_recipient_rows_unmatched=2017:1" in notes
+    assert "placeholder_recipient_rows=2017:2" in notes
+    assert "placeholder_recipient_value_brl=2017:1500.00" in notes
+    total = 500 + 100 + 5 + 70 + 15 + 1234.56 + 1500 + 1  # every 2017 individual payment
+    assert f"placeholder_recipient_value_share=2017:{1500 / total:.4f}" in notes
+    assert "top_unmatched_recipients_2017=SP/SEM INFORMACAO:1" in notes
+    assert not any(sentinel in n for sentinel in SENTINEL_FAVORECIDO for n in notes)
 
 
 def test_a_senator_is_not_a_deputy_and_a_name_needs_one_candidacy(built):
@@ -853,8 +878,62 @@ def test_empty_municipalities_are_counted_not_matched():
         {"muni": ["", None, "Ariquemes"], "uf": ["RO"] * 3, "ym": [201703] * 3, "value": [1.0] * 3}
     )
     out, counts = ap.match_recipients(frame, municipalities())
-    assert counts == {"no_municipality": {2017: 2}, "unmatched": {}}
+    assert counts["no_municipality"] == {2017: 2} and counts["unmatched"] == {}
+    assert counts["placeholder"] == {} and counts["top_unmatched"] == {}
     assert out.sort("cd_ibge", nulls_last=True)["cd_ibge"].to_list() == [R2, None, None]
+
+
+def placeholders(ufs, n_ok, year=2017, value=1.0):
+    """`n_ok` rows to Ariquemes (value 1) and one `Sem informação` row per UF in `ufs`."""
+    n = len(ufs)
+    return pl.DataFrame(
+        {
+            "muni": ["Ariquemes"] * n_ok + [" Sem informação "] * n,
+            "uf": ["RO"] * n_ok + list(ufs),
+            "ym": [year * 100 + 3] * (n_ok + n),
+            "value": [1.0] * n_ok + [value] * n,
+        }
+    )
+
+
+def test_cgu_placeholders_are_no_municipality_not_unmatched():
+    frame = placeholders(["", " -1 ", None], 9, value=10.0)
+    out, counts = ap.match_recipients(frame, municipalities(), max_unmatched=0.0)
+    assert counts["no_municipality"] == {2017: 3} and counts["unmatched"] == {}
+    assert counts["placeholder"] == {2017: 3}
+    assert counts["placeholder_value"] == {2017: 30.0}
+    assert counts["placeholder_share"] == {2017: pytest.approx(30.0 / 39.0)}
+    assert out.filter(pl.col("cd_ibge").is_null()).height == 3
+    assert "placeholder" not in out.columns
+
+
+def test_sem_informacao_with_a_real_uf_is_unmatched():
+    frame = placeholders(["SP"], 98)
+    out, counts = ap.match_recipients(frame, municipalities())
+    assert counts["unmatched"] == {2017: 1} and counts["no_municipality"] == {}
+    assert counts["placeholder"] == {}
+    assert counts["top_unmatched"] == {2017: [("SP", "SEM INFORMACAO", 1)]}
+    with pytest.raises(BuildError, match="2017: 1 of 49 recipient rows"):
+        ap.match_recipients(placeholders(["SP"], 48), municipalities())
+
+
+def test_placeholders_do_not_hide_real_unmatched_names():
+    frame, munis = recipients(97, 3)
+    frame = pl.concat([frame, placeholders(["", "-1"] * 50, 0)])
+    with pytest.raises(BuildError, match="2017: 3 of 100 recipient rows"):
+        ap.match_recipients(frame, munis)
+
+
+def test_top_unmatched_pairs_are_the_ten_most_frequent_per_year():
+    names = [f"Lugar {chr(65 + i)}" for i in range(12)]
+    muni = [n for i, n in enumerate(names) for _ in range(i + 1)]  # Lugar L most frequent
+    frame = pl.DataFrame(
+        {"muni": muni, "uf": ["RO"] * len(muni), "ym": [201703] * len(muni)},
+    ).with_columns(pl.lit(1.0).alias("value"))
+    _, counts = ap.match_recipients(frame, municipalities(), max_unmatched=1.0)
+    top = counts["top_unmatched"][2017]
+    assert len(top) == ap.TOP_UNMATCHED
+    assert top[0] == ("RO", "LUGAR L", 12) and top[-1] == ("RO", "LUGAR C", 3)
 
 
 def test_two_municipalities_with_one_name_stop_the_build():
