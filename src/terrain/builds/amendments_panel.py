@@ -47,6 +47,9 @@ FEMALE = "4"
 HIGHER_ED = "8"
 CPF_PATTERN = r"^\d{11}$"
 MAX_UNMATCHED_RECIPIENTS = 0.02  # share of the named recipient rows, per year
+PLACEHOLDER_NAME = "SEM INFORMACAO"  # CGU's unidentified recipient, normalised
+PLACEHOLDER_UFS = ("", "-1")  # stripped `UF Favorecido` values that go with it
+TOP_UNMATCHED = 10  # unmatched (UF, municipality name) pairs in the notes, per year
 MIN_ROWS = 5000  # per cycle
 MAX_ROWS = 300_000
 FIRST_MONTH = 201501  # the earliest payment month may not be later
@@ -335,18 +338,33 @@ def in_windows(cycles: tuple[str, ...]) -> pl.Expr:
     return pl.any_horizontal(parts)
 
 
+def is_placeholder() -> pl.Expr:
+    """CGU's recipient it does not identify: `Sem informação` with an empty or `-1` UF.
+
+    Reads `name_key` and `uf_key`. With a real UF the row still names a municipality.
+    """
+    uf = pl.col("uf_key").fill_null("")
+    return (pl.col("name_key") == PLACEHOLDER_NAME) & uf.is_in(PLACEHOLDER_UFS)
+
+
 def match_recipients(
     payments: pl.DataFrame,
     munis: pl.DataFrame,
     *,
     max_unmatched: float = MAX_UNMATCHED_RECIPIENTS,
-) -> tuple[pl.DataFrame, dict[str, dict[int, int]]]:
+) -> tuple[pl.DataFrame, dict[str, dict[int, Any]]]:
     """Add `cd_ibge` to the payments from (`UF Favorecido`, municipality name).
 
-    Rows with an empty municipality (state or federal recipients) and rows that name a
-    municipality that matches nothing keep a null `cd_ibge` (they have no row in the panel;
-    their authors still count in the author link). Both are counted per year; a year in which
-    more than `max_unmatched` of the rows that name a municipality match nothing stops the build.
+    Rows with no municipality and rows that name a municipality that matches nothing keep a
+    null `cd_ibge` (they have no row in the panel; their authors still count in the author
+    link). No municipality: an empty name (state or federal recipients), or CGU's placeholder
+    (`is_placeholder`). Both are counted per year; a year in which more than `max_unmatched` of
+    the rows that name a municipality match nothing stops the build.
+
+    Counts per year: `no_municipality` (placeholders included), `unmatched`, `placeholder`
+    (rows), `placeholder_value` (sum of `value`), `placeholder_share` (of the year's `value`)
+    and `top_unmatched`: up to `TOP_UNMATCHED` (UF, normalised name, rows) of the unmatched
+    rows, most frequent first. Municipality names only.
     """
     key = (
         munis.select("cd_ibge", pl.col("uf").str.to_uppercase().alias("uf_key"), "name_ibge")
@@ -360,8 +378,11 @@ def match_recipients(
         .with_columns(pl.col("uf").str.strip_chars().str.to_uppercase().alias("uf_key"))
         .with_columns((pl.col("ym") // 100).alias("year"))
     )
-    joined = rows.join(key, on=["uf_key", "name_key"], how="left")
-    named = joined.filter(pl.col("name_key") != "")
+    joined = rows.join(key, on=["uf_key", "name_key"], how="left").with_columns(
+        is_placeholder().alias("placeholder")
+    )
+    none = (pl.col("name_key") == "") | pl.col("placeholder")
+    named = joined.filter(~none)
     failed = named.filter(pl.col("cd_ibge").is_null())
     named_by_year = _per_year(named)
     failed_by_year = _per_year(failed)
@@ -370,9 +391,37 @@ def match_recipients(
             raise BuildError(
                 f"{year}: {n} of {named_by_year[year]} recipient rows match no municipality"
             )
-    empty_by_year = _per_year(joined.filter(pl.col("name_key") == ""))
-    out = joined.drop("year", "uf_key", "name_key", "muni", "uf")
-    return out, {"no_municipality": empty_by_year, "unmatched": failed_by_year}
+    empty_by_year = _per_year(joined.filter(none))
+    placeholder = joined.filter(pl.col("placeholder"))
+    value_by_year = _value_per_year(joined)
+    placeholder_value = _value_per_year(placeholder)
+    top = (
+        failed.group_by("year", pl.col("uf_key").fill_null(""), "name_key")
+        .len()
+        .sort(["year", "len", "uf_key", "name_key"], descending=[False, True, False, False])
+    )
+    top_unmatched: dict[int, list[tuple[str, str, int]]] = {}
+    for year, uf, name, n in top.iter_rows():
+        pairs = top_unmatched.setdefault(int(year), [])
+        if len(pairs) < TOP_UNMATCHED:
+            pairs.append((uf, name, int(n)))
+    out = joined.drop("year", "uf_key", "name_key", "muni", "uf", "placeholder")
+    return out, {
+        "no_municipality": empty_by_year,
+        "unmatched": failed_by_year,
+        "placeholder": _per_year(placeholder),
+        "placeholder_value": placeholder_value,
+        "placeholder_share": {
+            y: (v / value_by_year[y] if value_by_year[y] else 0.0)
+            for y, v in placeholder_value.items()
+        },
+        "top_unmatched": top_unmatched,
+    }
+
+
+def _value_per_year(frame: pl.DataFrame) -> dict[int, float]:
+    sums = frame.group_by("year").agg(pl.col("value").sum()).sort("year")
+    return {int(y): float(v) for y, v in sums.iter_rows()}
 
 
 def _per_year(frame: pl.DataFrame) -> dict[int, int]:
@@ -949,8 +998,24 @@ def _month(ym: int) -> str:
     return f"{ym // 100}-{ym % 100:02d}"
 
 
-def _years(counts: dict[int, int]) -> str:
-    return ",".join(f"{y}:{n}" for y, n in sorted(counts.items())) or "none"
+def _years(counts: dict[int, Any], fmt: str = "") -> str:
+    return ",".join(f"{y}:{n:{fmt}}" for y, n in sorted(counts.items())) or "none"
+
+
+def placeholder_notes(dropped: dict[str, dict[int, Any]]) -> list[str]:
+    """The placeholder counts and the most frequent unmatched (UF, name) pairs, per year."""
+    notes = [
+        f"placeholder_recipient_rows={_years(dropped['placeholder'])}",
+        f"placeholder_recipient_value_brl={_years(dropped['placeholder_value'], '.2f')}",
+        f"placeholder_recipient_value_share={_years(dropped['placeholder_share'], '.4f')}",
+    ]
+    top = dropped["top_unmatched"]
+    for year, pairs in sorted(top.items()):
+        listed = ", ".join(f"{uf or '(empty)'}/{name}:{n}" for uf, name, n in pairs)
+        notes.append(f"top_unmatched_recipients_{year}={listed}")
+    if not top:
+        notes.append("top_unmatched_recipients=none")
+    return notes
 
 
 def _fetch_frame(
@@ -1200,6 +1265,7 @@ def build(
 
     notes.append(f"dropped_recipient_rows_no_municipality={_years(dropped['no_municipality'])}")
     notes.append(f"dropped_recipient_rows_unmatched={_years(dropped['unmatched'])}")
+    notes.extend(placeholder_notes(dropped))
     notes.append(f"first_payment_month={_month(stats['first'])}, last={_month(stats['last'])}")
     notes.append(f"rows_without_payment_month={stats['no_month']}")
 
