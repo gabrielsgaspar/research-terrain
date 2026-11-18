@@ -19,6 +19,8 @@ checks this file.
 - [N003] (design) Put the build that a long chain needs early, because one pipeline step waited 11.8 hours after both repairs were used. From: campaign 0007, s11 blocked for 11.8 hours. Added 2026-11-13.
 - [N004] (planner) List each open question in the issue and your answer to it in the first plan, so the plan is never "Needs clarification". From: campaign 0008, s9 planner asked for clarification (16.8 hours). Added 2026-11-14.
 - [N005] (builder) Before the first commit of a task that changes an estimator, list each rule the issue states for it and test each one, because s9 needed two fix rounds. From: campaign 0008, s9 had 2 fix rounds. Added 2026-11-14.
+- [N006] (builder) Before a pipeline build is merged, run it on every fixture year and on the messiest real-file shape the issue describes, because s5 failed all four of its runs. From: campaign 0009, s5 had 4 runs, all failure. Added 2026-11-18.
+- [N007] (design) When one build gates several later steps, split it into smaller builds, so one failure does not leave s7, s8 and s9 waiting. From: campaign 0009, s5 blocked and s7 to s9 waiting. Added 2026-11-18.
 
 ## Scoreboard
 
@@ -26,3 +28,4 @@ checks this file.
 | --- | --- | --- | --- | --- | --- | --- |
 | 0007 | 23 | 8 | 1 | 15 | 45.1 | 3 |
 | 0008 | 10 | 1 | 2 | 0 | 19.5 | 2 |
+| 0009 | 9 | 2 | 0 | 3 | 50.5 | 2 |

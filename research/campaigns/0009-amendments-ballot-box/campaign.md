@@ -1,7 +1,7 @@
 ---
 id: "0009"
 title: "What do budget amendments buy at the ballot box? Close mayoral races, deputies' amendments and their votes, 2016-2026"
-status: active
+status: done
 idea: "0009"
 owner: gabrielsgaspar
 created: 2026-11-15
