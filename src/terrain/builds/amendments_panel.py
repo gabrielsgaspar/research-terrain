@@ -862,7 +862,11 @@ def mayor_year(cv: pl.DataFrame, turnout: pl.DataFrame, attrs: pl.DataFrame, yea
 
 
 def window_sums(payments: pl.DataFrame, cycle: Cycle) -> pl.DataFrame:
-    """Per (`deputy`, `cd_ibge`): the payments of the pre and post windows."""
+    """Per (`deputy`, `cd_ibge`): the payments of the pre and post windows.
+
+    Negative payment rows (refunds and reversals) are summed with the rest; `floor_payments`
+    then sets a total below 0 to 0.
+    """
     pre = pl.col("ym").is_between(*cycle.pre)
     post = pl.col("ym").is_between(*cycle.post)
     value = pl.col("value")
@@ -966,6 +970,24 @@ def cycle_panel(
     panel = rows.select([pl.col(n).cast(t) for n, t in SCHEMA.items()]).sort(["deputy", "cd_ibge"])
     merger = deputies.filter(~pl.col("party").is_in(sorted(mayors.parties)))
     return panel, merger.height
+
+
+def floor_payments(panel: pl.DataFrame) -> tuple[pl.DataFrame, dict[str, int]]:
+    """Set each payment column (`PAYMENTS`) that nets below 0 to 0.
+
+    Returns the panel and, per column, the number of rows set to 0 (both halves).
+    """
+    counts = {c: panel.filter(pl.col(c) < 0).height for c in PAYMENTS}
+    floored = panel.with_columns(
+        pl.when(pl.col(c) < 0).then(0.0).otherwise(pl.col(c)).alias(c) for c in PAYMENTS
+    )
+    return floored, counts
+
+
+def negative_payments(individual: pl.DataFrame) -> tuple[dict[int, int], dict[int, float]]:
+    """Per year: the individual payment rows with a value below 0, and their sum (reais)."""
+    rows = individual.filter(pl.col("value") < 0).with_columns((pl.col("ym") // 100).alias("year"))
+    return _per_year(rows), _value_per_year(rows)
 
 
 def check_panel(
@@ -1223,6 +1245,7 @@ def build(
     individual, stats = parse_payments(raw)
     del raw
     check_payment_stats(stats)
+    negative_rows, negative_value = negative_payments(individual)
     windowed = individual.filter(in_windows(cycles))
     del individual
     paid, dropped = match_recipients(windowed, munis)
@@ -1248,6 +1271,7 @@ def build(
             votes1=parts["votes1"],
             t1_link=parts["t1_link"],
         )
+        panel, floored = floor_payments(panel)
         tables[name] = panel
         counts = parts["counts"]
         links.append({"cycle": name, **counts})
@@ -1261,11 +1285,14 @@ def build(
             f"vote_rows_abroad={parts['dropped_votes']['abroad']}, "
             f"vote_rows_no_municipality={parts['dropped_votes']['unmatched']}"
         )
+        notes.append(f"{name}_floored_to_zero=" + ",".join(f"{c}:{n}" for c, n in floored.items()))
         del parts
 
     notes.append(f"dropped_recipient_rows_no_municipality={_years(dropped['no_municipality'])}")
     notes.append(f"dropped_recipient_rows_unmatched={_years(dropped['unmatched'])}")
     notes.extend(placeholder_notes(dropped))
+    notes.append(f"negative_payment_rows={_years(negative_rows)}")
+    notes.append(f"negative_payment_value_brl={_years(negative_value, '.2f')}")
     notes.append(f"first_payment_month={_month(stats['first'])}, last={_month(stats['last'])}")
     notes.append(f"rows_without_payment_month={stats['no_month']}")
 
