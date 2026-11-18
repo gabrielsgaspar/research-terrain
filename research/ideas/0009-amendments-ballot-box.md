@@ -1,9 +1,9 @@
 ---
 id: "0009"
 title: "What do budget amendments buy at the ballot box?"
-status: exploring
+status: parked
 created: 2026-11-15
-updated: 2026-11-15
+updated: 2026-11-18
 datasets:
   - amendments_panel
   - tse_results
@@ -85,6 +85,11 @@ campaign's step s1, so they are not yet in the front matter). Existing: `tse_res
 - 2026-11-15: proposed, from Gabriel's brief of the same day.
 - 2026-11-15: exploring. Campaign 0009 (`research/campaigns/0009-amendments-ballot-box/`)
   starts when this pull request merges.
+- 2026-11-18: parked, the recommendation of campaign 0009's close-out report (`research/campaigns/0009-amendments-ballot-box/report.md`); Gabriel accepts it by approving this pull request. The panel build (s5) failed in 4 runs, so the power gate and the main run never ran and the idea was not tested.
+
+## Variants tried
+
+None: no fork was declared.
 
 ## Log
 

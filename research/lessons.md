@@ -16,6 +16,22 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-18: The amendments panel never built, so the idea was not tested (idea 0009, issue #400)
+- Tried: campaign 0009 acquired TSE general-election and CGU amendment data
+  (`data/manifests/acquire/tse_general.json`,
+  `data/manifests/acquire/cgu_amendments.json`), then built the amendments
+  panel (s5), on the plan of a power gate and a main run on the exploration
+  half.
+- Result: s5 ended in failure in 4 runs (43971218125, 43971365101,
+  43971509559, 44062022559) and its repair #410 gave no pull request. Steps
+  s7 to s9 never ran. There is no explore-run record for 0009 and no kill rule
+  was applied.
+- Why: the log of run 44062022559 was not available, so the cause is not
+  recorded. Owner fix bd336f0 (PR #411) may or may not have been in that run.
+- Implication: nothing here is a finding. The report recommends `parked` and
+  a follow-up campaign on the current main. See
+  `research/campaigns/0009-amendments-ballot-box/report.md`.
+
 ## 2026-11-14: The yes/no gold first stage clears its test, and politics shows nothing after correction (idea 0008, issue #377)
 - Tried: a first stage of garimpo area share on D x ln real gold price (t-1),
   D = 1 if the Survey records gold, 1990-2024, then eight politics reduced
