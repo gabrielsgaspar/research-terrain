@@ -1,0 +1,255 @@
+{
+  "counts": {
+    "by_cycle": {
+      "A": {
+        "races_h": 1106,
+        "units_h": 7314
+      },
+      "B": {
+        "races_h": 1076,
+        "units_h": 6916
+      },
+      "C": {
+        "races_h": 835,
+        "units_h": 7411
+      }
+    },
+    "deputies_h": 1746,
+    "min_cycle_races_h": 835,
+    "races_5pct": 1600,
+    "races_h": 3017,
+    "units_5pct": 11598,
+    "units_h": 21641
+  },
+  "estimates": {
+    "finite": true
+  },
+  "link": {
+    "author_share": 0.5686433793663688,
+    "by_cycle": {
+      "A": {
+        "ambiguous": 19,
+        "authors": 890,
+        "deputies": 569,
+        "senators": 58,
+        "share": 0.6838942307692307,
+        "unmatched": 263
+      },
+      "B": {
+        "ambiguous": 23,
+        "authors": 1170,
+        "deputies": 642,
+        "senators": 82,
+        "share": 0.5900735294117647,
+        "unmatched": 446
+      },
+      "C": {
+        "ambiguous": 16,
+        "authors": 1305,
+        "deputies": 700,
+        "senators": 74,
+        "share": 0.5686433793663688,
+        "unmatched": 531
+      }
+    }
+  },
+  "placebo": {
+    "amend_b": -460.2774028287823,
+    "amend_mean": 2187.8230672257737,
+    "amend_ri_p": 0.2683658170914543,
+    "amend_se": 375.03936846211207,
+    "amend_share_abs": 0.21038145621731105,
+    "at_5pct": {
+      "amend_share_abs": 0.0359638981151707,
+      "vote_share_abs": 0.016415928527123966
+    },
+    "vote_b": -0.0012820331613605219,
+    "vote_mean": 0.03442884860859504,
+    "vote_ri_p": 0.45977011494252873,
+    "vote_se": 0.001660446640900193,
+    "vote_share_abs": 0.03723717792411062
+  },
+  "power": {
+    "at_5pct": {
+      "mde_share": 0.7576547627140923
+    },
+    "mde": 1150.0388062551583,
+    "mde_share": 0.5256543929365561,
+    "mean": 2187.8230672257737,
+    "sd_ri": 410.728145091128
+  },
+  "window": {
+    "found": 1,
+    "grid": {
+      "w0_5pct": {
+        "diff": {
+          "fin_age": -2.4213020703417314,
+          "fin_female": -0.06962113023474958,
+          "fin_higher_ed": -0.08557828219838692,
+          "ln_population": 0.021063863788567616,
+          "party_held_mayor": 0.09671988026939388
+        },
+        "min_p": 0.14492753623188406,
+        "min_p_covariate": "fin_age",
+        "omnibus_p": 0.5412293853073463,
+        "p": {
+          "fin_age": 0.14492753623188406,
+          "fin_female": 0.1924037981009495,
+          "fin_higher_ed": 0.2223888055972014,
+          "ln_population": 0.8480759620189905,
+          "party_held_mayor": 0.1584207896051974
+        },
+        "races": 183,
+        "units": 1317
+      },
+      "w10pct": {
+        "diff": {
+          "fin_age": -0.3491161226299724,
+          "fin_female": -0.02447500160022599,
+          "fin_higher_ed": -0.01143788747825858,
+          "ln_population": 0.025412755192720127,
+          "party_held_mayor": -0.013582292793540507
+        },
+        "min_p": 0.03648175912043978,
+        "min_p_covariate": "fin_female",
+        "omnibus_p": 0.1714142928535732,
+        "p": {
+          "fin_age": 0.34782608695652173,
+          "fin_female": 0.03648175912043978,
+          "fin_higher_ed": 0.46976511744127936,
+          "ln_population": 0.28335832083958024,
+          "party_held_mayor": 0.42328835582208896
+        },
+        "races": 3017,
+        "units": 21641
+      },
+      "w1pct": {
+        "diff": {
+          "fin_age": -0.6642353945776662,
+          "fin_female": -0.04977584857325837,
+          "fin_higher_ed": -0.023624848786735986,
+          "ln_population": 0.014606654413380937,
+          "party_held_mayor": 0.07678075855689179
+        },
+        "min_p": 0.13343328335832083,
+        "min_p_covariate": "party_held_mayor",
+        "omnibus_p": 0.5132433783108445,
+        "p": {
+          "fin_age": 0.5767116441779111,
+          "fin_female": 0.24037981009495252,
+          "fin_higher_ed": 0.6276861569215393,
+          "ln_population": 0.8885557221389305,
+          "party_held_mayor": 0.13343328335832083
+        },
+        "races": 333,
+        "units": 2277
+      },
+      "w2pct": {
+        "diff": {
+          "fin_age": -0.3945727752379682,
+          "fin_female": -0.0015742378644122423,
+          "fin_higher_ed": -0.026335508128680463,
+          "ln_population": 0.02731728270139122,
+          "party_held_mayor": 0.05200728250132097
+        },
+        "min_p": 0.15942028985507245,
+        "min_p_covariate": "party_held_mayor",
+        "omnibus_p": 0.584207896051974,
+        "p": {
+          "fin_age": 0.6496751624187906,
+          "fin_female": 0.9590204897551224,
+          "fin_higher_ed": 0.4642678660669665,
+          "ln_population": 0.6336831584207896,
+          "party_held_mayor": 0.15942028985507245
+        },
+        "races": 666,
+        "units": 4571
+      },
+      "w3pct": {
+        "diff": {
+          "fin_age": 0.16190709140263948,
+          "fin_female": -0.022864090242007418,
+          "fin_higher_ed": -0.00744007366694488,
+          "ln_population": 0.02872478765298503,
+          "party_held_mayor": 0.014229806336508277
+        },
+        "min_p": 0.3118440779610195,
+        "min_p_covariate": "fin_female",
+        "omnibus_p": 0.8425787106446777,
+        "p": {
+          "fin_age": 0.8085957021489255,
+          "fin_female": 0.3118440779610195,
+          "fin_higher_ed": 0.8120939530234883,
+          "ln_population": 0.5417291354322838,
+          "party_held_mayor": 0.6406796601699151
+        },
+        "races": 992,
+        "units": 7074
+      },
+      "w4pct": {
+        "diff": {
+          "fin_age": -0.21300150720483657,
+          "fin_female": -0.015098869085720779,
+          "fin_higher_ed": -0.011502500399550586,
+          "ln_population": 0.026980055377713086,
+          "party_held_mayor": 0.004227736709413288
+        },
+        "min_p": 0.4362818590704648,
+        "min_p_covariate": "fin_female",
+        "omnibus_p": 0.9380309845077461,
+        "p": {
+          "fin_age": 0.7061469265367316,
+          "fin_female": 0.4362818590704648,
+          "fin_higher_ed": 0.6606696651674163,
+          "ln_population": 0.48875562218890556,
+          "party_held_mayor": 0.8670664667666167
+        },
+        "races": 1295,
+        "units": 9325
+      },
+      "w5pct": {
+        "diff": {
+          "fin_age": -0.15206461424811124,
+          "fin_female": -0.011330706217119485,
+          "fin_higher_ed": -0.0034054358449674416,
+          "ln_population": 0.02584154289864138,
+          "party_held_mayor": 0.008956196950273665
+        },
+        "min_p": 0.44427786106946526,
+        "min_p_covariate": "ln_population",
+        "omnibus_p": 0.9455272363818091,
+        "p": {
+          "fin_age": 0.7656171914042978,
+          "fin_female": 0.5037481259370314,
+          "fin_higher_ed": 0.8990504747626187,
+          "ln_population": 0.44427786106946526,
+          "party_held_mayor": 0.7126436781609196
+        },
+        "races": 1600,
+        "units": 11598
+      },
+      "w7_5pct": {
+        "diff": {
+          "fin_age": -0.3067090216585271,
+          "fin_female": -0.02243861277147413,
+          "fin_higher_ed": -0.01105628506864198,
+          "ln_population": 0.0193974994607089,
+          "party_held_mayor": -0.0035504730319659283
+        },
+        "min_p": 0.10644677661169415,
+        "min_p_covariate": "fin_female",
+        "omnibus_p": 0.4302848575712144,
+        "p": {
+          "fin_age": 0.46676661669165415,
+          "fin_female": 0.10644677661169415,
+          "fin_higher_ed": 0.5537231384307846,
+          "ln_population": 0.48375812093953025,
+          "party_held_mayor": 0.8460769615192404
+        },
+        "races": 2336,
+        "units": 16817
+      }
+    },
+    "h_pct": 10.0
+  }
+}
