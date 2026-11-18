@@ -1,7 +1,7 @@
 ---
 id: "0009"
 title: "What do budget amendments buy at the ballot box?"
-status: exploring
+status: dead
 created: 2026-11-15
 updated: 2026-11-18
 datasets:
@@ -88,6 +88,7 @@ campaign's step s1, so they are not yet in the front matter). Existing: `tse_res
 - 2026-11-18: parked, the recommendation of campaign 0009's close-out report (`research/campaigns/0009-amendments-ballot-box/report.md`); Gabriel accepts it by approving this pull request. The panel build (s5) failed in 4 runs, so the power gate and the main run never ran and the idea was not tested.
 - 2026-11-18: exploring. Campaign 0010 (`research/campaigns/0010-amendments-second-attempt/`)
   starts when this pull request merges.
+- 2026-11-18: dead, the recommendation of campaign 0010's close-out report (`research/campaigns/0010-amendments-second-attempt/report.md`); Gabriel accepts it by approving this pull request. The gate run (`research/explore-runs/0009/44394848609.md`) met two kill rules: power (MDE share 0.526, limit 0.25) and the author link (smallest share 0.569, limit 0.9); no fork was declared.
 
 ## Variants tried
 

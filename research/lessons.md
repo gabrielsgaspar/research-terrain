@@ -16,6 +16,22 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-18: The amendments gate is killed on power and on the author link (idea 0009, issue #419)
+- Tried: campaign 0010 built the amendments panel (run 44393853819) and ran the
+  gate on the exploration half (`research/explore-runs/0009/44394848609.md`):
+  window, counts, power, two placebos and the author link; no post-election
+  outcome was read.
+- Result: window 10%, 3017 close races (21641 units, 1746 deputies). The
+  first stage's MDE is 0.526 of the pre-election mean (limit 0.25), and 0.758
+  at 5%. Placebos 0.21 and 0.0372 pass. The smallest author-link share is
+  0.569 (limit 0.9). Two kill rules were met; s3 and s4 never ran.
+- Why: amendments per 1,000 inhabitants are noisy against their mean, so
+  3017 races are too few. The link failure may be a matching problem, but it
+  does not repair power.
+- Implication: nothing here is a finding. The report recommends `dead`, with
+  `parked` as the alternative. See
+  `research/campaigns/0010-amendments-second-attempt/report.md`.
+
 ## 2026-11-18: The amendments panel never built, so the idea was not tested (idea 0009, issue #400)
 - Tried: campaign 0009 acquired TSE general-election and CGU amendment data
   (`data/manifests/acquire/tse_general.json`,

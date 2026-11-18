@@ -1,7 +1,7 @@
 ---
 id: "0010"
 title: "What do budget amendments buy at the ballot box? Second attempt: build, gate and main run"
-status: active
+status: done
 idea: "0009"
 owner: gabrielsgaspar
 created: 2026-11-18
