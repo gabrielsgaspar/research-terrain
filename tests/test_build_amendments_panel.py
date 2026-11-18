@@ -616,6 +616,10 @@ def test_manifest_notes(built):
     assert "first_payment_month=2015-01, last=2026-09" in notes
     note = next(n for n in notes.split("; ") if n.startswith("A:"))
     assert note.startswith("A: rows=4, deputies=4")  # exploration half: R1 (3 deputies) and C1
+    floored = "amend_pre_total:0,amend_pre_pix:0,amend_post_total:0,amend_post_pix:0"
+    assert f"A_floored_to_zero={floored}" in notes.split("; ")
+    assert "negative_payment_rows=none" in notes.split("; ")
+    assert "negative_payment_value_brl=none" in notes.split("; ")
 
 
 def test_manifest_notes_carry_placeholders_and_top_unmatched(tmp_path, monkeypatch):
@@ -638,6 +642,68 @@ def test_manifest_notes_carry_placeholders_and_top_unmatched(tmp_path, monkeypat
     assert f"placeholder_recipient_value_share=2017:{1500 / total:.4f}" in notes
     assert "top_unmatched_recipients_2017=SP/SEM INFORMACAO:1" in notes
     assert not any(sentinel in n for sentinel in SENTINEL_FAVORECIDO for n in notes)
+
+
+# --- Negative payment rows (refunds and reversals)
+
+
+def with_negatives():
+    """João da Mata: a reversal of 50 in R1's pre window (total 3000.50 -> 2950.50), and one
+    of 300 in Cabixi's post window, against a payment of 100 (net -200)."""
+    return cgu_rows() + [
+        pay("100", "João da Mata", IND, "2016/03", "RO", "ALTA FLORESTA D'OESTE", "-50,00"),
+        pay("100", "João da Mata", IND, "2018/01", "RO", "CABIXI", "-300,00"),
+    ]
+
+
+@pytest.fixture
+def built_negative(tmp_path):
+    store = MemoryStore()
+    manifests = stage(store, cgu=cgu_zip(with_negatives()))
+    return store, run(store, manifests, tmp_path)
+
+
+def test_a_negative_row_reduces_a_positive_total(built_negative):
+    store, manifest = built_negative
+    got = row(whole_panel(store, manifest), "1001", R1)
+    assert got["amend_pre_total"] == pytest.approx(2950.5)
+    assert got["n_pay_pre"] == 3  # the reversal is a payment row too
+
+
+def test_a_row_netting_below_zero_becomes_zero_and_is_counted(built_negative):
+    store, manifest = built_negative
+    cabixi = row(whole_panel(store, manifest), "1001", R3)
+    assert cabixi["amend_post_total"] == 0.0 and cabixi["n_pay_post"] == 2
+    floored = "amend_pre_total:0,amend_pre_pix:0,amend_post_total:1,amend_post_pix:0"
+    assert f"A_floored_to_zero={floored}" in manifest["notes"].split("; ")
+
+
+def test_the_notes_carry_the_negative_rows_per_year(built_negative):
+    _, manifest = built_negative
+    notes = manifest["notes"].split("; ")
+    assert "negative_payment_rows=2016:1,2018:1" in notes
+    assert "negative_payment_value_brl=2016:-50.00,2018:-300.00" in notes
+
+
+def test_floor_payments_counts_per_column():
+    panel = pl.DataFrame(
+        {
+            "amend_pre_total": [-5.0, 0.0, 10.0],
+            "amend_pre_pix": [-1.0, -2.0, 0.0],
+            "amend_post_total": [3.0, 0.0, 1.0],
+            "amend_post_pix": [0.0, 0.0, 0.0],
+        }
+    )
+    floored, counts = ap.floor_payments(panel)
+    assert counts == {
+        "amend_pre_total": 1,
+        "amend_pre_pix": 2,
+        "amend_post_total": 0,
+        "amend_post_pix": 0,
+    }
+    assert floored["amend_pre_total"].to_list() == [0.0, 0.0, 10.0]
+    assert floored["amend_pre_pix"].to_list() == [0.0, 0.0, 0.0]
+    assert floored["amend_post_total"].to_list() == [3.0, 0.0, 1.0]
 
 
 def test_a_senator_is_not_a_deputy_and_a_name_needs_one_candidacy(built):

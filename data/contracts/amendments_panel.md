@@ -106,7 +106,7 @@ by `sq_candidato`. Mayoral votes are `qt_votos_nominais_validos` on rows whose d
 | `fin_age` | int | whole years from `dt_nascimento` to the election date; null if the date is null |
 | `fin_higher_ed` | bool | the party's finalist has `cd_grau_instrucao` "8" |
 | `party_held_mayor` | bool | the deputy's party had the top candidacy of the deciding round at m-4; false if no result |
-| `amend_pre_total`, `amend_pre_pix` | float | reais, nominal: individual payments (all, and Pix only) in the pre window; 0 where none |
+| `amend_pre_total`, `amend_pre_pix` | float | reais, nominal: individual payments (all, and Pix only) in the pre window, net of negative rows; 0 where none or where the net is below 0 |
 | `n_pay_pre` | int | payment rows in the pre window |
 | `amend_post_total`, `amend_post_pix` | float | the same in the post window |
 | `n_pay_post` | int | payment rows in the post window |
@@ -116,6 +116,12 @@ by `sq_candidato`. Mayoral votes are `qt_votos_nominais_validos` on rows whose d
 | `ran_t1` | bool | linked to a t1 deputy candidacy with statewide votes above 0 |
 | `votes_t1`, `valid_t1`, `share_t1` | int, int, float | the same at t1; null if `ran_t1` is false |
 | `d_share` | float | `share_t1` - `share_t0`; null if `ran_t1` is false |
+
+**Negative payments.** CGU lists refunds and reversals as payment rows with a negative
+`Valor Recebido`. They stay in the sums, so they reduce a deputy's total in a municipality.
+After summing, a row whose `amend_pre_total`, `amend_pre_pix`, `amend_post_total` or
+`amend_post_pix` is below 0 has that column set to 0. The rows set to 0 are counted per cycle
+and column (both halves) in the notes. `n_pay_pre` and `n_pay_post` count negative rows too.
 
 Votes at t0 and t1 are `QT_VOTOS_NOMINAIS_VALIDOS` where the file has it (2018 and later), else
 `QT_VOTOS_NOMINAIS` (2014), round 1, summed over zones. Rows whose TSE municipality is not in
@@ -127,7 +133,8 @@ Each raises `BuildError` with counts only, before anything is uploaded.
 
 1. A duplicate (`cycle`, `deputy`, `cd_ibge`).
 2. `margin` outside [-1, 1], or `win` not equal to `margin` > 0.
-3. A share outside [0, 1], or a payment column below 0.
+3. A share outside [0, 1], or a payment column below 0 (checked after the floor at 0, as a
+   guard).
 4. Fewer than 5,000 or more than 300,000 rows in a cycle.
 5. The earliest payment month of the CGU file after 2015-01, or the latest before 2026-09.
 6. No individual Pix payment from 2020-01 on.
@@ -147,9 +154,11 @@ municipalities share a state and a normalised name, or if a t0 candidacy appears
 
 Per cycle: rows and deputies (exploration-half rows only); the author link counts; unlinked
 CPFs; t0 deputies whose party number has no first-round mayoral candidate at m (mergers); vote
-rows dropped (abroad, other). Then the dropped recipient rows per year (no municipality,
-placeholders included; no match); per year, the placeholder rows, their value (BRL, sum of
-`Valor Recebido`) and its share of the year's value; per year, the 10 most frequent unmatched
-(UF, normalised municipality name) pairs with their row counts; the first and last payment
+rows dropped (abroad, other); the rows whose payment columns were set to 0, per column (both
+halves). Then the dropped recipient rows per year (no municipality, placeholders included; no
+match); per year, the placeholder rows, their value (BRL, sum of `Valor Recebido`) and its
+share of the year's value; per year, the individual payment rows of the whole CGU file with a
+negative `Valor Recebido` and their sum (BRL); per year, the 10 most frequent unmatched (UF,
+normalised municipality name) pairs with their row counts; the first and last payment
 months, and the CGU rows without a payment month. Notes name municipalities only, never a
 `Favorecido` or `Código do Favorecido`.
