@@ -1,7 +1,7 @@
 ---
 id: "0011"
 title: "What do budget amendments buy at the ballot box? The municipality's share of the deputy's money, and log reais per inhabitant"
-status: active
+status: done
 idea: "0010"
 owner: gabrielsgaspar
 created: 2026-11-19
