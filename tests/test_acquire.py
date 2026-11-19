@@ -167,6 +167,7 @@ def test_expansion_of_the_synthetic_entry():
         ("sgb_gold_occurrences", 1),
         ("tse_general", 9),
         ("cgu_amendments", 1),
+        ("camara_deputies", 1),
     ],
 )
 def test_real_catalog_url_counts(name, count):
@@ -320,6 +321,13 @@ CSV_CHECK = {"type": "csv", "columns": ["FID", "uf"], "min_rows": 3}
 def test_csv_check_passes_with_and_without_bom(tmp_path):
     check_file(_write(tmp_path, GOOD_CSV), CSV_CHECK)
     check_file(_write(tmp_path, b"\xef\xbb\xbf" + GOOD_CSV), CSV_CHECK)
+
+
+def test_csv_check_splits_on_its_delimiter(tmp_path):
+    semicolons = GOOD_CSV.replace(b",", b";")
+    check_file(_write(tmp_path, semicolons), {**CSV_CHECK, "delimiter": ";"})
+    with pytest.raises(AcquireError, match="missing columns"):
+        check_file(_write(tmp_path, semicolons), CSV_CHECK)  # the default is a comma
 
 
 def test_csv_check_fails_on_html_page(tmp_path):
