@@ -21,6 +21,12 @@
 /scripts/campaign.py @gabrielsgaspar
 /tests/test_campaigns.py @gabrielsgaspar
 /tests/test_forks.py @gabrielsgaspar
+# What a repair sees and the bound on its data rules (decision 0016)
+/src/terrain/profile.py @gabrielsgaspar
+/src/terrain/datarule.py @gabrielsgaspar
+/scripts/profile_failure.py @gabrielsgaspar
+/tests/test_profile.py @gabrielsgaspar
+/tests/test_datarule.py @gabrielsgaspar
 
 # Registered analyses and the confirmation runner (frozen once registered)
 /src/terrain/registered/ @gabrielsgaspar

@@ -92,9 +92,17 @@ jobs:
       - name: Run pipeline/${{ inputs.stage }}/${{ inputs.target }}.py
         env:
           CODE_COMMIT: ${{ github.sha }}
+          # A failing check writes its row counts here (terrain.profile, decision 0016).
+          TERRAIN_PROFILE_OUT: ${{ runner.temp }}/profile.json
         run: |
           set -euo pipefail
           uv run python "pipeline/${STAGE}/${TARGET}.py" --manifest-out "${RUNNER_TEMP}/manifest.json"
+
+      # After a failure only: print the failing check's rows per period and category,
+      # never a value or an identifier, for the campaign tick's repair task (decision 0016).
+      - name: Profile the failed check
+        if: failure()
+        run: uv run python scripts/profile_failure.py "${RUNNER_TEMP}/profile.json"
 
       - name: Check the manifest
         env:

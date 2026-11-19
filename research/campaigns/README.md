@@ -90,6 +90,25 @@ the agent review of the repair gets the issue with the log replaced by one
 line, so text printed by an outside server never reaches the agent that
 judges the fix.
 
+The repair also sees the failure itself (decision 0016). Under "The error
+it stopped on" the issue quotes the last "build failed:", "acquire failed:"
+or BuildError line of the run's whole log, even when it is far from the
+end. Under "Rows by category" it quotes what the fixed script
+`scripts/profile_failure.py` printed after the failed step: the failing
+check's rows per period and category (for example "2026 placeholder
+2301"), never a value or an identifier. The check writes those counts with
+`terrain.profile.write_profile`; a build that does not, gets "no row
+counts". The gate accepts only those shapes in the two sections; the
+reviewer sees the counts but not the error line.
+
+A repair may add one kind of change to the rows, a bounded data rule: a
+named class of rows treated differently, covering at most 1% of the step's
+key value (or rows) in every period, proven by
+`terrain.datarule.check_rule` in the build's manifest notes, with no
+threshold, check or kill rule changed. The Repairs table of the close-out
+lists the data rules of the manifest the run after the repair recorded.
+Anything else still blocks for you.
+
 ## Forks
 
 A campaign file may carry a `forks:` envelope (decision 0015; see

@@ -91,6 +91,11 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
   dates) or become null. For the second kind: keep the original text in a
   `_raw` column, count the failures per year in the manifest notes, and
   raise only above a stated share.
+- A check that can stop a build on real data counts the rows it examined
+  per period and category before it raises, with
+  `terrain.profile.write_profile`: counts and the fixed categories only,
+  never a value or an identifier. After a failed run, the fixed script
+  `scripts/profile_failure.py` prints them for the repair (decision 0016).
 
 ### Credibility
 
@@ -242,6 +247,17 @@ workflow carries it out; the `campaign-gate` check decides what may merge.
   template, limited to the allowed paths of the build tasks it comes after,
   never protected or owned. Never for explore runs, explore scripts, kill
   rules or campaign files. At most 1 per step and 2 per campaign.
+  - The repair sees the failure (decision 0016): the template quotes the
+    last "build failed:", "acquire failed:" or BuildError line of the run's
+    whole log, and the failing check's rows per period and category from
+    `scripts/profile_failure.py`. The gate accepts only those shapes there.
+  - A repair may add a data rule (code that treats one class of rows
+    differently) only if it targets a named class of rows, covers at most
+    1% of the step's key value (or of its rows, if it has none) in every
+    period, proven in the build's manifest notes by
+    `terrain.datarule.check_rule`, changes no threshold, check or kill
+    rule, and is listed in the close-out report (the tick copies it from
+    the manifest). Anything else blocks for Gabriel.
 - Never, in a campaign or not: the confirmation half, `confirm/`, accepted
   decisions, kill criteria in idea files, analysis that a step does not
   list, deleting data, personal identifiers in Git.
@@ -277,7 +293,8 @@ workflow carries it out; the `campaign-gate` check decides what may merge.
 - Circuit breaker: while 3 step blocks posted in the last 24 hours still hold,
   nothing new starts in that campaign (no step, retry or repair); work in flight
   and gate merges go on. Every report lists its "Checks not run" from the tick's
-  list; text cut by code says so; the repair reviewer never sees the run log.
+  list; text cut by code says so; the repair reviewer never sees the run log or
+  its error line, only the row counts.
 
 ### Writing for Gabriel
 

@@ -273,8 +273,10 @@ jobs:
               sys.exit(1)
 
 
-          # A repair issue quotes the failed run's log: text printed by an outside server
-          # must not reach the agent that judges the fix. The planner and builder keep it.
+          # A repair issue quotes the failed run's log and its last error line: text
+          # printed by an outside server must not reach the agent that judges the fix.
+          # The planner and builder keep both. The row counts under "## Rows by category"
+          # stay: the tick lets through only counts and fixed labels (terrain.profile).
           issue_path = os.path.join(work, "data", "issue.md")
           issue = open(issue_path, encoding="utf-8").read().replace("\r\n", "\n")
           if re.search(r"<!-- campaign-repair: \d{4}/s\d{1,2}/\d -->", issue):
@@ -286,6 +288,14 @@ jobs:
               except ValueError:
                   fail("The repair issue has no run log block under '## The failing run' to remove.")
               lines[start : end + 1] = ["(run log removed: the reviewer judges the change, not the log)"]
+              if "## The error it stopped on" in lines[start:]:
+                  head = lines.index("## The error it stopped on", start)
+                  try:
+                      start = lines.index("```text", head)
+                      end = lines.index("```", start + 1)
+                  except ValueError:
+                      fail("The repair issue's error line has no block to remove.")
+                  lines[start : end + 1] = ["(error line removed: it comes from the run's log)"]
               with open(issue_path, "w", encoding="utf-8") as out:
                   out.write("\n".join(lines))
               print("Removed the run log from the repair issue given to the reviewer.")

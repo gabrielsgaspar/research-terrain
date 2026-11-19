@@ -1313,6 +1313,21 @@ def _block_causes(
     return causes
 
 
+REPAIR_HEADER = ["Step", "Repair issue", "Pull request", "Model jobs", "How it ended", "Data rules"]
+
+
+def _data_rules_after(s: Step, st: StepState, events: dict[str, str], snap: Snapshot) -> str:
+    """The data rules (decision 0016) of the manifest the run after `s`'s repair recorded.
+
+    Read from the manifest's notes on main, word for word; "none" if it has
+    none. Before that run is recorded, the table says so instead.
+    """
+    if _repair_event(s.id, "run") not in events or st.status != "done":
+        return "not known: the run after the repair recorded no manifest"
+    rules = snap.data_rules.get(f"data/manifests/{s.stage}/{s.target}.json", ())
+    return "; ".join(rules) or "none"
+
+
 def friction_facts(v: CampaignView, snap: Snapshot, new: Sequence[tuple[str, str]] = ()) -> str:
     """What slowed the campaign down, as plain facts from the ledger and GitHub.
 
@@ -1377,6 +1392,7 @@ def friction_facts(v: CampaignView, snap: Snapshot, new: Sequence[tuple[str, str
                 f"PR #{pr.number}" if pr else "none",
                 str(_model_jobs(fix)) if fix else "0",
                 ended,
+                _data_rules_after(s, st, events, snap),
             ]
         )
 
@@ -1431,7 +1447,7 @@ def friction_facts(v: CampaignView, snap: Snapshot, new: Sequence[tuple[str, str
 
 ### Repairs
 
-{group(repair_rows, ["Step", "Repair issue", "Pull request", "Model jobs", "How it ended"])}
+{group(repair_rows, REPAIR_HEADER)}
 
 ### Time
 
@@ -1596,6 +1612,7 @@ def _advance(
                     snap.run_logs.get(st.run.id, ""),
                     repair.repair_paths(c, s, gctx.codeowners),
                     repair.MAX_PER_STEP,
+                    snap.run_facts.get(st.run.id),
                 )
                 doing.append(
                     {
