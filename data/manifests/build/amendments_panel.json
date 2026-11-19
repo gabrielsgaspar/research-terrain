@@ -2,56 +2,57 @@
   "dataset": "amendments_panel",
   "stage": "build",
   "status": "created",
-  "gcs_prefix": "data/derived/amendments_panel/9fb01f3acecdcdbf/",
-  "created_at": "2026-11-18T20:45:11.547939+00:00",
-  "code_commit": "0a4dcbb269f6a93abfad07de642b8d70bd8199d3",
+  "gcs_prefix": "data/derived/amendments_panel/44572581807fe3e1/",
+  "created_at": "2026-11-19T07:51:47.614027+00:00",
+  "code_commit": "2d56f38468019dd25fed82b37812041beb468ccd",
   "sources": [],
   "files": [
     {
-      "path": "data/derived/amendments_panel/9fb01f3acecdcdbf/panel_A.parquet",
-      "sha256": "afb1a079678d8bca704d55e6bf0f3d1680457e66767f6e243743b3a01c4d5cec",
-      "bytes": 448853
+      "path": "data/derived/amendments_panel/44572581807fe3e1/panel_A.parquet",
+      "sha256": "bcad6738f876df98b7bb7a04c3a0174f6a8a3fc0de613d26de3cc544c02e1184",
+      "bytes": 466581
     },
     {
-      "path": "data/derived/amendments_panel/9fb01f3acecdcdbf/panel_B.parquet",
-      "sha256": "4e965a3a024daefe1ea4f69bd4bbe9d8ec5ac9d226efe902d600276591b94016",
-      "bytes": 451564
+      "path": "data/derived/amendments_panel/44572581807fe3e1/panel_B.parquet",
+      "sha256": "3536ff1d2f10201ed2ec5213083cab8e302c3465e495975257dd7a45f791e4c5",
+      "bytes": 451490
     },
     {
-      "path": "data/derived/amendments_panel/9fb01f3acecdcdbf/panel_C.parquet",
-      "sha256": "1105f015449ef1e5188785fc64573fd91382da01d6df2f671ed1ab5073d5e852",
-      "bytes": 584836
+      "path": "data/derived/amendments_panel/44572581807fe3e1/panel_C.parquet",
+      "sha256": "db40bcfdf97dfe8ac24a62f2819cbc4192bd58ddbb8689e57c870b12141b7330",
+      "bytes": 611734
     },
     {
-      "path": "data/derived/amendments_panel/9fb01f3acecdcdbf/author_link.parquet",
-      "sha256": "d5848898f36f69c61ecda446805df0cfd9979cdbfed7c2c9d286ba46b01dbecb",
-      "bytes": 2388
+      "path": "data/derived/amendments_panel/44572581807fe3e1/author_link.parquet",
+      "sha256": "24329dffbeb1fe88d687f94af506e4a3c6fd4dd31667a7187d47fe9854062c29",
+      "bytes": 3916
     }
   ],
-  "notes": "A: rows=17650, deputies=597, authors=890, deputy_authors=569, senator_authors=58, ambiguous_authors=19, unmatched_authors=263, unlinked_cpfs=0, party_without_mayor_cands=0, vote_rows_abroad=0, vote_rows_no_municipality=0; A_floored_to_zero=amend_pre_total:0,amend_pre_pix:0,amend_post_total:0,amend_post_pix:0; B: rows=16944, deputies=649, authors=1170, deputy_authors=642, senator_authors=82, ambiguous_authors=23, unmatched_authors=446, unlinked_cpfs=1, party_without_mayor_cands=13, vote_rows_abroad=0, vote_rows_no_municipality=0; B_floored_to_zero=amend_pre_total:1,amend_pre_pix:0,amend_post_total:0,amend_post_pix:0; C: rows=22163, deputies=674, authors=1305, deputy_authors=700, senator_authors=74, ambiguous_authors=16, unmatched_authors=531, unlinked_cpfs=0, party_without_mayor_cands=43, vote_rows_abroad=0, vote_rows_no_municipality=0; C_floored_to_zero=amend_pre_total:0,amend_pre_pix:0,amend_post_total:0,amend_post_pix:0; dropped_recipient_rows_no_municipality=2015:6,2016:14,2017:32,2018:19,2019:156,2020:121,2021:229,2022:176,2023:193,2024:222,2025:324,2026:2239; dropped_recipient_rows_unmatched=2015:40,2016:85,2017:356,2018:200,2019:134,2020:85,2021:85,2022:50,2023:79,2024:32,2025:187,2026:139; placeholder_recipient_rows=2015:6,2016:14,2017:27,2018:15,2019:155,2020:121,2021:224,2022:175,2023:192,2024:222,2025:321,2026:2239; placeholder_recipient_value_brl=2015:90605.96,2016:782892.80,2017:2294048.73,2018:3282155.00,2019:3018904.12,2020:1658379.20,2021:6916628.77,2022:4110777.74,2023:5804889.17,2024:2732542.12,2025:9869488.00,2026:36259681.14; placeholder_recipient_value_share=2015:0.0000,2016:0.0005,2017:0.0005,2018:0.0005,2019:0.0004,2020:0.0002,2021:0.0007,2022:0.0004,2023:0.0003,2024:0.0002,2025:0.0004,2026:0.0019; top_unmatched_recipients_2015=(empty)/INVALIDO:19, SP/FLORINIA:3, CE/ITAPAGE:2, MT/SANTO ANTONIO DO LEVERGER:2, RN/OLHODAGUA DO BORGES:2, SP/BIRITIBAMIRIM:2, BA/SANTA TERESINHA:1, MG/BARAO DE MONTE ALTO:1, PA/ELDORADO DOS CARAJAS:1, PA/SANTA ISABEL DO PARA:1; top_unmatched_recipients_2016=(empty)/INVALIDO:68, RN/OLHODAGUA DO BORGES:4, CE/ITAPAGE:3, MG/BARAO DE MONTE ALTO:3, MT/POXOREO:2, SP/FLORINIA:2, BA/SANTA TERESINHA:1, PE/IGUARACI:1, SP/SAO LUIS DO PARAITINGA:1; top_unmatched_recipients_2017=(empty)/INVALIDO:314, MG/BARAO DE MONTE ALTO:7, SP/EMBU:6, MT/POXOREO:4, BA/SANTA TERESINHA:3, CE/ITAPAGE:3, SP/BIRITIBAMIRIM:3, PA/ELDORADO DOS CARAJAS:2, PA/SANTA ISABEL DO PARA:2, PB/SERIDO:2; top_unmatched_recipients_2018=(empty)/INVALIDO:171, MG/BARAO DE MONTE ALTO:3, PA/SANTA ISABEL DO PARA:3, SP/EMBU:3, SP/FLORINIA:3, SP/RIO DE JANEIRO:3, BA/MUQUEM DE SAO FRANCISCO:2, MT/SANTO ANTONIO DO LEVERGER:2, PE/IGUARACI:2, RN/PRESIDENTE JUSCELINO:2; top_unmatched_recipients_2019=(empty)/INVALIDO:60, MG/BRASOPOLIS:10, SP/EMBU:6, BA/MUQUEM DE SAO FRANCISCO:5, MG/BARAO DE MONTE ALTO:5, SE/GRACHO CARDOSO:5, PA/SANTA ISABEL DO PARA:4, RJ/TRAJANO DE MORAIS:4, RN/OLHODAGUA DO BORGES:4, SP/BIRITIBAMIRIM:4; top_unmatched_recipients_2020=SP/EMBU:18, MG/DONA EUSEBIA:9, RN/AUGUSTO SEVERO:7, MG/BARAO DE MONTE ALTO:5, MT/POXOREO:4, BA/MUQUEM DE SAO FRANCISCO:3, PA/SANTA ISABEL DO PARA:3, RN/OLHODAGUA DO BORGES:3, SC/GRAO PARA:3, SE/AMPARO DE SAO FRANCISCO:3; top_unmatched_recipients_2021=SP/EMBU:14, MG/DONA EUSEBIA:8, PA/ELDORADO DOS CARAJAS:7, PA/SANTA ISABEL DO PARA:6, RN/AUGUSTO SEVERO:6, CE/ITAPAGE:5, SP/BIRITIBAMIRIM:5, TO/FORTALEZA DO TABOCAO:5, MT/POXOREO:3, MT/SANTO ANTONIO DO LEVERGER:3; top_unmatched_recipients_2022=SP/EMBU:8, PE/IGUARACI:6, PA/SANTA ISABEL DO PARA:4, RN/AUGUSTO SEVERO:4, SP/BIRITIBAMIRIM:4, MG/DONA EUSEBIA:3, MT/SANTO ANTONIO DO LEVERGER:3, CE/ITAPAGE:2, MT/POXOREO:2, SC/GRAO PARA:2; top_unmatched_recipients_2023=MT/POXOREO:9, MG/BARAO DE MONTE ALTO:6, SP/BIRITIBAMIRIM:6, SP/EMBU:6, PA/ELDORADO DOS CARAJAS:5, PE/IGUARACI:5, MG/BRASOPOLIS:4, MG/SAO THOME DAS LETRAS:4, SE/AMPARO DE SAO FRANCISCO:4, SE/GRACHO CARDOSO:3; top_unmatched_recipients_2024=RN/PRESIDENTE JUSCELINO:4, CE/ITAPAGE:3, MG/BARAO DE MONTE ALTO:3, MT/SANTO ANTONIO DO LEVERGER:3, MG/BRASOPOLIS:2, PA/SANTA ISABEL DO PARA:2, SP/EMBU:2, SP/SAO LUIS DO PARAITINGA:2, BA/SANTA TERESINHA:1, MG/DONA EUSEBIA:1; top_unmatched_recipients_2025=SP/EMBU:32, PA/SANTA ISABEL DO PARA:12, MG/DONA EUSEBIA:10, MT/SANTO ANTONIO DO LEVERGER:10, RN/PRESIDENTE JUSCELINO:10, SP/FLORINIA:9, SP/SAO LUIS DO PARAITINGA:9, PE/IGUARACI:8, SC/GRAO PARA:8, MG/BARAO DE MONTE ALTO:7; top_unmatched_recipients_2026=SP/EMBU:17, SP/SAO LUIS DO PARAITINGA:11, CE/ITAPAGE:8, PE/IGUARACI:8, MT/SANTO ANTONIO DO LEVERGER:7, RJ/TRAJANO DE MORAIS:7, RN/AUGUSTO SEVERO:7, TO/FORTALEZA DO TABOCAO:7, BA/MUQUEM DE SAO FRANCISCO:6, MG/BARAO DE MONTE ALTO:6; negative_payment_rows=2015:8,2016:32,2017:28,2018:43,2019:84,2020:133,2021:20,2022:67,2023:65,2024:48,2025:72,2026:82; negative_payment_value_brl=2015:-201387.44,2016:-3712568.29,2017:-2526088.18,2018:-661281.45,2019:-2182881.72,2020:-2480315.94,2021:-814535.88,2022:-1312956.92,2023:-472391.85,2024:-905211.20,2025:-9046618.10,2026:-1376231.18; first_payment_month=2014-06, last=2026-11; rows_without_payment_month=0",
+  "notes": "A: rows=16533, deputies=534, authors=670, deputy_authors=552, senator_authors=67, ambiguous_authors=22, unmatched_authors=51, ties_broken=2, non_current_authors=220, unlinked_cpfs=0, party_without_mayor_cands=0, vote_rows_abroad=0, vote_rows_no_municipality=0; A_floored_to_zero=amend_pre_total:0,amend_pre_pix:0,amend_post_total:0,amend_post_pix:0; A_link: money_share=0.9154, money_share_with_unidentified=0.6621, window_value_brl=14919085216.90, current_value_brl=10790654177.51, deputy_value_brl=8925493366.70, senator_value_brl=1040138140.56, non_current_rows=17783, non_current_value_brl=4128431039.39, unidentified_author_rows=15261, unidentified_author_value_brl=3730095814.74; A_chamber: rows=664, names_added=615, no_candidacy=48, several_candidacies=1; A_outcome_nulls=amend_pre_share:13841,amend_post_share:1641,amend_pre_log_pc:0,amend_post_log_pc:0; B: rows=12830, deputies=501, authors=644, deputy_authors=530, senator_authors=67, ambiguous_authors=21, unmatched_authors=47, ties_broken=4, non_current_authors=526, unlinked_cpfs=0, party_without_mayor_cands=13, vote_rows_abroad=0, vote_rows_no_municipality=0; B_floored_to_zero=amend_pre_total:0,amend_pre_pix:0,amend_post_total:0,amend_post_pix:0; B_link: money_share=0.9258, money_share_with_unidentified=0.9167, window_value_brl=34104202218.62, current_value_brl=27159097018.42, deputy_value_brl=22736207070.59, senator_value_brl=2600146236.02, non_current_rows=40448, non_current_value_brl=6945105200.20, unidentified_author_rows=1551, unidentified_author_value_brl=242397451.51; B_chamber: rows=639, names_added=598, no_candidacy=37, several_candidacies=4; B_outcome_nulls=amend_pre_share:1501,amend_post_share:1202,amend_pre_log_pc:0,amend_post_log_pc:0; C: rows=17067, deputies=504, authors=647, deputy_authors=560, senator_authors=63, ambiguous_authors=1, unmatched_authors=24, ties_broken=18, non_current_authors=658, unlinked_cpfs=0, party_without_mayor_cands=25, vote_rows_abroad=0, vote_rows_no_municipality=0; C_floored_to_zero=amend_pre_total:0,amend_pre_pix:0,amend_post_total:0,amend_post_pix:0; C_link: money_share=0.9319, money_share_with_unidentified=0.9314, window_value_brl=81195909030.63, current_value_brl=70658180078.03, deputy_value_brl=54249490055.86, senator_value_brl=12443473284.48, non_current_rows=25855, non_current_value_brl=10537728952.60, unidentified_author_rows=167, unidentified_author_value_brl=32550046.13; C_chamber: rows=648, names_added=627, no_candidacy=20, several_candidacies=1; C_outcome_nulls=amend_pre_share:2122,amend_post_share:1103,amend_pre_log_pc:2,amend_post_log_pc:2; dropped_recipient_rows_no_municipality=2015:6,2016:14,2017:32,2018:19,2019:156,2020:121,2021:229,2022:176,2023:193,2024:222,2025:324,2026:2239; dropped_recipient_rows_unmatched=2015:40,2016:85,2017:356,2018:200,2019:134,2020:85,2021:85,2022:50,2023:79,2024:32,2025:187,2026:139; placeholder_recipient_rows=2015:6,2016:14,2017:27,2018:15,2019:155,2020:121,2021:224,2022:175,2023:192,2024:222,2025:321,2026:2239; placeholder_recipient_value_brl=2015:90605.96,2016:782892.80,2017:2294048.73,2018:3282155.00,2019:3018904.12,2020:1658379.20,2021:6916628.77,2022:4110777.74,2023:5804889.17,2024:2732542.12,2025:9869488.00,2026:36259681.14; placeholder_recipient_value_share=2015:0.0000,2016:0.0005,2017:0.0005,2018:0.0005,2019:0.0004,2020:0.0002,2021:0.0007,2022:0.0004,2023:0.0003,2024:0.0002,2025:0.0004,2026:0.0019; top_unmatched_recipients_2015=(empty)/INVALIDO:19, SP/FLORINIA:3, CE/ITAPAGE:2, MT/SANTO ANTONIO DO LEVERGER:2, RN/OLHODAGUA DO BORGES:2, SP/BIRITIBAMIRIM:2, BA/SANTA TERESINHA:1, MG/BARAO DE MONTE ALTO:1, PA/ELDORADO DOS CARAJAS:1, PA/SANTA ISABEL DO PARA:1; top_unmatched_recipients_2016=(empty)/INVALIDO:68, RN/OLHODAGUA DO BORGES:4, CE/ITAPAGE:3, MG/BARAO DE MONTE ALTO:3, MT/POXOREO:2, SP/FLORINIA:2, BA/SANTA TERESINHA:1, PE/IGUARACI:1, SP/SAO LUIS DO PARAITINGA:1; top_unmatched_recipients_2017=(empty)/INVALIDO:314, MG/BARAO DE MONTE ALTO:7, SP/EMBU:6, MT/POXOREO:4, BA/SANTA TERESINHA:3, CE/ITAPAGE:3, SP/BIRITIBAMIRIM:3, PA/ELDORADO DOS CARAJAS:2, PA/SANTA ISABEL DO PARA:2, PB/SERIDO:2; top_unmatched_recipients_2018=(empty)/INVALIDO:171, MG/BARAO DE MONTE ALTO:3, PA/SANTA ISABEL DO PARA:3, SP/EMBU:3, SP/FLORINIA:3, SP/RIO DE JANEIRO:3, BA/MUQUEM DE SAO FRANCISCO:2, MT/SANTO ANTONIO DO LEVERGER:2, PE/IGUARACI:2, RN/PRESIDENTE JUSCELINO:2; top_unmatched_recipients_2019=(empty)/INVALIDO:60, MG/BRASOPOLIS:10, SP/EMBU:6, BA/MUQUEM DE SAO FRANCISCO:5, MG/BARAO DE MONTE ALTO:5, SE/GRACHO CARDOSO:5, PA/SANTA ISABEL DO PARA:4, RJ/TRAJANO DE MORAIS:4, RN/OLHODAGUA DO BORGES:4, SP/BIRITIBAMIRIM:4; top_unmatched_recipients_2020=SP/EMBU:18, MG/DONA EUSEBIA:9, RN/AUGUSTO SEVERO:7, MG/BARAO DE MONTE ALTO:5, MT/POXOREO:4, BA/MUQUEM DE SAO FRANCISCO:3, PA/SANTA ISABEL DO PARA:3, RN/OLHODAGUA DO BORGES:3, SC/GRAO PARA:3, SE/AMPARO DE SAO FRANCISCO:3; top_unmatched_recipients_2021=SP/EMBU:14, MG/DONA EUSEBIA:8, PA/ELDORADO DOS CARAJAS:7, PA/SANTA ISABEL DO PARA:6, RN/AUGUSTO SEVERO:6, CE/ITAPAGE:5, SP/BIRITIBAMIRIM:5, TO/FORTALEZA DO TABOCAO:5, MT/POXOREO:3, MT/SANTO ANTONIO DO LEVERGER:3; top_unmatched_recipients_2022=SP/EMBU:8, PE/IGUARACI:6, PA/SANTA ISABEL DO PARA:4, RN/AUGUSTO SEVERO:4, SP/BIRITIBAMIRIM:4, MG/DONA EUSEBIA:3, MT/SANTO ANTONIO DO LEVERGER:3, CE/ITAPAGE:2, MT/POXOREO:2, SC/GRAO PARA:2; top_unmatched_recipients_2023=MT/POXOREO:9, MG/BARAO DE MONTE ALTO:6, SP/BIRITIBAMIRIM:6, SP/EMBU:6, PA/ELDORADO DOS CARAJAS:5, PE/IGUARACI:5, MG/BRASOPOLIS:4, MG/SAO THOME DAS LETRAS:4, SE/AMPARO DE SAO FRANCISCO:4, SE/GRACHO CARDOSO:3; top_unmatched_recipients_2024=RN/PRESIDENTE JUSCELINO:4, CE/ITAPAGE:3, MG/BARAO DE MONTE ALTO:3, MT/SANTO ANTONIO DO LEVERGER:3, MG/BRASOPOLIS:2, PA/SANTA ISABEL DO PARA:2, SP/EMBU:2, SP/SAO LUIS DO PARAITINGA:2, BA/SANTA TERESINHA:1, MG/DONA EUSEBIA:1; top_unmatched_recipients_2025=SP/EMBU:32, PA/SANTA ISABEL DO PARA:12, MG/DONA EUSEBIA:10, MT/SANTO ANTONIO DO LEVERGER:10, RN/PRESIDENTE JUSCELINO:10, SP/FLORINIA:9, SP/SAO LUIS DO PARAITINGA:9, PE/IGUARACI:8, SC/GRAO PARA:8, MG/BARAO DE MONTE ALTO:7; top_unmatched_recipients_2026=SP/EMBU:17, SP/SAO LUIS DO PARAITINGA:11, CE/ITAPAGE:8, PE/IGUARACI:8, MT/SANTO ANTONIO DO LEVERGER:7, RJ/TRAJANO DE MORAIS:7, RN/AUGUSTO SEVERO:7, TO/FORTALEZA DO TABOCAO:7, BA/MUQUEM DE SAO FRANCISCO:6, MG/BARAO DE MONTE ALTO:6; negative_payment_rows=2015:8,2016:32,2017:28,2018:43,2019:84,2020:133,2021:20,2022:67,2023:65,2024:48,2025:72,2026:82; negative_payment_value_brl=2015:-201387.44,2016:-3712568.29,2017:-2526088.18,2018:-661281.45,2019:-2182881.72,2020:-2480315.94,2021:-814535.88,2022:-1312956.92,2023:-472391.85,2024:-905211.20,2025:-9046618.10,2026:-1376231.18; first_payment_month=2014-06, last=2026-11; rows_without_payment_month=0; amendment_rows_without_code=17810, amendment_codes_with_several_years=0, individual_payment_rows_without_amendment_year=21047",
   "inputs": [
     "data/raw/tse/general/2026-11-16/_MANIFEST.json",
     "data/raw/cgu/amendments/2026-11-16/_MANIFEST.json",
     "data/derived/tse_results/6f2af3d28c84af90/_MANIFEST.json",
     "data/derived/tse_candidates/73af2aca241094a0/_MANIFEST.json",
     "data/derived/municipalities/03690186b97be705/_MANIFEST.json",
-    "data/raw/ibge/population_annual/2026-11-13/_MANIFEST.json"
+    "data/raw/ibge/population_annual/2026-11-13/_MANIFEST.json",
+    "data/raw/camara/deputies/2026-11-19/_MANIFEST.json"
   ],
   "sealed_files": [
     {
-      "path": "sealed/outcomes/amendments_panel/9fb01f3acecdcdbf/panel_A.parquet",
-      "sha256": "31c94266cbf0a594cb7f081d1c81a330dfda08d8e674f5ca35a245230271b65c",
-      "bytes": 449489
+      "path": "sealed/outcomes/amendments_panel/44572581807fe3e1/panel_A.parquet",
+      "sha256": "d4ea920880ec7f9415a6001f7c14b962e5a05a113ae296880babb4d87e902f53",
+      "bytes": 467372
     },
     {
-      "path": "sealed/outcomes/amendments_panel/9fb01f3acecdcdbf/panel_B.parquet",
-      "sha256": "b3e633b1e6c85681c10e9836948ae99c597de6bf0f84803841d52dcd1ac8818d",
-      "bytes": 446681
+      "path": "sealed/outcomes/amendments_panel/44572581807fe3e1/panel_B.parquet",
+      "sha256": "cea85a11814d35e0159fffc44682da659fb0957e8e52d5f5d706b4c1a7aac40a",
+      "bytes": 447619
     },
     {
-      "path": "sealed/outcomes/amendments_panel/9fb01f3acecdcdbf/panel_C.parquet",
-      "sha256": "02ee50705fdb48cc3db134a4eec4516d35f4ad533293ef49b245b7993001a260",
-      "bytes": 568167
+      "path": "sealed/outcomes/amendments_panel/44572581807fe3e1/panel_C.parquet",
+      "sha256": "4ec6edeb01009cb2dccaa87893dbabe942b6e7a1aac43be0c686c3d6506aa21e",
+      "bytes": 596396
     }
   ]
 }
