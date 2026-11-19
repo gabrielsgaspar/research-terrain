@@ -34,10 +34,12 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
-from terrain.campaigns import markers
+from terrain import datarule
+from terrain.campaigns import markers, repair
 from terrain.campaigns.facts import (
     Comment,
     Issue,
+    LogFacts,
     PullRequest,
     Run,
     Snapshot,
@@ -178,12 +180,13 @@ class GitHub:
             link = resp.headers.get("Link", "")
             return json.loads(resp.read().decode("utf-8") or "null"), link
 
-    def _text_tail(self, url: str) -> str:
+    def _text_tail(self, url: str, scanner: repair.LogScanner | None = None) -> str:
         """The end of a plain-text download, such as a job log.
 
         GitHub answers a log request with a redirect to a short-lived storage
         address that carries its own signature; that address is read without
-        the token. Only the last LOG_TAIL_BYTES are kept.
+        the token. Only the last LOG_TAIL_BYTES are kept; `scanner`, if
+        given, sees every line on the way (decision 0016).
         """
         req = urllib.request.Request(url)
         req.add_header("X-GitHub-Api-Version", "2022-11-28")
@@ -198,15 +201,24 @@ class GitHub:
                 raise
             self._note_rate(exc.headers)
             resp = urllib.request.urlopen(location, timeout=60)  # noqa: S310 (https only)
-        tail = b""
+        tail = rest = b""
         with resp:
             while chunk := resp.read(LOG_TAIL_BYTES):
                 tail = (tail + chunk)[-LOG_TAIL_BYTES:]
+                if scanner is not None:
+                    *whole, rest = (rest + chunk).split(b"\n")
+                    for raw in whole:
+                        scanner.feed(raw.decode("utf-8", errors="replace"))
+                    rest = rest[-LOG_TAIL_BYTES:]  # a longer line is cut, never kept whole
+        if scanner is not None and rest:
+            scanner.feed(rest.decode("utf-8", errors="replace"))
         lines = tail.decode("utf-8", errors="replace").splitlines()
         return "\n".join(lines[-LOG_TAIL_LINES:])
 
-    def failed_job_log(self, run_id: int) -> str:
-        """The last lines the failed job of run `run_id` printed ("" if none failed)."""
+    def failed_job_log(self, run_id: int, scanner: repair.LogScanner | None = None) -> str:
+        """The last lines the failed job of run `run_id` printed ("" if none failed).
+
+        `scanner` reads the job's whole log on the way."""
         jobs = self.get(f"/actions/runs/{run_id}/jobs", filter="latest", per_page=100)
         jobs = (jobs or {}).get("jobs", [])
         job = next((j for j in jobs if j.get("conclusion") == "failure"), None) or next(
@@ -214,7 +226,9 @@ class GitHub:
         )
         if job is None:
             return ""
-        return self._text_tail(f"{self.api}/repos/{self.repo}/actions/jobs/{job['id']}/logs")
+        return self._text_tail(
+            f"{self.api}/repos/{self.repo}/actions/jobs/{job['id']}/logs", scanner
+        )
 
     def get(self, path: str, **params: Any) -> Any:
         query = f"?{urllib.parse.urlencode(params)}" if params else ""
@@ -370,9 +384,15 @@ class GitHub:
             for r in raw
         ]
 
-    def run_logs(self, runs: list[Run], campaigns: frozenset[str]) -> dict[int, str]:
+    def run_logs(
+        self,
+        runs: list[Run],
+        campaigns: frozenset[str],
+        facts: dict[int, LogFacts] | None = None,
+    ) -> dict[int, str]:
         """Log tails of failed data-pipeline runs of `campaigns`: the newest run of each
-        step, when it failed. A log that cannot be read gives ""."""
+        step, when it failed. A log that cannot be read gives "". If `facts` is given,
+        it gets each read log's error line and profile, from the whole log."""
         newest: dict[str, Run] = {}
         for r in runs:
             found = markers.parse_run_title(r.title)
@@ -383,10 +403,14 @@ class GitHub:
         for r in newest.values():
             if r.status != "completed" or r.conclusion not in FAILED:
                 continue
+            scanner = repair.LogScanner()
             try:
-                logs[r.id] = self.failed_job_log(r.id)
+                logs[r.id] = self.failed_job_log(r.id, scanner)
             except (OSError, ValueError):  # HTTP and network errors, a bad answer
                 logs[r.id] = ""
+                continue
+            if facts is not None:
+                facts[r.id] = scanner.facts()
         return logs
 
     def snapshot(
@@ -474,7 +498,16 @@ class GitHub:
             if (root / "data" / "manifests").is_dir()
             else frozenset()
         )
-        logs = self.run_logs(runs, log_campaigns) if log_campaigns else {}
+        run_facts: dict[int, LogFacts] = {}
+        logs = self.run_logs(runs, log_campaigns, run_facts) if log_campaigns else {}
+        data_rules: dict[str, tuple[str, ...]] = {}
+        for rel in sorted(on_main):
+            try:
+                notes = json.loads((root / rel).read_text(encoding="utf-8")).get("notes")
+            except (OSError, ValueError, AttributeError):
+                continue
+            if found := datarule.rules_in_notes(notes):
+                data_rules[rel] = found
         return Snapshot(
             now,
             enabled,
@@ -487,6 +520,8 @@ class GitHub:
             logs,
             repo_url,
             fork_prs,
+            run_facts,
+            data_rules,
         )
 
 

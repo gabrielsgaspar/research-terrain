@@ -86,6 +86,9 @@ Then read the chosen rules back in plain words and ask for a clear yes.
 - A rule no plausible run could meet, or one every run will meet. Say
   which it is.
 - A rule on a field the script does not write.
+- A measurement-quality rule (a match rate, coverage, a missing share)
+  counted over entities, such as the share of authors matched. Weigh it by
+  money or rows, whatever the analysis sums (SKILL.md, stage 7).
 - Treating a passed rule as a result. A passed p-value rule is not
   evidence of balance: with few units it passes a large imbalance. Never
   write "balanced" because one passed; if balance matters to the next

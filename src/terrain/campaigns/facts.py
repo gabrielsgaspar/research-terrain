@@ -116,6 +116,19 @@ class Run:
     updated_at: str = ""
 
 
+@dataclass(frozen=True)
+class LogFacts:
+    """What a failed data-pipeline run's whole log says, beyond its last lines.
+
+    Read by `terrain.campaigns.repair.LogScanner`, already cleaned: the last
+    error line ("build failed: ...", "acquire failed: ...", "...BuildError: ...")
+    and the last profile `scripts/profile_failure.py` printed (decision 0016).
+    """
+
+    error: str = ""  # "" if the log has none
+    profile: tuple[str, ...] = ()  # the profile's lines, a one-line "none" or "refused", or ()
+
+
 @dataclass
 class Snapshot:
     """Everything the tick reads in one pass."""
@@ -137,3 +150,9 @@ class Snapshot:
     repo_url: str = ""
     # ideation run id -> its fork plan pull request (branch forks/NNNN-sNN-<run id>)
     fork_prs: dict[int, PullRequest] = field(default_factory=dict)
+    # failed data-pipeline run id -> its error line and profile, read from the whole
+    # log (decision 0016); only for runs whose log was read
+    run_facts: dict[int, LogFacts] = field(default_factory=dict)
+    # manifest path on main (data/manifests/<stage>/<target>.json) -> its data-rule notes
+    # lines (`terrain.datarule`), only for manifests that have any
+    data_rules: dict[str, tuple[str, ...]] = field(default_factory=dict)

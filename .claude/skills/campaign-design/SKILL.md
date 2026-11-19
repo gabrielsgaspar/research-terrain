@@ -201,6 +201,18 @@ or write his own. Then read each chosen rule back in plain words ("the
 step dies if fewer than 60 close races exist at the 1% window") and ask
 him to confirm. Only then set `confirmed: true`.
 
+**Measurement-quality rules weigh money or rows, not entities.** A rule on
+how well the data measures something (a link, a match rate, coverage, a
+missing share) is weighted by what the analysis sums: reais for money,
+rows for counts. Write "less than 90% of the amendment reais in some cycle
+go to authors matched to a deputy candidacy", not "less than 90% of the
+authors are matched". A count of entities lets many small ones decide:
+campaign 0010's gate died on k6 because 0.569 of cycle C's authors were
+matched by count, which does not say how much of the money the first
+stage uses was linked (`research/campaigns/0010-amendments-second-attempt/report.md`).
+Make the step's task draft write the weighted field. A count of entities
+may stay as a second rule only if Gabriel asks for it, in his words.
+
 If the scripts make no estimate (counts or structural checks only),
 propose `referee_not_applicable_ok: [R4, R5]` and say why: the referee
 rightly marks R4 "Level and inference" "Not applicable" when there is no
@@ -213,6 +225,38 @@ Read `references/budget.md` and run `scripts/budget.py` with the step
 counts. Propose `max_tasks`, `max_explore_runs`, `max_pipeline_runs`,
 `max_model_jobs` and `end_by`, and explain each in one line. Let him
 change them.
+
+Then ask about forks (decision 0015), as one question:
+
+> May this campaign explore variants on its own? Reply yes for the
+> defaults, no, or change a number.
+
+Before asking, say what it means in three lines:
+- after an explore run's verdict, one read-only model job may propose variants (another transformation, sample, specification, measure or related question); code checks each against the envelope and puts it in the repository before it runs;
+- each variant inherits the kill rules of the step it varies (no agent sets a threshold) and starts only when no step of the plan can, on a budget of its own;
+- if the plan's step is killed and a variant survives, the first one in order carries the plan on; the report lists every variant and how many were tried.
+
+The defaults: `max_forks: 5`, `per_point: 3`, `max_new_datasets: 2`
+(approved publishers only), `max_steps_per_fork: 4`, all five `types`,
+`max_question_forks: 1`, `on: [killed, survived]`, `fork_points: all`, and
+a budget sized from the plan: for five forks `max_tasks: 10`,
+`max_explore_runs: 7`, `max_pipeline_runs: 6`, `max_model_jobs: 45`
+(about two tasks, one or two runs and nine model jobs per fork, plus one
+ideation job per fork point); scale it with `max_forks`. The hard caps are
+5 forks, 2 new datasets, 6 steps per fork and 2 question forks.
+
+Fork points go on every gate run by default: `fork_points: all` opens one
+at every `explore_run` with a kill rule other than "finite", the gates as
+well as the main run. A gate is where a plan most often dies, so that is
+where a variant helps most: campaigns 0009 and 0010 listed only their main
+run, and when 0010's gate (s2) was killed no variant could run. Write a
+shorter list only if Gabriel asks for one, and put his reason in
+Provenance, in his words. If he says
+yes or changes a number, write the `forks:` block (`TEMPLATE.md` shows it)
+and a Provenance line in his words, for example "Forks: the defaults, set
+by Gabriel on YYYY-MM-DD ('yes')". If he says no, leave the block out and
+write "Forks: none (Gabriel, YYYY-MM-DD)". Do not suggest forks for a probe
+campaign of four steps or fewer unless he asks: a probe should stay small.
 
 ### 9. Check the plan against the repo
 
@@ -235,10 +279,28 @@ Read `references/writing-the-files.md`. Then:
    status `proposed`, its kill criteria marked as his).
 3. Run `uv run python scripts/campaign.py validate`, `uv run ruff check .`
    and `uv run pytest tests/test_campaigns.py`. Fix every problem.
-4. Show Gabriel what he stated, what he confirmed and what you suggested.
+4. **Dry-run every new or changed build on real data, with no upload.**
+   A build is new or changed if a `pipeline_run` step runs it and its code
+   on main has not yet produced a manifest in `data/manifests/build/` (a
+   new build, or an owner fix merged for this campaign). Run each such
+   build once on the real inputs before the campaign PR, with a store that
+   reads from GCS and writes nothing: a wrapper around
+   `terrain.storage.GCSStore` whose `create` only records the path and
+   size, kept in your scratchpad, outside the repo. The Bash sandbox has no
+   GCP credentials, so Gabriel runs it: give him exactly one command, with
+   the `!` prefix. Report what the build printed: its notes, the shares
+   each check saw, and if it stopped, its error line. A build that stops is
+   fixed in its own owner PR, and dry-run again, before the campaign PR:
+   a campaign never starts on a build that has not met the real files once
+   (campaign 0009 lost s5 to two real-file failures in a row). A build that
+   a task step of this campaign will write cannot be dry-run first: say so,
+   and recommend writing it in an owner PR before the campaign, or a probe
+   (stage 4), with `self_repair: true` (stage 6) as the fallback. Record in
+   Provenance which builds were dry-run, on which date, and what they said.
+5. Show Gabriel what he stated, what he confirmed and what you suggested.
    The steps, rules, datasets, budget and end date come from the card in
-   item 6, not from a table you write.
-5. Ask: `draft` (merge now, start later) or `active` (starts on the first
+   item 7, not from a table you write.
+6. Ask: `draft` (merge now, start later) or `active` (starts on the first
    tick after he merges)? If the campaign has more than four steps and the
    closest paper is unverified, first ask whether he has read it (stage 3).
    If `active`: in the same PR, set the idea file's front-matter `status`
@@ -255,7 +317,7 @@ Read `references/writing-the-files.md`. Then:
    campaign whose idea is not `exploring`, so run it, and the step 3 checks,
    again. If `draft`: leave the idea's status as it is; the PR that later
    makes the campaign active sets it.
-6. Print the approval card, once every check above passes:
+7. Print the approval card, once every check above passes:
 
    ```bash
    uv run python scripts/campaign.py card NNNN
@@ -269,7 +331,7 @@ Read `references/writing-the-files.md`. Then:
    yourself. If it shows something wrong, fix the campaign files, run the
    checks again and print a new card. If the command refuses, it names the
    problems: fix them first.
-7. Create a branch `campaigns/NNNN-slug`, commit, push, and open a PR with
+8. Create a branch `campaigns/NNNN-slug`, commit, push, and open a PR with
    `gh pr create`. Never merge it: Gabriel merges (`gh pr merge` is denied).
    The PR description starts with the heading `## What you are approving`,
    then the card output, unchanged: print it again after the last commit
