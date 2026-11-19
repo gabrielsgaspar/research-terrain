@@ -16,6 +16,22 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-19: Budget amendments, share and log reais per inhabitant: the gate and the main run survive (idea 0010, issue #423)
+- Tried: campaign 0011 ran a gate on the exploration half
+  (`research/explore-runs/0010/44484340952.md`) and a main run for the
+  powered outcome (`research/explore-runs/0010/44538371996.md`). The outcomes
+  were chosen after campaign 0010's gate failed.
+- Result: window 7.5%, 2300 close races. `share` was not powered (MDE
+  statistic 1.04, limit 0.25). `log_pc` was powered and its placebo was flat.
+  Its first stage is b 0.192 (SE 0.0362) and its reduced form b 0.0119 (SE
+  0.00242). By cycle, the first stage is 0.0273 in A and 0.401 in C. All
+  eight kill rules were not met; no fork ran.
+- Why: the money measured as log reais per inhabitant has enough power where
+  the earlier per-1,000 measure had not. The weak cycle A first stage may
+  mean the effect grew over time, or that the pooled number hides noise.
+- Implication: nothing here is a finding. The report recommends `promising`.
+  See `research/campaigns/0011-amendments-share-of-quota/report.md`.
+
 ## 2026-11-18: The amendments gate is killed on power and on the author link (idea 0009, issue #419)
 - Tried: campaign 0010 built the amendments panel (run 44393853819) and ran the
   gate on the exploration half (`research/explore-runs/0009/44394848609.md`):

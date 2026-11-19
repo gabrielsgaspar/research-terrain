@@ -1,7 +1,7 @@
 ---
 id: "0010"
 title: "What do budget amendments buy at the ballot box? The municipality's share of the deputy's money"
-status: exploring
+status: promising
 created: 2026-11-19
 updated: 2026-11-19
 datasets:
@@ -113,6 +113,11 @@ acquired in the campaign's first step), `tse_results`, `tse_candidates`,
   died in campaign 0010.
 - 2026-11-19: exploring. Campaign 0011 (`research/campaigns/0011-amendments-share-of-quota/`)
   starts when this pull request merges.
+- 2026-11-19: promising, the recommendation of campaign 0011's close-out report (`research/campaigns/0011-amendments-share-of-quota/report.md`); Gabriel accepts it by approving this pull request. Both explore runs survived every kill rule; only `log_pc` was powered, with a positive first stage (b 0.192) and reduced form (b 0.0119) on the exploration half.
+
+## Variants tried
+
+None: no fork was declared.
 
 ## Log
 
