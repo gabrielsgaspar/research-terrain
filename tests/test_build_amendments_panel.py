@@ -1,8 +1,10 @@
 """The amendments panel on a synthetic world: cycle A (mayors 2016, general elections 2014, 2018).
 
 Two states (RO, AC), six municipalities, three parties (10, 20, 30), three elected deputies, a
-substitute who served, one senator author, one ambiguous author and one unmatched author. Every
-identifier, name and value is made up inside this file.
+substitute who served (linked through the Chamber's parliamentary name), one senator author and
+one senate-substitute author, one ambiguous author, one unmatched author, a tie broken by state,
+an author with no amendment of the legislature and CGU's unidentified author. Every identifier,
+name and value is made up inside this file.
 
 R1 (exploration list 1) and C1 (list 2) are in the exploration half; the rest go to sealed.
 """
@@ -12,6 +14,7 @@ import functools
 import hashlib
 import io
 import json
+import math
 import zipfile
 from datetime import date
 from pathlib import Path
@@ -31,7 +34,9 @@ R1, R2, R3, C1, C2, C3 = "1100015", "1100023", "1100031", "1200013", "1200054", 
 TSE = {R1: "00019", R2: "00027", R3: "00035", C1: "01015", C2: "01058", C3: "01104"}
 SENTINEL_FAVORECIDO = ("SENTINEL-FAV-CODE", "SENTINEL FAVORECIDO NAME")
 NAMES = ("joao da mata", "maria oliveira", "pedro souza", "lucas rocha", "carlos lima", "ana costa")
-CODES = ("100", "200", "300", "400", "500", "600", "700")
+NAMES += ("luquinha", "suplente silva", "velho deputado")
+CODES = ("100", "200", "300", "400", "450", "500", "600", "700", "800")
+CURRENT, OLDER = "201600000001", "201500000001"  # amendment codes of budget years 2016 and 2015
 
 IND = "Emenda Individual - Transferências com Finalidade Definida"
 PIX = "Emenda Individual - Transferências Especiais"
@@ -80,11 +85,14 @@ CAND_HEADER = [
     "CD_SIT_TOT_TURNO",
     "NR_CPF_CANDIDATO",
     "NR_TITULO_ELEITORAL_CANDIDATO",
+    "NR_CANDIDATO",
 ]
 
 
 def cand_zip(year, data):
-    body = csv_bytes(CAND_HEADER, [(year, *r, "000000000001") for r in data])
+    """`data`: (sq, cargo, uf, full name, urn name, party, status, cpf[, ballot number])."""
+    rows = [(year, *r[:8], "000000000001", r[8] if len(r) > 8 else "9" + r[0]) for r in data]
+    body = csv_bytes(CAND_HEADER, rows)
     return make_zip(
         {
             f"consulta_cand_{year}_BRASIL.csv": body,
@@ -118,7 +126,11 @@ CANDIDATES_2014 = [
     ("1004", "6", "RO", "Ana Costa Reis", "Ana Costa", "10", "4", cpf(4)),
     ("2002", "6", "AC", "Ana Costa Lopes", "Ana Costa", "30", "4", cpf(5)),
     ("1005", "6", "RO", "Fulano de Tal", "Fulano Tal", "20", "4", cpf(6)),
-    ("S14-1", "5", "RO", "Outro Senador", "Outro Senador", "30", "1", cpf(7)),
+    ("1006", "6", "RO", "Ana Costa Silva", "Ana Costa", "20", "4", cpf(10)),  # same state
+    ("1007", "6", "RO", "Pedro Souza Lima", "Pedro Souza", "10", "4", cpf(11)),  # other state
+    ("S14-1", "5", "RO", "Outro Senador", "Outro Senador", "30", "1", cpf(7), "301"),
+    ("S14-2", "9", "RO", "Suplente Silva", "Suplente Silva", "30", "-1", cpf(12), "301"),
+    ("S14-3", "9", "RO", "Outro Suplente", "Outro Suplente", "20", "-1", cpf(13), "202"),  # lost
 ]
 CANDIDATES_2018 = [
     ("1801", "6", "RO", "João da Mata Santos", "JOÃO DA MATA", "10", "2", CPF1),
@@ -175,14 +187,16 @@ CGU_HEADER = [
 ]
 
 
-def pay(code, author, kind, ym, uf, muni, value):
-    return ["1", code, author, "1", kind, ym, *SENTINEL_FAVORECIDO, "x", "y", uf, muni, value]
+def pay(code, author, kind, ym, uf, muni, value, amendment=CURRENT):
+    return [amendment, code, author, "1", kind, ym, *SENTINEL_FAVORECIDO, "x", "y", uf, muni, value]
 
 
 def cgu_rows(pix=PIX):
     return [
         # João da Mata (elected, RO, party 10)
-        pay("100", "João da Mata", IND, "2015/02", "RO", "ALTA FLORESTA D'OESTE", "1.000,50"),
+        pay(
+            "100", "João da Mata", IND, "2015/02", "RO", "ALTA FLORESTA D'OESTE", "1.000,50", OLDER
+        ),
         pay("100", "João da Mata", IND, "2016/09", "RO", "Alta Floresta d'Oeste", "2.000,00"),
         pay("100", "João da Mata", IND, "2016/10", "RO", "ALTA FLORESTA D'OESTE", "7.000,00"),
         pay("100", "João da Mata", pix, "2017/05", "RO", "ALTA FLORESTA D'OESTE", "500,00"),
@@ -197,12 +211,17 @@ def cgu_rows(pix=PIX):
         # Pedro Souza (elected, AC, party 30)
         pay("300", "Pedro Souza", IND, "2016/01", "AC", "ACRELANDIA", "10,00"),
         pay("300", "Pedro Souza", IND, "2018/02", "AC", "ASSIS BRASIL", "20,00"),
-        # a senator, an ambiguous name, a substitute, an author with no candidacy
+        # a senator, a senate substitute, an ambiguous name, a substitute deputy known to CGU
+        # by the parliamentary name, an author with no candidacy
         pay("400", "Carlos Lima", IND, "2015/03", "RO", "ALTA FLORESTA D'OESTE", "999,00"),
+        pay("450", "Suplente Silva", IND, "2017/04", "RO", "ARIQUEMES", "40,00"),
         pay("500", "Ana Costa", IND, "2015/04", "RO", "ALTA FLORESTA D'OESTE", "888,00"),
-        pay("600", "Lucas Rocha", IND, "2017/03", "RO", "ALTA FLORESTA D'OESTE", "1.234,56"),
+        pay("600", "Dep. Luquinha", IND, "2017/03", "RO", "ALTA FLORESTA D'OESTE", "1.234,56"),
         pay("700", "Zeca Tatu", IND, "2015/06", "RO", "ARIQUEMES", "11,00"),
         pay("700", "Zeca Tatu", pix, "2021/05", "RO", "ARIQUEMES", "30,00"),  # outside windows
+        # no amendment of the legislature (budget 2015 only); CGU's unidentified author
+        pay("800", "Velho Deputado", IND, "2017/02", "RO", "ARIQUEMES", "77,00", OLDER),
+        pay("S/I", "Sem informação", IND, "2017/02", "RO", "ARIQUEMES", "66,00", "Sem informação"),
         # not individual: only the file's first and last months
         pay("S/I", "", BANC, "2015/01", "RO", "ALTA FLORESTA D'OESTE", "5,00"),
         pay("S/I", "", BANC, "2026/09", "RO", "ALTA FLORESTA D'OESTE", "5,00"),
@@ -371,20 +390,43 @@ def entry(path, blob):
     return {"path": path, "sha256": hashlib.sha256(blob).hexdigest(), "bytes": len(blob)}
 
 
-def cgu_zip(data, encoding="utf-8", header=None):
+AMENDMENT_HEADER = ["Código da Emenda", "Ano da Emenda", "Tipo de Emenda", "Valor Pago"]
+
+
+def amendments_csv(data, encoding="utf-8"):
+    """One row per amendment code of `data` (payment rows); the year is the code's first four
+    digits, and `Sem informação` rows have the year 2016."""
+    codes = sorted({r[0] for r in data})
+    rows = [(c, c[:4] if c.isdigit() else "2016", "x", "1,00") for c in codes]
+    return csv_bytes(AMENDMENT_HEADER, rows, encoding)
+
+
+def cgu_zip(data, encoding="utf-8", header=None, amendments=None):
     body = csv_bytes(header or CGU_HEADER, data, encoding)
     other = csv_bytes(["a"], [["b"]], encoding)
     return make_zip(
         {
-            "EmendasParlamentares.csv": other,
+            "EmendasParlamentares.csv": amendments or amendments_csv(data, encoding),
             "EmendasParlamentares_PorFavorecido.csv": body,
             "EmendasParlamentares_Convenios.csv": other,
         }
     )
 
 
-def stage(store, *, cgu=None, attrs=None, lists=None):
-    """Put every input in the store; return the six manifests."""
+CHAMBER_HEADER = ["uri", "nome", "idLegislaturaInicial", "idLegislaturaFinal", "nomeCivil", "cpf"]
+CHAMBER = [
+    ("https://x/1", "Luquinha", "55", "55", "Lucas Rocha Neto", ""),
+    ("https://x/2", "Joao da Mata", "54", "56", "João da Mata Santos", ""),
+    ("https://x/3", "Antigo", "50", "54", "Lucas Rocha Neto", ""),  # an earlier legislature
+]
+
+
+def chamber_csv(data=CHAMBER):
+    return b"\xef\xbb\xbf" + csv_bytes(CHAMBER_HEADER, data, "utf-8")
+
+
+def stage(store, *, cgu=None, attrs=None, lists=None, chamber=None):
+    """Put every input in the store; return the seven manifests."""
     first, second = lists or (f"code_ibge\n{R1}\n", f"code_ibge\n{C1}\n")
     store.create(EXPLORE_LIST, first.encode("utf-8"))
     store.create(EXPLORE_LIST_NON_AMAZON, second.encode("utf-8"))
@@ -416,6 +458,7 @@ def stage(store, *, cgu=None, attrs=None, lists=None):
     tp = "data/derived/tse_candidates/c1/"
     mp = "data/derived/municipalities/m1/"
     pp = "data/raw/ibge/population_annual/2026-11-15/"
+    hp = "data/raw/camara/deputies/2026-11-18/"
     frame = attributes() if attrs is None else attrs
     return (
         manifest("tse_general", gp, general),
@@ -429,6 +472,11 @@ def stage(store, *, cgu=None, attrs=None, lists=None):
             "ibge_population_annual",
             pp,
             [put(pp + "ibge_population_annual.parquet", parquet(population()))],
+        ),
+        manifest(
+            "camara_deputies",
+            hp,
+            [put(hp + "deputados.csv", chamber if chamber is not None else chamber_csv())],
         ),
     )
 
@@ -596,12 +644,25 @@ def test_author_link_counts(built):
         store, next(f["path"] for f in manifest["files"] if f["path"].endswith("link.parquet"))
     )
     assert link.columns == list(ap.LINK_SCHEMA)
-    assert link.to_dicts() == [
-        {"cycle": "A", "authors": 7, "deputies": 4, "senators": 1, "ambiguous": 1, "unmatched": 2}
-    ]
+    got = link.to_dicts()[0]
+    share = got.pop("money_share")
+    assert got == {
+        "cycle": "A",
+        "authors": 8,  # 800 and S/I have no amendment of budget years 2016-2019
+        "deputies": 4,
+        "senators": 2,  # one elected, one substitute on an elected ticket
+        "ambiguous": 1,
+        "unmatched": 2,
+        "ties_broken": 1,  # Pedro Souza: one candidacy in AC, where his money went
+        "non_current_authors": 2,
+        "chamber_links": 2,  # Luquinha and João; the earlier legislature's row is not read
+    }
+    deputy = 3905.75 + 135 + 30 + 1234.56  # window payments of 100, 200, 300 and 600
+    current = deputy + 999 + 40 + 888 + 11  # + senators, the ambiguous and the unmatched
+    assert share == pytest.approx(deputy / (current - 999 - 40))
     note = next(n for n in manifest["notes"].split("; ") if n.startswith("A:"))
-    assert "authors=7, deputy_authors=4, senator_authors=1, ambiguous_authors=1" in note
-    assert "unmatched_authors=2, unlinked_cpfs=1" in note  # the substitute's short CPF
+    assert "authors=8, deputy_authors=4, senator_authors=2, ambiguous_authors=1" in note
+    assert "unmatched_authors=2, ties_broken=1, non_current_authors=2, unlinked_cpfs=1" in note
     assert "party_without_mayor_cands=0" in note
     assert "vote_rows_abroad=1" in note
 
@@ -638,7 +699,7 @@ def test_manifest_notes_carry_placeholders_and_top_unmatched(tmp_path, monkeypat
     assert "dropped_recipient_rows_unmatched=2017:1" in notes
     assert "placeholder_recipient_rows=2017:2" in notes
     assert "placeholder_recipient_value_brl=2017:1500.00" in notes
-    total = 500 + 100 + 5 + 70 + 15 + 1234.56 + 1500 + 1  # every 2017 individual payment
+    total = 500 + 100 + 5 + 70 + 15 + 1234.56 + 40 + 77 + 66 + 1500 + 1  # every 2017 payment
     assert f"placeholder_recipient_value_share=2017:{1500 / total:.4f}" in notes
     assert "top_unmatched_recipients_2017=SP/SEM INFORMACAO:1" in notes
     assert not any(sentinel in n for sentinel in SENTINEL_FAVORECIDO for n in notes)
@@ -714,6 +775,236 @@ def test_a_senator_is_not_a_deputy_and_a_name_needs_one_candidacy(built):
     assert panel["amend_pre_total"].sum() == pytest.approx(3000.5 + 50 + 10)
 
 
+# --- The share and log outcomes
+
+
+def test_share_is_of_the_deputys_window_payments_to_identified_municipalities(built):
+    store, manifest, _ = built
+    panel = whole_panel(store, manifest)
+    joao = {m: row(panel, "1001", m) for m in (R1, R2, R3)}
+    assert joao[R1]["amend_pre_share"] == pytest.approx(1.0)  # all 3000.50 went to R1
+    assert joao[R2]["amend_pre_share"] == 0.0 and joao[R3]["amend_pre_share"] == 0.0
+    post = 800.25 + 100  # R1 and Cabixi; the state recipient (no municipality) is not counted
+    assert joao[R1]["amend_post_share"] == pytest.approx(800.25 / post)
+    assert joao[R3]["amend_post_share"] == pytest.approx(100 / post)
+    # Maria: 70 to R2 and 15 to a municipality of another state, which counts in the total
+    assert row(panel, "1002", R2)["amend_post_share"] == pytest.approx(70 / 85)
+    assert row(panel, "2001", C2)["amend_post_share"] == 1.0
+
+
+def test_share_is_null_when_the_deputy_paid_nothing_in_the_window(built):
+    store, manifest, _ = built
+    panel = whole_panel(store, manifest)
+    for municipality in (R1, R2, R3):  # the substitute paid only in the post window
+        got = row(panel, "1003", municipality)
+        assert got["amend_pre_share"] is None and got["amend_pre_total"] == 0
+    assert row(panel, "1003", R1)["amend_post_share"] == 1.0
+    nulls = "amend_pre_share:3,amend_post_share:0,amend_pre_log_pc:0,amend_post_log_pc:0"
+    assert f"A_outcome_nulls={nulls}" in manifest["notes"].split("; ")
+    assert panel.height == 10  # null shares drop no row
+
+
+def test_log_per_capita(built):
+    store, manifest, _ = built
+    panel = whole_panel(store, manifest)
+    got = row(panel, "1001", R1)  # population 20,000 in 2016
+    assert got["amend_pre_log_pc"] == pytest.approx(math.log(1 + 3000.5 / 20000))
+    assert got["amend_post_log_pc"] == pytest.approx(math.log(1 + 800.25 / 20000))
+    assert row(panel, "1001", R2)["amend_pre_log_pc"] == 0.0
+
+
+def test_a_total_floored_to_zero_has_a_zero_share_and_log(built_negative):
+    store, manifest = built_negative
+    cabixi = row(whole_panel(store, manifest), "1001", R3)  # 100 - 300 in the post window
+    assert cabixi["amend_post_share"] == 0.0 and cabixi["amend_post_log_pc"] == 0.0
+    r1 = row(whole_panel(store, manifest), "1001", R1)
+    assert r1["amend_post_share"] == 1.0  # the floored municipality adds 0 to the total
+
+
+def test_amendment_outcomes_are_null_without_population():
+    frame = pl.DataFrame(
+        {
+            "amend_pre_total": [10.0, 10.0, 0.0],
+            "amend_post_total": [5.0, 5.0, 0.0],
+            "den_pre": [20.0, 20.0, 0.0],
+            "den_post": [5.0, None, 0.0],
+            "population_m": [100, None, 0],
+        }
+    )
+    out = frame.with_columns(ap.amendment_outcomes())
+    assert out["amend_pre_share"].to_list() == [0.5, 0.5, None]
+    assert out["amend_post_share"].to_list() == [1.0, None, None]
+    assert out["amend_pre_log_pc"].to_list()[0] == pytest.approx(math.log(1.1))
+    assert out["amend_pre_log_pc"].to_list()[1:] == [None, None]
+
+
+# --- The author link, piece by piece
+
+
+def test_author_keys():
+    assert ap.author_keys("Dep. João  d'Ávila-Ñu") == ["DEPJOAODAVILANU", "JOAODAVILANU"]
+    assert ap.author_keys("ANA MARIA") == ap.author_keys("Ana-Maria") == ["ANAMARIA"]
+    assert ap.author_keys("DRA. PROFESSORA ANA") == ["DRAPROFESSORAANA", "ANA"]
+    assert ap.author_keys("Fulano (EX-PARLAMENTAR BELTRANO, NOS TERMOS DO ART. 78)") == ["FULANO"]
+    assert ap.author_keys("Fulano (EX-PARLAMENTAR BELTRANO, DE 03") == ["FULANO"]  # cut text
+    assert ap.author_keys("Pastor") == ["PASTOR"]  # a title alone stays a name
+    assert ap.author_keys(None) == [] and ap.author_keys(" . ") == []
+
+
+def link_frames():
+    authors = pl.DataFrame(
+        {
+            "aid": [0, 1, 2, 3, 4, 5],
+            "name": ["Dr. Zé Lima", "Bia Melo", "Bia Melo", "Caio Paz", "Sem Par", "Rui Sá"],
+            "top_uf": ["RO", "AC", "SP", "RO", "RO", "RO"],
+        }
+    ).with_columns(pl.col("aid").cast(pl.UInt32))
+    deputies = pl.DataFrame(
+        {
+            "sq": ["d1", "d2", "d3", "d4", "d5"],
+            "uf": ["RO", "AC", "RO", "RO", "RO"],
+            "name_urn": ["ZE LIMA", "Bia Melo", "Bia Melo", "Caio Paz", "Caio Paz"],
+            "name_full": ["José Lima", "Beatriz Melo", "Beatriz Melo Dias", None, None],
+        }
+    )
+    senators = pl.DataFrame(
+        {"senator": ["2014:s1"], "uf": ["RO"], "name_urn": ["Rui Sá"], "name_full": ["Rui Sá"]}
+    )
+    return authors, deputies, senators
+
+
+def test_author_link_titles_ties_and_senators():
+    link, counts = ap.author_link(*link_frames())
+    got = {r["aid"]: (r["kind"], r["sq"]) for r in link.to_dicts()}
+    assert got[0] == ("deputy", "d1")  # "Dr." dropped on the CGU side
+    assert got[1] == ("deputy", "d2")  # two candidacies, one in AC, where the money went
+    assert got[2] == ("unmatched", None)  # two candidacies, none in SP
+    assert got[3] == ("unmatched", None)  # two candidacies in RO
+    assert got[4] == ("unmatched", None) and got[5] == ("senator", None)
+    assert counts == {
+        "authors": 6,
+        "deputies": 2,
+        "senators": 1,
+        "ambiguous": 2,
+        "unmatched": 3,
+        "ties_broken": 1,
+    }
+
+
+def test_top_uf_is_the_state_with_most_money():
+    rows = pl.DataFrame(
+        {
+            "aid": [0, 0, 0, 1, 1],
+            "recipient_uf": ["RO", "AC", "AC", "", "-1"],
+            "value": [10.0, 6.0, 5.0, 99.0, 99.0],
+        }
+    )
+    assert ap.top_uf(rows).to_dicts() == [{"aid": 0, "top_uf": "AC"}]  # 11 > 10; no state
+
+
+def test_the_legislature_is_the_budgets_it_voted():
+    assert ap.legislature(ap.CYCLES["A"]) == (2016, 2019)
+    assert ap.legislature(ap.CYCLES["C"]) == (2024, 2027)
+    years = pl.DataFrame(
+        {
+            "code": ["1", "1", "2", "3", "4"],
+            "author": ["a", "a", "b", "c", "d"],
+            "year": [2015, 2019, 2015, 2020, None],
+        }
+    )
+    current = ap.current_authors(years, ap.CYCLES["A"])
+    assert current.to_dicts() == [{"code": "1", "author": "a"}]
+
+
+def test_read_amendment_years(tmp_path):
+    path = tmp_path / "c.zip"
+    rows = [("201600000001", "2016"), ("201600000001", "2017"), ("Sem informação", "2016")]
+    rows += [("201500000009", " 2015 ")]
+    body = csv_bytes(AMENDMENT_HEADER, [(c, y, "x", "1") for c, y in rows], "latin-1")
+    path.write_bytes(make_zip({"EmendasParlamentares.csv": body}))
+    years, counts = ap.read_amendment_years(path)
+    assert years.rows() == [("201500000009", 2015), ("201600000001", 2016), ("201600000001", 2017)]
+    assert counts == {"skipped": 1, "multi_year": 1}
+    bad = csv_bytes(AMENDMENT_HEADER, [("201600000001", "16", "x", "1")], "latin-1")
+    path.write_bytes(make_zip({"EmendasParlamentares.csv": bad}))
+    with pytest.raises(BuildError, match="not a year"):
+        ap.read_amendment_years(path)
+
+
+def test_an_author_with_only_older_amendments_is_left_out_but_counted(built):
+    store, manifest, _ = built
+    panel = whole_panel(store, manifest)
+    assert panel.filter(pl.col("amend_post_total") == 77).height == 0
+    note = next(n for n in manifest["notes"].split("; ") if n.startswith("A_link: "))
+    assert "non_current_rows=2, non_current_value_brl=143.00" in note  # 77 + 66
+    assert "unidentified_author_rows=1, unidentified_author_value_brl=66.00" in note
+    assert "individual_payment_rows_without_amendment_year=1" in manifest["notes"]
+
+
+def test_an_older_amendment_of_a_current_author_stays_in(built):
+    store, manifest, _ = built
+    # João's 2015/02 payment is on a 2015 amendment; he has 2016 amendments too
+    assert row(whole_panel(store, manifest), "1001", R1)["amend_pre_total"] == 3000.5
+
+
+def test_senate_substitutes_on_elected_tickets_are_senators():
+    def cands(rows):
+        return pl.DataFrame(
+            rows,
+            schema=["cargo", "sq", "uf", "number", "elected", "name_urn", "name_full"],
+            orient="row",
+        )
+
+    new = cands(
+        [
+            (5, "s1", "RO", "301", True, "A", "A"),
+            (9, "s2", "RO", "301", False, "B", "B"),  # on the elected ticket
+            (10, "s3", "AC", "301", False, "C", "C"),  # the same number in another state
+            (9, "s4", "RO", "202", False, "D", "D"),  # on a losing ticket
+            (5, "s5", "RO", "202", False, "E", "E"),
+        ]
+    )
+    old = cands([(5, "o1", "AC", "111", True, "F", "F"), (10, "o2", "AC", "111", True, "G", "G")])
+    senators = ap._senators(old, new, 2014)
+    assert sorted(senators["senator"]) == ["2010:o1", "2010:o2", "2014:s1", "2014:s2"]
+
+
+def test_chamber_names_bridge_by_civil_name():
+    chamber = pl.DataFrame(
+        {
+            "chamber_name": ["Zezinho", "Bia", "Ninguém", "Antigo"],
+            "civil_name": ["José da Silva", "Beatriz Melo", "Fulano", "José da Silva"],
+            "leg_first": [55, 55, 55, 50],
+            "leg_last": [56, 55, 55, 54],
+        }
+    )
+    base = pl.DataFrame(
+        {
+            "sq": ["d1", "d2", "d3"],
+            "uf": ["RO", "AC", "SP"],
+            "name_full": ["JOSÉ DA SILVA", "Beatriz Melo", "Beatriz Melo"],
+        }
+    )
+    extra, counts = ap.chamber_names(chamber, base, ap.CYCLES["A"])
+    assert extra.rows() == [("d1", "RO", "Zezinho", None)]
+    assert counts == {"rows": 3, "added": 1, "none": 1, "several": 1}
+    assert ap.legislature_number(ap.CYCLES["B"]) == 56
+
+
+def test_read_chamber(tmp_path):
+    path = tmp_path / "deputados.csv"
+    path.write_bytes(chamber_csv())
+    frame = ap.read_chamber(path)
+    assert frame.columns == list(ap.CHAMBER_COLUMNS.values())
+    assert frame["leg_first"].to_list() == [55, 54, 50]
+    path.write_bytes(chamber_csv([("u", "n", "x", "55", "c", "")]))
+    with pytest.raises(BuildError, match="not a number"):
+        ap.read_chamber(path)
+    path.write_bytes(b"uri;nome\nu;n\n")
+    with pytest.raises(BuildError, match="lacks a column"):
+        ap.read_chamber(path)
+
+
 # --- 3. No identifier in any output
 
 
@@ -776,6 +1067,7 @@ def stage_manifests(store):
     gp, cp = "data/raw/tse/general/2026-11-15/", "data/raw/cgu/amendments/2026-11-15/"
     rp, tp = "data/derived/tse_results/r1/", "data/derived/tse_candidates/c1/"
     mp, pp = "data/derived/municipalities/m1/", "data/raw/ibge/population_annual/2026-11-15/"
+    hp = "data/raw/camara/deputies/2026-11-18/"
 
     def files(prefix):
         return [entry(p, b) for p, b in inputs.items() if p.startswith(prefix)]
@@ -790,6 +1082,7 @@ def stage_manifests(store):
         manifest("tse_candidates", tp),
         manifest("municipalities", mp),
         manifest("ibge_population_annual", pp),
+        manifest("camara_deputies", hp),
     )
 
 
@@ -843,10 +1136,17 @@ def test_stop_on_a_margin_outside_one_or_a_wrong_win(built):
         ap.check_panel({"A": panel.with_columns(pl.lit(True).alias("win"))}, min_rows=1)
 
 
-@pytest.mark.parametrize("column", ["share_t0", "share_t1"])
+@pytest.mark.parametrize("column", ["share_t0", "share_t1", "amend_pre_share", "amend_post_share"])
 def test_stop_on_a_share_outside_zero_one(built, column):
     panel = panel_a(built).with_columns(pl.lit(1.5).alias(column))
     with pytest.raises(BuildError, match=f"{column} outside"):
+        ap.check_panel({"A": panel}, min_rows=1, max_rows=100)
+
+
+@pytest.mark.parametrize("column", ["amend_pre_log_pc", "amend_post_log_pc"])
+def test_stop_on_a_negative_log_outcome(built, column):
+    panel = panel_a(built).with_columns(pl.lit(-0.5).alias(column))
+    with pytest.raises(BuildError, match=f"{column} below 0"):
         ap.check_panel({"A": panel}, min_rows=1, max_rows=100)
 
 

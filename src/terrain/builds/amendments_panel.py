@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 import unicodedata
 import zipfile
 from pathlib import Path
@@ -42,6 +43,7 @@ DATASET = "amendments_panel"
 MAYOR = 11
 DEPUTY = 6
 SENATOR = 5
+SENATE_SUBSTITUTES = (9, 10)  # first and second suplente
 ELECTED_CODES = (1, 2, 3)
 FEMALE = "4"
 HIGHER_ED = "8"
@@ -75,6 +77,7 @@ CYCLES: dict[str, Cycle] = {
 
 CGU_MEMBER = "emendasparlamentares_porfavorecido.csv"
 CGU_COLUMNS = {
+    "amendment": "Código da Emenda",
     "type": "Tipo de Emenda",
     "code": "Código do Autor da Emenda",
     "author": "Nome do Autor da Emenda",
@@ -83,6 +86,17 @@ CGU_COLUMNS = {
     "muni": "Município Favorecido",
     "value": "Valor Recebido",
 }
+AMENDMENTS_MEMBER = "emendasparlamentares.csv"
+AMENDMENT_COLUMNS = {"amendment": "Código da Emenda", "year": "Ano da Emenda"}
+AMENDMENT_CODE = r"^\d+$"  # CGU writes `Sem informação` where it has no amendment code
+# Leading titles CGU or TSE may put before a name; a name is also tried without them.
+HONORIFICS = frozenset(
+    {
+        "DEP", "DEPUTADO", "DEPUTADA", "DR", "DRA", "DOUTOR", "DOUTORA", "PASTOR", "PASTORA",
+        "PR", "DELEGADO", "DELEGADA", "CORONEL", "CEL", "PROFESSOR", "PROFESSORA", "PROF",
+        "PROFA", "CAPITAO", "MAJOR", "SARGENTO", "SGT", "GENERAL", "TENENTE", "SUBTENENTE",
+    }
+)  # fmt: skip
 VOTES_COLUMNS = (
     "cd_cargo",
     "nr_turno",
@@ -108,6 +122,12 @@ CANDIDATE_COLUMNS = (
     "dt_eleicao",
 )
 POPULATION_COLUMNS = ("ano", "id_municipio", "populacao")
+CHAMBER_COLUMNS = {
+    "nome": "chamber_name",
+    "nomeCivil": "civil_name",
+    "idLegislaturaInicial": "leg_first",
+    "idLegislaturaFinal": "leg_last",
+}
 MUNICIPALITY_COLUMNS = ("cd_ibge", "cd_tse", "uf", "name_ibge")
 
 SCHEMA: dict[str, Any] = {
@@ -135,6 +155,10 @@ SCHEMA: dict[str, Any] = {
     "amend_post_total": pl.Float64,
     "amend_post_pix": pl.Float64,
     "n_pay_post": pl.Int64,
+    "amend_pre_share": pl.Float64,
+    "amend_post_share": pl.Float64,
+    "amend_pre_log_pc": pl.Float64,
+    "amend_post_log_pc": pl.Float64,
     "votes_t0": pl.Int64,
     "valid_t0": pl.Int64,
     "share_t0": pl.Float64,
@@ -151,8 +175,13 @@ LINK_SCHEMA: dict[str, Any] = {
     "senators": pl.Int64,
     "ambiguous": pl.Int64,
     "unmatched": pl.Int64,
+    "ties_broken": pl.Int64,
+    "non_current_authors": pl.Int64,
+    "chamber_links": pl.Int64,
+    "money_share": pl.Float64,
 }
-SHARES = ("share_t0", "share_t1")
+SHARES = ("share_t0", "share_t1", "amend_pre_share", "amend_post_share")
+LOGS = ("amend_pre_log_pc", "amend_post_log_pc")
 PAYMENTS = ("amend_pre_total", "amend_pre_pix", "amend_post_total", "amend_post_pix")
 
 # Every module whose code decides what this build writes. Its source is part of the output
@@ -208,6 +237,41 @@ def normalise_name(text: str | None) -> str:
 normalise_type = normalise_name
 
 
+def author_keys(text: str | None) -> list[str]:
+    """The keys a CGU author or a TSE name is matched on: the name and, if it starts with titles
+    (`HONORIFICS`), the name without them.
+
+    Text in parentheses (CGU's note on an amendment taken over from a former member) is dropped,
+    accents are stripped, letters are upper-cased and everything else splits words. A key is
+    the words joined without spaces, so `ANA-MARIA`, `ANA MARIA` and `ANAMARIA` agree.
+    """
+    if text is None:
+        return []
+    bare = re.sub(r"\([^)]*(\)|$)", " ", text)
+    plain = "".join(c for c in unicodedata.normalize("NFKD", bare) if not unicodedata.combining(c))
+    words = "".join(c if c.isalpha() else " " for c in plain.upper()).split()
+    keys = ["".join(words)] if words else []
+    while words and words[0] in HONORIFICS:
+        words = words[1:]
+    if words and "".join(words) not in keys:
+        keys.append("".join(words))
+    return keys
+
+
+def with_keys(frame: pl.DataFrame, column: str) -> pl.DataFrame:
+    """One row per row of `frame` and key of `column` (`key`); rows without a key are dropped."""
+    lookup = (
+        frame.select(pl.col(column).unique())
+        .drop_nulls()
+        .with_columns(
+            pl.col(column).map_elements(author_keys, return_dtype=pl.List(pl.Utf8)).alias("key")
+        )
+        .explode("key")
+        .drop_nulls("key")
+    )
+    return frame.join(lookup, on=column, how="inner")
+
+
 def is_individual(normalised_type: str) -> bool:
     return normalised_type.startswith("EMENDA INDIVIDUAL")
 
@@ -250,10 +314,36 @@ def read_cgu(zip_path: Path) -> pl.DataFrame:
     wins. `Código do Favorecido` and `Favorecido` are not selected. Stops if the member is
     missing or no encoding gives the header.
     """
+    return _read_member(zip_path, CGU_MEMBER, CGU_COLUMNS)
+
+
+def read_amendment_years(zip_path: Path) -> tuple[pl.DataFrame, dict[str, int]]:
+    """(`amendment`, `year`) of `EmendasParlamentares.csv`, one row per pair.
+
+    Rows whose `Código da Emenda` is not a number (CGU's `Sem informação`) are skipped and
+    counted. An `Ano da Emenda` that is not a four-digit year stops the build. Counts:
+    `skipped` rows and `multi_year` codes with more than one year.
+    """
+    raw = _read_member(zip_path, AMENDMENTS_MEMBER, AMENDMENT_COLUMNS)
+    code = pl.col("amendment").str.strip_chars()
+    coded = raw.filter(code.str.contains(AMENDMENT_CODE).fill_null(False))
+    year = pl.col("year").str.strip_chars()
+    bad = coded.filter(~year.str.contains(r"^\d{4}$").fill_null(False)).height
+    if bad:
+        raise BuildError(f"{bad} amendment rows have an Ano da Emenda that is not a year")
+    pairs = coded.select(code.alias("amendment"), year.cast(pl.Int64).alias("year")).unique()
+    multi = pairs.group_by("amendment").len().filter(pl.col("len") > 1).height
+    return pairs.sort("amendment", "year"), {
+        "skipped": raw.height - coded.height,
+        "multi_year": multi,
+    }
+
+
+def _read_member(zip_path: Path, member: str, columns: dict[str, str]) -> pl.DataFrame:
     with zipfile.ZipFile(zip_path) as zf:
-        members = [n for n in zf.namelist() if n.rsplit("/", 1)[-1].lower() == CGU_MEMBER]
+        members = [n for n in zf.namelist() if n.rsplit("/", 1)[-1].lower() == member]
         if len(members) != 1:
-            raise BuildError(f"expected one {CGU_MEMBER} member, found {len(members)}")
+            raise BuildError(f"expected one {member} member, found {len(members)}")
         data = zf.read(members[0])
     for encoding in ("utf-8-sig", "latin-1"):
         try:
@@ -262,17 +352,17 @@ def read_cgu(zip_path: Path) -> pl.DataFrame:
             continue
         header = next(csv.reader([text.split("\n", 1)[0].rstrip("\r")], delimiter=";"))
         raw = {h.strip(): h for h in header}
-        if any(name not in raw for name in CGU_COLUMNS.values()):
+        if any(name not in raw for name in columns.values()):
             continue
         frame = pl.read_csv(
             text.encode("utf-8"),
             separator=";",
             quote_char='"',
             infer_schema=False,
-            columns=[raw[name] for name in CGU_COLUMNS.values()],
+            columns=[raw[name] for name in columns.values()],
         )
-        return frame.rename({raw[name]: key for key, name in CGU_COLUMNS.items()})
-    raise BuildError("no encoding (UTF-8, Latin-1) gives the expected CGU header")
+        return frame.rename({raw[name]: key for key, name in columns.items()})
+    raise BuildError(f"no encoding (UTF-8, Latin-1) gives the expected header of {member}")
 
 
 def parse_payments(raw: pl.DataFrame) -> tuple[pl.DataFrame, dict[str, Any]]:
@@ -405,7 +495,9 @@ def match_recipients(
         pairs = top_unmatched.setdefault(int(year), [])
         if len(pairs) < TOP_UNMATCHED:
             pairs.append((uf, name, int(n)))
-    out = joined.drop("year", "uf_key", "name_key", "muni", "uf", "placeholder")
+    out = joined.drop("year", "name_key", "muni", "uf", "placeholder").rename(
+        {"uf_key": "recipient_uf"}
+    )
     return out, {
         "no_municipality": empty_by_year,
         "unmatched": failed_by_year,
@@ -510,9 +602,10 @@ def read_votes(
 
 
 def read_candidacies(zip_path: Path, tmp_dir: Path, *, with_cpf: bool) -> pl.DataFrame:
-    """Deputy and senate candidacies: `cargo`, `sq`, `uf`, `party`, `elected`, `name_urn`,
-    `name_full` and, if asked, `cpf` (in memory only). Names are normalised; `elected` is
-    `CD_SIT_TOT_TURNO` 1-3.
+    """Deputy, senate and senate-substitute candidacies: `cargo`, `sq`, `uf`, `party`,
+    `elected`, `number` (ballot number), `name_urn`, `name_full` and, if asked, `cpf` (in
+    memory only). Names are as written (`author_keys`
+    normalises them); `elected` is `CD_SIT_TOT_TURNO` 1-3.
     """
     wanted = (
         "SQ_CANDIDATO",
@@ -522,13 +615,15 @@ def read_candidacies(zip_path: Path, tmp_dir: Path, *, with_cpf: bool) -> pl.Dat
         "NM_CANDIDATO",
         "NR_PARTIDO",
         "CD_SIT_TOT_TURNO",
+        "NR_CANDIDATO",
     )
     raw = read_tse_csv(zip_path, tmp_dir, wanted, ("NR_CPF_CANDIDATO",) if with_cpf else ())
     if with_cpf and "NR_CPF_CANDIDATO" not in raw.columns:
         raise BuildError(f"{zip_path.name} lacks a column the build needs")
     rows = raw.with_columns(pl.col("CD_CARGO").cast(pl.Int64, strict=False).alias("cargo"))
-    rows = rows.filter(pl.col("cargo").is_in([DEPUTY, SENATOR])).with_columns(
+    rows = rows.filter(pl.col("cargo").is_in([DEPUTY, SENATOR, *SENATE_SUBSTITUTES])).with_columns(
         pl.col("SQ_CANDIDATO").alias("sq"),
+        pl.col("NR_CANDIDATO").str.strip_chars().alias("number"),
         pl.col("SG_UF").alias("uf"),
         pl.col("NR_PARTIDO").alias("party"),
         pl.col("CD_SIT_TOT_TURNO")
@@ -537,9 +632,10 @@ def read_candidacies(zip_path: Path, tmp_dir: Path, *, with_cpf: bool) -> pl.Dat
         .fill_null(False)
         .alias("elected"),
     )
-    rows = with_norm(rows, "NM_URNA_CANDIDATO", "name_urn")
-    rows = with_norm(rows, "NM_CANDIDATO", "name_full")
-    keep = ["cargo", "sq", "uf", "party", "elected", "name_urn", "name_full"]
+    rows = rows.with_columns(
+        pl.col("NM_URNA_CANDIDATO").alias("name_urn"), pl.col("NM_CANDIDATO").alias("name_full")
+    )
+    keep = ["cargo", "sq", "uf", "party", "elected", "number", "name_urn", "name_full"]
     if with_cpf:
         rows = rows.with_columns(pl.col("NR_CPF_CANDIDATO").alias("cpf"))
         keep.append("cpf")
@@ -552,62 +648,130 @@ def read_candidacies(zip_path: Path, tmp_dir: Path, *, with_cpf: bool) -> pl.Dat
 def author_link(
     authors: pl.DataFrame, deputies: pl.DataFrame, senators: pl.DataFrame
 ) -> tuple[pl.DataFrame, dict[str, int]]:
-    """Link each author (`aid`, `name`) to a t0 deputy candidacy or a senator.
+    """Link each author (`aid`, `name`, `top_uf`) to a t0 deputy candidacy or a senator.
 
-    `deputies` has `sq`, `name_urn` and `name_full`; `senators` has `key`, `name_urn` and
-    `name_full` (elected senate candidacies at t0 and t0-4). Exactly one deputy candidacy
-    matching a name: deputy. Several: ambiguous, so unmatched. An unmatched author who matches
-    exactly one senate candidacy is a senator. Returns `aid`, `kind` (deputy, senator or
+    `deputies` has `sq`, `uf`, `name_urn` and `name_full`; `senators` has `senator`, `uf`,
+    `name_urn` and `name_full` (elected senate candidacies at t0 and t0-4). Names are compared
+    by `author_keys`: an author matches a candidacy when any key of the author's name equals
+    any key of the candidacy's urn or full name. `top_uf` is the state that received most of
+    the author's money. Exactly one deputy candidacy matching: deputy. Several: only those of
+    `top_uf` are kept (a tie broken), and exactly one left makes a deputy; otherwise the author
+    is ambiguous, so unmatched. An author who is not a deputy and matches exactly one senate
+    candidacy, by the same rules, is a senator. Returns `aid`, `kind` (deputy, senator or
     unmatched) and `sq` (set for deputies), and the counts.
     """
+    author_long = with_keys(authors.select("aid", "name", "top_uf"), "name").select(
+        "aid", "top_uf", "key"
+    )
 
-    def long(frame: pl.DataFrame, key: str) -> pl.DataFrame:
-        return (
-            pl.concat(
-                [
-                    frame.select(pl.col("name_urn").alias("name"), key),
-                    frame.select(pl.col("name_full").alias("name"), key),
-                ]
-            )
-            .filter(pl.col("name") != "")
-            .unique()
+    def long(frame: pl.DataFrame, id_col: str) -> pl.DataFrame:
+        parts = [
+            with_keys(frame.select(id_col, "uf", column), column).select(id_col, "uf", "key")
+            for column in ("name_urn", "name_full")
+        ]
+        return pl.concat(parts).unique()
+
+    def matches(table: pl.DataFrame, id_col: str, n_name: str) -> pl.DataFrame:
+        pairs = author_long.join(table, on="key", how="inner").select(
+            "aid", id_col, (pl.col("uf") == pl.col("top_uf")).fill_null(False).alias("home")
+        )
+        pairs = pairs.group_by("aid", id_col).agg(pl.col("home").any())
+        n_all = pl.col(id_col).n_unique()
+        n_home = pl.col(id_col).filter(pl.col("home")).n_unique()
+        return pairs.group_by("aid").agg(
+            n_all.alias(n_name),
+            n_home.alias(n_name + "_home"),
+            pl.when(n_all == 1)
+            .then(pl.col(id_col).first())
+            .otherwise(pl.col(id_col).filter(pl.col("home")).first())
+            .alias(id_col),
         )
 
-    def matches(long_table: pl.DataFrame, key: str, n_name: str) -> pl.DataFrame:
-        return (
-            authors.join(long_table, on="name", how="left")
-            .group_by("aid")
-            .agg(
-                pl.col(key).drop_nulls().n_unique().alias(n_name),
-                pl.col(key).drop_nulls().first().alias(key),
-            )
-        )
+    def resolved(n_name: str) -> pl.Expr:
+        n, home = pl.col(n_name), pl.col(n_name + "_home")
+        return (n == 1) | ((n > 1) & (home == 1))
 
     dep = matches(long(deputies, "sq"), "sq", "n_dep")
-    sen = matches(long(senators, "key"), "key", "n_sen").select("aid", "n_sen")
+    sen = matches(long(senators, "senator"), "senator", "n_sen").drop("senator")
     table = (
         authors.select("aid")
         .join(dep, on="aid", how="left")
         .join(sen, on="aid", how="left")
-        .with_columns(pl.col("n_dep").fill_null(0), pl.col("n_sen").fill_null(0))
         .with_columns(
-            pl.when(pl.col("n_dep") == 1)
+            pl.col(c).fill_null(0) for c in ("n_dep", "n_dep_home", "n_sen", "n_sen_home")
+        )
+        .with_columns(
+            pl.when(resolved("n_dep"))
             .then(pl.lit("deputy"))
-            .when(pl.col("n_sen") == 1)
+            .when(resolved("n_sen"))
             .then(pl.lit("senator"))
             .otherwise(pl.lit("unmatched"))
             .alias("kind")
         )
         .with_columns(pl.when(pl.col("kind") == "deputy").then(pl.col("sq")).alias("sq"))
     )
+    deputy = pl.col("kind") == "deputy"
     counts = {
         "authors": table.height,
-        "deputies": table.filter(pl.col("kind") == "deputy").height,
+        "deputies": table.filter(deputy).height,
         "senators": table.filter(pl.col("kind") == "senator").height,
-        "ambiguous": table.filter(pl.col("n_dep") > 1).height,
+        "ambiguous": table.filter((pl.col("n_dep") > 1) & ~deputy).height,
         "unmatched": table.filter(pl.col("kind") == "unmatched").height,
+        "ties_broken": table.filter((pl.col("n_dep") > 1) & deputy).height,
     }
     return table.select("aid", "kind", "sq"), counts
+
+
+def legislature(cycle: Cycle) -> tuple[int, int]:
+    """The first and last `Ano da Emenda` of the legislature elected at t0: t0+2 to t0+5.
+
+    The budget of year Y is voted, and amended, in year Y-1, so the amendments of budget year
+    t0+1 were written by the outgoing legislature. (Authors of consecutive budget years overlap
+    93-98% within a legislature and about half across t0+1 and t0+2.)
+    """
+    return cycle.t0 + 2, cycle.t0 + 5
+
+
+def current_authors(author_years: pl.DataFrame, cycle: Cycle) -> pl.DataFrame:
+    """(`code`, `author`) of the authors with at least one individual amendment whose
+    `Ano da Emenda` falls in the cycle's legislature. `author_years` has `code`, `author`, `year`
+    (null where the amendment has no year)."""
+    return (
+        author_years.filter(pl.col("year").is_between(*legislature(cycle)))
+        .select("code", "author")
+        .unique()
+    )
+
+
+def author_years(individual: pl.DataFrame, years: pl.DataFrame) -> pl.DataFrame:
+    """(`code`, `author`, `year`): the `Ano da Emenda` of every individual amendment an author
+    has a payment row for, in any month of the file. `year` is null where `Código da Emenda` has
+    no year in `EmendasParlamentares.csv`."""
+    code = pl.col("amendment").fill_null("").str.strip_chars()
+    return (
+        individual.select("code", "author", code.alias("amendment"))
+        .unique()
+        .join(years, on="amendment", how="left")
+        .select("code", "author", "year")
+        .unique()
+    )
+
+
+def top_uf(payments: pl.DataFrame) -> pl.DataFrame:
+    """(`aid`, `top_uf`): the recipient state with the largest sum of `value` per author.
+
+    Rows without a state (`recipient_uf` empty, null or `-1`) are left out; ties go to the
+    first state in alphabetical order.
+    """
+    uf = pl.col("recipient_uf").fill_null("")
+    return (
+        payments.filter(~uf.is_in(PLACEHOLDER_UFS))
+        .group_by("aid", "recipient_uf")
+        .agg(pl.col("value").sum())
+        .sort(["aid", "value", "recipient_uf"], descending=[False, True, False])
+        .unique(subset=["aid"], keep="first", maintain_order=True)
+        .select("aid", pl.col("recipient_uf").alias("top_uf"))
+    )
 
 
 def linkable() -> pl.Expr:
@@ -884,6 +1048,33 @@ def _share(votes: str, valid: str) -> pl.Expr:
     return pl.when(pl.col(valid) > 0).then(pl.col(votes) / pl.col(valid))
 
 
+def deputy_totals(sums: pl.DataFrame) -> pl.DataFrame:
+    """(`deputy`, `den_pre`, `den_post`): per deputy, the sum over every municipality the
+    deputy paid in the window (any state) of the municipality's total floored at 0. `sums`
+    is `window_sums` of the payments with an identified municipality."""
+    return sums.group_by("deputy").agg(
+        pl.col("amend_pre_total").clip(lower_bound=0).sum().alias("den_pre"),
+        pl.col("amend_post_total").clip(lower_bound=0).sum().alias("den_post"),
+    )
+
+
+def amendment_outcomes() -> list[pl.Expr]:
+    """`amend_<w>_share` and `amend_<w>_log_pc` for the pre and post windows.
+
+    share: the municipality's total (floored at 0) / the deputy's `den_<w>`; null where that
+    is 0 or missing. log_pc: ln(1 + total floored at 0 / `population_m`), reais per inhabitant
+    as the 0009 per-capita measure uses `population_m`; null where the population is null or 0.
+    """
+    pop = pl.col("population_m").cast(pl.Float64)
+    out = []
+    for w in ("pre", "post"):
+        total = pl.col(f"amend_{w}_total").clip(lower_bound=0)
+        den = pl.col(f"den_{w}").fill_null(0.0)
+        out.append(pl.when(den > 0).then(total / den).alias(f"amend_{w}_share"))
+        out.append(pl.when(pop > 0).then((1.0 + total / pop).log()).alias(f"amend_{w}_log_pc"))
+    return out
+
+
 def cycle_panel(
     name: str,
     *,
@@ -934,12 +1125,14 @@ def cycle_panel(
     )
     valid1 = votes1.group_by("cd_ibge").agg(pl.col("votes").sum().alias("valid_t1"))
     ran = t1_link.rename({"sq": "deputy"})
+    sums = window_sums(payments, cycle)
     rows = (
         base.join(finalists, on=["uf", "deputy_party"], how="inner")
         .join(held, on=["cd_ibge", "deputy_party"], how="left")
         .join(mayors.n_cands, on="cd_ibge", how="left")
         .join(pop, on="cd_ibge", how="left")
-        .join(window_sums(payments, cycle), on=["deputy", "cd_ibge"], how="left")
+        .join(sums, on=["deputy", "cd_ibge"], how="left")
+        .join(deputy_totals(sums), on="deputy", how="left")
         .join(v0, on=["uf", "deputy", "cd_ibge"], how="left")
         .join(valid0, on="cd_ibge", how="left")
         .join(ran, on="deputy", how="left")
@@ -964,9 +1157,9 @@ def cycle_panel(
         pl.when(ran_t1).then(pl.col("v1").fill_null(0)).alias("votes_t1"),
         pl.when(ran_t1).then(pl.col("valid_t1")).alias("valid_t1"),
     )
-    rows = rows.with_columns(_share("votes_t1", "valid_t1").alias("share_t1")).with_columns(
-        (pl.col("share_t1") - pl.col("share_t0")).alias("d_share")
-    )
+    rows = rows.with_columns(
+        _share("votes_t1", "valid_t1").alias("share_t1"), *amendment_outcomes()
+    ).with_columns((pl.col("share_t1") - pl.col("share_t0")).alias("d_share"))
     panel = rows.select([pl.col(n).cast(t) for n, t in SCHEMA.items()]).sort(["deputy", "cd_ibge"])
     merger = deputies.filter(~pl.col("party").is_in(sorted(mayors.parties)))
     return panel, merger.height
@@ -1012,8 +1205,36 @@ def check_panel(
             bad = table.filter(pl.col(column) < 0).height
             if bad:
                 raise BuildError(f"{name}: {bad} rows have {column} below 0")
+        for column in LOGS:
+            bad = table.filter(pl.col(column) < -TOLERANCE).height
+            if bad:
+                raise BuildError(f"{name}: {bad} rows have {column} below 0")
         if table.height < min_rows or table.height > max_rows:
             raise BuildError(f"{name}: {table.height} rows, outside {min_rows}-{max_rows}")
+
+
+def outcome_nulls(panel: pl.DataFrame) -> dict[str, int]:
+    """Rows (both halves) where each share or log outcome is null: a share whose deputy has
+    no positive payment with an identified municipality in the window, or no population."""
+    return {c: panel[c].null_count() for c in (*SHARES[2:], *LOGS)}
+
+
+def _money(counts: dict[str, Any]) -> str:
+    def share(x: float | None) -> str:
+        return "none" if x is None else f"{x:.4f}"
+
+    return (
+        f"money_share={share(counts['money_share'])}, "
+        f"money_share_with_unidentified={share(counts['money_share_with_unidentified'])}, "
+        f"window_value_brl={counts['window_value']:.2f}, "
+        f"current_value_brl={counts['current_value']:.2f}, "
+        f"deputy_value_brl={counts['deputy_value']:.2f}, "
+        f"senator_value_brl={counts['senator_value']:.2f}, "
+        f"non_current_rows={counts['non_current_rows']}, "
+        f"non_current_value_brl={counts['non_current_value']:.2f}, "
+        f"unidentified_author_rows={counts['unidentified_rows']}, "
+        f"unidentified_author_value_brl={counts['unidentified_value']:.2f}"
+    )
 
 
 def _month(ym: int) -> str:
@@ -1106,14 +1327,175 @@ def _mayors(
 
 
 def _senators(old: pl.DataFrame, new: pl.DataFrame, t0: int) -> pl.DataFrame:
-    """Elected senate candidacies at t0 and t0-4, each with a key of year and `sq`."""
-    parts = [
-        frame.filter((pl.col("cargo") == SENATOR) & pl.col("elected")).select(
-            pl.concat_str([pl.lit(f"{year}:"), pl.col("sq")]).alias("key"), "name_urn", "name_full"
+    """The senate seats of the legislature: elected senate candidacies at t0 and t0-4, and the
+    substitutes (`SENATE_SUBSTITUTES`) on their tickets (same election, state and ballot
+    number), each with `senator`: the year and `sq`.
+
+    A substitute who took the seat writes amendments as a senator.
+    """
+    parts = []
+    for frame, year in ((old, t0 - 4), (new, t0)):
+        elected = frame.filter((pl.col("cargo") == SENATOR) & pl.col("elected"))
+        tickets = elected.select("uf", "number").unique()
+        substitutes = frame.filter(pl.col("cargo").is_in(SENATE_SUBSTITUTES)).join(
+            tickets, on=["uf", "number"], how="semi"
         )
-        for frame, year in ((old, t0 - 4), (new, t0))
-    ]
+        parts.append(
+            pl.concat([elected, substitutes]).select(
+                pl.concat_str([pl.lit(f"{year}:"), pl.col("sq")]).alias("senator"),
+                "uf",
+                "name_urn",
+                "name_full",
+            )
+        )
     return pl.concat(parts)
+
+
+def read_chamber(path: Path) -> pl.DataFrame:
+    """`chamber_name`, `civil_name`, `leg_first`, `leg_last` of the Chamber's `deputados.csv`.
+
+    Stops if a needed column is missing or a legislature number is not an integer.
+    """
+    raw = pl.read_csv(
+        path, separator=";", quote_char='"', infer_schema=False, encoding="utf8-lossy"
+    )
+    raw = raw.rename({c: c.lstrip("\ufeff") for c in raw.columns})
+    if [c for c in CHAMBER_COLUMNS if c not in raw.columns]:
+        raise BuildError(f"{path.name} lacks a column the build needs")
+    frame = raw.select(list(CHAMBER_COLUMNS)).rename(CHAMBER_COLUMNS)
+    legs = [
+        pl.col(c).str.strip_chars().cast(pl.Int64, strict=False) for c in ("leg_first", "leg_last")
+    ]
+    bad = frame.filter(pl.any_horizontal(e.is_null() for e in legs)).height
+    if bad:
+        raise BuildError(f"{path.name}: {bad} rows have a legislature that is not a number")
+    return frame.with_columns(legs)
+
+
+def legislature_number(cycle: Cycle) -> int:
+    """The Chamber's number of the legislature elected at t0 (55 for 2014)."""
+    return 55 + (cycle.t0 - 2014) // 4
+
+
+def chamber_names(
+    chamber: pl.DataFrame, base: pl.DataFrame, cycle: Cycle
+) -> tuple[pl.DataFrame, dict[str, int]]:
+    """Each deputy of the cycle's legislature on the Chamber's list, by parliamentary name,
+    as an extra name of the t0 deputy candidacy whose civil name it matches.
+
+    A Chamber row matches a candidacy when a key (`author_keys`) of its `civil_name` equals a
+    key of the candidacy's `name_full` (TSE's civil name). Rows that match no candidacy or
+    several are left out and counted. Returns (`sq`, `uf`, `name_urn` = the Chamber name,
+    `name_full` = null) and the counts `rows`, `added`, `none` and `several`.
+    """
+    number = legislature_number(cycle)
+    rows = chamber.filter(
+        (pl.col("leg_first") <= number) & (pl.col("leg_last") >= number)
+    ).with_row_index("cid")
+    civil = with_keys(rows.select("cid", "civil_name"), "civil_name").select("cid", "key")
+    full = with_keys(base.select("sq", "name_full"), "name_full").select("sq", "key")
+    hits = civil.join(full, on="key", how="inner").group_by("cid").agg(pl.col("sq").unique())
+    one = hits.filter(pl.col("sq").list.len() == 1).with_columns(pl.col("sq").list.first())
+    extra = (
+        one.join(rows.select("cid", "chamber_name"), on="cid", how="inner")
+        .join(base.select("sq", "uf"), on="sq", how="inner")
+        .select(
+            "sq",
+            "uf",
+            pl.col("chamber_name").alias("name_urn"),
+            pl.lit(None, dtype=pl.Utf8).alias("name_full"),
+        )
+        .sort("sq", "name_urn")
+    )
+    return extra, {
+        "rows": rows.height,
+        "added": one.height,
+        "none": rows.height - hits.height,
+        "several": hits.height - one.height,
+    }
+
+
+def link_cycle(
+    name: str,
+    payments: pl.DataFrame,
+    author_years: pl.DataFrame,
+    base: pl.DataFrame,
+    senators: pl.DataFrame,
+    extra_names: pl.DataFrame | None = None,
+) -> tuple[pl.DataFrame, dict[str, Any]]:
+    """The author link of one cycle and its counts.
+
+    `extra_names` (`sq`, `uf`, `name_urn`, `name_full`) adds names to t0 deputy candidacies
+    (the Chamber's parliamentary names, `chamber_names`).
+
+    `payments`: individual payments (`amendment`, `code`, `author`, `ym`, `value`,
+    `recipient_uf`, `cd_ibge`, `pix`). Only the cycle's window rows are used. An author is
+    (`code`, normalised `author`). Authors with no individual amendment of the cycle's
+    legislature (`current_authors`) are left out with all their payments, which are counted:
+    `non_current_*`, and of them the rows with no amendment code (CGU's unidentified author),
+    `unidentified_*`. The rest are linked by `author_link`.
+
+    Returns the window rows of the authors linked as deputies, with `deputy` (t0 `sq`), and
+    the counts: the `author_link` counts, `non_current_authors`, `money_share` (linked deputy
+    value / (value of current-legislature authors - senators' value); null if that is 0) and
+    the value sums behind it (reais, nominal).
+    """
+    cy = CYCLES[name]
+    mine = payments.filter(in_windows((name,))).with_columns(pl.col("code").fill_null(""))
+    mine = with_norm(mine, "author", "name_norm")
+    current = (
+        with_norm(
+            current_authors(author_years, cy).with_columns(pl.col("code").fill_null("")),
+            "author",
+            "name_norm",
+        )
+        .select("code", "name_norm")
+        .unique()
+    )
+    keys = ["code", "name_norm"]
+    kept = mine.join(current, on=keys, how="semi")
+    left_out = mine.join(current, on=keys, how="anti")
+    no_code = ~pl.col("amendment").fill_null("").str.strip_chars().str.contains(AMENDMENT_CODE)
+    unidentified = left_out.filter(no_code)
+    authors = (
+        kept.group_by(keys)
+        .agg(pl.col("author").min().alias("name"))
+        .sort(keys)
+        .with_row_index("aid")
+    )
+    rows = kept.join(authors.select("aid", *keys), on=keys, how="inner")
+    authors = authors.join(top_uf(rows), on="aid", how="left")
+    names = base.select("sq", "uf", "name_urn", "name_full")
+    if extra_names is not None:
+        names = pl.concat([names, extra_names.select(names.columns)])
+    link, counts = author_link(authors.select("aid", "name", "top_uf"), names, senators)
+    valued = rows.join(link, on="aid", how="inner")
+
+    def total(frame: pl.DataFrame) -> float:
+        return float(frame["value"].sum()) if frame.height else 0.0
+
+    value_all = total(valued)
+    value_deputy = total(valued.filter(pl.col("kind") == "deputy"))
+    value_senator = total(valued.filter(pl.col("kind") == "senator"))
+    pool = value_all - value_senator
+    with_unidentified = pool + total(unidentified)
+    counts |= {
+        "non_current_authors": left_out.select(keys).unique().height,
+        "non_current_rows": left_out.height,
+        "non_current_value": total(left_out),
+        "unidentified_rows": unidentified.height,
+        "unidentified_value": total(unidentified),
+        "window_value": total(mine),
+        "current_value": value_all,
+        "deputy_value": value_deputy,
+        "senator_value": value_senator,
+        "money_share": value_deputy / pool if pool else None,
+        "money_share_with_unidentified": (
+            value_deputy / with_unidentified if with_unidentified else None
+        ),
+    }
+    linked = valued.filter(pl.col("kind") == "deputy").rename({"sq": "deputy"})
+    return linked, counts
 
 
 def cycle_inputs(
@@ -1121,6 +1503,8 @@ def cycle_inputs(
     store: Store,
     general: dict[tuple[str, int], dict[str, Any]],
     payments: pl.DataFrame,
+    author_years: pl.DataFrame,
+    chamber: pl.DataFrame,
     munis: pl.DataFrame,
     tmp_dir: Path,
 ) -> dict[str, Any]:
@@ -1142,17 +1526,14 @@ def cycle_inputs(
     if base["sq"].is_duplicated().any():
         raise BuildError(f"{name}: a candidacy appears twice in the t0 candidates")
     senators = _senators(old, cand0, cy.t0)
-    mine = payments.filter(in_windows((name,))).with_columns(pl.col("code").fill_null(""))
-    mine = with_norm(mine, "author", "name")
-    authors = mine.select("code", "name").unique().sort("code", "name").with_row_index("aid")
-    link, counts = author_link(authors, base, senators)
-    served = link.filter(pl.col("kind") == "deputy")
-    deputies = base.filter(pl.col("elected") | pl.col("sq").is_in(served["sq"].to_list()))
-    paid = (
-        mine.filter(pl.col("cd_ibge").is_not_null())
-        .join(authors, on=["code", "name"], how="inner")
-        .join(served.select("aid", pl.col("sq").alias("deputy")), on="aid", how="inner")
-        .select("deputy", "cd_ibge", "ym", "value", "pix")
+    extra, chamber_counts = chamber_names(chamber, base, cy)
+    linked, counts = link_cycle(name, payments, author_years, base, senators, extra)
+    counts["chamber_links"] = chamber_counts["added"]
+    counts["chamber"] = chamber_counts
+    served = linked["deputy"].unique().to_list()
+    deputies = base.filter(pl.col("elected") | pl.col("sq").is_in(served))
+    paid = linked.filter(pl.col("cd_ibge").is_not_null()).select(
+        "deputy", "cd_ibge", "ym", "value", "pix"
     )
     t1_link, unlinked = link_to_t1(
         deputies.select("sq", "uf", "cpf"),
@@ -1182,6 +1563,7 @@ def build(
     candidates_manifest: dict[str, Any],
     municipalities_manifest: dict[str, Any],
     population_manifest: dict[str, Any],
+    chamber_manifest: dict[str, Any],
     *,
     derived_root: str,
     sealed_root: str,
@@ -1206,6 +1588,7 @@ def build(
     muni_entry = _file(municipalities_manifest, "/municipalities.parquet")
     cand_entry = _file(candidates_manifest, "/candidates.parquet")
     pop_entry = _file(population_manifest, "/ibge_population_annual.parquet")
+    chamber_entry = _file(chamber_manifest, "/deputados.csv")
     result_years = sorted({y for c in cycles for y in (CYCLES[c].m - 4, CYCLES[c].m)})
     vote_entries = {
         y: _file(results_manifest, f"/candidate_votes_{y}.parquet") for y in result_years
@@ -1217,6 +1600,7 @@ def build(
         muni_entry,
         cand_entry,
         pop_entry,
+        chamber_entry,
         *general.values(),
         *vote_entries.values(),
         *turnout_entries.values(),
@@ -1237,15 +1621,29 @@ def build(
         pl.col("ano").cast(pl.Int64)
     )
 
+    chamber_path = _fetch(store, chamber_entry, tmp_dir)
+    try:
+        chamber = read_chamber(chamber_path)
+    finally:
+        chamber_path.unlink(missing_ok=True)
+
     cgu_path = _fetch(store, cgu_entry, tmp_dir)
     try:
         raw = read_cgu(cgu_path)
+        years, year_stats = read_amendment_years(cgu_path)
     finally:
         cgu_path.unlink(missing_ok=True)
     individual, stats = parse_payments(raw)
     del raw
     check_payment_stats(stats)
     negative_rows, negative_value = negative_payments(individual)
+    years_by_author = author_years(individual, years)
+    no_year = individual.join(
+        years,
+        left_on=pl.col("amendment").fill_null("").str.strip_chars(),
+        right_on="amendment",
+        how="anti",
+    ).height
     windowed = individual.filter(in_windows(cycles))
     del individual
     paid, dropped = match_recipients(windowed, munis)
@@ -1256,7 +1654,7 @@ def build(
     explore_ids = sorted(explore)
     for name in cycles:
         cy = CYCLES[name]
-        parts = cycle_inputs(name, store, general, paid, munis, tmp_dir)
+        parts = cycle_inputs(name, store, general, paid, years_by_author, chamber, munis, tmp_dir)
         mayors = _mayors(store, vote_entries, turnout_entries, cy.m, tmp_dir, attrs)
         previous = _mayors(store, vote_entries, turnout_entries, cy.m - 4, tmp_dir, attrs)
         panel, mergers = cycle_panel(
@@ -1274,18 +1672,29 @@ def build(
         panel, floored = floor_payments(panel)
         tables[name] = panel
         counts = parts["counts"]
-        links.append({"cycle": name, **counts})
+        links.append({k: counts.get(k, name) for k in LINK_SCHEMA} | {"cycle": name})
+        chamber_counts = counts["chamber"]
         half = panel.filter(pl.col("cd_ibge").is_in(explore_ids))
         notes.append(
             f"{name}: rows={half.height}, deputies={half['deputy'].n_unique()}, "
             f"authors={counts['authors']}, deputy_authors={counts['deputies']}, "
             f"senator_authors={counts['senators']}, ambiguous_authors={counts['ambiguous']}, "
-            f"unmatched_authors={counts['unmatched']}, unlinked_cpfs={parts['unlinked']}, "
+            f"unmatched_authors={counts['unmatched']}, ties_broken={counts['ties_broken']}, "
+            f"non_current_authors={counts['non_current_authors']}, "
+            f"unlinked_cpfs={parts['unlinked']}, "
             f"party_without_mayor_cands={mergers}, "
             f"vote_rows_abroad={parts['dropped_votes']['abroad']}, "
             f"vote_rows_no_municipality={parts['dropped_votes']['unmatched']}"
         )
         notes.append(f"{name}_floored_to_zero=" + ",".join(f"{c}:{n}" for c, n in floored.items()))
+        notes.append(f"{name}_link: " + _money(counts))
+        notes.append(
+            f"{name}_chamber: rows={chamber_counts['rows']}, "
+            f"names_added={chamber_counts['added']}, no_candidacy={chamber_counts['none']}, "
+            f"several_candidacies={chamber_counts['several']}"
+        )
+        nulls = outcome_nulls(panel)
+        notes.append(f"{name}_outcome_nulls=" + ",".join(f"{c}:{n}" for c, n in nulls.items()))
         del parts
 
     notes.append(f"dropped_recipient_rows_no_municipality={_years(dropped['no_municipality'])}")
@@ -1295,6 +1704,11 @@ def build(
     notes.append(f"negative_payment_value_brl={_years(negative_value, '.2f')}")
     notes.append(f"first_payment_month={_month(stats['first'])}, last={_month(stats['last'])}")
     notes.append(f"rows_without_payment_month={stats['no_month']}")
+    notes.append(
+        f"amendment_rows_without_code={year_stats['skipped']}, "
+        f"amendment_codes_with_several_years={year_stats['multi_year']}, "
+        f"individual_payment_rows_without_amendment_year={no_year}"
+    )
 
     check_panel(tables, min_rows=min_rows, max_rows=max_rows)
 
@@ -1330,6 +1744,7 @@ def build(
                 candidates_manifest,
                 municipalities_manifest,
                 population_manifest,
+                chamber_manifest,
             )
         ],
         notes="; ".join(notes),

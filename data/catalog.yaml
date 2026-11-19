@@ -767,7 +767,7 @@ datasets:
       and its run is step s8.
 
   - name: amendments_panel
-    source: built from tse_general, cgu_amendments, tse_results, tse_candidates, municipalities and ibge_population_annual, split by half
+    source: built from tse_general, cgu_amendments, tse_results, tse_candidates, municipalities, ibge_population_annual and camara_deputies, split by half
     licence: public (TSE, CGU, IBGE), as its sources
     derived: data/derived/amendments_panel/
     sealed: sealed/outcomes/amendments_panel/
@@ -1200,6 +1200,37 @@ datasets:
       files:
         - url: https://dadosabertos-download.cgu.gov.br/PortalDaTransparencia/saida/emendas-parlamentares/EmendasParlamentares.zip
           check: {type: zip, member: "EmendasParlamentares_PorFavorecido.csv"}
+
+  - name: camara_deputies
+    source: "Câmara dos Deputados open data (dadosabertos.camara.leg.br), arquivos/deputados/csv/deputados.csv"
+    licence: "Câmara dos Deputados open data portal; licence not stated in the file; accepted by Gabriel on 2026-11-18 for research use (owner fix amendments panel v2)"
+    gcs: data/raw/camara/deputies/
+    status: planned
+    contract: data/contracts/camara_deputies.md
+    notes: >
+      Every federal deputy since 1826, one row each (7,890 rows, 1,372,783
+      bytes on 2026-11-18; ;-separated, quoted, UTF-8 with a byte-order
+      mark; the server sends a Content-Length). Columns: uri (the Chamber's
+      deputy id), nome (parliamentary name), idLegislaturaInicial,
+      idLegislaturaFinal, nomeCivil (civil name), cpf, siglaSexo,
+      urlRedeSocial, urlWebsite, dataNascimento, dataFalecimento,
+      ufNascimento, municipioNascimento. The cpf column was empty for every
+      deputy of legislatures 55-57 on 2026-11-18, and the file has no state
+      of election. The amendments_panel build reads only nome, nomeCivil and
+      the two legislature columns, in memory, to add each deputy's
+      parliamentary name to the TSE candidacy whose civil name it matches;
+      it never reads cpf or the birth columns and writes no name. The API
+      (/api/v2/deputados), which has the state and the CPF, answered 504 on
+      every call on 2026-11-18, and other bulk files of the host came back
+      cut off. No GitHub runner has fetched from this host before.
+    acquire:
+      files:
+        - url: https://dadosabertos.camara.leg.br/arquivos/deputados/csv/deputados.csv
+          check:
+            type: csv
+            delimiter: ";"
+            columns: [uri, nome, idLegislaturaInicial, idLegislaturaFinal, nomeCivil]
+            min_rows: 7000
 
   - name: anm_sigmine
     source: "ANM SIGMINE, ArcGIS feature service, layer 0 'Processos minerários ativos' (active processes only)"

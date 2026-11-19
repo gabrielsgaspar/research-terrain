@@ -132,8 +132,16 @@ def _check_zip(path: Path, member: str | None) -> None:
             raise AcquireError(f"{path.name}: no member matching {member}")
 
 
-def _check_csv(path: Path, columns: list[str], forbid_columns: list[str], min_rows: int) -> int:
+def _check_csv(
+    path: Path,
+    columns: list[str],
+    forbid_columns: list[str],
+    min_rows: int,
+    delimiter: str = ",",
+) -> int:
     """Header has every `columns` name and no `forbid_columns` name; enough rows.
+
+    Fields are split on `delimiter` (the check's `delimiter:`, a comma by default).
 
     Returns the number of data rows (non-blank records after the header).
 
@@ -142,7 +150,7 @@ def _check_csv(path: Path, columns: list[str], forbid_columns: list[str], min_ro
     """
     try:
         with open(path, encoding="utf-8-sig", newline="") as f:
-            reader = csv.reader(f)
+            reader = csv.reader(f, delimiter=delimiter)
             header = next(reader, None)
             if header is None:
                 raise AcquireError(f"{path.name}: empty file")
@@ -176,6 +184,7 @@ def check_file(path: Path, check: dict[str, Any]) -> int | None:
                 list(check["columns"]),
                 list(check.get("forbid_columns", [])),
                 int(check.get("min_rows", 1)),
+                str(check.get("delimiter", ",")),
             )
         elif kind == "zip":
             _check_zip(path, check.get("member"))
