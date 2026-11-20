@@ -7,7 +7,8 @@ there at the general elections before and after, and two outcomes of idea 0010: 
 municipality's share of the deputy's money and the log of reais per inhabitant. Ideas 0009 and
 0010, decisions 0003 and 0011. Built by `src/terrain/builds/amendments_panel.py` (campaign 0009
 step s4; v2, the author link by money and legislature and the two outcomes, by the owner fix
-"amendments panel v2").
+"amendments panel v2"; v3, the party vote shares of idea 0011, by the owner PR "mayoral
+incumbency panel").
 
 ## Inputs
 
@@ -17,6 +18,8 @@ step s4; v2, the author link by money and legislature and the two outcomes, by t
 - `cgu_amendments` (acquire): `EmendasParlamentares_PorFavorecido.csv` and, for
   `Código da Emenda` and `Ano da Emenda` only, `EmendasParlamentares.csv`. See
   `data/contracts/cgu_amendments.md`. `Código do Favorecido` and `Favorecido` are never read.
+- `tse_general_parties` (acquire): `votacao_partido_munzona_<year>.zip` of t0 and t1 (2014,
+  2018, 2022, 2026); only the `*_BRASIL.csv` member. See `data/contracts/tse_general_parties.md`.
 - `camara_deputies` (acquire): `deputados.csv`; only `nome`, `nomeCivil`,
   `idLegislaturaInicial` and `idLegislaturaFinal`, in memory. See
   `data/contracts/camara_deputies.md`.
@@ -37,7 +40,7 @@ step s4; v2, the author link by money and legislature and the two outcomes, by t
 - `author_link.parquet` (derived only): one row per cycle with counts, no author code or name.
 - `<hash>` is `content_hash` of the sorted input SHA-256s, the SHA-256s of the two lists, the
   cycles table and the source of this build and of the `terrain` modules it imports
-  (`explore`, `place_outcomes`, `cell_outcomes`, `polling_place_tenure`). The inputs include
+  (`explore`, `parties`, `place_outcomes`, `cell_outcomes`, `polling_place_tenure`). The inputs include
   the Chamber's file. The manifest lists
   the derived files in `files` and the sealed files in `sealed_files`.
 
@@ -159,6 +162,17 @@ by `sq_candidato`. Mayoral votes are `qt_votos_nominais_validos` on rows whose d
 | `ran_t1` | bool | linked to a t1 deputy candidacy with statewide votes above 0 |
 | `votes_t1`, `valid_t1`, `share_t1` | int, int, float | the same at t1; null if `ran_t1` is false |
 | `d_share` | float | `share_t1` - `share_t0`; null if `ran_t1` is false |
+| `party_share_t0`, `party_share_t1` | float | valid votes (nominal plus party list) of the deputy's party, or of its federation where it is in one that year, for federal deputies in the municipality at t0 and t1, over the valid votes of every party for federal deputies there; null where the municipality has none |
+| `state_party_share_t0`, `state_party_share_t1` | float | the same for state deputies (`CD_CARGO` 7) |
+
+**Party vote shares (v3).** From `tse_general_parties`, round 1, summed over zones and over the
+coalition records a party can appear under in one zone. A party's valid votes are
+`QT_VOTOS_NOMINAIS_VALIDOS` + `QT_TOTAL_VOTOS_LEG_VALIDOS` (2018 on) or `QT_VOTOS_NOMINAIS` +
+`QT_VOTOS_LEGENDA` (2014). The party is the deputy's t0 `nr_partido`, followed to the year's
+number through the mergers in `src/terrain/parties.py` (at t1 of cycle B, DEM and PSL are União
+Brasil, 44); the deputy's own t1 party is not used, so a deputy who changed party still has
+the t0 party's share. A federation is read from `NR_FEDERACAO` of the year's file (2022 and
+2026); its parties' votes count together. These shares do not depend on `ran_t1`.
 
 **Negative payments.** CGU lists refunds and reversals as payment rows with a negative
 `Valor Recebido`. They stay in the sums, so they reduce a deputy's total in a municipality.
@@ -176,7 +190,8 @@ Each raises `BuildError` with counts only, before anything is uploaded.
 
 1. A duplicate (`cycle`, `deputy`, `cd_ibge`).
 2. `margin` outside [-1, 1], or `win` not equal to `margin` > 0.
-3. A share (`share_t0`, `share_t1`, `amend_pre_share`, `amend_post_share`) outside [0, 1], a
+3. A share (`share_t0`, `share_t1`, `amend_pre_share`, `amend_post_share`, and the four party
+   shares) outside [0, 1], a
    payment column below 0 (checked after the floor at 0, as a guard), or `amend_pre_log_pc`
    or `amend_post_log_pc` below 0.
 4. Fewer than 5,000 or more than 300,000 rows in a cycle.
@@ -195,7 +210,8 @@ Each raises `BuildError` with counts only, before anything is uploaded.
 It also stops if an input lacks a column it needs, does not match its manifest SHA-256, if a
 municipality is in both exploration lists, if a `cd_tse` repeats in `municipalities`, if two
 municipalities share a state and a normalised name, if a t0 candidacy appears twice, or if a
-legislature number of the Chamber file is not an integer.
+legislature number of the Chamber file is not an integer. It also stops on a party-vote count
+that is not an integer, or a party in two federations of one year.
 
 ## Manifest notes
 
@@ -207,7 +223,11 @@ unidentified author's value added to the denominator), the value sums behind the
 the rows and value left out with non-current authors and with the unidentified author;
 `<cycle>_chamber`: Chamber rows of the legislature, names added, rows matching no candidacy
 and rows matching several; `<cycle>_outcome_nulls`: null rows of each share and log outcome
-(both halves). Then the dropped recipient rows per year (no municipality, placeholders included; no
+(both halves); `<cycle>_party_shares`: null rows of each party share (both halves) and the
+party groups of the cycle's deputies with no federal-deputy votes anywhere at t0 or t1 (a merger
+missing from `parties.MERGERS` would show here). Per party-vote year: rows read, rows abroad
+or with no municipality, and the federations with their parties. Then the dropped recipient
+rows per year (no municipality, placeholders included; no
 match); per year, the placeholder rows, their value (BRL, sum of `Valor Recebido`) and its
 share of the year's value; per year, the individual payment rows of the whole CGU file with a
 negative `Valor Recebido` and their sum (BRL); per year, the 10 most frequent unmatched (UF,
