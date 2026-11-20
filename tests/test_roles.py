@@ -46,7 +46,7 @@ EXPECTED = {
         "Review",
         "claude-opus-5-5",
         "50",
-        "acaeeae347e35e1931adb9d36f96d24975c5d5a21b7ddb4cdeb89b5c63a980c7",
+        "efa8ea325637a3f86f09bdae03375d372e9621dabb271bb689f21b3f753b9520",
     ),
     "ideation": (
         "campaign-ideate.yml",
