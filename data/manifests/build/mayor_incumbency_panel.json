@@ -1,0 +1,73 @@
+{
+  "dataset": "mayor_incumbency_panel",
+  "stage": "build",
+  "status": "created",
+  "gcs_prefix": "data/derived/mayor_incumbency_panel/ca9d009aa3ce9e02/",
+  "created_at": "2026-11-20T15:44:37.967420+00:00",
+  "code_commit": "cc758bcab60f24c75d26c942ec2e836f8a39fb77",
+  "sources": [],
+  "files": [
+    {
+      "path": "data/derived/mayor_incumbency_panel/ca9d009aa3ce9e02/panel_2004.parquet",
+      "sha256": "b7d6ae88a7ae29a5123eea08c5e4375affa55b4353efaa229cc989ac957d110b",
+      "bytes": 95184
+    },
+    {
+      "path": "data/derived/mayor_incumbency_panel/ca9d009aa3ce9e02/panel_2008.parquet",
+      "sha256": "5813f444549bdd1d5d86297ca8d4b25eb9d8875a140fc0a59f59d6241719ece0",
+      "bytes": 94035
+    },
+    {
+      "path": "data/derived/mayor_incumbency_panel/ca9d009aa3ce9e02/panel_2012.parquet",
+      "sha256": "b9b028e71c6643b5a7244db807b3ce88b0911866f06536927603d6366e1ac777",
+      "bytes": 98576
+    },
+    {
+      "path": "data/derived/mayor_incumbency_panel/ca9d009aa3ce9e02/panel_2016.parquet",
+      "sha256": "1c36ec715913f71ee23f390e4ef6078035cfbec213ff5c0800f3982ee7afdca1",
+      "bytes": 118585
+    },
+    {
+      "path": "data/derived/mayor_incumbency_panel/ca9d009aa3ce9e02/panel_2020.parquet",
+      "sha256": "b6077ba43da3b92b1d1b69f68025d983d70f28e0959fd76f9449428c5a431340",
+      "bytes": 126262
+    }
+  ],
+  "notes": "E2004: races=2695, rows=5390, races_both_halves=5389, races_without_party=50, races_one_party=0, one_candidate=121, ties=4, unlinkable_finalists=0, no_election_next=0, no_population=0, bench=none, amendments=none; E2004_floored_to_zero=amend_after_total:0,amend_after_pix:0; E2004_parties_without_candidates_next=none; E2004_federations_next=none; E2008: races=2625, rows=5250, races_both_halves=5264, races_without_party=53, races_one_party=0, one_candidate=245, ties=2, unlinkable_finalists=0, no_election_next=0, no_population=0, bench=none, amendments=none; E2008_floored_to_zero=amend_after_total:0,amend_after_pix:0; E2008_parties_without_candidates_next=none; E2008_federations_next=none; E2012: races=2669, rows=5338, races_both_halves=5334, races_without_party=0, races_one_party=0, one_candidate=233, ties=2, unlinkable_finalists=10, no_election_next=2, no_population=0, bench=2010, amendments=none; E2012_floored_to_zero=amend_after_total:0,amend_after_pix:0; E2012_parties_without_candidates_next=none; E2012_federations_next=none; E2016: races=2671, rows=5342, races_both_halves=5350, races_without_party=0, races_one_party=0, one_candidate=215, ties=1, unlinkable_finalists=0, no_election_next=2, no_population=0, bench=2014, amendments=2017-01..2020-09; E2016_floored_to_zero=amend_after_total:0,amend_after_pix:0; E2016_parties_without_candidates_next=none; E2016_federations_next=F1=23+45,F2=13+43+65,F3=18+50; E2020: races=2685, rows=5370, races_both_halves=5367, races_without_party=0, races_one_party=0, one_candidate=198, ties=3, unlinkable_finalists=0, no_election_next=6, no_population=0, bench=2018, amendments=2021-01..2024-09; E2020_floored_to_zero=amend_after_total:0,amend_after_pix:0; E2020_parties_without_candidates_next=none; E2020_federations_next=F100=23+45,F101=13+43+65,F102=18+50,F103=25+77,F104=11+44; bench_2010: elected_federal_deputies=513; bench_2014: elected_federal_deputies=513; bench_2018: elected_federal_deputies=513; keys_2000: candidacies=15073, with_cpf=15009, with_titulo=15035, with_neither=5; keys_2004: candidacies=15652, with_cpf=15561, with_titulo=15563, with_neither=84; keys_2008: candidacies=14671, with_cpf=14595, with_titulo=14595, with_neither=76; keys_2012: candidacies=14669, with_cpf=11287, with_titulo=14645, with_neither=24; keys_2016: candidacies=15560, with_cpf=15557, with_titulo=15557, with_neither=3; keys_2020: candidacies=18110, with_cpf=18108, with_titulo=18108, with_neither=2; keys_2024: candidacies=14766, with_cpf=0, with_titulo=14766, with_neither=0; dropped_recipient_rows_no_municipality=2014:5,2015:6,2016:14,2017:32,2018:44,2019:156,2020:121,2021:229,2022:279,2023:193,2024:222; dropped_recipient_rows_unmatched=2014:8,2015:40,2016:85,2017:356,2018:256,2019:134,2020:85,2021:85,2022:59,2023:79,2024:32; placeholder_recipient_rows=2014:2,2015:6,2016:14,2017:27,2018:36,2019:155,2020:121,2021:224,2022:277,2023:192,2024:222; placeholder_recipient_value_brl=2014:333661.49,2015:90605.96,2016:782892.80,2017:2294048.73,2018:5461753.80,2019:3018904.12,2020:1658379.20,2021:6916628.77,2022:6876172.83,2023:5804889.17,2024:2732542.12; placeholder_recipient_value_share=2014:0.0025,2015:0.0000,2016:0.0005,2017:0.0005,2018:0.0007,2019:0.0004,2020:0.0002,2021:0.0007,2022:0.0006,2023:0.0003,2024:0.0002; top_unmatched_recipients_2014=(empty)/INVALIDO:5, SP/EMBU:1, SP/FLORINIA:1, SP/RIO DE JANEIRO:1; top_unmatched_recipients_2015=(empty)/INVALIDO:19, SP/FLORINIA:3, CE/ITAPAGE:2, MT/SANTO ANTONIO DO LEVERGER:2, RN/OLHODAGUA DO BORGES:2, SP/BIRITIBAMIRIM:2, BA/SANTA TERESINHA:1, MG/BARAO DE MONTE ALTO:1, PA/ELDORADO DOS CARAJAS:1, PA/SANTA ISABEL DO PARA:1; top_unmatched_recipients_2016=(empty)/INVALIDO:68, RN/OLHODAGUA DO BORGES:4, CE/ITAPAGE:3, MG/BARAO DE MONTE ALTO:3, MT/POXOREO:2, SP/FLORINIA:2, BA/SANTA TERESINHA:1, PE/IGUARACI:1, SP/SAO LUIS DO PARAITINGA:1; top_unmatched_recipients_2017=(empty)/INVALIDO:314, MG/BARAO DE MONTE ALTO:7, SP/EMBU:6, MT/POXOREO:4, BA/SANTA TERESINHA:3, CE/ITAPAGE:3, SP/BIRITIBAMIRIM:3, PA/ELDORADO DOS CARAJAS:2, PA/SANTA ISABEL DO PARA:2, PB/SERIDO:2; top_unmatched_recipients_2018=(empty)/INVALIDO:210, SP/EMBU:9, PA/SANTA ISABEL DO PARA:5, MG/BARAO DE MONTE ALTO:4, BA/MUQUEM DE SAO FRANCISCO:3, PB/SERIDO:3, SP/FLORINIA:3, SP/RIO DE JANEIRO:3, BA/SANTA TERESINHA:2, MG/BRASOPOLIS:2; top_unmatched_recipients_2019=(empty)/INVALIDO:60, MG/BRASOPOLIS:10, SP/EMBU:6, BA/MUQUEM DE SAO FRANCISCO:5, MG/BARAO DE MONTE ALTO:5, SE/GRACHO CARDOSO:5, PA/SANTA ISABEL DO PARA:4, RJ/TRAJANO DE MORAIS:4, RN/OLHODAGUA DO BORGES:4, SP/BIRITIBAMIRIM:4; top_unmatched_recipients_2020=SP/EMBU:18, MG/DONA EUSEBIA:9, RN/AUGUSTO SEVERO:7, MG/BARAO DE MONTE ALTO:5, MT/POXOREO:4, BA/MUQUEM DE SAO FRANCISCO:3, PA/SANTA ISABEL DO PARA:3, RN/OLHODAGUA DO BORGES:3, SC/GRAO PARA:3, SE/AMPARO DE SAO FRANCISCO:3; top_unmatched_recipients_2021=SP/EMBU:14, MG/DONA EUSEBIA:8, PA/ELDORADO DOS CARAJAS:7, PA/SANTA ISABEL DO PARA:6, RN/AUGUSTO SEVERO:6, CE/ITAPAGE:5, SP/BIRITIBAMIRIM:5, TO/FORTALEZA DO TABOCAO:5, MT/POXOREO:3, MT/SANTO ANTONIO DO LEVERGER:3; top_unmatched_recipients_2022=SP/EMBU:9, PE/IGUARACI:6, SP/BIRITIBAMIRIM:6, PA/SANTA ISABEL DO PARA:5, RN/AUGUSTO SEVERO:4, MG/DONA EUSEBIA:3, MT/POXOREO:3, MT/SANTO ANTONIO DO LEVERGER:3, CE/ITAPAGE:2, MG/SAO THOME DAS LETRAS:2; top_unmatched_recipients_2023=MT/POXOREO:9, MG/BARAO DE MONTE ALTO:6, SP/BIRITIBAMIRIM:6, SP/EMBU:6, PA/ELDORADO DOS CARAJAS:5, PE/IGUARACI:5, MG/BRASOPOLIS:4, MG/SAO THOME DAS LETRAS:4, SE/AMPARO DE SAO FRANCISCO:4, SE/GRACHO CARDOSO:3; top_unmatched_recipients_2024=RN/PRESIDENTE JUSCELINO:4, CE/ITAPAGE:3, MG/BARAO DE MONTE ALTO:3, MT/SANTO ANTONIO DO LEVERGER:3, MG/BRASOPOLIS:2, PA/SANTA ISABEL DO PARA:2, SP/EMBU:2, SP/SAO LUIS DO PARAITINGA:2, BA/SANTA TERESINHA:1, MG/DONA EUSEBIA:1; first_payment_month=2014-06, last=2026-11",
+  "inputs": [
+    "data/derived/tse_results/6f2af3d28c84af90/_MANIFEST.json",
+    "data/derived/tse_candidates/73af2aca241094a0/_MANIFEST.json",
+    "data/derived/tse_parties/5163c8aeaaebe88c/_MANIFEST.json",
+    "data/derived/municipalities/03690186b97be705/_MANIFEST.json",
+    "data/raw/ibge/population_annual/2026-11-13/_MANIFEST.json",
+    "data/raw/tse/general/2026-11-16/_MANIFEST.json",
+    "data/raw/cgu/amendments/2026-11-16/_MANIFEST.json"
+  ],
+  "sealed_files": [
+    {
+      "path": "sealed/outcomes/mayor_incumbency_panel/ca9d009aa3ce9e02/panel_2004.parquet",
+      "sha256": "83beb0f8b19dd776dfce46d4a4f3ff9cef0ce1a74ab7c6ef233c3f8e3eb84a5c",
+      "bytes": 96013
+    },
+    {
+      "path": "sealed/outcomes/mayor_incumbency_panel/ca9d009aa3ce9e02/panel_2008.parquet",
+      "sha256": "39d135cafb92897cbb132b3df43d91b5b055373e3ba85684f5d49cb69c2962c4",
+      "bytes": 94283
+    },
+    {
+      "path": "sealed/outcomes/mayor_incumbency_panel/ca9d009aa3ce9e02/panel_2012.parquet",
+      "sha256": "8eaf240f64305b49d8661d93ae5c2f0652fecabffe7379546c9de0e468f8b183",
+      "bytes": 97382
+    },
+    {
+      "path": "sealed/outcomes/mayor_incumbency_panel/ca9d009aa3ce9e02/panel_2016.parquet",
+      "sha256": "e9e64fde838f118dbd16e2baaa9d14a917c4d721cf3fd5f5b890de1fc4f390b1",
+      "bytes": 118532
+    },
+    {
+      "path": "sealed/outcomes/mayor_incumbency_panel/ca9d009aa3ce9e02/panel_2020.parquet",
+      "sha256": "26b8b693fd7a1b105dfa1f6ba1290730fbffb6d02facc5d9ffc968a3c0a70c82",
+      "bytes": 125658
+    }
+  ]
+}
