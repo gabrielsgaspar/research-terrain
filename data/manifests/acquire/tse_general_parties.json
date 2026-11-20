@@ -1,0 +1,57 @@
+{
+  "dataset": "tse_general_parties",
+  "stage": "acquire",
+  "status": "created",
+  "gcs_prefix": "data/raw/tse/general_parties/2026-11-20/",
+  "created_at": "2026-11-20T15:46:24.514813+00:00",
+  "code_commit": "cc758bcab60f24c75d26c942ec2e836f8a39fb77",
+  "sources": [
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_partido_munzona/votacao_partido_munzona_2014.zip",
+      "last_modified": "Fri, 03 Sep 2021 20:12:24 GMT",
+      "etag": "\"b942cd-5cb1ceae5ba00\"",
+      "bytes": 12141261
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_partido_munzona/votacao_partido_munzona_2018.zip",
+      "last_modified": "Thu, 25 Jul 2024 01:01:27 GMT",
+      "etag": "\"1aa0980-61e07ef3c7356\"",
+      "bytes": 27920768
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_partido_munzona/votacao_partido_munzona_2022.zip",
+      "last_modified": "Fri, 20 Nov 2026 06:24:23 GMT",
+      "etag": "\"190bde4-660af4b94f6ad\"",
+      "bytes": 26263012
+    },
+    {
+      "url": "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_partido_munzona/votacao_partido_munzona_2026.zip",
+      "last_modified": "Fri, 20 Nov 2026 15:41:15 GMT",
+      "etag": "\"168c5e7-660b7130e0cd4\"",
+      "bytes": 23643623
+    }
+  ],
+  "files": [
+    {
+      "path": "data/raw/tse/general_parties/2026-11-20/votacao_partido_munzona_2014.zip",
+      "sha256": "2743ea0b516eddedc1d92693900cbc8b53bfc8aa502419b4e4774f212c530562",
+      "bytes": 12141261
+    },
+    {
+      "path": "data/raw/tse/general_parties/2026-11-20/votacao_partido_munzona_2018.zip",
+      "sha256": "c3ab9e78efd8d11033d650451252cb5c019a699e79bec7e04371a3a4022143df",
+      "bytes": 27920768
+    },
+    {
+      "path": "data/raw/tse/general_parties/2026-11-20/votacao_partido_munzona_2022.zip",
+      "sha256": "e4fa0e7a581f0e566158e751cb2df84f3a58d474175d57c2fb2c76134f262448",
+      "bytes": 26263012
+    },
+    {
+      "path": "data/raw/tse/general_parties/2026-11-20/votacao_partido_munzona_2026.zip",
+      "sha256": "f41e90a17330e4af0920adff0efafd95c4be3e747aa5f84c03a42619e1ada6a5",
+      "bytes": 23643623
+    }
+  ],
+  "notes": ""
+}
