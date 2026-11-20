@@ -1,0 +1,52 @@
+{
+  "dataset": "amendments_monthly",
+  "stage": "build",
+  "status": "created",
+  "gcs_prefix": "data/derived/amendments_monthly/176dd6e75066c209/",
+  "created_at": "2026-11-20T15:44:39.491675+00:00",
+  "code_commit": "cc758bcab60f24c75d26c942ec2e836f8a39fb77",
+  "sources": [],
+  "files": [
+    {
+      "path": "data/derived/amendments_monthly/176dd6e75066c209/monthly_A.parquet",
+      "sha256": "f434b348783cc4b94b8a5a50b40d2edf2c006fe4d7897ab57cc65ad6470de6cf",
+      "bytes": 68996
+    },
+    {
+      "path": "data/derived/amendments_monthly/176dd6e75066c209/monthly_B.parquet",
+      "sha256": "3a2b651e904cd4ca8141afab1c2c88b03141dd995502e7af7e00c8700ba8e9bd",
+      "bytes": 90227
+    },
+    {
+      "path": "data/derived/amendments_monthly/176dd6e75066c209/monthly_C.parquet",
+      "sha256": "c0c67355878a38443981ff30e599e738592aff033f2cd177468d10b826420601",
+      "bytes": 160460
+    }
+  ],
+  "notes": "A: rows=760518, panel_rows=16533, months=46 (2015-01..2018-10), deputy_authors=552, money_share=0.9154; A_floored_to_zero=amend_total:5,amend_pix:0; B: rows=590180, panel_rows=12830, months=46 (2019-01..2022-10), deputy_authors=530, money_share=0.9258; B_floored_to_zero=amend_total:26,amend_pix:0; C: rows=785082, panel_rows=17067, months=46 (2023-01..2026-10), deputy_authors=560, money_share=0.9319; C_floored_to_zero=amend_total:14,amend_pix:0; dropped_recipient_rows_no_municipality=2015:6,2016:67,2017:32,2018:22,2019:156,2020:195,2021:229,2022:195,2023:193,2024:325,2025:324,2026:2577; dropped_recipient_rows_unmatched=2015:40,2016:169,2017:356,2018:208,2019:134,2020:111,2021:85,2022:50,2023:79,2024:75,2025:187,2026:140; placeholder_recipient_rows=2015:6,2016:64,2017:27,2018:17,2019:155,2020:195,2021:224,2022:194,2023:192,2024:325,2025:321,2026:2577; placeholder_recipient_value_brl=2015:90605.96,2016:1442249.22,2017:2294048.73,2018:3696365.57,2019:3018904.12,2020:5409931.59,2021:6916628.77,2022:4489906.83,2023:5804889.17,2024:4388979.03,2025:9869488.00,2026:39855386.26; placeholder_recipient_value_share=2015:0.0000,2016:0.0003,2017:0.0005,2018:0.0006,2019:0.0004,2020:0.0006,2021:0.0007,2022:0.0005,2023:0.0003,2024:0.0002,2025:0.0004,2026:0.0021; top_unmatched_recipients_2015=(empty)/INVALIDO:19, SP/FLORINIA:3, CE/ITAPAGE:2, MT/SANTO ANTONIO DO LEVERGER:2, RN/OLHODAGUA DO BORGES:2, SP/BIRITIBAMIRIM:2, BA/SANTA TERESINHA:1, MG/BARAO DE MONTE ALTO:1, PA/ELDORADO DOS CARAJAS:1, PA/SANTA ISABEL DO PARA:1; top_unmatched_recipients_2016=(empty)/INVALIDO:132, BA/SANTA TERESINHA:5, CE/ITAPAGE:4, MT/POXOREO:4, RN/OLHODAGUA DO BORGES:4, SP/EMBU:4, SP/FLORINIA:4, MG/BARAO DE MONTE ALTO:3, PA/SANTA ISABEL DO PARA:2, MG/SAO THOME DAS LETRAS:1; top_unmatched_recipients_2017=(empty)/INVALIDO:314, MG/BARAO DE MONTE ALTO:7, SP/EMBU:6, MT/POXOREO:4, BA/SANTA TERESINHA:3, CE/ITAPAGE:3, SP/BIRITIBAMIRIM:3, PA/ELDORADO DOS CARAJAS:2, PA/SANTA ISABEL DO PARA:2, PB/SERIDO:2; top_unmatched_recipients_2018=(empty)/INVALIDO:177, MG/BARAO DE MONTE ALTO:4, PA/SANTA ISABEL DO PARA:3, SP/EMBU:3, SP/FLORINIA:3, SP/RIO DE JANEIRO:3, BA/MUQUEM DE SAO FRANCISCO:2, MT/SANTO ANTONIO DO LEVERGER:2, PE/IGUARACI:2, RN/PRESIDENTE JUSCELINO:2; top_unmatched_recipients_2019=(empty)/INVALIDO:60, MG/BRASOPOLIS:10, SP/EMBU:6, BA/MUQUEM DE SAO FRANCISCO:5, MG/BARAO DE MONTE ALTO:5, SE/GRACHO CARDOSO:5, PA/SANTA ISABEL DO PARA:4, RJ/TRAJANO DE MORAIS:4, RN/OLHODAGUA DO BORGES:4, SP/BIRITIBAMIRIM:4; top_unmatched_recipients_2020=SP/EMBU:21, MG/BARAO DE MONTE ALTO:10, RN/AUGUSTO SEVERO:10, MG/DONA EUSEBIA:9, MT/POXOREO:6, SE/AMPARO DE SAO FRANCISCO:6, PA/SANTA ISABEL DO PARA:5, RN/OLHODAGUA DO BORGES:5, PA/ELDORADO DOS CARAJAS:4, TO/FORTALEZA DO TABOCAO:4; top_unmatched_recipients_2021=SP/EMBU:14, MG/DONA EUSEBIA:8, PA/ELDORADO DOS CARAJAS:7, PA/SANTA ISABEL DO PARA:6, RN/AUGUSTO SEVERO:6, CE/ITAPAGE:5, SP/BIRITIBAMIRIM:5, TO/FORTALEZA DO TABOCAO:5, MT/POXOREO:3, MT/SANTO ANTONIO DO LEVERGER:3; top_unmatched_recipients_2022=SP/EMBU:8, PE/IGUARACI:6, PA/SANTA ISABEL DO PARA:4, RN/AUGUSTO SEVERO:4, SP/BIRITIBAMIRIM:4, MG/DONA EUSEBIA:3, MT/SANTO ANTONIO DO LEVERGER:3, CE/ITAPAGE:2, MT/POXOREO:2, SC/GRAO PARA:2; top_unmatched_recipients_2023=MT/POXOREO:9, MG/BARAO DE MONTE ALTO:6, SP/BIRITIBAMIRIM:6, SP/EMBU:6, PA/ELDORADO DOS CARAJAS:5, PE/IGUARACI:5, MG/BRASOPOLIS:4, MG/SAO THOME DAS LETRAS:4, SE/AMPARO DE SAO FRANCISCO:4, SE/GRACHO CARDOSO:3; top_unmatched_recipients_2024=MT/SANTO ANTONIO DO LEVERGER:7, PA/ELDORADO DOS CARAJAS:7, SP/EMBU:6, CE/ITAPAGE:5, MG/SAO THOME DAS LETRAS:5, RN/PRESIDENTE JUSCELINO:5, TO/FORTALEZA DO TABOCAO:4, MG/BARAO DE MONTE ALTO:3, PA/SANTA ISABEL DO PARA:3, PB/SERIDO:3; top_unmatched_recipients_2025=SP/EMBU:32, PA/SANTA ISABEL DO PARA:12, MG/DONA EUSEBIA:10, MT/SANTO ANTONIO DO LEVERGER:10, RN/PRESIDENTE JUSCELINO:10, SP/FLORINIA:9, SP/SAO LUIS DO PARAITINGA:9, PE/IGUARACI:8, SC/GRAO PARA:8, MG/BARAO DE MONTE ALTO:7; top_unmatched_recipients_2026=SP/EMBU:18, SP/SAO LUIS DO PARAITINGA:11, CE/ITAPAGE:8, PE/IGUARACI:8, MT/SANTO ANTONIO DO LEVERGER:7, RJ/TRAJANO DE MORAIS:7, RN/AUGUSTO SEVERO:7, TO/FORTALEZA DO TABOCAO:7, BA/MUQUEM DE SAO FRANCISCO:6, MG/BARAO DE MONTE ALTO:6; first_payment_month=2014-06, last=2026-11",
+  "inputs": [
+    "data/raw/tse/general/2026-11-16/_MANIFEST.json",
+    "data/raw/cgu/amendments/2026-11-16/_MANIFEST.json",
+    "data/derived/tse_results/6f2af3d28c84af90/_MANIFEST.json",
+    "data/derived/tse_candidates/73af2aca241094a0/_MANIFEST.json",
+    "data/derived/municipalities/03690186b97be705/_MANIFEST.json",
+    "data/raw/camara/deputies/2026-11-19/_MANIFEST.json"
+  ],
+  "sealed_files": [
+    {
+      "path": "sealed/outcomes/amendments_monthly/176dd6e75066c209/monthly_A.parquet",
+      "sha256": "9c4dcfde9062cb208068a3eea0c6aa73ccc6008c57ac5afbfd18cc3127bf7044",
+      "bytes": 68043
+    },
+    {
+      "path": "sealed/outcomes/amendments_monthly/176dd6e75066c209/monthly_B.parquet",
+      "sha256": "c1b6e22c0c7d5601f97952dfa979503247f9c9b1f95ea40d81f8a0c457f3d6f0",
+      "bytes": 85113
+    },
+    {
+      "path": "sealed/outcomes/amendments_monthly/176dd6e75066c209/monthly_C.parquet",
+      "sha256": "ece3b657b8e43dd11de670e5b85efa3dfd64cc6ba6416ec68ba8ef5e70c79de3",
+      "bytes": 155466
+    }
+  ]
+}
