@@ -1,7 +1,7 @@
 ---
 id: "0012"
 title: "Who gains from emendas Pix, deputies or mayors? Party incumbency in close mayoral races, 2004-2024, and the deputy's own and party vote"
-status: active
+status: done
 idea: "0011"
 owner: gabrielsgaspar
 created: 2026-11-20
