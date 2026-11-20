@@ -11,6 +11,10 @@ the mayoral election. Rows of exploration-half municipalities (both exploration 
 the derived folder; every other row goes to a sealed folder that this build only creates in
 and never reads. `author_link.parquet` (counts only) goes to the derived folder.
 
+v3 adds the vote shares of the deputy's party (or federation) among federal and state deputies
+at t0 and t1, from the TSE party-vote files (`tse_general_parties`), and exposes the deputy
+link and the row keys to `terrain.builds.amendments_monthly`.
+
 Names and CPFs are used only in memory, to link CGU authors to candidacies and a deputy's t0
 candidacy to t1. No CPF, voter ID, name or favorecido code, and no hash of one, is written to a
 column, a note or an exception message. `Código do Favorecido` and `Favorecido` are never read.
@@ -29,6 +33,7 @@ from typing import Any, NamedTuple
 import polars as pl
 
 from terrain import explore as terrain_explore
+from terrain import parties
 from terrain.builds import cell_outcomes, place_outcomes
 from terrain.builds import polling_place_tenure as tenure
 from terrain.builds.cell_outcomes import _upload
@@ -42,6 +47,7 @@ __all__ = ["BuildError", "build"]
 DATASET = "amendments_panel"
 MAYOR = 11
 DEPUTY = 6
+STATE_DEPUTY = 7
 SENATOR = 5
 SENATE_SUBSTITUTES = (9, 10)  # first and second suplente
 ELECTED_CODES = (1, 2, 3)
@@ -167,6 +173,10 @@ SCHEMA: dict[str, Any] = {
     "valid_t1": pl.Int64,
     "share_t1": pl.Float64,
     "d_share": pl.Float64,
+    "party_share_t0": pl.Float64,
+    "party_share_t1": pl.Float64,
+    "state_party_share_t0": pl.Float64,
+    "state_party_share_t1": pl.Float64,
 }
 LINK_SCHEMA: dict[str, Any] = {
     "cycle": pl.Utf8,
@@ -183,14 +193,23 @@ LINK_SCHEMA: dict[str, Any] = {
 SHARES = ("share_t0", "share_t1", "amend_pre_share", "amend_post_share")
 LOGS = ("amend_pre_log_pc", "amend_post_log_pc")
 PAYMENTS = ("amend_pre_total", "amend_pre_pix", "amend_post_total", "amend_post_pix")
+PARTY_SHARES = ("party_share_t0", "party_share_t1", "state_party_share_t0", "state_party_share_t1")
+# The two vote columns of a party-vote file whose sum is a party's valid votes: nominal votes
+# of its candidates plus party-list (legenda) votes. 2018 and later name valid votes; 2014
+# has only the plain counts. The first pair a file has is used.
+PARTY_VOTE_PAIRS = (
+    ("QT_VOTOS_NOMINAIS_VALIDOS", "QT_TOTAL_VOTOS_LEG_VALIDOS"),
+    ("QT_VOTOS_NOMINAIS", "QT_VOTOS_LEGENDA"),
+)
 
 # Every module whose code decides what this build writes. Its source is part of the output
-# path: this file, `explore` (the exploration lists), `place_outcomes` (`read_lists`),
-# `cell_outcomes` (the list parser and the upload) and `polling_place_tenure` (`_file` picks
-# the inputs, `_fetch` checks their SHA-256).
+# path: this file, `explore` (the exploration lists), `parties` (mergers and federations),
+# `place_outcomes` (`read_lists`), `cell_outcomes` (the list parser and the upload) and
+# `polling_place_tenure` (`_file` picks the inputs, `_fetch` checks their SHA-256).
 CODE_MODULES = (
     Path(__file__),
     Path(terrain_explore.__file__),
+    Path(parties.__file__),
     Path(place_outcomes.__file__),
     Path(cell_outcomes.__file__),
     Path(tenure.__file__),
@@ -642,6 +661,128 @@ def read_candidacies(zip_path: Path, tmp_dir: Path, *, with_cpf: bool) -> pl.Dat
     return rows.select(keep)
 
 
+def read_party_votes(
+    zip_path: Path, tmp_dir: Path, munis: pl.DataFrame
+) -> tuple[pl.DataFrame, dict[str, str], dict[str, int]]:
+    """Valid votes per party, office and municipality of a general election's party-vote file.
+
+    Federal (`CD_CARGO` 6) and state (7) deputies, round 1, summed over zones and over the
+    coalition records a party can appear under in one zone. A party's votes are the nominal
+    votes of its candidates plus its party-list votes (`PARTY_VOTE_PAIRS`). Rows whose TSE
+    municipality is not in `municipalities` (votes abroad) are dropped and counted.
+
+    Returns (`cargo`, `cd_ibge`, `party`, `votes`), the federation group of each party in a
+    federation (`parties.federation_groups`, from `NR_FEDERACAO` where the file has it) and
+    the counts `abroad` and `unmatched` (rows).
+    """
+    wanted = ("SG_UF", "CD_MUNICIPIO", "CD_CARGO", "NR_TURNO", "NR_PARTIDO")
+    optional = ("NR_FEDERACAO", *{c for pair in PARTY_VOTE_PAIRS for c in pair})
+    raw = read_tse_csv(zip_path, tmp_dir, wanted, tuple(sorted(optional)))
+    pair = next((p for p in PARTY_VOTE_PAIRS if all(c in raw.columns for c in p)), None)
+    if pair is None:
+        raise BuildError(f"{zip_path.name} lacks a column the build needs")
+    cargo = pl.col("CD_CARGO").cast(pl.Int64, strict=False)
+    rows = raw.filter(
+        cargo.is_in([DEPUTY, STATE_DEPUTY]) & (pl.col("NR_TURNO").cast(pl.Int64, strict=False) == 1)
+    )
+    parts = [pl.col(c).str.strip_chars().cast(pl.Int64, strict=False) for c in pair]
+    if rows.filter(pl.any_horizontal(p.is_null() for p in parts)).height:
+        raise BuildError(f"{zip_path.name}: a vote count is not an integer")
+    groups: dict[str, str] = {}
+    if "NR_FEDERACAO" in rows.columns:
+        pairs = rows.select("NR_PARTIDO", "NR_FEDERACAO").unique().iter_rows()
+        try:
+            groups = parties.federation_groups(pairs)
+        except parties.FederationError as err:
+            raise BuildError(f"{zip_path.name}: {err}") from err
+    rows = rows.with_columns(
+        cargo.alias("cargo"),
+        (parts[0] + parts[1]).alias("votes"),
+        pl.col("NR_PARTIDO").str.strip_chars().alias("party"),
+        pl.col("CD_MUNICIPIO").str.strip_chars().str.zfill(5).alias("cd_tse"),
+    )
+    joined = rows.join(munis.select("cd_tse", "cd_ibge"), on="cd_tse", how="left")
+    missing = joined.filter(pl.col("cd_ibge").is_null())
+    counts = {
+        "abroad": missing.filter(pl.col("SG_UF") == "ZZ").height,
+        "unmatched": missing.filter(pl.col("SG_UF") != "ZZ").height,
+    }
+    out = (
+        joined.filter(pl.col("cd_ibge").is_not_null())
+        .group_by(["cargo", "cd_ibge", "party"])
+        .agg(pl.col("votes").sum())
+        .sort(["cargo", "cd_ibge", "party"])
+    )
+    return out, groups, counts
+
+
+class PartyVotes(NamedTuple):
+    votes: pl.DataFrame  # cargo, cd_ibge, party, votes (`read_party_votes`)
+    groups: dict[str, str]  # party -> federation group, for parties in a federation
+
+
+def party_shares(
+    panel: pl.DataFrame, cycle: Cycle, at_t0: PartyVotes, at_t1: PartyVotes
+) -> tuple[pl.DataFrame, dict[str, list[str]]]:
+    """Add `party_share_t0`, `party_share_t1`, `state_party_share_t0` and `state_party_share_t1`.
+
+    The share of a year is the valid votes (nominal plus party list) of the deputy's party in
+    the municipality over the valid votes of every party, for federal deputies (`party_*`) or
+    state deputies (`state_party_*`). The party is `deputy_party` (the t0 number), followed to
+    the year's number through mergers (`parties.successor`); where it is in a federation that
+    year, the federation's votes count. Null where the municipality has no valid votes for
+    the office that year.
+
+    Also returns, per year (`t0`, `t1`), the groups of the panel's parties with no federal
+    deputy votes anywhere that year (a merger `parties.MERGERS` lacks would show here).
+    """
+    numbers = sorted(panel["deputy_party"].drop_nulls().unique().to_list())
+    missing: dict[str, list[str]] = {}
+    out = panel
+    for label, year, data in (("t0", cycle.t0, at_t0), ("t1", cycle.t1, at_t1)):
+        lookup = pl.DataFrame(
+            {
+                "deputy_party": numbers,
+                "group": [
+                    parties.group_of(parties.successor(n, cycle.t0, year), data.groups)
+                    for n in numbers
+                ],
+            },
+            schema={"deputy_party": pl.Utf8, "group": pl.Utf8},
+        )
+        votes = data.votes
+        names = votes["party"].unique().to_list()
+        to_group = pl.DataFrame(
+            {"party": names, "group": [parties.group_of(n, data.groups) for n in names]},
+            schema={"party": pl.Utf8, "group": pl.Utf8},
+        )
+        grouped = (
+            votes.join(to_group, on="party", how="left")
+            .group_by(["cargo", "cd_ibge", "group"])
+            .agg(pl.col("votes").sum().alias("group_votes"))
+        )
+        valid = votes.group_by(["cargo", "cd_ibge"]).agg(pl.col("votes").sum().alias("valid"))
+        federal = set(grouped.filter(pl.col("cargo") == DEPUTY)["group"].to_list())
+        missing[label] = sorted(set(lookup["group"].to_list()) - federal)
+        out = out.join(lookup, on="deputy_party", how="left")
+        offices = ((DEPUTY, f"party_share_{label}"), (STATE_DEPUTY, f"state_party_share_{label}"))
+        for cargo, column in offices:
+            g = grouped.filter(pl.col("cargo") == cargo).drop("cargo")
+            v = valid.filter(pl.col("cargo") == cargo).drop("cargo")
+            out = (
+                out.join(g, on=["cd_ibge", "group"], how="left")
+                .join(v, on="cd_ibge", how="left")
+                .with_columns(
+                    pl.when(pl.col("valid") > 0)
+                    .then(pl.col("group_votes").fill_null(0) / pl.col("valid"))
+                    .alias(column)
+                )
+                .drop("group_votes", "valid")
+            )
+        out = out.drop("group")
+    return out.select([pl.col(n).cast(t) for n, t in SCHEMA.items()]), missing
+
+
 # --- The author link (names are used in memory only)
 
 
@@ -1075,6 +1216,23 @@ def amendment_outcomes() -> list[pl.Expr]:
     return out
 
 
+def panel_keys(deputies: pl.DataFrame, mayors: Mayors, munis: pl.DataFrame) -> pl.DataFrame:
+    """The rows of a cycle before any value: each deputy (`sq`, `uf`, `party`, `elected`)
+    with each municipality of the deputy's state where the deputy's party had a finalist,
+    with the finalist's race columns. `terrain.builds.amendments_monthly` uses the same rows.
+    """
+    base = deputies.select(
+        pl.col("sq").alias("deputy"),
+        "uf",
+        pl.col("party").alias("deputy_party"),
+        pl.col("elected").alias("deputy_elected"),
+    )
+    finalists = mayors.finalists.join(
+        munis.select("cd_ibge", "uf"), on="cd_ibge", how="inner"
+    ).rename({"party": "deputy_party"})
+    return base.join(finalists, on=["uf", "deputy_party"], how="inner")
+
+
 def cycle_panel(
     name: str,
     *,
@@ -1088,23 +1246,15 @@ def cycle_panel(
     votes1: pl.DataFrame,
     t1_link: pl.DataFrame,
 ) -> tuple[pl.DataFrame, int]:
-    """The panel rows of one cycle, and the number of deputies whose party number has no
-    first-round mayoral candidate in the cycle's mayoral election (mergers).
+    """The panel rows of one cycle (every column but the party shares, which `party_shares`
+    adds), and the number of deputies whose party number has no first-round mayoral candidate
+    in the cycle's mayoral election (mergers).
 
     `deputies`: the deputies of the cycle (`sq`, `uf`, `party`, `elected`). `payments`:
     individual payments with `deputy` (t0 `sq`), `cd_ibge`, `ym`, `value`, `pix`. `votes0` and
     `votes1`: `uf`, `sq`, `cd_ibge`, `votes` at t0 and t1. `t1_link`: `sq`, `sq1`, `ran_t1`.
     """
     cycle = CYCLES[name]
-    base = deputies.select(
-        pl.col("sq").alias("deputy"),
-        "uf",
-        pl.col("party").alias("deputy_party"),
-        pl.col("elected").alias("deputy_elected"),
-    )
-    finalists = mayors.finalists.join(
-        munis.select("cd_ibge", "uf"), on="cd_ibge", how="inner"
-    ).rename({"party": "deputy_party"})
     held = previous.winners.with_columns(pl.lit(True).alias("party_held_mayor")).rename(
         {"party": "deputy_party"}
     )
@@ -1127,7 +1277,7 @@ def cycle_panel(
     ran = t1_link.rename({"sq": "deputy"})
     sums = window_sums(payments, cycle)
     rows = (
-        base.join(finalists, on=["uf", "deputy_party"], how="inner")
+        panel_keys(deputies, mayors, munis)
         .join(held, on=["cd_ibge", "deputy_party"], how="left")
         .join(mayors.n_cands, on="cd_ibge", how="left")
         .join(pop, on="cd_ibge", how="left")
@@ -1160,7 +1310,8 @@ def cycle_panel(
     rows = rows.with_columns(
         _share("votes_t1", "valid_t1").alias("share_t1"), *amendment_outcomes()
     ).with_columns((pl.col("share_t1") - pl.col("share_t0")).alias("d_share"))
-    panel = rows.select([pl.col(n).cast(t) for n, t in SCHEMA.items()]).sort(["deputy", "cd_ibge"])
+    columns = [pl.col(n).cast(t) for n, t in SCHEMA.items() if n not in PARTY_SHARES]
+    panel = rows.select(columns).sort(["deputy", "cd_ibge"])
     merger = deputies.filter(~pl.col("party").is_in(sorted(mayors.parties)))
     return panel, merger.height
 
@@ -1196,6 +1347,12 @@ def check_panel(
         if outside:
             raise BuildError(f"{name}: {outside} rows have a margin outside [-1, 1] or a wrong win")
         for column in SHARES:
+            bad = table.filter(
+                (pl.col(column) < -TOLERANCE) | (pl.col(column) > 1 + TOLERANCE)
+            ).height
+            if bad:
+                raise BuildError(f"{name}: {bad} rows have {column} outside [0, 1]")
+        for column in PARTY_SHARES:
             bad = table.filter(
                 (pl.col(column) < -TOLERANCE) | (pl.col(column) > 1 + TOLERANCE)
             ).height
@@ -1292,6 +1449,23 @@ def general_entries(
                 manifest, f"/votacao_candidato_munzona_{year}.zip"
             )
     return needed
+
+
+def party_entries(manifest: dict[str, Any], cycles: tuple[str, ...]) -> dict[int, dict[str, Any]]:
+    """The tse_general_parties zips the cycles need (t0 and t1), by year."""
+    years = sorted({y for c in cycles for y in (CYCLES[c].t0, CYCLES[c].t1)})
+    return {y: _file(manifest, f"/votacao_partido_munzona_{y}.zip") for y in years}
+
+
+def _party_votes(
+    store: Store, entry: dict[str, Any], tmp_dir: Path, munis: pl.DataFrame
+) -> tuple[PartyVotes, dict[str, int]]:
+    path = _fetch(store, entry, tmp_dir)
+    try:
+        votes, groups, counts = read_party_votes(path, tmp_dir, munis)
+    finally:
+        path.unlink(missing_ok=True)
+    return PartyVotes(votes, groups), counts
 
 
 def _candidacies(
@@ -1435,10 +1609,12 @@ def link_cycle(
     `non_current_*`, and of them the rows with no amendment code (CGU's unidentified author),
     `unidentified_*`. The rest are linked by `author_link`.
 
-    Returns the window rows of the authors linked as deputies, with `deputy` (t0 `sq`), and
-    the counts: the `author_link` counts, `non_current_authors`, `money_share` (linked deputy
-    value / (value of current-legislature authors - senators' value); null if that is 0) and
-    the value sums behind it (reais, nominal).
+    Returns the window rows of the authors linked as deputies, with `deputy` (t0 `sq`), the
+    counts (the `author_link` counts, `non_current_authors`, `money_share` = linked deputy
+    value / (value of current-legislature authors - senators' value), null if that is 0, and
+    the value sums behind it, reais, nominal) and the authors linked as deputies (`code`,
+    `name_norm`, `deputy`), in memory only, for payments outside the windows
+    (`terrain.builds.amendments_monthly`).
     """
     cy = CYCLES[name]
     mine = payments.filter(in_windows((name,))).with_columns(pl.col("code").fill_null(""))
@@ -1495,7 +1671,49 @@ def link_cycle(
         ),
     }
     linked = valued.filter(pl.col("kind") == "deputy").rename({"sq": "deputy"})
-    return linked, counts
+    author_map = (
+        authors.join(link.filter(pl.col("kind") == "deputy"), on="aid", how="inner")
+        .select(*keys, pl.col("sq").alias("deputy"))
+        .sort(keys)
+    )
+    return linked, counts, author_map
+
+
+class CycleLink(NamedTuple):
+    deputies: pl.DataFrame  # sq, uf, party, elected, cpf (in memory only)
+    linked: pl.DataFrame  # window payment rows of the authors linked as deputies, with `deputy`
+    counts: dict[str, Any]  # `link_cycle` counts, `chamber_links` and `chamber`
+    author_map: pl.DataFrame  # code, name_norm, deputy (in memory only)
+
+
+def cycle_link(
+    name: str,
+    store: Store,
+    general: dict[tuple[str, int], dict[str, Any]],
+    payments: pl.DataFrame,
+    author_years: pl.DataFrame,
+    chamber: pl.DataFrame,
+    tmp_dir: Path,
+) -> CycleLink:
+    """The deputies of one cycle and the author link: t0 deputy candidacies that were elected
+    or are linked as authors with a payment in the cycle's windows (`link_cycle`). Reads the
+    t0-4 and t0 candidacies only. `terrain.builds.amendments_monthly` uses the same link."""
+    cy = CYCLES[name]
+    old = _candidacies(store, general[("consulta_cand", cy.t0 - 4)], tmp_dir, with_cpf=False)
+    cand0 = _candidacies(store, general[("consulta_cand", cy.t0)], tmp_dir, with_cpf=True)
+    base = cand0.filter(pl.col("cargo") == DEPUTY)
+    if base["sq"].is_duplicated().any():
+        raise BuildError(f"{name}: a candidacy appears twice in the t0 candidates")
+    senators = _senators(old, cand0, cy.t0)
+    extra, chamber_counts = chamber_names(chamber, base, cy)
+    linked, counts, author_map = link_cycle(name, payments, author_years, base, senators, extra)
+    counts["chamber_links"] = chamber_counts["added"]
+    counts["chamber"] = chamber_counts
+    served = linked["deputy"].unique().to_list()
+    deputies = base.filter(pl.col("elected") | pl.col("sq").is_in(served))
+    return CycleLink(
+        deputies.select("sq", "uf", "party", "elected", "cpf"), linked, counts, author_map
+    )
 
 
 def cycle_inputs(
@@ -1512,8 +1730,7 @@ def cycle_inputs(
     the deputies of the cycle, their payments, the t1 link and the votes at t0 and t1."""
     cy = CYCLES[name]
     tse_munis = munis.filter(pl.col("cd_tse").is_not_null())
-    old = _candidacies(store, general[("consulta_cand", cy.t0 - 4)], tmp_dir, with_cpf=False)
-    cand0 = _candidacies(store, general[("consulta_cand", cy.t0)], tmp_dir, with_cpf=True)
+    link = cycle_link(name, store, general, payments, author_years, chamber, tmp_dir)
     cand1 = _candidacies(store, general[("consulta_cand", cy.t1)], tmp_dir, with_cpf=True)
     votes0, dropped0 = _votes(
         store, general[("votacao_candidato_munzona", cy.t0)], tmp_dir, tse_munis
@@ -1521,18 +1738,8 @@ def cycle_inputs(
     votes1, dropped1 = _votes(
         store, general[("votacao_candidato_munzona", cy.t1)], tmp_dir, tse_munis
     )
-
-    base = cand0.filter(pl.col("cargo") == DEPUTY)
-    if base["sq"].is_duplicated().any():
-        raise BuildError(f"{name}: a candidacy appears twice in the t0 candidates")
-    senators = _senators(old, cand0, cy.t0)
-    extra, chamber_counts = chamber_names(chamber, base, cy)
-    linked, counts = link_cycle(name, payments, author_years, base, senators, extra)
-    counts["chamber_links"] = chamber_counts["added"]
-    counts["chamber"] = chamber_counts
-    served = linked["deputy"].unique().to_list()
-    deputies = base.filter(pl.col("elected") | pl.col("sq").is_in(served))
-    paid = linked.filter(pl.col("cd_ibge").is_not_null()).select(
+    deputies = link.deputies
+    paid = link.linked.filter(pl.col("cd_ibge").is_not_null()).select(
         "deputy", "cd_ibge", "ym", "value", "pix"
     )
     t1_link, unlinked = link_to_t1(
@@ -1546,7 +1753,7 @@ def cycle_inputs(
         "t1_link": t1_link,
         "votes0": votes0,
         "votes1": votes1,
-        "counts": counts,
+        "counts": link.counts,
         "unlinked": unlinked,
         "dropped_votes": {k: dropped0[k] + dropped1[k] for k in dropped0},
     }
@@ -1564,6 +1771,7 @@ def build(
     municipalities_manifest: dict[str, Any],
     population_manifest: dict[str, Any],
     chamber_manifest: dict[str, Any],
+    parties_manifest: dict[str, Any],
     *,
     derived_root: str,
     sealed_root: str,
@@ -1584,6 +1792,7 @@ def build(
     """
     explore, split_shas = read_lists(store)
     general = general_entries(general_manifest, cycles)
+    party_files = party_entries(parties_manifest, cycles)
     cgu_entry = _file(cgu_manifest, "/EmendasParlamentares.zip")
     muni_entry = _file(municipalities_manifest, "/municipalities.parquet")
     cand_entry = _file(candidates_manifest, "/candidates.parquet")
@@ -1602,6 +1811,7 @@ def build(
         pop_entry,
         chamber_entry,
         *general.values(),
+        *party_files.values(),
         *vote_entries.values(),
         *turnout_entries.values(),
     ]
@@ -1648,6 +1858,14 @@ def build(
     del individual
     paid, dropped = match_recipients(windowed, munis)
 
+    tse_munis = munis.filter(pl.col("cd_tse").is_not_null())
+    party_votes: dict[int, PartyVotes] = {}
+    party_dropped: dict[int, dict[str, int]] = {}
+    for year, party_entry in party_files.items():
+        party_votes[year], party_dropped[year] = _party_votes(
+            store, party_entry, tmp_dir, tse_munis
+        )
+
     tables: dict[str, pl.DataFrame] = {}
     links: list[dict[str, Any]] = []
     notes: list[str] = []
@@ -1669,6 +1887,7 @@ def build(
             votes1=parts["votes1"],
             t1_link=parts["t1_link"],
         )
+        panel, no_votes = party_shares(panel, cy, party_votes[cy.t0], party_votes[cy.t1])
         panel, floored = floor_payments(panel)
         tables[name] = panel
         counts = parts["counts"]
@@ -1695,8 +1914,28 @@ def build(
         )
         nulls = outcome_nulls(panel)
         notes.append(f"{name}_outcome_nulls=" + ",".join(f"{c}:{n}" for c, n in nulls.items()))
+        notes.append(
+            f"{name}_party_shares: "
+            + ", ".join(f"{c}_nulls={panel[c].null_count()}" for c in PARTY_SHARES)
+            + ", groups_without_votes_t0="
+            + ("+".join(no_votes["t0"]) or "none")
+            + ", groups_without_votes_t1="
+            + ("+".join(no_votes["t1"]) or "none")
+        )
         del parts
 
+    for year in sorted(party_votes):
+        groups = party_votes[year].groups
+        federations = sorted({g for g in groups.values()})
+        listed = ",".join(
+            f"{f}=" + "+".join(sorted(p for p, g in groups.items() if g == f)) for f in federations
+        )
+        notes.append(
+            f"party_votes_{year}: rows={party_votes[year].votes.height}, "
+            f"rows_abroad={party_dropped[year]['abroad']}, "
+            f"rows_no_municipality={party_dropped[year]['unmatched']}, "
+            f"federations={listed or 'none'}"
+        )
     notes.append(f"dropped_recipient_rows_no_municipality={_years(dropped['no_municipality'])}")
     notes.append(f"dropped_recipient_rows_unmatched={_years(dropped['unmatched'])}")
     notes.extend(placeholder_notes(dropped))
@@ -1745,6 +1984,7 @@ def build(
                 municipalities_manifest,
                 population_manifest,
                 chamber_manifest,
+                parties_manifest,
             )
         ],
         notes="; ".join(notes),

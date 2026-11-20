@@ -7,6 +7,7 @@ an author with no amendment of the legislature and CGU's unidentified author. Ev
 name and value is made up inside this file.
 
 R1 (exploration list 1) and C1 (list 2) are in the exploration half; the rest go to sealed.
+The party-vote files give party 20 a (made-up) federation with party 40 at t1.
 """
 
 import csv
@@ -113,6 +114,21 @@ def votes_zip(year, data, valid=False):
     )
 
 
+def party_zip(year, data):
+    if year == 2014:
+        header = ["SG_UF", "CD_MUNICIPIO", "CD_CARGO", "NR_TURNO", "NR_PARTIDO"]
+        header += ["QT_VOTOS_NOMINAIS", "QT_VOTOS_LEGENDA"]
+    else:
+        header = ["SG_UF", "CD_MUNICIPIO", "CD_CARGO", "NR_TURNO", "NR_PARTIDO", "NR_FEDERACAO"]
+        header += ["QT_VOTOS_NOMINAIS", "QT_VOTOS_NOMINAIS_VALIDOS", "QT_TOTAL_VOTOS_LEG_VALIDOS"]
+    return make_zip(
+        {
+            f"votacao_partido_munzona_{year}_BRASIL.csv": csv_bytes(header, data),
+            f"votacao_partido_munzona_{year}_BR.csv": b"garbage",
+        }
+    )
+
+
 # (sq, cargo, uf, full name, urn name, party, status, cpf)
 CANDIDATES_2010 = [
     ("S10-1", "5", "RO", "Carlos Alberto Lima", "Carlos Lima", "10", "1", cpf(1)),
@@ -168,6 +184,41 @@ VOTES_2018 = [
     ("RO", "27", "6", "1", "1802", "100", "100"),
     ("RO", "35", "6", "1", "1801", "30", "30"),
     ("AC", "1015", "6", "1", "2801", "5", "5"),
+]
+
+# Party-vote files: (uf, tse municipality, cargo, round, party, nominal, party list). 2014
+# has the plain counts; 2018 has a federation column and the valid counts.
+PARTY_2014 = [
+    ("RO", "19", "6", "1", "10", "300", "100"),
+    ("RO", "19", "6", "1", "10", "100", "100"),  # another zone or coalition record: summed
+    ("RO", "19", "6", "1", "20", "150", "50"),
+    ("RO", "19", "6", "1", "30", "0", "200"),
+    ("RO", "19", "6", "2", "10", "999", "0"),  # no second round for deputies
+    ("RO", "19", "1", "1", "10", "999", "0"),  # president: not read
+    ("RO", "19", "7", "1", "10", "200", "50"),
+    ("RO", "19", "7", "1", "20", "250", "0"),
+    ("RO", "27", "6", "1", "10", "100", "0"),
+    ("RO", "27", "6", "1", "20", "300", "100"),
+    ("RO", "35", "6", "1", "10", "50", "0"),
+    ("RO", "35", "6", "1", "20", "50", "0"),
+    ("RO", "35", "7", "1", "30", "10", "0"),
+    ("AC", "1015", "6", "1", "30", "400", "100"),
+    ("AC", "1015", "6", "1", "10", "0", "500"),
+    ("AC", "1058", "6", "1", "30", "300", "0"),
+    ("AC", "1058", "6", "1", "10", "100", "0"),
+    ("ZZ", "99999", "6", "1", "10", "7", "0"),  # abroad
+]
+# (uf, tse municipality, cargo, round, party, federation, nominal, valid nominal, list valid)
+PARTY_2018 = [
+    ("RO", "19", "6", "1", "10", "-1", "999", "500", "0"),
+    ("RO", "19", "6", "1", "20", "7", "999", "200", "0"),
+    ("RO", "19", "6", "1", "40", "7", "999", "100", "100"),
+    ("RO", "19", "6", "1", "30", "-1", "999", "100", "0"),
+    ("RO", "19", "7", "1", "10", "-1", "999", "100", "0"),
+    ("RO", "19", "7", "1", "40", "7", "999", "100", "0"),
+    ("RO", "27", "6", "1", "20", "7", "999", "300", "0"),
+    ("RO", "27", "6", "1", "30", "-1", "999", "100", "0"),
+    ("AC", "1015", "6", "1", "30", "-1", "999", "10", "0"),
 ]
 
 CGU_HEADER = [
@@ -425,8 +476,8 @@ def chamber_csv(data=CHAMBER):
     return b"\xef\xbb\xbf" + csv_bytes(CHAMBER_HEADER, data, "utf-8")
 
 
-def stage(store, *, cgu=None, attrs=None, lists=None, chamber=None):
-    """Put every input in the store; return the seven manifests."""
+def stage(store, *, cgu=None, attrs=None, lists=None, chamber=None, party_2018=None):
+    """Put every input in the store; return the eight manifests."""
     first, second = lists or (f"code_ibge\n{R1}\n", f"code_ibge\n{C1}\n")
     store.create(EXPLORE_LIST, first.encode("utf-8"))
     store.create(EXPLORE_LIST_NON_AMAZON, second.encode("utf-8"))
@@ -459,6 +510,14 @@ def stage(store, *, cgu=None, attrs=None, lists=None, chamber=None):
     mp = "data/derived/municipalities/m1/"
     pp = "data/raw/ibge/population_annual/2026-11-15/"
     hp = "data/raw/camara/deputies/2026-11-18/"
+    vp = "data/raw/tse/general_parties/2026-11-20/"
+    party_files = [
+        put(vp + "votacao_partido_munzona_2014.zip", party_zip(2014, PARTY_2014)),
+        put(
+            vp + "votacao_partido_munzona_2018.zip",
+            party_zip(2018, PARTY_2018 if party_2018 is None else party_2018),
+        ),
+    ]
     frame = attributes() if attrs is None else attrs
     return (
         manifest("tse_general", gp, general),
@@ -478,6 +537,7 @@ def stage(store, *, cgu=None, attrs=None, lists=None, chamber=None):
             hp,
             [put(hp + "deputados.csv", chamber if chamber is not None else chamber_csv())],
         ),
+        manifest("tse_general_parties", vp, party_files),
     )
 
 
@@ -633,6 +693,101 @@ def test_a_deputy_who_did_not_run_at_t1(built):
         assert got["votes_t1"] is None and got["valid_t1"] is None
         assert got["share_t1"] is None and got["d_share"] is None
         assert got["share_t0"] is not None
+
+
+# --- Party vote shares (v3)
+
+
+def test_party_shares_at_t0_and_t1(built):
+    store, manifest, _ = built
+    panel = whole_panel(store, manifest)
+    shares = ("party_share_t0", "party_share_t1", "state_party_share_t0", "state_party_share_t1")
+
+    def got(deputy, municipality):
+        found = row(panel, deputy, municipality)
+        return tuple(found[c] for c in shares)
+
+    approx = pytest.approx
+    # party 10 in R1: (300 + 100 + 100 + 100) / 1,000 at t0; 500 / 1,000 at t1; the state
+    # deputies' 250 / 500 and 100 / 200. Nominal plus party-list votes, round 1 only.
+    assert got("1001", R1) == approx((0.6, 0.5, 0.5, 0.5))
+    assert got("1003", R1) == got("1001", R1)  # the same party, the same shares
+    # party 20 joins party 40 in a federation at t1: (200 + 100 + 100) / 1,000 and 100 / 200
+    assert got("1002", R1) == approx((0.2, 0.4, 0.5, 0.5))
+    # R2: no state-deputy votes at all (null); party 10 has no t1 federal votes (0, not null)
+    assert got("1001", R2) == approx((0.2, 0.0, None, None))
+    # R3: no t1 file rows (null); state deputies: 10 valid votes, none for party 10
+    assert got("1001", R3) == approx((0.5, None, 0.0, None))
+    assert got("2001", C1) == approx((0.5, 1.0, None, None))
+    assert got("2001", C2) == approx((0.75, None, None, None))
+
+
+def test_party_share_notes(built):
+    _, manifest, _ = built
+    notes = manifest["notes"].split("; ")
+    assert (
+        "party_votes_2018: rows=9, rows_abroad=0, rows_no_municipality=0, federations=F7=20+40"
+        in notes
+    )
+    assert (
+        "party_votes_2014: rows=14, rows_abroad=1, rows_no_municipality=0, federations=none"
+        in notes
+    )
+    note = next(n for n in notes if n.startswith("A_party_shares: "))
+    # t1: R3 (two deputies) and C2; state t0: R2 (three) and AC; state t1: R2, R3 and AC
+    assert note == (
+        "A_party_shares: party_share_t0_nulls=0, party_share_t1_nulls=3, "
+        "state_party_share_t0_nulls=5, state_party_share_t1_nulls=7, "
+        "groups_without_votes_t0=none, groups_without_votes_t1=none"
+    )
+
+
+def test_party_shares_follow_mergers_and_federations():
+    """Cycle B: DEM (25) and PSL (17) of 2018 are União Brasil (44) in 2022; PT (13) is in a
+    federation with PCdoB (65) in 2022; party 99 has no votes anywhere at t1."""
+    cycle = ap.CYCLES["B"]
+    panel = pl.DataFrame(
+        {"deputy_party": ["25", "17", "13", "99"], "cd_ibge": [R1] * 4},
+        schema={"deputy_party": pl.Utf8, "cd_ibge": pl.Utf8},
+    ).with_columns(
+        *[
+            pl.lit(None, dtype=t).alias(n)
+            for n, t in ap.SCHEMA.items()
+            if n not in ("deputy_party", "cd_ibge")
+        ]
+    )
+    schema = {"cargo": pl.Int64, "cd_ibge": pl.Utf8, "party": pl.Utf8, "votes": pl.Int64}
+    t0 = rows([(6, R1, "25", 10), (6, R1, "17", 30), (6, R1, "13", 60)], schema)
+    t1 = rows([(6, R1, "44", 50), (6, R1, "13", 20), (6, R1, "65", 30)], schema)
+    out, missing = ap.party_shares(
+        panel, cycle, ap.PartyVotes(t0, {}), ap.PartyVotes(t1, {"13": "F2", "65": "F2"})
+    )
+    got = {r["deputy_party"]: (r["party_share_t0"], r["party_share_t1"]) for r in out.to_dicts()}
+    assert got["25"] == pytest.approx((0.1, 0.5))
+    assert got["17"] == pytest.approx((0.3, 0.5))
+    assert got["13"] == pytest.approx((0.6, 0.5))
+    assert got["99"] == pytest.approx((0.0, 0.0))
+    assert missing == {"t0": ["P99"], "t1": ["P99"]}
+    assert out.schema == pl.Schema(ap.SCHEMA)
+
+
+def test_read_party_votes_stops_on_a_bad_count_or_two_federations(tmp_path):
+    munis = municipalities()
+    bad = [r for r in PARTY_2018] + [("RO", "19", "6", "1", "30", "-1", "1", "x", "0")]
+    path = tmp_path / "bad.zip"
+    path.write_bytes(party_zip(2018, bad))
+    with pytest.raises(BuildError, match="not an integer"):
+        ap.read_party_votes(path, tmp_path, munis)
+    two = [r for r in PARTY_2018] + [("RO", "27", "6", "1", "40", "8", "1", "1", "0")]
+    path.write_bytes(party_zip(2018, two))
+    with pytest.raises(BuildError, match="two federations"):
+        ap.read_party_votes(path, tmp_path, munis)
+    header = ["SG_UF", "CD_MUNICIPIO", "CD_CARGO", "NR_TURNO", "NR_PARTIDO", "QT_VOTOS_NOMINAIS"]
+    path.write_bytes(
+        make_zip({"x_BRASIL.csv": csv_bytes(header, [("RO", "19", "6", "1", "10", "1")])})
+    )
+    with pytest.raises(BuildError, match="lacks a column"):
+        ap.read_party_votes(path, tmp_path, munis)
 
 
 # --- 2. The author link
@@ -1068,6 +1223,7 @@ def stage_manifests(store):
     rp, tp = "data/derived/tse_results/r1/", "data/derived/tse_candidates/c1/"
     mp, pp = "data/derived/municipalities/m1/", "data/raw/ibge/population_annual/2026-11-15/"
     hp = "data/raw/camara/deputies/2026-11-18/"
+    vp = "data/raw/tse/general_parties/2026-11-20/"
 
     def files(prefix):
         return [entry(p, b) for p, b in inputs.items() if p.startswith(prefix)]
@@ -1083,6 +1239,7 @@ def stage_manifests(store):
         manifest("municipalities", mp),
         manifest("ibge_population_annual", pp),
         manifest("camara_deputies", hp),
+        manifest("tse_general_parties", vp),
     )
 
 
@@ -1101,11 +1258,11 @@ def test_a_code_change_in_any_module_changes_the_path():
 
 
 def test_code_modules_list_this_file_and_every_data_module_it_imports():
-    from terrain import explore
+    from terrain import explore, parties
     from terrain.builds import cell_outcomes, place_outcomes, polling_place_tenure
 
     modules = set(ap.CODE_MODULES)
-    expected = {ap.__file__, explore.__file__, place_outcomes.__file__}
+    expected = {ap.__file__, explore.__file__, parties.__file__, place_outcomes.__file__}
     expected |= {cell_outcomes.__file__, polling_place_tenure.__file__}
     assert modules == {Path(p) for p in expected}
 
@@ -1136,7 +1293,9 @@ def test_stop_on_a_margin_outside_one_or_a_wrong_win(built):
         ap.check_panel({"A": panel.with_columns(pl.lit(True).alias("win"))}, min_rows=1)
 
 
-@pytest.mark.parametrize("column", ["share_t0", "share_t1", "amend_pre_share", "amend_post_share"])
+@pytest.mark.parametrize(
+    "column", ["share_t0", "share_t1", "amend_pre_share", "amend_post_share", *ap.PARTY_SHARES]
+)
 def test_stop_on_a_share_outside_zero_one(built, column):
     panel = panel_a(built).with_columns(pl.lit(1.5).alias(column))
     with pytest.raises(BuildError, match=f"{column} outside"):

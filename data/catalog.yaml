@@ -767,7 +767,7 @@ datasets:
       and its run is step s8.
 
   - name: amendments_panel
-    source: built from tse_general, cgu_amendments, tse_results, tse_candidates, municipalities, ibge_population_annual and camara_deputies, split by half
+    source: built from tse_general, tse_general_parties, cgu_amendments, tse_results, tse_candidates, municipalities, ibge_population_annual and camara_deputies, split by half
     licence: public (TSE, CGU, IBGE), as its sources
     derived: data/derived/amendments_panel/
     sealed: sealed/outcomes/amendments_panel/
@@ -787,6 +787,47 @@ datasets:
       month (CGU PorFavorecido) to the municipality of the recipient; the
       deputy key is the TSE sq_candidato of the t0 candidacy, never a CPF,
       name or hash of one. author_link.parquet (counts only) is in derived.
+      v3 (owner PR "mayoral incumbency panel", idea 0011) adds party_share_t0,
+      party_share_t1, state_party_share_t0 and state_party_share_t1: the
+      deputy's party (or federation) among all federal and state deputy votes
+      in the municipality, nominal plus party list, from tse_general_parties.
+
+  - name: mayor_incumbency_panel
+    source: built from tse_results, tse_candidates, tse_parties, municipalities, ibge_population_annual, tse_general and cgu_amendments, split by half
+    licence: public (TSE, CGU, IBGE), as its sources
+    derived: data/derived/mayor_incumbency_panel/
+    sealed: sealed/outcomes/mayor_incumbency_panel/
+    status: planned
+    contract: data/contracts/mayor_incumbency_panel.md
+    notes: >
+      Idea 0011 and decisions 0003 and 0011: one row per municipality, mayoral
+      election (2004-2020) and finalist party (the two candidacies with most
+      votes in the deciding round), with the margin, the finalist's
+      attributes, whether the party held the mayoralty at e-4, its federal
+      bench in the state at e-2 (2012-2020), whether the party and the
+      finalist ran and won at e+4 (finalists linked by CPF in memory, never
+      stored), and the individual amendment money paid to the municipality
+      in the term (CGU, null before the file's coverage). Party numbers are
+      followed through mergers and federations (src/terrain/parties.py).
+      Exploration-half rows (both exploration lists) in derived, all other
+      rows only in sealed (the sealed line is pinned in tests/test_split.py).
+      Built by src/terrain/builds/mayor_incumbency_panel.py.
+
+  - name: amendments_monthly
+    source: built from tse_general, cgu_amendments, tse_results, tse_candidates, municipalities and camara_deputies, split by half
+    licence: public (TSE, CGU), as its sources
+    derived: data/derived/amendments_monthly/
+    sealed: sealed/outcomes/amendments_monthly/
+    status: planned
+    contract: data/contracts/amendments_monthly.md
+    notes: >
+      Idea 0011 (H6): one row per cycle, federal deputy, municipality and
+      month for the rows of amendments_panel (the same deputies, author link
+      and municipalities), January of m-1 to October of t1, with the
+      deputy's individual and Pix payments in the month. Exploration-half
+      rows in derived, all other rows only in sealed (the sealed line is
+      pinned in tests/test_split.py). Built by
+      src/terrain/builds/amendments_monthly.py.
 
   - name: funai_indigenous_lands
     source: FUNAI indigenous land boundaries
@@ -1164,6 +1205,33 @@ datasets:
           check: {type: zip, member: "*_BRASIL.csv"}
         - url: https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_<year>.zip
           years: [2010, 2014, 2018, 2022, 2026]
+          check: {type: zip, member: "*_BRASIL.csv"}
+
+  - name: tse_general_parties
+    source: "TSE open data (cdn.tse.jus.br), general elections: votacao_partido_munzona 2014-2026"
+    licence: "TSE open data: CC BY (dadosabertos.tse.jus.br)"
+    gcs: data/raw/tse/general_parties/
+    status: planned
+    contract: data/contracts/tse_general_parties.md
+    notes: >
+      Votes per party, zone and office (nominal and party list), the general
+      elections 2014, 2018, 2022 and 2026. Facts checked on 2026-11-20 from
+      the four zips: 12, 28, 26 and 24 MB zipped, each with *_BRASIL.csv
+      (163-181 MB), *_BR.csv and leiame.pdf; ;-separated, quoted, Latin-1.
+      Columns include SG_UF, CD_MUNICIPIO (TSE code), NR_ZONA, CD_CARGO (6
+      federal deputy, 7 state deputy), NR_TURNO, NR_PARTIDO and SQ_COLIGACAO.
+      2014 has QT_VOTOS_NOMINAIS and QT_VOTOS_LEGENDA; 2018 on have
+      NR_FEDERACAO (federations in 2022 and 2026), QT_VOTOS_NOMINAIS_VALIDOS
+      and QT_TOTAL_VOTOS_LEG_VALIDOS. A party can appear twice in a zone under
+      two coalition records (74 rows in 2018; 3,627 in 2022 and 1,889 in 2026,
+      one of each pair with zero votes). No personal identifiers. The 2022
+      and 2026 files were regenerated on 2026-11-20 and can change with court
+      rulings; the dated raw folder is the snapshot. Read by amendments_panel
+      v3 (idea 0011).
+    acquire:
+      files:
+        - url: https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_partido_munzona/votacao_partido_munzona_<year>.zip
+          years: [2014, 2018, 2022, 2026]
           check: {type: zip, member: "*_BRASIL.csv"}
 
   - name: cgu_amendments

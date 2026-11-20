@@ -40,6 +40,7 @@ def main() -> None:
             _load("build", "municipalities"),
             _load("acquire", "ibge_population_annual"),
             _load("acquire", "camara_deputies"),
+            _load("acquire", "tse_general_parties"),
             derived_root=panel["derived"],
             sealed_root=panel["sealed"],
             tmp_dir=Path(tmp),

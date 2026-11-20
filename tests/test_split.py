@@ -225,6 +225,8 @@ SEALED = {
     "mining_panel": "sealed/outcomes/mining_panel/",
     "politics_panel": "sealed/outcomes/politics_panel/",
     "amendments_panel": "sealed/outcomes/amendments_panel/",
+    "mayor_incumbency_panel": "sealed/outcomes/mayor_incumbency_panel/",
+    "amendments_monthly": "sealed/outcomes/amendments_monthly/",
 }
 
 
