@@ -16,7 +16,9 @@ The contract for `explore/NNNN_slug.py`, run by the `explore-run` workflow:
 
 Environment: TERRAIN_BUCKET, EXPLORE_RUN_ID, CODE_COMMIT. The script writes
 DIR/summary.md (Markdown, at most 20 KB) and DIR/results.json (at most 200 KB)
-with `write_results`. Larger outputs go to GCS under `output_prefix`.
+with `write_results`. It may also write up to 8 PNG files, each at most 400 KB,
+in DIR/figures/. The record job copies those next to the run's .md and links
+them. Larger outputs go to GCS under `output_prefix`.
 """
 
 from __future__ import annotations
@@ -30,6 +32,7 @@ from typing import Any
 
 import polars as pl
 
+from terrain.explore_figures import ExploreError
 from terrain.storage import Store
 
 EXPLORE_LIST = "data/derived/split/explore_municipalities.csv"
@@ -41,10 +44,6 @@ EXPLORE_ROOT = "data/explore/"
 SUMMARY_MAX_BYTES = 20_000
 RESULTS_MAX_BYTES = 200_000
 _SCRIPT = re.compile(r"(\d{4})_[a-z0-9_]{1,60}")
-
-
-class ExploreError(Exception):
-    """An explore script broke the contract above."""
 
 
 def _read_list(store: Store, path: str) -> frozenset[str]:

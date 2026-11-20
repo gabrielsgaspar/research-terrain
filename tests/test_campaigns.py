@@ -497,6 +497,34 @@ def test_gate_record_pr(tmp_path):
     assert evaluate(manual, ctx(root)).state == "pending"
 
 
+def test_gate_record_pr_may_include_eight_figures(tmp_path):
+    root = make_repo(tmp_path)
+    md, js = "research/explore-runs/0003/555.md", "research/explore-runs/0003/555.json"
+    figures = tuple(f"research/explore-runs/0003/555/figures/f{i}.png" for i in range(8))
+    pr = PullRequest(
+        number=30,
+        author=BOT,
+        head_ref="explore/0003_count-555",
+        head_sha=SHA,
+        state="open",
+        merged=False,
+        mergeable=True,
+        files=(md, js, *figures),
+        ci_test="success",
+        gate_status="success",
+        run_title=markers.explore_run_title("0003_count", "0001", "s2"),
+        run_conclusion="success",
+    )
+    assert evaluate(pr, ctx(root)).state == "success"
+    nine = replace(pr, files=(*figures, "research/explore-runs/0003/555/figures/f8.png", md, js))
+    assert evaluate(nine, ctx(root)).state == "failure"
+    other = replace(pr, files=(md, js, "research/explore-runs/0003/555/figures/f0.txt"))
+    result = evaluate(other, ctx(root))
+    assert result.state == "failure" and "only its record" in result.description
+    nested = replace(pr, files=(md, js, "research/explore-runs/0003/555/figures/sub/a.png"))
+    assert evaluate(nested, ctx(root)).state == "failure"
+
+
 def test_parse_review_reads_the_reviewer_comment():
     body = textwrap.dedent(
         """\

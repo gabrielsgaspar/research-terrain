@@ -389,6 +389,73 @@ def test_a_bad_fork_file_is_refused(tmp_path, over, problem):
         assert any(problem in p for p in problems), problems
 
 
+def test_fork_evidence_may_cite_repository_files(tmp_path):
+    root = replay_repo(tmp_path)
+    for rel in ("data/contracts/panel.md", "research/decisions/0008-balance.md"):
+        path = root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("cited\n", encoding="utf-8")
+    add_fork(
+        root,
+        text=fork_text(
+            evidence=[
+                f"{RECORD}.md",
+                "data/contracts/panel.md",
+                "research/ideas/0007-gold-and-the-ballot.md",
+                "research/decisions/0008-balance.md",
+                "research/campaigns/0007-gold-and-the-ballot/report.md",
+            ]
+        ),
+    )
+    assert validate(root) == []
+
+
+def test_fork_evidence_still_needs_a_parent_run_record(tmp_path):
+    root = replay_repo(tmp_path)
+    path = root / "data/contracts/amendments_panel.md"
+    path.parent.mkdir(parents=True)
+    path.write_text("contract\n", encoding="utf-8")
+    add_fork(root, text=fork_text(evidence=["data/contracts/amendments_panel.md"]))
+    problems = validate(root)
+    assert any("no evidence is a run record" in p for p in problems), problems
+
+
+@pytest.mark.parametrize(
+    "extra, problem",
+    [
+        ("explore/0007_gold_first_stage.py", "is not a run record"),
+        ("data/contracts/missing.md", "does not exist on main"),
+        ("data/contracts/../../AGENTS.md", "is not a run record"),
+        ("research/ideas/../decisions/0008.md", "is not a run record"),
+    ],
+)
+def test_fork_evidence_refuses_other_or_missing_paths(tmp_path, extra, problem):
+    root = replay_repo(tmp_path)
+    add_fork(root, text=fork_text(evidence=[f"{RECORD}.md", extra]))
+    problems = validate(root)
+    assert any(problem in p and extra in p for p in problems), problems
+
+
+def test_fork_evidence_refuses_a_file_that_is_not_text(tmp_path):
+    root = replay_repo(tmp_path)
+    path = root / "data/contracts/panel.md"
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"\xff")
+    add_fork(root, text=fork_text(evidence=[f"{RECORD}.md", "data/contracts/panel.md"]))
+    problems = validate(root)
+    assert any("is not a text file" in p for p in problems), problems
+
+
+def test_the_ideation_brief_names_allowed_evidence(tmp_path):
+    from terrain.campaigns.ideation import brief
+
+    root = replay_repo(tmp_path)
+    text = brief(root, campaign_0007(root), "s15")
+    assert "at least one run record" in text
+    for prefix in forks.EVIDENCE_DIRS:
+        assert prefix in text
+
+
 def test_adoption_needs_a_killed_point(tmp_path):
     """s9 survived (0007's feasibility gate passed), so a fork there cannot adopt."""
     root = replay_repo(tmp_path)
@@ -1606,6 +1673,7 @@ def test_the_reviewer_and_ideation_roles_say_what_they_must():
     assert (
         "R8 Fork discipline (fork tasks only)" in reviewer and "never `not_applicable`" in reviewer
     )
+    assert "figures/" in reviewer and "restricted data" in reviewer
     role = (REPO / "harness/roles/ideation.md").read_text(encoding="utf-8")
     for words in (
         "Prefer the cheapest fork that could change a decision",

@@ -287,6 +287,9 @@ def brief(root: Path, c: Campaign, point: str, dry_run: bool = False) -> str:
   one other than `finite`.
 - A `sample` fork says what it filters on (`sample_on`: geography, biome, baseline or years),
   never on outcomes, and its script also writes `sample.n_clusters`.
+- Evidence includes at least one run record of step {point}. It may also cite an existing
+  file under `data/contracts/`, `research/ideas/`, `research/decisions/` or
+  `research/campaigns/`. Any other path is refused.
 - Steps list their `after` as indexes of earlier steps of the same fork (an empty list:
   right after the fork point). Each fork ends in an explore run.
 - A task's `draft` is the issue body (Markdown) without its title line, with a

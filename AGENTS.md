@@ -164,7 +164,7 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
 - CPF numbers, voter ID numbers (`nr_titulo_eleitoral`) and names tied to
   either never go into Git: not in code, tests, fixtures, records, plans,
   comments or commit messages. They never appear in logs, results,
-  `summary.md`, `results.json` or exception messages either.
+  `summary.md`, `results.json`, figures or exception messages either.
 - Code may use them only in memory, for example to link a candidate across
   elections. A build that must keep a link stores only a salted hash, with
   the salt read from the GitHub secret `ID_SALT` through an environment

@@ -163,3 +163,5 @@ A campaign whose gate is killed tries the cheapest variants that could
 change the decision, carries on with the first that survives, and its
 report lists every variant with its numbers, without Gabriel designing a
 second campaign by hand as he did for 0008.
+
+Amendment, 2026-11-19. A fork's evidence includes at least one run record of the parent (a file under `research/explore-runs/` that ends in `.md` or `.json`). It may also cite an existing file under `data/contracts/`, `research/ideas/`, `research/decisions/` or `research/campaigns/`. Any other path, or a missing file, is refused.

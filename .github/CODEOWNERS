@@ -63,6 +63,7 @@
 
 # The sample split, the exploration restriction and GCP setup
 /src/terrain/explore.py @gabrielsgaspar
+/src/terrain/explore_figures.py @gabrielsgaspar
 /scripts/seal_split.py @gabrielsgaspar
 /scripts/gcp/ @gabrielsgaspar
 /src/terrain/split.py @gabrielsgaspar
