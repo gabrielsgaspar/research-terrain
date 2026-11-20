@@ -70,7 +70,9 @@ How to review:
   - R1 Exploration half only: every table is restricted with
     `terrain.explore.restrict` (after `exploration_municipalities`)
     before anything is computed, and nothing reads `sealed/`,
-    `confirm/` or the confirmation half.
+    `confirm/` or the confirmation half. A figure under `figures/`
+    is built only from that restricted data; one that uses any other
+    rows is a problem.
   - R2 No outcome data: nothing reads an outcome dataset
     (deforestation, land cover, or anything the idea's predictions
     are about) unless the issue says outcomes are in scope.

@@ -1,9 +1,9 @@
 name: Explore run
 
 # Manual only. Runs one merged script, explore/<script>.py, on the
-# exploration half, then opens a pull request that records its summary and
-# results under research/explore-runs/<idea>/. Every run is recorded, so the
-# number of things tried is visible later.
+# exploration half, then opens a pull request that records its summary,
+# results and up to 8 figures under research/explore-runs/<idea>/. Every run
+# is recorded, so the number of things tried is visible later.
 #
 # Safety:
 #   - Runs only from main, in the analysis environment (main-only), so the
@@ -16,7 +16,8 @@ name: Explore run
 #     token; nothing it runs ever sees the token. It no longer touches
 #     research/INDEX.md, which is not in git (built where it is read).
 #     The summary and results are size-limited and scanned for credentials
-#     before they leave the run job.
+#     before they leave the run job. Figures, when present, are checked
+#     there too: at most 8 PNGs, each at most 400 KB.
 on:
   workflow_dispatch:
     inputs:
@@ -122,6 +123,22 @@ jobs:
               sys.exit(1)
           print("Outputs OK")
           PY
+          python3 -I - <<'PY'
+          import os
+          import sys
+          from pathlib import Path
+
+          sys.path.insert(0, "src")
+          from terrain.explore_figures import ExploreError, check_figures
+
+          try:
+              check_figures(Path(os.environ["OUT"]))
+          except ExploreError as exc:
+              print(f"::error::{exc}")
+              sys.exit(1)
+          PY
+          # An absent folder must not fail the upload. An empty one uploads nothing.
+          mkdir -p "${OUT}/figures"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -129,6 +146,8 @@ jobs:
           path: |
             ${{ runner.temp }}/out/summary.md
             ${{ runner.temp }}/out/results.json
+            ${{ runner.temp }}/out/figures/
+          if-no-files-found: warn
           retention-days: 3
 
   record:
@@ -165,6 +184,24 @@ jobs:
             cat "${RUNNER_TEMP}/in/summary.md"
           } > "${dir}/${GITHUB_RUN_ID}.md"
           cp "${RUNNER_TEMP}/in/results.json" "${dir}/${GITHUB_RUN_ID}.json"
+          python3 -I - <<'PY'
+          import os
+          import sys
+          from pathlib import Path
+
+          sys.path.insert(0, "src")
+          from terrain.explore_figures import ExploreError, stage_figures
+
+          try:
+              stage_figures(
+                  Path(os.environ["RUNNER_TEMP"]) / "in",
+                  Path("research/explore-runs") / os.environ["SCRIPT"][:4],
+                  os.environ["GITHUB_RUN_ID"],
+              )
+          except ExploreError as exc:
+              print(f"::error::{exc}")
+              sys.exit(1)
+          PY
 
       - name: Get a GitHub App token
         id: app-token
@@ -191,6 +228,9 @@ jobs:
           bot_id="$(gh api "users/${APP_SLUG}%5Bbot%5D" --jq .id)"
           git -c core.hooksPath=/dev/null switch -c "${branch}"
           git add -- "research/explore-runs/${idea}/${GITHUB_RUN_ID}.md" "research/explore-runs/${idea}/${GITHUB_RUN_ID}.json"
+          if [ -d "research/explore-runs/${idea}/${GITHUB_RUN_ID}/figures" ]; then
+            git add -- "research/explore-runs/${idea}/${GITHUB_RUN_ID}/figures"
+          fi
           git -c core.hooksPath=/dev/null \
             -c user.name="${APP_SLUG}[bot]" \
             -c user.email="${bot_id}+${APP_SLUG}[bot]@users.noreply.github.com" \

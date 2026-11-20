@@ -293,6 +293,30 @@ def check_envelope(c: Any, library: dict[str, LibraryRule], problems: list[str])
 # -- the kill-rule library and the approved publishers ----------------------------------
 
 
+# A fork's evidence is at least one run record of the parent. It may also cite
+# a file that already exists under one of these directories (decision 0015).
+EVIDENCE_DIRS = (
+    "data/contracts/",
+    "research/ideas/",
+    "research/decisions/",
+    "research/campaigns/",
+)
+
+
+def _evidence_kind(path: str) -> str | None:
+    """'record' or 'file' when `path` may be cited as evidence; None otherwise."""
+    if not path or path.startswith(("/", "\\")) or "\\" in path:
+        return None
+    parts = path.split("/")
+    if ".." in parts or "" in parts:
+        return None
+    if path.startswith("research/explore-runs/") and path.endswith((".md", ".json")):
+        return "record"
+    if path.startswith(EVIDENCE_DIRS):
+        return "file"
+    return None
+
+
 def _read(root: Path, path: str, overlay: Overlay | None = None) -> str | None:
     if overlay and path in overlay:
         return overlay[path]
@@ -915,13 +939,27 @@ def check(
             )
         # evidence, and the parent's verdict on record
         verdicts = parent_records(root, c, parent)
+        records: list[str] = []
         for e in f.evidence:
-            if not (e.startswith("research/explore-runs/") and e.endswith((".md", ".json"))):
-                problems.append(f"{where}: evidence '{e}' is not a run record")
-            elif _read(root, e, overlay) is None:
+            kind = _evidence_kind(e)
+            if kind is None:
+                problems.append(
+                    f"{where}: evidence '{e}' is not a run record or a file under "
+                    "data/contracts/, research/ideas/, research/decisions/ or "
+                    "research/campaigns/"
+                )
+                continue
+            try:
+                missing = _read(root, e, overlay) is None
+            except UnicodeDecodeError:
+                problems.append(f"{where}: evidence '{e}' is not a text file")
+                continue
+            if missing:
                 problems.append(f"{where}: evidence '{e}' does not exist on main")
-        md = {e: e.removesuffix(".json") + ".md" if e.endswith(".json") else e for e in f.evidence}
-        on_record = [e for e in f.evidence if md[e] in verdicts]
+            elif kind == "record":
+                records.append(e)
+        md = {e: e.removesuffix(".json") + ".md" if e.endswith(".json") else e for e in records}
+        on_record = [e for e in records if md[e] in verdicts]
         if not on_record:
             problems.append(
                 f"{where}: no evidence is a run record of {parent.script} (the parent's script)"

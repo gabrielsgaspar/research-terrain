@@ -88,6 +88,66 @@ def test_write_results_enforces_limits(tmp_path):
         write_results(tmp_path, "ok", {"big": "y" * 200_001})
 
 
+def _png(extra: int = 8) -> bytes:
+    return b"\x89PNG\r\n\x1a\n" + b"\x00" * extra
+
+
+def test_figures_keep_the_count_size_and_png_limits(tmp_path):
+    from terrain.explore_figures import FIGURE_MAX_BYTES, check_figures, stage_figures
+
+    assert check_figures(tmp_path) == []
+    folder = tmp_path / "figures"
+    folder.mkdir()
+    (folder / "b.png").write_bytes(_png())
+    (folder / "a.png").write_bytes(_png(FIGURE_MAX_BYTES - 8))
+    assert check_figures(tmp_path) == ["a.png", "b.png"]
+    (folder / "a.png").write_bytes(_png(FIGURE_MAX_BYTES - 7))
+    with pytest.raises(ExploreError, match="over 400 KB"):
+        check_figures(tmp_path)
+    (folder / "a.png").unlink()
+    (folder / "notes.txt").write_bytes(b"no")
+    with pytest.raises(ExploreError, match="not a PNG file name"):
+        check_figures(tmp_path)
+    (folder / "notes.txt").unlink()
+    (folder / "c.png").write_bytes(b"not a png")
+    with pytest.raises(ExploreError, match="is not a PNG"):
+        check_figures(tmp_path)
+    (folder / "c.png").unlink()
+    (folder / "more").mkdir()
+    with pytest.raises(ExploreError, match="only PNG"):
+        check_figures(tmp_path)
+    (folder / "more").rmdir()
+    for i in range(8):
+        (folder / f"f{i}.png").write_bytes(_png())
+    with pytest.raises(ExploreError, match="at most 8"):
+        check_figures(tmp_path)
+
+    record = tmp_path / "record"
+    record.mkdir()
+    (record / "99.md").write_text("# run\n", encoding="utf-8")
+    out = tmp_path / "out"
+    (out / "figures").mkdir(parents=True)
+    (out / "figures" / "money.png").write_bytes(_png())
+    assert stage_figures(out, record, "99") == ["money.png"]
+    text = (record / "99.md").read_text(encoding="utf-8")
+    assert "[money.png](99/figures/money.png)" in text
+    assert (record / "99" / "figures" / "money.png").read_bytes().startswith(b"\x89PNG")
+    bare = tmp_path / "bare"
+    bare.mkdir()
+    (bare / "1.md").write_text("x\n", encoding="utf-8")
+    assert stage_figures(tmp_path / "none", bare, "1") == []
+    assert (bare / "1.md").read_text(encoding="utf-8") == "x\n"
+
+
+def test_explore_run_workflow_commits_figures_and_keeps_its_permissions():
+    text = (REPO / ".github" / "workflows" / "explore-run.yml").read_text(encoding="utf-8")
+    record = text.split("  record:", 1)[1]
+    assert "check_figures" in text and "stage_figures" in text
+    assert 'git add -- "research/explore-runs/${idea}/${GITHUB_RUN_ID}/figures"' in record
+    assert "id-token" not in record
+    assert "permission-contents: write" not in record.split("Get a GitHub App token", 1)[0]
+
+
 def test_every_explore_script_restricts_to_the_exploration_half():
     for script in sorted((REPO / "explore").glob("*.py")):
         source = script.read_text(encoding="utf-8")

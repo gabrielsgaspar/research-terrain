@@ -44,6 +44,7 @@ from terrain.campaigns.spec import (
     parse_campaign,
     path_allowed,
 )
+from terrain.explore_figures import FIGURES_MAX_COUNT, is_record_figure
 
 TASK_BRANCH = re.compile(r"^agent/issue-(\d+)$")
 RECORD_BRANCH = re.compile(r"^explore/(\d{4}_[a-z0-9_]{1,60})-(\d+)$")
@@ -346,10 +347,17 @@ def evaluate(pr: PullRequest, ctx: GateContext) -> GateResult:
                 f"research/explore-runs/{idea}/{run_id}.md",
                 f"research/explore-runs/{idea}/{run_id}.json",
             )
-            bad = [f for f in pr.files if f not in allowed_files]
+            figures = [f for f in pr.files if is_record_figure(f, idea, run_id)]
+            bad = [f for f in pr.files if f not in allowed_files and f not in figures]
             if bad:
                 failures.append(
-                    f"a record PR may change only its record (.md and .json), not {bad[:5]}"
+                    f"a record PR may change only its record (.md and .json) and at most "
+                    f"{FIGURES_MAX_COUNT} figures next to it, not {bad[:5]}"
+                )
+            if len(figures) > FIGURES_MAX_COUNT:
+                failures.append(
+                    f"a record PR may include at most {FIGURES_MAX_COUNT} figures, "
+                    f"not {len(figures)}"
                 )
         else:
             stage, target = m_man.group(1), m_man.group(2)
