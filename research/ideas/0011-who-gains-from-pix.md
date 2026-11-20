@@ -1,7 +1,7 @@
 ---
 id: "0011"
 title: "Who gains from emendas Pix, deputies or mayors?"
-status: exploring
+status: dead
 created: 2026-11-20
 updated: 2026-11-20
 datasets:
@@ -141,10 +141,11 @@ above.
 - 2026-11-20: proposed (Gabriel's brief, 2026-11-20).
 - 2026-11-20: exploring. Campaign 0012 (`research/campaigns/0012-who-gains-from-pix/`)
   starts when this pull request merges.
+- 2026-11-20: dead, the recommendation of campaign 0012's close-out report (`research/campaigns/0012-who-gains-from-pix/report.md`); Gabriel accepts it by approving this pull request. The gate found no balanced mayoral window (0.5% fails on `fin_higher_ed`); the smallest cycle had 58 races, the H1 MDE was 0.735 and the placebo jump 0.0852, so kill rules k1 to k4 were met and no fork ran.
 
 ## Variants tried
 
-None yet.
+None: no fork was declared (campaign 0012).
 
 ## Log
 

@@ -16,6 +16,20 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-20: Who gains from emendas Pix: the mayoral gate is killed (idea 0011, issue #438)
+- Tried: campaign 0012 built the mayor and amendments panels, then ran a gate
+  on the exploration half (`research/explore-runs/0011/44768996266.md`) for
+  party incumbency in close mayoral races. The question was formed after
+  campaign 0011's exploration-half results.
+- Result: no window passes decision 0008's balance rule (0.5% fails on
+  `fin_higher_ed`, p 0.019). The smallest cycle had 58 races at the window,
+  the H1 MDE was 0.735 (limit 0.10) and the placebo jump was 0.0852. Kill
+  rules k1 to k4 were met; steps s7 to s12 were skipped. No fork ran.
+- Why: close mayoral races are too few on the exploration half for a
+  cycle-by-cycle contrast, and balance fails at the narrowest window.
+- Implication: the report (`research/campaigns/0012-who-gains-from-pix/report.md`)
+  recommends `dead`. Nothing here is a finding.
+
 ## 2026-11-19: Budget amendments, share and log reais per inhabitant: the gate and the main run survive (idea 0010, issue #423)
 - Tried: campaign 0011 ran a gate on the exploration half
   (`research/explore-runs/0010/44484340952.md`) and a main run for the
