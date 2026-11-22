@@ -138,8 +138,18 @@ NOT_IGNORED = [
     "paper/figures/x.pdf",
     "paper/figures/x.md",
     "harness/x.md",
+    ".claude/skills/x/SKILL.md",
+    ".claude/settings.json",
 ]
-IGNORED = ["data/x.parquet", "x.csv", "gha-creds-1.json", ".env", "key.pem", "build/x"]
+IGNORED = [
+    "data/x.parquet",
+    "x.csv",
+    "gha-creds-1.json",
+    ".env",
+    "key.pem",
+    "build/x",
+    ".claude/worktrees/x/AGENTS.md",
+]
 
 
 def _ignored(path):

@@ -65,6 +65,8 @@ safeguard of the exploration/confirmation split still holds?
    campaigns, and one new step starts per campaign per tick. The budget
    (tasks, explore runs, pipeline runs, model jobs) and the end date (at
    most 31 days) stop new steps; what is in flight finishes.
+   Amendment, 2026-11-22: at most three campaigns are active, not two
+   (Gabriel). Every other limit is unchanged.
 8. **The close-out is the report.** When nothing more can run, the tick
    files a close-out task. Its pull request holds the report, the ledger,
    one lessons entry and one status line for the idea. It touches owned

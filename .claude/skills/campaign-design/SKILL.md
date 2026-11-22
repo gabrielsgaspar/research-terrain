@@ -55,8 +55,8 @@ uv run python scripts/campaign.py status
 uv run python scripts/campaign.py validate
 ```
 
-Note which campaigns are active (at most two; never two on one idea) and
-which explore scripts, datasets and decisions exist. If two campaigns are
+Note which campaigns are active (at most three; never two on one idea) and
+which explore scripts, datasets and decisions exist. If three campaigns are
 already active, tell Gabriel now: this one can be designed but must start
 as `draft`.
 

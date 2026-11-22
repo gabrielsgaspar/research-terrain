@@ -35,7 +35,8 @@ can change a campaign while it runs.
    campaign folder.
 2. Merge that PR with `status: active`; the same PR sets the idea's status to
    `exploring` (the validator refuses an active campaign whose idea is not
-   exploring). The next tick opens the tracking issue. A
+   exploring). At most three campaigns are active at once, never two on
+   one idea. The next tick opens the tracking issue. A
    tick runs after each workflow a step waits on, with an hourly backup, or
    when you run `campaign-tick` by hand.
 3. The tick works through the steps in order, inside the budget: one task

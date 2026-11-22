@@ -143,6 +143,9 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
   `pyproject.toml` or `uv.lock`.
 - Python 3.12, ruff, pytest. Prefer the standard library, polars or duckdb for
   data, and pyfixest for regressions, unless the plan says otherwise.
+- Installed for analysis: pyfixest for regressions (fixed effects, Poisson),
+  scikit-learn for classifiers inside builds, and pyarrow only as pyfixest's
+  bridge from polars (pyfixest needs it to read a polars frame).
 
 ### Secrets
 
@@ -232,7 +235,7 @@ workflow carries it out; the `campaign-gate` check decides what may merge.
 - Kill rules are applied by code to the run's `results.json`. A campaign's
   explore script writes every key a kill rule reads, at the dotted path the
   rule names. A rule that cannot be applied stops the step; it never passes.
-- At most two campaigns are active, never two on the same idea. One task is
+- At most three campaigns are active, never two on the same idea. One task is
   in flight per campaign. Across all campaigns, at most three data-pipeline
   runs and one explore run are in flight, and an explore run waits for its
   own campaign's data-pipeline runs. Retries and the run after a repair

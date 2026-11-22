@@ -58,6 +58,9 @@ gha-creds-*.json
 .loop/
 .agent-*/
 
+# Claude Code sessions working in git worktrees (one per campaign).
+/.claude/worktrees/
+
 # Editors and OS
 .vscode/
 .idea/

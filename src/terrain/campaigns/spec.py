@@ -33,7 +33,7 @@ OPS = {"<", "<=", ">", ">=", "==", "!="}
 ON_KILL = {"stop", "skip_dependents", "continue"}
 IDENTIFIERS = {"none", "hashed"}
 REFEREE_IDS = ("R1", "R2", "R3", "R4", "R5", "R6", "R7")
-MAX_ACTIVE = 2
+MAX_ACTIVE = 3
 # A campaign with more than MAX_STEPS steps needs `oversize_reason`, in the
 # owner's words. Only for campaigns created on or after OVERSIZE_FROM, so the
 # 19-step campaigns 0005 and 0006 still validate.
