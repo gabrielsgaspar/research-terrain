@@ -3809,3 +3809,72 @@ def test_snapshot_reads_only_what_the_tick_needs(tmp_path):
     )
     assert [i.number for i in s.issues] == [1, 2, 3, 4, 5, 6]
     assert all(i.pr is None for i in s.issues)
+
+
+# -- decision 0019: the automatic build round and the reason on the status page -----------------
+
+
+def fix_round_comment(at: str = "2026-11-09T03:00:00Z") -> Comment:
+    body = "## Agent build: fix round\n\npytest failed.\n\n<!-- agent-build-fix: run=9 -->\n"
+    return Comment("github-actions[bot]", body, at)
+
+
+def stop_comment(text: str, at: str = "2026-11-09T04:00:00Z") -> Comment:
+    body = f"## Agent build: stopped\n\n{text}\n\n---\n_Written by the `agent-build` workflow._\n"
+    return Comment("github-actions[bot]", body, at)
+
+
+def test_an_automatic_round_counts_as_one_model_job(tmp_path):
+    root = make_repo(tmp_path)
+    plain = step_issue(root, [plan_comment()])
+    assert tick._model_jobs(plain) == 1
+    rounded = step_issue(root, [plan_comment(), fix_round_comment()])
+    assert tick._build_rounds(rounded) == 1 and tick._model_jobs(rounded) == 2
+    # with its pull request reviewed once: the plan, the round, the build and the review
+    reviewed = replace(rounded, pr=task_pr(root))
+    assert tick._model_jobs(reviewed) == 4
+    # only agent-build's own comments count
+    forged = Comment(OWNER, fix_round_comment().body, "2026-11-09T03:00:00Z")
+    assert tick._build_rounds(step_issue(root, [plan_comment(), forged])) == 0
+    # and the campaign's budget sees it
+    s = snap([tracking([ledger("started", "s1:filed")]), rounded])
+    view = tick.view(active_campaigns(root)[0], s, ctx(root))
+    assert view.used["max_model_jobs"] == 2
+
+
+def test_waiting_on_you_quotes_the_agents_last_comment(tmp_path):
+    root = make_repo(tmp_path)
+    labels = ("campaign", "explore", "agent-build", "needs-human")
+    said = (
+        "The builder stopped:\n\nThe full `uv run pytest` timed out <!-- hidden -->. " + "x" * 300
+    )
+    comments = [plan_comment(), fix_round_comment(), stop_comment(said)]
+    issue = step_issue(root, comments, labels=labels)
+    waiting = section(page_of(root, snap([tracking([ledger("started")]), issue])), "Waiting on you")
+    cause = "Cause: The builder stopped: The full `uv run pytest` timed out . xxx"
+    assert waiting.startswith(f"- Campaign 0001, step s1 (#10): blocked. {cause}")
+    assert "hidden" not in waiting and "Written by" not in waiting and "##" not in waiting
+    quoted = waiting.split("Cause: ", 1)[1].split(" Needs you", 1)[0]
+    assert quoted.endswith("x…") and len(quoted) == 201  # its first 200 characters, then "…"
+    assert NEEDS_YOU["needs_human"] in waiting
+    # the ledger keeps the fixed wording, so block ids stay as they were
+    blocked = [a for a in run_decide(root, snap([tracking([ledger("started")]), issue]))]
+    assert "Cause: an agent stopped and labelled it needs-human." in json.dumps(blocked)
+
+
+def test_waiting_on_you_quotes_the_pull_requests_note(tmp_path):
+    from terrain.campaigns.status import agent_reason
+
+    root = make_repo(tmp_path)
+    note = Comment(
+        "github-actions[bot]",
+        "## Agent review: stopped\n\nThe reviewer ran out of turns.\n\n---\n_footer_",
+        "2026-11-09T05:00:00Z",
+    )
+    pr = task_pr(root, labels=("needs-human",), agent_note=note)
+    st = tick.StepState("blocked", "x", cause="needs_human", pr=pr)
+    assert agent_reason(st) == "The reviewer ran out of turns."
+    # without needs-human on it, or with only a plan, there is no reason to quote
+    assert agent_reason(replace(st, pr=replace(pr, labels=()))) == ""
+    issue = step_issue(root, [plan_comment()], labels=("campaign", "needs-human"))
+    assert agent_reason(tick.StepState("blocked", issue=issue)) == ""

@@ -251,6 +251,14 @@ workflow carries it out; the `campaign-gate` check decides what may merge.
   close-out sets it to the report's recommendation (`promising`, `parked` or
   `dead`), and Gabriel accepts it by approving the close-out PR.
   `scripts/validate_records.py` fails on any drift.
+- Automatic fix round (decision 0019): when the first build of a campaign
+  task fails in a way the builder can fix (it stopped, left no commits, or
+  verify's ruff or pytest failed), agent-build posts one "## Agent build:
+  fix round" comment with the reason and the last 60 lines of the output,
+  and builds once more, from the first attempt's commits if verify failed.
+  Path, secret-scan and set-up failures still stop for Gabriel. The round
+  may not delete a test the first attempt wrote (verify checks), counts
+  as one model job, and if it fails too, the issue gets `needs-human`.
 - Self-repair (decision 0014), only with `self_repair: true`: a pipeline_run
   step still failing after both retries gets one repair task from a fixed
   template, limited to the allowed paths of the build tasks it comes after,

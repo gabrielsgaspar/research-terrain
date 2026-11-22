@@ -13,6 +13,10 @@ _REVIEW_HEAD = re.compile(r"^## Agent review: (Approve|Changes needed)", re.M)
 _REVIEWED_SHA = re.compile(r"Reviewed commit `([0-9a-f]{7,40})`")
 _REFEREE_ROW = re.compile(r"^\| (R[1-8]) \| [^|]*\| ([^|]+?) \|", re.M)
 PLAN_PREFIX = "## Agent plan: "
+# agent-build's comment that starts its one automatic fix round (decision 0019)
+BUILD_ROUND_PREFIX = "## Agent build: fix round"
+# who posts the agent workflows' comments (plans, reviews, stops, fix rounds)
+WORKFLOW_BOT = "github-actions[bot]"
 
 
 @dataclass(frozen=True)
@@ -86,6 +90,8 @@ class PullRequest:
     run_workflow: str = ""  # for explore/, data/ and forks/ branches: the run's workflow file
     # for a fork plan pull request: (path, text) of each added file, read at the head
     added_texts: tuple[tuple[str, str], ...] = ()
+    # the newest comment an agent workflow posted on the pull request (decision 0019)
+    agent_note: Comment | None = None
 
     def review_of_head(self) -> Review | None:
         mine = [r for r in self.reviews if self.head_sha.startswith(r.sha)]

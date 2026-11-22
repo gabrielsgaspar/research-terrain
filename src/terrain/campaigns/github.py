@@ -276,12 +276,9 @@ class GitHub:
                 ci = newest.get("conclusion")
         statuses = self.pages(f"/commits/{head_sha}/statuses", limit=1)
         gate = next((s["state"] for s in statuses if s.get("context") == "campaign-gate"), None)
+        notes = [c for c in self.comments(number) if c.author == REVIEW_BOT]
         reviews = tuple(
-            r
-            for c in self.comments(number)
-            if c.author == REVIEW_BOT
-            for r in [parse_review(c.body, c.created_at)]
-            if r is not None
+            r for c in notes for r in [parse_review(c.body, c.created_at)] if r is not None
         )
         latest: dict[str, str] = {}
         for rv in self.pages(f"/pulls/{number}/reviews", limit=3):
@@ -329,6 +326,7 @@ class GitHub:
             changes=changes,
             run_workflow=run_workflow,
             added_texts=added,
+            agent_note=max(notes, key=lambda c: c.created_at) if notes else None,
         )
 
     def _added_texts(

@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from terrain.campaigns import markers
-from terrain.campaigns.facts import Issue, Snapshot
+from terrain.campaigns.facts import PLAN_PREFIX, WORKFLOW_BOT, Comment, Issue, Snapshot
 from terrain.campaigns.gate import GateContext, closeout_paths
 from terrain.campaigns.spec import Campaign, read_front_matter
 from terrain.campaigns.tick import (
@@ -133,11 +133,41 @@ def _closeout_state(
 # -- the sections -------------------------------------------------------------------
 
 
+REASON_CHARS = 200  # of the agent's last comment, for a needs-human block (decision 0019)
+REPAIR_PREFIX = "the repair task: "
+
+
+def agent_reason(st: StepState) -> str:
+    """The start of the agent's last comment on the issue or pull request that carries
+    `needs-human`: its first REASON_CHARS characters, without headings, hidden
+    markers, the footer after `---` or line breaks. A plan is no reason (a plan
+    never stops a task), so it is skipped. "" if there is none."""
+    notes: list[Comment] = []
+    if st.issue and "needs-human" in st.issue.labels:
+        notes += [cm for cm in st.issue.comments if cm.author == WORKFLOW_BOT]
+    if st.pr and "needs-human" in st.pr.labels and st.pr.agent_note:
+        notes.append(st.pr.agent_note)
+    notes = [cm for cm in notes if not cm.body.startswith(f"{PLAN_PREFIX}Plan\n")]
+    if not notes:
+        return ""
+    body = max(notes, key=lambda cm: cm.created_at).body.replace("\r\n", "\n")
+    body = re.sub(r"<!--.*?-->", "", body.split("\n---\n", 1)[0], flags=re.S)
+    lines = [ln.strip() for ln in body.split("\n")]
+    lines = [ln for ln in lines if ln and not ln.startswith("#")]
+    text = " ".join(" ".join(lines).split())
+    return text if len(text) <= REASON_CHARS else text[:REASON_CHARS].rstrip() + "…"
+
+
 def _block_item(
     c: Campaign, label: str, st: StepState, snap: Snapshot, tracking: Issue | None
 ) -> str:
     cause = _safe(st.detail.strip())
-    stop = "" if cause.endswith(".") else "."
+    reason = agent_reason(st) if st.cause == "needs_human" else ""
+    if reason:
+        # what the agent said, not the fixed ledger wording (decision 0019)
+        prefix = REPAIR_PREFIX if st.detail.startswith(REPAIR_PREFIX) else ""
+        cause = _safe(prefix + reason)
+    stop = "" if cause.endswith((".", "…")) else "."
     action = NEEDS_YOU.get(st.cause, NEEDS_YOU_DEFAULT)
     where = _links(st, snap) or (f"#{tracking.number}" if tracking else "no links")
     item = (

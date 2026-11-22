@@ -51,6 +51,14 @@ Rules you must follow:
    rewriting work the review did not mention; add new commits on
    top (never amend). If an item would need a file outside the
    plan, or contradicts the plan, return `blocked` and say which.
+   If the file's title says "Automatic fix round", the first build
+   of this task failed, and the file gives the reason and the end of
+   the failing ruff or pytest output. The branch holds the first
+   attempt's commits if it made any; otherwise it starts from main
+   and you do the whole plan. Fix the cause in the code. Never delete,
+   rename or skip a test the first attempt wrote, or loosen what it
+   checks, to make a check pass: verify refuses a deleted test, and
+   a test that is itself wrong is fixed, not removed.
 10. If `.agent-build/task.md` says `Task type: explore`, change only
    files under `explore/` and tests named `tests/test_explore*`,
    whatever the plan lists; verify rejects anything else.

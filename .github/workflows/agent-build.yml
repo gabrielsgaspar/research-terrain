@@ -27,6 +27,17 @@ name: Agent build
 # as data next to the original plan, and pushes the new commits on top. Every
 # check below (guard, plan, verify's paths and secrets, ruff, pytest) runs
 # exactly as for a first build, over all the branch's commits.
+#
+# Automatic fix round (decision 0019): when the first build of a campaign
+# task fails in a way the builder can fix (it stopped, left no usable
+# commits, or verify's ruff or pytest failed), report posts one "## Agent
+# build: fix round" comment on the issue, with the reason and the last 60
+# lines of the failing output, and dispatches this workflow again with that
+# comment as review_comment. If verify failed, the job `prior` copies the
+# first run's commit bundle into the new run and the round starts from those
+# commits; otherwise it starts from main. One round per issue; if it fails
+# too, report adds needs-human. Every check runs exactly as for a first
+# build, and verify also refuses a round that deletes a first-attempt test.
 on:
   issues:
     types: [labeled]
@@ -37,7 +48,7 @@ on:
         type: string
         required: true
       review_comment:
-        description: "ID of the agent-review comment that asked for changes"
+        description: "ID of the agent-review comment that asked for changes, or of agent-build's own fix-round comment"
         type: string
         required: true
 
@@ -55,8 +66,95 @@ env:
   UV_CACHE_DIR: /home/runner/.cache/uv
 
 jobs:
+  # Decision 0019. For an automatic fix round that starts from the first
+  # attempt's commits, copy that run's commit bundle into this run. Reading
+  # another run's artifact needs actions: read, which the build job's token
+  # must never hold (Claude can read it), so it happens here, in a job that
+  # checks nothing out and runs no repository code. It only finds the run and
+  # the head commit the comment names; the build job checks the comment in
+  # full and that the copied bundle ends at that commit. For any other
+  # dispatch it does nothing.
+  prior:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      actions: read # read the first attempt's run and download its artifact
+      issues: read # read the fix-round comment
+    outputs:
+      head: ${{ steps.find.outputs.head }}
+    steps:
+      - name: Find the first attempt that the fix-round comment names
+        id: find
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          INPUT_ISSUE: ${{ inputs.issue }}
+          INPUT_COMMENT: ${{ inputs.review_comment }}
+        run: |
+          set -euo pipefail
+          [[ "${INPUT_ISSUE}" =~ ^[0-9]{1,7}$ ]] || { echo "::error::issue must be a number."; exit 1; }
+          [[ "${INPUT_COMMENT}" =~ ^[0-9]{1,15}$ ]] || { echo "::error::review_comment must be a number."; exit 1; }
+          gh api "repos/${REPO}/issues/comments/${INPUT_COMMENT}" > "${RUNNER_TEMP}/comment.json"
+          COMMENT="${RUNNER_TEMP}/comment.json" python3 -I - <<'PY'
+          import json, os, re, sys
+
+          comment = json.load(open(os.environ["COMMENT"], encoding="utf-8"))
+          body = comment.get("body") or ""
+          if not body.startswith("## Agent build: fix round"):
+              print("Not an automatic fix round: nothing to copy.")
+              sys.exit(0)
+          if comment["user"]["login"] != "github-actions[bot]" or not (comment.get("issue_url") or "").endswith(
+              "/issues/" + os.environ["INPUT_ISSUE"]
+          ):
+              print("::error::The fix-round comment is not agent-build's own comment on this issue.")
+              sys.exit(1)
+          # The last marker is the workflow's own; the text above it is quoted output.
+          found = re.findall(r"<!-- agent-build-fix: run=([0-9]{1,15})(?: head=([0-9a-f]{40}))? -->", body)
+          if not found:
+              print("::error::The fix-round comment has no agent-build-fix marker.")
+              sys.exit(1)
+          run, head = found[-1]
+          if not head:
+              print("The round starts from main: nothing to copy.")
+              sys.exit(0)
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"run={run}\nhead={head}\n")
+          PY
+
+      - name: Check that the run is an agent-build run
+        if: steps.find.outputs.head != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN: ${{ steps.find.outputs.run }}
+        run: |
+          set -euo pipefail
+          path="$(gh api "repos/${REPO}/actions/runs/${RUN}" --jq .path)"
+          [ "${path}" = ".github/workflows/agent-build.yml" ] || { echo "::error::Run ${RUN} is not an agent-build run."; exit 1; }
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: steps.find.outputs.head != ''
+        with:
+          name: agent-build
+          path: ${{ runner.temp }}/prior
+          run-id: ${{ steps.find.outputs.run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: steps.find.outputs.head != ''
+        with:
+          name: agent-prior
+          path: ${{ runner.temp }}/prior/agent.bundle
+          if-no-files-found: error
+          retention-days: 7
+
   build:
-    if: github.event.label.name == 'agent-build' || github.event_name == 'workflow_dispatch'
+    needs: prior
+    # prior is skipped for a labelled issue, so the build runs unless the run
+    # was cancelled. If prior failed, the build still runs and its context
+    # step stops with the reason, so report can post it.
+    if: ${{ !cancelled() && (github.event.label.name == 'agent-build' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-26.04
     timeout-minutes: 45
     # Python and the uv cache live outside every path the Build step's Read
@@ -79,6 +177,16 @@ jobs:
       fix_round: ${{ steps.context.outputs.fix_round }}
       dispatched: ${{ steps.context.outputs.dispatched }}
       task_type: ${{ steps.context.outputs.task_type }}
+      # Decision 0019: the issue's title (a dispatched run has no issue event),
+      # whether it is a campaign task, the automatic round this run is
+      # (bundle or fresh, or empty), and whether a failure is one the builder
+      # can fix in that round.
+      title: ${{ steps.context.outputs.title }}
+      campaign: ${{ steps.context.outputs.campaign }}
+      retry: ${{ steps.context.outputs.retry }}
+      prior_run: ${{ steps.context.outputs.prior_run }}
+      prior_head: ${{ steps.context.outputs.prior_head }}
+      fixable: ${{ steps.result.outputs.fixable || steps.commits.outputs.fixable }}
     steps:
       # 0. Context. Which issue, who asked, and (for a fix round) the review.
       #    Reads only, through the API; the guard below still decides.
@@ -95,6 +203,8 @@ jobs:
           EVENT_ISSUE: ${{ github.event.issue.number }}
           INPUT_ISSUE: ${{ inputs.issue }}
           INPUT_COMMENT: ${{ inputs.review_comment }}
+          APP_BOT: ${{ vars.AGENT_APP_BOT }}
+          PRIOR_HEAD: ${{ needs.prior.outputs.head }}
         run: |
           set -euo pipefail
           fail() { printf 'reason=%s\n' "$1" >> "${GITHUB_OUTPUT}"; echo "::error::$1"; exit 1; }
@@ -116,6 +226,18 @@ jobs:
           jq -r .title "${RUNNER_TEMP}/issue.json" > "${RUNNER_TEMP}/agent-out/issue-title.txt"
           jq -r '.body // ""' "${RUNNER_TEMP}/issue.json" > "${RUNNER_TEMP}/agent-out/issue-body.md"
           echo "author=$(jq -r .user.login "${RUNNER_TEMP}/issue.json")" >> "${GITHUB_OUTPUT}"
+          delimiter="EOF_$(openssl rand -hex 16)"
+          printf 'title<<%s\n%s\n%s\n' "${delimiter}" "$(< "${RUNNER_TEMP}/agent-out/issue-title.txt")" "${delimiter}" >> "${GITHUB_OUTPUT}"
+          # A campaign task (decision 0019): filed by the agent App, labelled
+          # campaign, with a step, repair or close-out marker.
+          campaign=false
+          if [ -n "${APP_BOT}" ] && jq -e --arg app "${APP_BOT}" \
+            '([.labels[].name] | index("campaign") != null) and .user.login == $app
+              and ((.body // "") | test("<!-- campaign-(step|repair|closeout): [0-9]{4}"))' \
+            "${RUNNER_TEMP}/issue.json" > /dev/null; then
+            campaign=true
+          fi
+          echo "campaign=${campaign}" >> "${GITHUB_OUTPUT}"
           # Typed tasks: an issue labelled `explore` may change only explore/
           # and tests/test_explore*; verify enforces it (AGENTS.md).
           if [ "$(jq -r '[.labels[].name] | index("explore") != null' "${RUNNER_TEMP}/issue.json")" = true ]; then
@@ -130,6 +252,55 @@ jobs:
           branch="agent/issue-${issue}"
           gh api "repos/${REPO}/issues/comments/${INPUT_COMMENT}" > "${RUNNER_TEMP}/review.json" \
             || fail "Could not read review comment ${INPUT_COMMENT}."
+          # Decision 0019: agent-build's own automatic fix round. The comment
+          # must be report's fix-round comment on this issue, the only one it
+          # has, on a campaign task. Its text goes to review.md as data. If it
+          # names the first attempt's head commit, the prior job must have
+          # copied a bundle that ends there (the branch step checks the end).
+          if [ "$(jq -r '(.body // "") | startswith("## Agent build: fix round")' "${RUNNER_TEMP}/review.json")" = true ]; then
+            [ "${campaign}" = true ] || fail "Automatic fix round refused: #${issue} is not a campaign task filed by the agent App."
+            problem="$(REVIEW="${RUNNER_TEMP}/review.json" ISSUE_NUMBER="${issue}" \
+              OUT="${RUNNER_TEMP}/agent-out/review.md" python3 -I - <<'PY'
+          import json, os, re, sys
+
+          review = json.load(open(os.environ["REVIEW"], encoding="utf-8"))
+          body = review.get("body") or ""
+          problems = []
+          if review["user"]["login"] != "github-actions[bot]":
+              problems.append("the comment is not from github-actions[bot]")
+          if not (review.get("issue_url") or "").endswith("/issues/" + os.environ["ISSUE_NUMBER"]):
+              problems.append("the comment is not on #" + os.environ["ISSUE_NUMBER"])
+          # The last marker is the workflow's own; the text above it is quoted output.
+          found = list(re.finditer(r"<!-- agent-build-fix: run=([0-9]{1,15})(?: head=([0-9a-f]{40}))? -->", body))
+          if not found:
+              problems.append("the comment has no agent-build-fix marker")
+          if problems:
+              print("Automatic fix round refused: " + "; ".join(problems) + ".")
+              sys.exit(1)
+          marker = found[-1]
+          run, head = marker.group(1), marker.group(2) or ""
+          if head and os.environ.get("PRIOR_HEAD") != head:
+              print(
+                  f"The first attempt's commits (run {run}) could not be copied into this run, so the "
+                  "automatic fix round cannot start from them. Its artifact may have expired (artifacts "
+                  "last 7 days). A person must decide."
+              )
+              sys.exit(1)
+          text = body[: marker.start()].split("\n", 1)[1] if "\n" in body[: marker.start()] else ""
+          with open(os.environ["OUT"], "w", encoding="utf-8") as out:
+              out.write("# Automatic fix round (from agent-build, decision 0019)\n\n" + text.strip() + "\n")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"retry={'bundle' if head else 'fresh'}\nprior_run={run}\nprior_head={head}\n")
+          PY
+            )" || fail "${problem}"
+            ids="$(gh api --paginate "repos/${REPO}/issues/${issue}/comments?per_page=100" \
+              --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("## Agent build: fix round"))) | .id')" \
+              || fail "Could not read the comments of #${issue}."
+            [ "${ids}" = "${INPUT_COMMENT}" ] || fail "#${issue} has had its one automatic fix round already (decision 0019). A person must decide."
+            echo "fix_round=" >> "${GITHUB_OUTPUT}"
+            echo "Automatic fix round for #${issue} (comment ${INPUT_COMMENT})."
+            exit 0
+          fi
           pr="$(jq -r '.issue_url | split("/") | last' "${RUNNER_TEMP}/review.json")"
           gh api "repos/${REPO}/pulls/${pr}" > "${RUNNER_TEMP}/pr.json" || fail "Comment ${INPUT_COMMENT} is not on a pull request."
           REVIEW="${RUNNER_TEMP}/review.json" PRJSON="${RUNNER_TEMP}/pr.json" BRANCH_NAME="${branch}" \
@@ -417,15 +588,36 @@ jobs:
           cache-local-path: /opt/uv-cache
       - run: uv sync --locked --managed-python
 
+      # Decision 0019: the first attempt's bundle, copied into this run by
+      # the prior job. Same run, so no extra permission.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: steps.context.outputs.retry == 'bundle'
+        with:
+          name: agent-prior
+          path: ${{ runner.temp }}/agent-prior
+
       # 5. The branch, and the issue and plan as files that Claude reads as
       #    data. Text goes through env vars, never inline in the script.
-      #    .agent-build/ is excluded locally so it cannot be committed.
+      #    .agent-build/ is excluded locally so it cannot be committed, and so
+      #    are the placeholders Claude Code's sandbox runtime mounts over the
+      #    files and folders it protects from writes (decision 0019): where
+      #    one does not exist, bwrap creates an empty mount point, which git
+      #    inside the sandbox lists as untracked (run 45034395581 showed
+      #    .bashrc, .gitconfig, .idea, .mcp.json). The list is the runtime's
+      #    own, plus the .claude/ paths Claude Code adds to it. info/exclude
+      #    hides only untracked files; verify still checks every committed
+      #    path.
+      #    An automatic fix round from a bundle starts from the first
+      #    attempt's commits; its base stays their fork point from main, so
+      #    verify checks those commits again with the new ones.
       - name: Create the branch and write the issue and plan to files
         id: branch
         env:
           FIX_ROUND: ${{ steps.context.outputs.fix_round }}
           PR_HEAD: ${{ steps.context.outputs.pr_head }}
           TASK_TYPE: ${{ steps.context.outputs.task_type }}
+          RETRY: ${{ steps.context.outputs.retry }}
+          PRIOR_HEAD: ${{ steps.context.outputs.prior_head }}
         run: |
           set -euo pipefail
           fail() { printf 'reason=%s\n' "$1" >> "${GITHUB_OUTPUT}"; echo "::error::$1"; exit 1; }
@@ -438,8 +630,19 @@ jobs:
               2) ;;
               *) fail "Could not check whether ${BRANCH} exists." ;;
             esac
-            echo "base_sha=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
-            git switch -c "${BRANCH}"
+            if [ "${RETRY}" = bundle ]; then
+              bundle="${RUNNER_TEMP}/agent-prior/agent.bundle"
+              g bundle verify "${bundle}" || fail "The first attempt's commit bundle is not valid."
+              g fetch --no-recurse-submodules "${bundle}" "refs/heads/${BRANCH}:refs/heads/${BRANCH}" \
+                || fail "Could not load the first attempt's commits from the bundle."
+              [ "$(g rev-parse "refs/heads/${BRANCH}")" = "${PRIOR_HEAD}" ] \
+                || fail "The first attempt's bundle does not end at ${PRIOR_HEAD:0:12}, the commit the fix-round comment names."
+              echo "base_sha=$(g merge-base HEAD "refs/heads/${BRANCH}")" >> "${GITHUB_OUTPUT}"
+              g switch --no-recurse-submodules "${BRANCH}"
+            else
+              echo "base_sha=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
+              git switch -c "${BRANCH}"
+            fi
           else
             [ "${status}" = 0 ] || fail "Fix round: branch ${BRANCH} does not exist."
             g fetch --no-recurse-submodules origin "refs/heads/${BRANCH}:refs/heads/${BRANCH}"
@@ -450,6 +653,11 @@ jobs:
             g switch --no-recurse-submodules "${BRANCH}"
           fi
           echo ".agent-build/" >> .git/info/exclude
+          # sandbox placeholders (see above): files, then folders
+          printf '/%s\n' .gitconfig .gitmodules .bashrc .bash_profile .zshrc .zprofile .profile .ripgreprc .mcp.json \
+            .vscode .idea .claude/commands .claude/agents \
+            .claude/hooks .claude/launch.json .claude/loop.md .claude/output-styles .claude/routines \
+            .claude/settings.local.json .claude/workflows >> .git/info/exclude
           mkdir -p .agent-build
           {
             printf '# %s\n\n' "$(< "${RUNNER_TEMP}/agent-out/issue-title.txt")"
@@ -457,7 +665,7 @@ jobs:
           } > .agent-build/issue.md
           cp "${RUNNER_TEMP}/agent-out/plan.md" .agent-build/plan.md
           printf 'Task type: %s\n' "${TASK_TYPE}" > .agent-build/task.md
-          if [ -n "${FIX_ROUND}" ]; then
+          if [ -n "${FIX_ROUND}" ] || [ -n "${RETRY}" ]; then
             cp "${RUNNER_TEMP}/agent-out/review.md" .agent-build/review.md
           fi
 
@@ -568,6 +776,9 @@ jobs:
             echo "The builder returned done."
             exit 0
           fi
+          # Decision 0019: the builder stopped or gave no usable result, so
+          # its one automatic fix round (if any) starts from main.
+          echo "fixable=fresh" >> "${GITHUB_OUTPUT}"
           if [ "${status}" = "blocked" ] && [ -n "${summary}" ]; then
             clean=1
             for secret in "${CLAUDE_CODE_OAUTH_TOKEN:-}" "${JOB_TOKEN:-}"; do
@@ -623,9 +834,18 @@ jobs:
               fail "Commit ${sha:0:12} changes .gitmodules. Submodules are not allowed."
             fi
           done
-          [ -z "$(g status --porcelain --ignore-submodules=all)" ] || fail "The builder left uncommitted changes."
+          # The sandbox's placeholders are in .git/info/exclude (step 5), so
+          # they never count as uncommitted changes. These two failures are
+          # the builder's to fix (decision 0019); the ones above are not.
+          if [ -n "$(g status --porcelain --ignore-submodules=all)" ]; then
+            echo "fixable=fresh" >> "${GITHUB_OUTPUT}"
+            fail "The builder left uncommitted changes."
+          fi
           count="$(g rev-list --count "${BASE_SHA}..HEAD")"
-          [ "${count}" -gt 0 ] || fail "The builder made no commits."
+          if [ "${count}" -le 0 ]; then
+            echo "fixable=fresh" >> "${GITHUB_OUTPUT}"
+            fail "The builder made no commits."
+          fi
           g bundle create "${RUNNER_TEMP}/agent-out/agent.bundle" "${BASE_SHA}..${BRANCH}"
           echo "Bundled ${count} commit(s)."
 
@@ -663,8 +883,14 @@ jobs:
     permissions:
       contents: read # check out the repo
     outputs:
-      reason: ${{ steps.load.outputs.reason || steps.secrets.outputs.reason || steps.paths.outputs.reason || steps.checks.outputs.reason }}
+      reason: ${{ steps.load.outputs.reason || steps.secrets.outputs.reason || steps.paths.outputs.reason || steps.kept.outputs.reason || steps.checks.outputs.reason }}
       head_sha: ${{ steps.load.outputs.head_sha }}
+      # Decision 0019: a failed ruff or pytest, its last 60 lines, and the
+      # first-attempt tests an automatic round changed.
+      fixable: ${{ steps.checks.outputs.fixable }}
+      check: ${{ steps.checks.outputs.check }}
+      tail: ${{ steps.checks.outputs.tail }}
+      round_tests: ${{ steps.kept.outputs.changed }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -975,20 +1201,159 @@ jobs:
           print("Every commit's paths are allowed:", json.dumps(sorted(changed)))
           EOF
 
+      # Decision 0019: an automatic fix round may not pass by dropping tests.
+      # - Every test the first attempt's commits wrote (each test function
+      #   and method of its tests/**/test_*.py files, at its head) still
+      #   exists at the new head (a bundle round only: a fresh round has no
+      #   first-attempt commits).
+      # - Every test file and test name the plan's Done when list names in
+      #   backticks exists at the new head, unless the plan deletes that file.
+      # The files are read with ast from git objects; no test code runs here.
+      # The first-attempt tests the round changed go to the PR body.
+      - name: Check that an automatic fix round keeps the tests
+        id: kept
+        if: needs.build.outputs.retry != ''
+        env:
+          BASE_SHA: ${{ needs.build.outputs.base_sha }}
+          PRIOR_HEAD: ${{ needs.build.outputs.prior_head }}
+          PLAN: ${{ runner.temp }}/agent-in/plan.md
+        run: |
+          set -euo pipefail
+          python3 -I - <<'EOF'
+          import ast, json, os, re, subprocess, sys
+
+          HEADER = re.compile(r"^(?:\*\*(.+?)\*\*:?|#{1,6}\s+(.+?))\s*$")
+          TICKED = re.compile(r"`([^`\n]+)`")
+          TEST_FILE = re.compile(r"^tests/(?:[A-Za-z0-9_]+/)*test_[A-Za-z0-9_]*\.py$")
+          TEST_NAME = re.compile(r"^test_[A-Za-z0-9_]*$")
+          FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef)
+
+
+          def git(*args):
+              cmd = ["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-c", "submodule.recurse=false", *args]
+              return subprocess.run(cmd, check=True, capture_output=True).stdout.decode("utf-8", "replace")
+
+
+          def section(text, name):
+              lines, inside = [], False
+              for line in text.splitlines():
+                  match = HEADER.match(line.strip())
+                  if match:
+                      title = (match.group(1) or match.group(2)).strip().rstrip(":")
+                      inside = title.strip().lower() == name.lower()
+                  elif line.strip() == "---":
+                      inside = False
+                  elif inside:
+                      lines.append(line)
+              return lines
+
+
+          def files_at(rev):
+              return {p for p in git("ls-tree", "-r", "-z", "--name-only", "--full-tree", rev).split("\0") if p}
+
+
+          def tests_at(rev, path):
+              """{"test_x" or "TestY::test_z": its code} in one test file, or None if it does not parse."""
+              try:
+                  tree = ast.parse(git("show", f"{rev}:{path}"))
+              except SyntaxError:
+                  return None
+              found = {}
+              for node in tree.body:
+                  if isinstance(node, FUNCTIONS) and node.name.startswith("test"):
+                      found[node.name] = ast.unparse(node)
+                  elif isinstance(node, ast.ClassDef) and node.name.startswith("Test"):
+                      for item in node.body:
+                          if isinstance(item, FUNCTIONS) and item.name.startswith("test"):
+                              found[f"{node.name}::{item.name}"] = ast.unparse(item)
+              return found
+
+
+          def finish(problems, changed):
+              out = open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8")
+              if problems:
+                  for problem in problems:
+                      print(f"::error::{problem}")
+                  reason = "The automatic fix round dropped tests (decision 0019): " + "; ".join(problems)
+                  out.write("reason=" + reason[:1500] + "\n")
+                  sys.exit(1)
+              out.write("changed=" + (", ".join(changed) or "none")[:1000] + "\n")
+              print("The round keeps every first-attempt test and every test the Done when list names.")
+
+
+          base, prior = os.environ["BASE_SHA"], os.environ.get("PRIOR_HEAD", "")
+          now_files = files_at("HEAD")
+          problems, changed = [], []
+          if prior:
+              then_files = files_at(prior)
+              written = git("diff", "--name-only", "-z", "--no-renames", base, prior).split("\0")
+              for path in sorted(p for p in written if TEST_FILE.match(p) and p in then_files):
+                  before = tests_at(prior, path) or {}
+                  after = tests_at("HEAD", path) if path in now_files else {}
+                  if after is None:
+                      problems.append(f"{json.dumps(path)} no longer parses as Python")
+                      continue
+                  gone = sorted(set(before) - set(after))
+                  if gone:
+                      problems.append(f"{json.dumps(path)} lost the first attempt's tests {', '.join(gone[:10])}")
+                  changed += [f"{path}::{n}" for n in sorted(before) if n in after and after[n] != before[n]]
+
+          plan = open(os.environ["PLAN"], encoding="utf-8").read()
+          listed = re.search(r"<!-- agent-files: (\[.*?\]) -->", plan, re.S)
+          deleted = {i["path"] for i in json.loads(listed.group(1)) if i.get("change") == "delete"} if listed else set()
+          names = {}
+          for path in sorted(p for p in now_files if TEST_FILE.match(p)):
+              for name in tests_at("HEAD", path) or {}:
+                  names.setdefault(name.rsplit("::", 1)[-1], path)
+          for token in TICKED.findall("\n".join(section(plan, "Done when"))):
+              token = token.strip().removeprefix("./")
+              path, _, name = token.partition("::")
+              if TEST_FILE.match(path):
+                  if path in deleted:
+                      continue
+                  if path not in now_files:
+                      problems.append(f"the plan's Done when names {json.dumps(path)}, which does not exist")
+                  elif name and name.rsplit("::", 1)[-1] not in {n.rsplit("::", 1)[-1] for n in tests_at("HEAD", path) or {}}:
+                      problems.append(f"the plan's Done when names {json.dumps(token)}, which does not exist")
+              elif TEST_NAME.match(token) and token not in names:
+                  problems.append(f"the plan's Done when names {token}, and no test file defines it")
+          finish(list(dict.fromkeys(problems)), changed)
+          EOF
+
       - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           enable-cache: false
           cache-local-path: /home/runner/.cache/uv
 
+      # A failed ruff or pytest is one the builder can fix (decision 0019):
+      # report quotes the last 60 lines of its output in the fix-round
+      # comment, without terminal colours and with each line cut to 300
+      # characters. uv sync failing is not: pyproject.toml and uv.lock are
+      # not the builder's to change.
       - name: ruff check, ruff format --check, pytest
         id: checks
         run: |
           set -euo pipefail
           fail() { printf 'reason=%s\n' "$1" >> "${GITHUB_OUTPUT}"; echo "::error::$1"; exit 1; }
+          log="${RUNNER_TEMP}/check.log"
+          fixable() {
+            local delimiter
+            delimiter="EOF_$(openssl rand -hex 16)"
+            {
+              echo "fixable=bundle"
+              echo "check=$1"
+              echo "tail<<${delimiter}"
+              python3 -I -c 'import re, sys
+          lines = open(sys.argv[1], encoding="utf-8", errors="replace").read().splitlines()[-60:]
+          print("\n".join(re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", line)[:300] for line in lines))' "${log}"
+              echo "${delimiter}"
+            } >> "${GITHUB_OUTPUT}"
+            fail "$1 failed."
+          }
           uv sync --locked || fail "uv sync --locked failed: pyproject.toml and uv.lock do not match."
-          uv run ruff check . || fail "ruff check failed."
-          uv run ruff format --check . || fail "ruff format --check failed."
-          uv run pytest || fail "pytest failed."
+          uv run ruff check . 2>&1 | tee "${log}" || fixable "ruff check"
+          uv run ruff format --check . 2>&1 | tee "${log}" || fixable "ruff format --check"
+          uv run pytest 2>&1 | tee "${log}" || fixable "pytest"
 
       # pytest ran Claude's code in this checkout, so it is deleted before
       # actions/checkout's post-job step can run git in it with the job
@@ -1129,10 +1494,14 @@ jobs:
           REPO: ${{ github.repository }}
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
           ISSUE: ${{ needs.build.outputs.issue }}
-          ISSUE_TITLE: ${{ github.event.issue.title }}
+          # A dispatched automatic fix round has no issue event (decision 0019).
+          ISSUE_TITLE: ${{ github.event.issue.title || needs.build.outputs.title }}
           PLAN: ${{ runner.temp }}/agent-in/plan.md
           PLAN_URL: ${{ needs.build.outputs.plan_url }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RETRY: ${{ needs.build.outputs.retry }}
+          FIRST_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ needs.build.outputs.prior_run }}
+          ROUND_TESTS: ${{ needs.verify.outputs.round_tests }}
         run: |
           set -euo pipefail
           fail() { printf 'reason=%s\n' "$1" >> "${GITHUB_OUTPUT}"; echo "::error::$1"; exit 1; }
@@ -1163,6 +1532,19 @@ jobs:
           print("A person reviews and merges; the workflow never merges.\n")
           print("## Done when (from the plan)\n")
           print(done_when + "\n")
+          retry = os.environ.get("RETRY", "")
+          if retry:
+              print("## Automatic fix round (decision 0019)\n")
+              start = (
+                  "from the first attempt's commits"
+                  if retry == "bundle"
+                  else "from main, since the first attempt left no commits"
+              )
+              print(f"The [first build]({os.environ['FIRST_URL']}) failed, so this change came through ", end="")
+              print(f"one automatic fix round, {start}. Verify checked that no first-attempt test was deleted.")
+              if retry == "bundle":
+                  print(f"First-attempt tests that the round changed: {os.environ.get('ROUND_TESTS') or 'none'}.")
+              print()
           print("---")
           print(f"_[Run]({os.environ['RUN_URL']}). verify passed: paths against the plan, secret scan, ruff check, ruff format --check, pytest._")
           EOF
@@ -1179,26 +1561,101 @@ jobs:
     timeout-minutes: 5
     permissions:
       issues: write # one comment and the needs-human label; nothing else
+      actions: write # decision 0019: dispatch this workflow once for the automatic fix round
     steps:
       # The reason comes from our own fixed messages, or from Claude's
       # summary after build checked it. It is checked for token prefixes again
       # here, and sent through a file, never through the shell.
-      - name: Comment on the issue and add needs-human
+      # Decision 0019: after the first build of a campaign task, a failure
+      # the builder can fix starts one automatic fix round instead: one
+      # "## Agent build: fix round" comment (the reason, the last 60 lines of
+      # the failing ruff or pytest, and a marker naming this run and, if
+      # verify failed, the head commit it checked), then a dispatch of this
+      # workflow with that comment. Only if the issue has no fix-round
+      # comment yet. HTML comments in the quoted text are defused, so only
+      # the workflow's own marker is one. If the dispatch fails, or the
+      # round itself fails, the issue gets needs-human as before.
+      - name: Start the automatic fix round, or comment and add needs-human
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           ISSUE: ${{ needs.build.outputs.issue }}
           REASON: ${{ needs.build.outputs.reason || needs.verify.outputs.reason || needs.publish.outputs.reason }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_ID: ${{ github.run_id }}
+          FIRST: ${{ github.event_name == 'issues' }}
+          CAMPAIGN: ${{ needs.build.outputs.campaign }}
+          RETRY: ${{ needs.build.outputs.retry }}
+          FIXABLE: ${{ needs.verify.outputs.fixable || needs.build.outputs.fixable }}
+          CHECK: ${{ needs.verify.outputs.check }}
+          TAIL: ${{ needs.verify.outputs.tail }}
+          HEAD_SHA: ${{ needs.verify.outputs.head_sha }}
         run: |
           set -euo pipefail
+          tokens='sk-ant-|lsv2_|gh[pousr]_|github_pat_|-----BEGIN|ya29\.|olp_'
+          post() {
+            python3 -I -c 'import json, sys; print(json.dumps({"body": open(sys.argv[1], encoding="utf-8").read()}))' "$1" \
+              | gh api --method POST "repos/${GH_REPO}/issues/${ISSUE}/comments" --input - --jq .id
+          }
           reason="${REASON:-The run failed before it recorded a reason.}"
-          if grep -qE 'sk-ant-|lsv2_|gh[pousr]_|github_pat_|-----BEGIN|ya29\.|olp_' <<< "${reason}"; then
+          if grep -qE "${tokens}" <<< "${reason}"; then
             reason="The run failed, and its reason looked like it contained a token, so it is not shown."
+          fi
+          fix=""
+          note=""
+          if [ -n "${FIXABLE}" ] && [ "${FIRST}" = true ] && [ "${CAMPAIGN}" = true ] \
+            && { [ "${FIXABLE}" != bundle ] || [[ "${HEAD_SHA}" =~ ^[0-9a-f]{40}$ ]]; }; then
+            earlier="$(gh api --paginate "repos/${GH_REPO}/issues/${ISSUE}/comments?per_page=100" \
+              --jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("## Agent build: fix round")))] | length' \
+              | awk '{ s += $1 } END { print s + 0 }')" || earlier=unknown
+            if [ "${earlier}" = 0 ]; then fix=true; fi
+          fi
+          if [ "${fix}" = true ]; then
+            output="${TAIL:-}"
+            if grep -qE "${tokens}" <<< "${output}"; then
+              output="(not shown: it looked like it contained a token)"
+            fi
+            if [ "${FIXABLE}" = bundle ]; then
+              start="from the first attempt's commits"
+              marker="<!-- agent-build-fix: run=${RUN_ID} head=${HEAD_SHA} -->"
+            else
+              start="from main, since the first attempt left no commits"
+              marker="<!-- agent-build-fix: run=${RUN_ID} -->"
+            fi
+            {
+              printf '## Agent build: fix round\n\n'
+              printf '%s\n\n' "${reason:0:3000}"
+              if [ -n "${output}" ]; then
+                printf '### Last 60 lines of the %s output\n\n~~~~text\n%s\n~~~~\n\n' "${CHECK}" "${output}"
+              fi
+            } | sed -e 's/<!--/< !--/g; s/-->/-- >/g' > "${RUNNER_TEMP}/comment.md"
+            {
+              printf 'The first build failed, so the workflow starts its one automatic fix round (decision 0019), %s.\n\n' "${start}"
+              printf '%s\n\n' "${marker}"
+              printf -- '---\n'
+              # The backticks are literal Markdown for the comment, not a command substitution.
+              # shellcheck disable=SC2016
+              printf '_Written by the `agent-build` workflow. Nothing was merged. Fix round 1 of 1. [Run](%s)._\n' "${RUN_URL}"
+            } >> "${RUNNER_TEMP}/comment.md"
+            if grep -qE "${tokens}" "${RUNNER_TEMP}/comment.md"; then
+              echo "::error::The fix-round comment contains something that looks like a token. Not posting it."
+              note="The automatic fix round (decision 0019) was not started: its comment looked like it contained a token."
+            elif ! id="$(post "${RUNNER_TEMP}/comment.md")"; then
+              note="The automatic fix round (decision 0019) was not started: its comment could not be posted."
+            elif gh workflow run agent-build.yml --repo "${GH_REPO}" --ref main -f issue="${ISSUE}" -f review_comment="${id}"; then
+              echo "Started the automatic fix round for #${ISSUE} (comment ${id})."
+              exit 0
+            else
+              note="The automatic fix round (decision 0019) was not started: the dispatch failed."
+            fi
+          fi
+          if [ -n "${RETRY}" ]; then
+            note="This was the automatic fix round (decision 0019), so a person must decide."
           fi
           {
             printf '## Agent build: stopped\n\n'
             printf '%s\n\n' "${reason:0:3000}"
+            if [ -n "${note}" ]; then printf '%s\n\n' "${note}"; fi
             printf -- '---\n'
             # The backticks are literal Markdown for the comment, not a command substitution.
             # shellcheck disable=SC2016
