@@ -69,6 +69,14 @@ name: Campaign tick
 # (cancel-in-progress: false). Each tick reads every campaign's state afresh
 # and acts only on what changed, so the one pending run covers every event
 # that arrived while the current one ran.
+#
+# The group keeps ticks apart, but it cannot make one tick's decide job see
+# an issue that the previous tick's act job filed seconds earlier: GitHub's
+# list of `campaign` issues can lag. Campaign 0013's s5 was filed twice that
+# way (#456 at 14:41:59 by tick 45034144931, #459 by tick 45034234510, whose
+# decide job started at 14:42:07, after the first tick ended). So the act job
+# checks for an open issue with the same task marker right before it files
+# one (decision 0019).
 on:
   workflow_run:
     workflows: [Explore run, Data pipeline, CI, Agent plan, Agent build, Agent review, Campaign gate, Campaign ideate]
@@ -183,7 +191,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 -I - <<'PY'
-          import json, os, re, sys, urllib.error, urllib.request
+          import io, json, os, re, sys, urllib.error, urllib.request
 
           REPO, TOKEN = os.environ["REPO"], os.environ["APP_TOKEN"]
           APP_BOT = os.environ.get("APP_BOT", "")
@@ -199,6 +207,10 @@ jobs:
           MARKER = re.compile(r"<!-- campaign-(step|tracking|closeout|ledger|repair|status): [0-9]{4}")
           TRACKING = re.compile(r"<!-- campaign-tracking: [0-9]{4} -->")
           STATUS = re.compile(r"<!-- campaign-status: 0000 -->")
+          # A task's marker: one issue per step, repair or close-out (decision 0019).
+          TASK = re.compile(r"<!-- campaign-(?:step|repair|closeout): [^>]{1,80}-->")
+          # GitHub's answer to a merge while a required check still runs (run 45040286988).
+          CHECK_RUNNING = re.compile(r"Required status check .{1,80} is in progress")
 
           def call(method, path, body=None):
               req = urllib.request.Request(
@@ -220,6 +232,24 @@ jobs:
               if not isinstance(body, str) or not MARKER.search(body) or len(body) > 60000:
                   raise ValueError("body has no campaign marker or is too long")
 
+          def filed_already(body):
+              """The open issue that already carries this task's marker, if any.
+
+              Read now, newest first and without a label filter: the decide job's
+              list of `campaign` issues can lag a just-filed issue by seconds, and
+              campaign 0013's s5 was filed twice that way (#456, #459)."""
+              found = TASK.search(body)
+              if not found:
+                  return None
+              for page in range(1, 11):
+                  batch = call("GET", f"/issues?state=open&sort=created&direction=desc&per_page=100&page={page}")
+                  for issue in batch or []:
+                      if "pull_request" not in issue and found.group(0) in (issue.get("body") or ""):
+                          return issue["number"]
+                  if not batch or len(batch) < 100:
+                      return None
+              return None
+
           actions = json.load(open(os.environ["ACTIONS"], encoding="utf-8"))
           failed = 0
           for a in actions:
@@ -236,6 +266,10 @@ jobs:
                           raise ValueError(f"labels outside the fixed set: {labels + then}")
                       if not isinstance(a.get("title"), str) or not 0 < len(a["title"]) <= 200:
                           raise ValueError("bad title")
+                      twin = filed_already(a["body"])
+                      if twin is not None:
+                          print(f"::notice::not filed: open issue #{twin} already carries this task's marker")
+                          continue
                       issue = call("POST", "/issues", {"title": a["title"], "body": a["body"], "labels": labels})
                       print(f"filed #{issue['number']}: {a['title']}")
                       if then:
@@ -257,7 +291,15 @@ jobs:
                       if not re.fullmatch(r"[0-9a-f]{40}", sha):
                           raise ValueError("merge needs the exact head sha")
                       n = number(a["pr"])
-                      call("PUT", f"/pulls/{n}/merge", {"sha": sha, "merge_method": "merge"})
+                      try:
+                          call("PUT", f"/pulls/{n}/merge", {"sha": sha, "merge_method": "merge"})
+                      except urllib.error.HTTPError as exc:
+                          detail = exc.read().decode(errors="replace")[:300]
+                          if exc.code == 405 and CHECK_RUNNING.search(detail):
+                              # not a failure: the next tick merges once the check is done
+                              print(f"::notice::PR #{n} waits for the next tick: {detail}")
+                              continue
+                          raise urllib.error.HTTPError(exc.url, exc.code, exc.reason, exc.headers, io.BytesIO(detail.encode()))
                       print(f"merged PR #{n} at {sha[:12]}")
                   elif kind == "dispatch":
                       wf, inputs = a.get("workflow"), a.get("inputs", {})

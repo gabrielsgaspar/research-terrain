@@ -63,7 +63,9 @@ from terrain.campaigns import forks, markers, repair
 from terrain.campaigns.closeout import closeout_issue, table
 from terrain.campaigns.codeowners import CodeOwners
 from terrain.campaigns.facts import (
+    BUILD_ROUND_PREFIX,
     PLAN_PREFIX,
+    WORKFLOW_BOT,
     Issue,
     PullRequest,
     Run,
@@ -633,9 +635,19 @@ def _plans(issue: Issue) -> int:
     return sum(1 for cm in issue.comments if cm.body.startswith(PLAN_PREFIX))
 
 
+def _build_rounds(issue: Issue) -> int:
+    """Automatic fix rounds agent-build started on the issue (decision 0019), one comment each."""
+    return sum(
+        1
+        for cm in issue.comments
+        if cm.author == WORKFLOW_BOT and cm.body.startswith(BUILD_ROUND_PREFIX)
+    )
+
+
 def _model_jobs(issue: Issue) -> int:
-    """Model jobs an issue used: one per plan, two per agent review (each follows one build)."""
-    return _plans(issue) + (2 * len(issue.pr.reviews) if issue.pr else 0)
+    """Model jobs an issue used: one per plan, two per agent review (each follows one build),
+    and one per automatic fix round (the extra build, decision 0019)."""
+    return _plans(issue) + _build_rounds(issue) + (2 * len(issue.pr.reviews) if issue.pr else 0)
 
 
 ADOPT_EVENT = re.compile(r"^adopt:(f[1-9]):(s\d{1,2}):((?:s\d{1,2},?)+)$")
@@ -1365,7 +1377,8 @@ def friction_facts(v: CampaignView, snap: Snapshot, new: Sequence[tuple[str, str
         if s.kind != "task" or issue is None:
             continue
         plans = _plans(issue)
-        fixes = max(len(issue.pr.reviews) - 1, 0) if issue.pr else 0
+        # review fix rounds, and the automatic build round (decision 0019)
+        fixes = (max(len(issue.pr.reviews) - 1, 0) if issue.pr else 0) + _build_rounds(issue)
         if plans > 1 or fixes:
             task_rows.append([s.id, str(plans), str(fixes), str(_model_jobs(issue))])
         else:

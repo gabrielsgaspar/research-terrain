@@ -38,7 +38,7 @@ EXPECTED = {
         "Build",
         "claude-sonnet-5-5",
         "160",
-        "cf480c40b42188dd58c89f10c097072d4440d18a4576c83fe0cd7b22eec2e98d",
+        "fe5198e94d072c23d91300f162bc5427b92b5c671c8737133245564fc1f8bf00",
     ),
     "reviewer": (
         "agent-review.yml",
