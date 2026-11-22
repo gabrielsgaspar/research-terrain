@@ -13,10 +13,18 @@ pass. Writes, in the git-ignored `build/pix_texts/`:
 - `second_pass.txt`: the keys of the 500 marked texts, one per line.
 
 It prints counts only, never a text. Delete `build/pix_texts/` once the labels are written.
+
+    uv run python scripts/pix_label_sample.py --extend
+
+draws a further 3,000 texts (500 marked) the same way from the exploration-half texts not
+yet in `data/reference/pix_object_labels.yaml`, with seed 20261122 (`EXTEND_SEED`). The
+first sample (seed 20261121) gave a cross-validated macro-F1 on groups of 0.788; Gabriel
+asked for 3,000 more labels on 2026-11-22.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import sys
@@ -34,12 +42,19 @@ from terrain.storage import GCSStore
 
 MANIFESTS = REPO / "data" / "manifests"
 OUT = REPO / "build" / "pix_texts"
+LABELS = REPO / "data" / "reference" / "pix_object_labels.yaml"
 N_TEXTS = 3000
 N_SECOND = 500
+EXTEND_SEED = pixtext.SEED + 1  # 20261122: the second sample
 
 
 def _load(stage: str, name: str) -> dict:
     return json.loads((MANIFESTS / stage / f"{name}.json").read_text(encoding="utf-8"))
+
+
+def unlabelled(keys: pl.DataFrame, labelled: set[str]) -> pl.DataFrame:
+    """The keys not in the label file yet."""
+    return keys.filter(~pl.col("key").is_in(sorted(labelled)))
 
 
 def exploration_keys(plans: pl.DataFrame, explore: frozenset[str]) -> pl.DataFrame:
@@ -49,8 +64,10 @@ def exploration_keys(plans: pl.DataFrame, explore: frozenset[str]) -> pl.DataFra
     return mine.group_by("key").agg(pl.col("text").first(), pl.col("year").min()).sort("key")
 
 
-def write_sample(keys: pl.DataFrame, out: Path) -> tuple[list[str], list[str]]:
-    chosen, second = pixtext.sample_keys(keys.select("key", "year"), N_TEXTS, N_SECOND)
+def write_sample(
+    keys: pl.DataFrame, out: Path, seed: int = pixtext.SEED
+) -> tuple[list[str], list[str]]:
+    chosen, second = pixtext.sample_keys(keys.select("key", "year"), N_TEXTS, N_SECOND, seed)
     texts = dict(keys.select("key", "text").iter_rows())
     out.mkdir(parents=True, exist_ok=True)
     with (out / "sample.jsonl").open("w", encoding="utf-8") as f:
@@ -61,6 +78,9 @@ def write_sample(keys: pl.DataFrame, out: Path) -> tuple[list[str], list[str]]:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--extend", action="store_true", help="draw 3,000 texts not yet labelled")
+    args = parser.parse_args()
     store = GCSStore(os.environ.get("TERRAIN_BUCKET", "research-terrain"))
     explore, _ = read_lists(store)
     cgu_entry = _file(_load("acquire", "cgu_amendments"), "/EmendasParlamentares.zip")
@@ -70,7 +90,12 @@ def main() -> int:
         zip_path = _fetch(store, cgu_entry, Path(tmp))
         plans = pixtext.plans_with_municipality(pixtext.read_plans(zip_path), munis)
     keys = exploration_keys(plans, explore)
-    chosen, second = write_sample(keys, OUT)
+    seed = pixtext.SEED
+    if args.extend:
+        labelled = set(pixtext.load_labels(LABELS)["labels"])
+        print(f"already labelled: {len(labelled)}")
+        keys, seed = unlabelled(keys, labelled), EXTEND_SEED
+    chosen, second = write_sample(keys, OUT, seed)
     per_year = keys.filter(pl.col("key").is_in(chosen)).group_by("year").len().sort("year")
     print(f"plan rows: {plans.height}")
     print(f"plan rows with a municipality: {plans['cd_ibge'].drop_nulls().len()}")
@@ -79,7 +104,7 @@ def main() -> int:
         "plan rows naming a municipality that matches none: "
         f"{plans.filter(pl.col('name_key').is_not_null() & pl.col('cd_ibge').is_null()).height}"
     )
-    print(f"distinct texts, exploration half: {keys.height}")
+    print(f"distinct exploration-half texts to draw from: {keys.height}")
     print("sampled per amendment year: " + ", ".join(f"{y}:{n}" for y, n in per_year.iter_rows()))
     print(f"sampled: {len(chosen)}, marked for a second pass: {len(second)}")
     print(f"written: {OUT / 'sample.jsonl'} and {OUT / 'second_pass.txt'}")

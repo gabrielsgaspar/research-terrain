@@ -188,6 +188,12 @@ def test_sample_script_writes_keys_and_texts_only(tmp_path):
     assert [set(json.loads(x)) for x in lines] == [{"key", "text"}] * 3
     assert sorted(json.loads(x)["key"] for x in lines) == chosen == ["a", "b", "c"]
     assert (tmp_path / "second_pass.txt").read_text(encoding="utf-8").split() == second
+    # the extension draws only keys not yet labelled, with its own seed
+    rest = module.unlabelled(keys, {"a"})
+    assert sorted(rest["key"]) == ["b", "c"]
+    module.N_TEXTS, module.N_SECOND = 2, 1
+    again, _ = module.write_sample(rest, tmp_path / "more", module.EXTEND_SEED)
+    assert again == ["b", "c"] and module.EXTEND_SEED == pixtext.SEED + 1
 
 
 # --- Labels
