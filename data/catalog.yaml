@@ -829,6 +829,23 @@ datasets:
       pinned in tests/test_split.py). Built by
       src/terrain/builds/amendments_monthly.py.
 
+  - name: amendments_objects
+    source: built from tse_general, cgu_amendments, tse_results, tse_candidates, municipalities and camara_deputies, with data/reference/pix_object_labels.yaml, split by half
+    licence: public (TSE, CGU), as its sources
+    derived: data/derived/amendments_objects/
+    sealed: sealed/outcomes/amendments_objects/
+    status: planned
+    contract: data/contracts/amendments_objects.md
+    notes: >
+      Idea 0013, decision 0018: one row per cycle, federal deputy and
+      municipality, exactly the rows of amendments_panel, with the pre- and
+      post-window payments split by instrument (Pix, health, tied) and the
+      Pix money by the class of its work plans (a classifier trained on the
+      committed model labels, applied to every plan of both halves), plus
+      measurement.parquet (derived only). Exploration-half rows in derived,
+      all other rows only in sealed (the sealed line is pinned in
+      tests/test_split.py). Built by src/terrain/builds/amendments_objects.py.
+
   - name: funai_indigenous_lands
     source: FUNAI indigenous land boundaries
     licence: public
