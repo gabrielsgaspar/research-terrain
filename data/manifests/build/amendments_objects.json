@@ -1,0 +1,57 @@
+{
+  "dataset": "amendments_objects",
+  "stage": "build",
+  "status": "created",
+  "gcs_prefix": "data/derived/amendments_objects/550dedbb1e1fe642/",
+  "created_at": "2026-11-22T18:26:24.628678+00:00",
+  "code_commit": "b07b0a8a803c5a8f4145b07533438b814e025615",
+  "sources": [],
+  "files": [
+    {
+      "path": "data/derived/amendments_objects/550dedbb1e1fe642/objects_A.parquet",
+      "sha256": "abc591633b714a22b2aa0e703eb7adb1972fe7986e2965783e526d578697fdcf",
+      "bytes": 49420
+    },
+    {
+      "path": "data/derived/amendments_objects/550dedbb1e1fe642/objects_B.parquet",
+      "sha256": "10b21099ea5f9991cb13f84756116c01a14df77bad9a4d0d16602af7a7050a01",
+      "bytes": 79171
+    },
+    {
+      "path": "data/derived/amendments_objects/550dedbb1e1fe642/objects_C.parquet",
+      "sha256": "457d00a894f274088038b465120a311b2dad283853009b453b3121e51ad7a0a7",
+      "bytes": 137980
+    },
+    {
+      "path": "data/derived/amendments_objects/550dedbb1e1fe642/measurement.parquet",
+      "sha256": "1e0f404a0bc444b0c8eb8d7b0f05a6707dba5d0afd90b3a45f8d7a65cd12077d",
+      "bytes": 3433
+    }
+  ],
+  "notes": "A: rows=16533, panel_rows=33079, deputy_authors=552, money_share=0.9154, cells_floored_to_zero=0; B: rows=12830, panel_rows=25667, deputy_authors=530, money_share=0.9258, cells_floored_to_zero=0; C: rows=17067, panel_rows=34026, deputy_authors=560, money_share=0.9319, cells_floored_to_zero=1; plan_rows=58990, plan_rows_with_municipality=56852, plan_rows_no_municipality=1681, plan_texts=48969, legacy_plan_rows=34336; labels=6000, labels_found=6000, label_model=claude-opus-5-5, label_date=2026-11-22, codebook_sha256=8e402c0b807ebb97d6cf2544c70124a9540cd9794011dc5f028a6af05d8f7f41; plan_keys_with_zero_value_split_by_count=0; amendment_codes=77061, codes_with_several_functions=56; non_pix_rows_with_no_function=none; pix_rows_matched_to_a_plan=2020:1507/1544,2021:4374/4513,2022:3634/3711,2023:14762/15123,2024:5410/5564,2025:8958/9177,2026:5706/6276; dropped_recipient_rows_no_municipality=2015:6,2016:14,2017:32,2018:19,2019:156,2020:121,2021:229,2022:176,2023:193,2024:222,2025:324,2026:2239; dropped_recipient_rows_unmatched=2015:40,2016:85,2017:356,2018:200,2019:134,2020:85,2021:85,2022:50,2023:79,2024:32,2025:187,2026:139; placeholder_recipient_rows=2015:6,2016:14,2017:27,2018:15,2019:155,2020:121,2021:224,2022:175,2023:192,2024:222,2025:321,2026:2239; placeholder_recipient_value_brl=2015:90605.96,2016:782892.80,2017:2294048.73,2018:3282155.00,2019:3018904.12,2020:1658379.20,2021:6916628.77,2022:4110777.74,2023:5804889.17,2024:2732542.12,2025:9869488.00,2026:36259681.14; placeholder_recipient_value_share=2015:0.0000,2016:0.0005,2017:0.0005,2018:0.0005,2019:0.0004,2020:0.0002,2021:0.0007,2022:0.0004,2023:0.0003,2024:0.0002,2025:0.0004,2026:0.0019; top_unmatched_recipients_2015=(empty)/INVALIDO:19, SP/FLORINIA:3, CE/ITAPAGE:2, MT/SANTO ANTONIO DO LEVERGER:2, RN/OLHODAGUA DO BORGES:2, SP/BIRITIBAMIRIM:2, BA/SANTA TERESINHA:1, MG/BARAO DE MONTE ALTO:1, PA/ELDORADO DOS CARAJAS:1, PA/SANTA ISABEL DO PARA:1; top_unmatched_recipients_2016=(empty)/INVALIDO:68, RN/OLHODAGUA DO BORGES:4, CE/ITAPAGE:3, MG/BARAO DE MONTE ALTO:3, MT/POXOREO:2, SP/FLORINIA:2, BA/SANTA TERESINHA:1, PE/IGUARACI:1, SP/SAO LUIS DO PARAITINGA:1; top_unmatched_recipients_2017=(empty)/INVALIDO:314, MG/BARAO DE MONTE ALTO:7, SP/EMBU:6, MT/POXOREO:4, BA/SANTA TERESINHA:3, CE/ITAPAGE:3, SP/BIRITIBAMIRIM:3, PA/ELDORADO DOS CARAJAS:2, PA/SANTA ISABEL DO PARA:2, PB/SERIDO:2; top_unmatched_recipients_2018=(empty)/INVALIDO:171, MG/BARAO DE MONTE ALTO:3, PA/SANTA ISABEL DO PARA:3, SP/EMBU:3, SP/FLORINIA:3, SP/RIO DE JANEIRO:3, BA/MUQUEM DE SAO FRANCISCO:2, MT/SANTO ANTONIO DO LEVERGER:2, PE/IGUARACI:2, RN/PRESIDENTE JUSCELINO:2; top_unmatched_recipients_2019=(empty)/INVALIDO:60, MG/BRASOPOLIS:10, SP/EMBU:6, BA/MUQUEM DE SAO FRANCISCO:5, MG/BARAO DE MONTE ALTO:5, SE/GRACHO CARDOSO:5, PA/SANTA ISABEL DO PARA:4, RJ/TRAJANO DE MORAIS:4, RN/OLHODAGUA DO BORGES:4, SP/BIRITIBAMIRIM:4; top_unmatched_recipients_2020=SP/EMBU:18, MG/DONA EUSEBIA:9, RN/AUGUSTO SEVERO:7, MG/BARAO DE MONTE ALTO:5, MT/POXOREO:4, BA/MUQUEM DE SAO FRANCISCO:3, PA/SANTA ISABEL DO PARA:3, RN/OLHODAGUA DO BORGES:3, SC/GRAO PARA:3, SE/AMPARO DE SAO FRANCISCO:3; top_unmatched_recipients_2021=SP/EMBU:14, MG/DONA EUSEBIA:8, PA/ELDORADO DOS CARAJAS:7, PA/SANTA ISABEL DO PARA:6, RN/AUGUSTO SEVERO:6, CE/ITAPAGE:5, SP/BIRITIBAMIRIM:5, TO/FORTALEZA DO TABOCAO:5, MT/POXOREO:3, MT/SANTO ANTONIO DO LEVERGER:3; top_unmatched_recipients_2022=SP/EMBU:8, PE/IGUARACI:6, PA/SANTA ISABEL DO PARA:4, RN/AUGUSTO SEVERO:4, SP/BIRITIBAMIRIM:4, MG/DONA EUSEBIA:3, MT/SANTO ANTONIO DO LEVERGER:3, CE/ITAPAGE:2, MT/POXOREO:2, SC/GRAO PARA:2; top_unmatched_recipients_2023=MT/POXOREO:9, MG/BARAO DE MONTE ALTO:6, SP/BIRITIBAMIRIM:6, SP/EMBU:6, PA/ELDORADO DOS CARAJAS:5, PE/IGUARACI:5, MG/BRASOPOLIS:4, MG/SAO THOME DAS LETRAS:4, SE/AMPARO DE SAO FRANCISCO:4, SE/GRACHO CARDOSO:3; top_unmatched_recipients_2024=RN/PRESIDENTE JUSCELINO:4, CE/ITAPAGE:3, MG/BARAO DE MONTE ALTO:3, MT/SANTO ANTONIO DO LEVERGER:3, MG/BRASOPOLIS:2, PA/SANTA ISABEL DO PARA:2, SP/EMBU:2, SP/SAO LUIS DO PARAITINGA:2, BA/SANTA TERESINHA:1, MG/DONA EUSEBIA:1; top_unmatched_recipients_2025=SP/EMBU:32, PA/SANTA ISABEL DO PARA:12, MG/DONA EUSEBIA:10, MT/SANTO ANTONIO DO LEVERGER:10, RN/PRESIDENTE JUSCELINO:10, SP/FLORINIA:9, SP/SAO LUIS DO PARAITINGA:9, PE/IGUARACI:8, SC/GRAO PARA:8, MG/BARAO DE MONTE ALTO:7; top_unmatched_recipients_2026=SP/EMBU:17, SP/SAO LUIS DO PARAITINGA:11, CE/ITAPAGE:8, PE/IGUARACI:8, MT/SANTO ANTONIO DO LEVERGER:7, RJ/TRAJANO DE MORAIS:7, RN/AUGUSTO SEVERO:7, TO/FORTALEZA DO TABOCAO:7, BA/MUQUEM DE SAO FRANCISCO:6, MG/BARAO DE MONTE ALTO:6",
+  "inputs": [
+    "data/raw/tse/general/2026-11-16/_MANIFEST.json",
+    "data/raw/cgu/amendments/2026-11-16/_MANIFEST.json",
+    "data/derived/tse_results/6f2af3d28c84af90/_MANIFEST.json",
+    "data/derived/tse_candidates/73af2aca241094a0/_MANIFEST.json",
+    "data/derived/municipalities/03690186b97be705/_MANIFEST.json",
+    "data/raw/camara/deputies/2026-11-19/_MANIFEST.json"
+  ],
+  "sealed_files": [
+    {
+      "path": "sealed/outcomes/amendments_objects/550dedbb1e1fe642/objects_A.parquet",
+      "sha256": "67c02476d0585d440696712401c07a6fcc50b96d1a3b7ddc7f5ad50aaca4f6be",
+      "bytes": 48946
+    },
+    {
+      "path": "sealed/outcomes/amendments_objects/550dedbb1e1fe642/objects_B.parquet",
+      "sha256": "11809895681c849a02352d567ce16512184a1f98f54cc8015db60fec4744ead5",
+      "bytes": 76342
+    },
+    {
+      "path": "sealed/outcomes/amendments_objects/550dedbb1e1fe642/objects_C.parquet",
+      "sha256": "976b2bdda98f167f3ecdf5723098281d25e7134f488b5e9dcde6c082b0bcd5c5",
+      "bytes": 136315
+    }
+  ]
+}
