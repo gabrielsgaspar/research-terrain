@@ -8,8 +8,9 @@ It splits the amendment premium of towns where the deputy's party narrowly won t
 instrument (Pix, health, tied) and, within Pix, by the declared use of the work plans (visible,
 services, fungible), at the window of campaign 0011's gate record (h = 7.5%, 5% as a check). The
 linear estimator is the one of `explore/0010_amendments_main.py`, loaded as is; the Poisson fits
-use `pyfixest.fepois`. Its `results.json` carries `first_stage.n_strong` and `estimates.finite`,
-the fields step s5's kill rules read. Nothing on the exploration half is a finding.
+use `terrain.poisson.fepois` (AGENTS.md), and each records how it was fitted. Its
+`results.json` carries `first_stage.n_strong` and `estimates.finite`, the fields step s5's kill
+rules read. Nothing on the exploration half is a finding.
 """
 
 from __future__ import annotations
@@ -25,9 +26,9 @@ from typing import Any
 
 import numpy as np
 import polars as pl
-import pyfixest as pf
 
 from terrain.explore import exploration_municipalities, restrict, write_results
+from terrain.poisson import fepois
 from terrain.storage import GCSStore
 
 REPO = Path(__file__).resolve().parents[1]
@@ -217,7 +218,14 @@ def _of(table: pl.DataFrame, cycles: tuple[str, ...]) -> pl.DataFrame:
 _NAN = float("nan")
 
 
-def _poisson_result(b: float, se: float, p: float, n_obs: int) -> dict[str, Any]:
+def _poisson_result(
+    b: float,
+    se: float,
+    p: float,
+    n_obs: int,
+    path: str = "none",
+    groups_dropped: int = 0,
+) -> dict[str, Any]:
     ok = math.isfinite(b) and math.isfinite(se)
     return {
         "b": b,
@@ -227,33 +235,34 @@ def _poisson_result(b: float, se: float, p: float, n_obs: int) -> dict[str, Any]
         "premium_ci_low": 100.0 * (math.exp(b - Z95 * se) - 1.0) if ok else _NAN,
         "premium_ci_high": 100.0 * (math.exp(b + Z95 * se) - 1.0) if ok else _NAN,
         "n_obs": n_obs,
+        "path": path,
+        "groups_dropped": groups_dropped,
     }
 
 
 def _pois(frame: pl.DataFrame, regressors: list[str], target: str) -> dict[str, Any]:
     """`fepois` of `y` on the regressors, fixed effects `fe`, offset `ln_pop`, CRV1 by `cd_ibge`.
 
-    Fixed-effect groups pyfixest drops (all-zero outcome) leave the fit; `n_obs` is the rows used.
-    A fit that cannot be made gives NaN (and `estimates.finite` false).
+    Through `terrain.poisson.fepois`: fixed-effect groups with no information (all-zero outcome,
+    or a single row) leave the fit and are counted in `groups_dropped`; `n_obs` is the rows used;
+    `path` says how the fit was made. A fit that cannot be made gives NaN (path "none", and
+    `estimates.finite` false).
     """
     if frame.height == 0:
         return _poisson_result(_NAN, _NAN, _NAN, 0)
-    formula = f"y ~ {' + '.join(regressors)} | fe"
     try:
-        fit = pf.fepois(
-            formula,
-            data=frame,
+        fit = fepois(
+            frame,
+            y="y",
+            x=regressors,
+            fe="fe",
+            coef=target,
             offset="ln_pop",
-            vcov={"CRV1": "cd_ibge"},
+            cluster="cd_ibge",
         )
-        return _poisson_result(
-            float(fit.coef()[target]),
-            float(fit.se()[target]),
-            float(fit.pvalue()[target]),
-            int(fit.sample_info.n_obs),
-        )
-    except Exception:  # noqa: BLE001 - separation, singular fits: reported as NaN, never hidden
+    except ValueError:  # a negative outcome: reported as NaN (path "none"), never hidden
         return _poisson_result(_NAN, _NAN, _NAN, 0)
+    return _poisson_result(fit.b, fit.se, fit.p, fit.n_obs, fit.path, fit.groups_dropped)
 
 
 def _base(table: pl.DataFrame, h: float, column: str) -> pl.DataFrame:
