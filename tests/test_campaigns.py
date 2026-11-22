@@ -20,6 +20,7 @@ from terrain.campaigns.facts import Comment, Issue, PullRequest, Review, Run, Sn
 from terrain.campaigns.gate import GateContext, evaluate
 from terrain.campaigns.rules import evaluate as apply_rules
 from terrain.campaigns.spec import (
+    MAX_ACTIVE,
     KillRule,
     active_campaigns,
     finished_campaigns,
@@ -272,6 +273,36 @@ def test_two_active_campaigns_on_one_idea_are_refused(tmp_path):
     problems = validate(root)
     assert any("both active on idea 0003" in p for p in problems)
     assert any("share allowed paths" in p for p in problems)
+    assert active_campaigns(root) == []
+
+
+def add_campaign(root: Path, cid: str, idea: str) -> None:
+    """Another active campaign, on its own idea and its own paths."""
+    (root / "research" / "ideas" / f"{idea}-other.md").write_text(
+        f'---\nid: "{idea}"\nstatus: exploring\n---\n', encoding="utf-8"
+    )
+    folder = root / "research" / "campaigns" / f"{cid}-other"
+    (folder / "drafts").mkdir(parents=True)
+    text = (
+        campaign_text()
+        .replace("0003", idea)
+        .replace('id: "0001"', f'id: "{cid}"')
+        .replace("test_explore_count", f"test_explore_count_{idea}")
+    )
+    (folder / "campaign.md").write_text(text, encoding="utf-8")
+    (folder / "drafts" / "s1.md").write_text(DRAFT, encoding="utf-8")
+
+
+def test_at_most_three_campaigns_are_active(tmp_path):
+    root = make_repo(tmp_path)
+    add_campaign(root, "0002", "0004")
+    add_campaign(root, "0003", "0005")
+    assert MAX_ACTIVE == 3
+    assert validate(root) == []
+    assert len(active_campaigns(root)) == 3
+    add_campaign(root, "0004", "0006")
+    problems = validate(root)
+    assert any("4 campaigns are active; at most 3 may be" in p for p in problems), problems
     assert active_campaigns(root) == []
 
 
