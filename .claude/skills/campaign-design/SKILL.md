@@ -201,6 +201,8 @@ or write his own. Then read each chosen rule back in plain words ("the
 step dies if fewer than 60 close races exist at the 1% window") and ask
 him to confirm. Only then set `confirmed: true`.
 
+Regression discontinuity designs from idea 0012 on follow decision 0017 (`research/decisions/0017-rd-validity.md`): bandwidth stated in advance, validity tested with the estimator, its gates; not decision 0008's window rule.
+
 **Measurement-quality rules weigh money or rows, not entities.** A rule on
 how well the data measures something (a link, a match rate, coverage, a
 missing share) is weighted by what the analysis sums: reais for money,

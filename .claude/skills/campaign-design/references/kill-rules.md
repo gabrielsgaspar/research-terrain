@@ -40,6 +40,7 @@ Never from looking at outcomes. Good sources, as used in this repository:
 - **Plausibility.** A magnitude no mechanism could produce (a share above
   1, an effect larger than baseline clearing) is a sign of a bug: a rule on
   it is fine, and cheap.
+- **Regression discontinuity designs** (ideas 0012 on): bandwidth, validity tests, gates and power limits follow decision 0017 (`research/decisions/0017-rd-validity.md`), not decision 0008.
 
 ## False stops
 
