@@ -212,6 +212,16 @@ def test_every_explore_script_restricts_to_the_exploration_half():
             assert needed in source, f"{script.name} must call {needed[:-1]}"
 
 
+def test_explore_scripts_fit_poisson_only_through_terrain_poisson():
+    # pyfixest.fepois can fail on one machine and not another (see terrain/poisson.py)
+    direct = re.compile(r"\b(pf|pyfixest)\.fepois\b|from\s+pyfixest[\w.]*\s+import[^\n]*\bfepois\b")
+    for script in sorted((REPO / "explore").glob("*.py")):
+        source = script.read_text(encoding="utf-8")
+        assert not direct.search(source), (
+            f"{script.name}: fit Poisson models with terrain.poisson.fepois, not pyfixest.fepois"
+        )
+
+
 def test_national_idea_scripts_read_both_exploration_lists():
     for idea in NATIONAL_IDEAS:
         for script in sorted((REPO / "explore").glob(f"{idea}_*.py")):

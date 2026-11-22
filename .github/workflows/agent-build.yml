@@ -512,7 +512,14 @@ jobs:
       - name: Build
         id: claude
         uses: anthropics/claude-code-action@d535f5172dec02b204866b393d6b20b9b2aaf98d # v1.0.266
+        # Claude Code stops a Bash command after 2 minutes by default, and the
+        # full `uv run pytest` takes about 2 minutes, so the builder could not
+        # finish it (run 45034395581). Both limits are 15 minutes here
+        # (https://code.claude.com/docs/en/env-vars), well inside the job's
+        # timeout-minutes: 45.
         env:
+          BASH_DEFAULT_TIMEOUT_MS: "900000"
+          BASH_MAX_TIMEOUT_MS: "900000"
           CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"
           UV_PYTHON_DOWNLOADS: never
           UV_OFFLINE: "1"
