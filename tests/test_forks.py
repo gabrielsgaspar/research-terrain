@@ -229,7 +229,7 @@ def test_publisher_hosts_are_bare_names(tmp_path):
 
 
 # Real campaigns that carry a `forks:` envelope Gabriel approved (decision 0015).
-WITH_ENVELOPE = {"0009", "0010", "0011", "0012", "0013"}
+WITH_ENVELOPE = {"0009", "0010", "0011", "0012", "0013", "0014"}
 
 
 def test_campaigns_without_forks_are_unchanged():
