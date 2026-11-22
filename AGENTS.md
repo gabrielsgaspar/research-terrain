@@ -146,6 +146,12 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
 - Installed for analysis: pyfixest for regressions (fixed effects, Poisson),
   scikit-learn for classifiers inside builds, and pyarrow only as pyfixest's
   bridge from polars (pyfixest needs it to read a polars frame).
+- Poisson fits in explore scripts use `terrain.poisson.fepois`, never
+  `pyfixest.fepois` directly. pyfixest can stop with "Demeaning failed" on
+  one machine and not on another; the helper retries, falls back to a fit
+  that needs no demeaning, and reports which way it fitted (a test checks).
+- A test on synthetic data passes for at least 5 random seeds, not just
+  one, because the verify job runs on a different machine from the builder.
 
 ### Secrets
 

@@ -30,6 +30,7 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "pytest>=9.2.0",
+    "pytest-xdist>=3.8.0",
     "ruff>=0.17.3",
 ]
 
@@ -43,3 +44,6 @@ select = ["E", "F", "I", "B", "UP"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# pytest-xdist: one worker per CPU. The serial suite takes about 2 minutes on
+# GitHub's runners, the builder's old Bash limit (run 45034395581). `-n 0` runs serially.
+addopts = "-n auto"
