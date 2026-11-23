@@ -1,9 +1,9 @@
 ---
 id: "0001"
 title: "Electoral strongholds and the geography of deforestation"
-status: exploring
+status: parked
 created: 2026-11-01
-updated: 2026-11-08
+updated: 2026-11-23
 datasets:
   - tse_votes_by_section
   - tse_polling_places
@@ -146,6 +146,10 @@ Elections with usable geography: 2008, 2012, 2016, 2020 and 2024 (see
   one incumbent at 0.25% on the exploration half (run 42681937536): 813
   pooled 2008-2020 (184, 180, 218 and 231 by election), against a threshold
   of 200. Counts only; no estimate.
+- 2026-11-23: parked (Gabriel's choice). Campaigns 0002 and 0003 finished and
+  none is active; current work is on amendments and Pix (ideas 0010 to 0013).
+  The pre-analysis plan draft (`harness/drafts/pap-draft.md`) stays for a
+  possible return.
 
 ## Log
 

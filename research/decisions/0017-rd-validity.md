@@ -1,14 +1,14 @@
 ---
 id: "0017"
 title: "Regression discontinuity designs from idea 0012 on"
-status: proposed
+status: accepted
 date: 2026-11-22
 supersedes: null
 ---
 
 # 0017: Regression discontinuity designs from idea 0012 on
 
-Date: 2026-11-22. Status: proposed, drafted by Claude for Gabriel from his
+Date: 2026-11-22. Status: accepted, drafted by Claude for Gabriel from his
 brief of 2026-11-22 (campaign 0014). It takes effect when Gabriel merges
 the pull request that adds it, with idea 0012
 (`research/ideas/0012-incumbency-curse.md`) and campaign 0014
@@ -96,3 +96,5 @@ that nothing on the exploration half is a finding.
 - The `campaign-design` skill and its `references/kill-rules.md` point
   here for regression discontinuity designs.
 - First use: idea 0012, campaign 0014 (step s2, the gate).
+
+Accepted by Gabriel when he merged PR #453.

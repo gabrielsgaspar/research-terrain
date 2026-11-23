@@ -1,14 +1,14 @@
 ---
 id: "0015"
 title: "Forks: agent-proposed variants inside an approved envelope"
-status: proposed
+status: accepted
 date: 2026-11-13
 supersedes: null
 ---
 
 # 0015: Forks: agent-proposed variants inside an approved envelope
 
-Date: 2026-11-13. Status: proposed, drafted by Claude for Gabriel from his
+Date: 2026-11-13. Status: accepted, drafted by Claude for Gabriel from his
 request of 2026-11-13 and the brief `forks-workflow-update.md`. It takes
 effect when Gabriel merges the pull request that adds it (with the formats
 and the validator in `src/terrain/campaigns/forks.py` and `spec.py`, the
@@ -165,3 +165,5 @@ report lists every variant with its numbers, without Gabriel designing a
 second campaign by hand as he did for 0008.
 
 Amendment, 2026-11-19. A fork's evidence includes at least one run record of the parent (a file under `research/explore-runs/` that ends in `.md` or `.json`). It may also cite an existing file under `data/contracts/`, `research/ideas/`, `research/decisions/` or `research/campaigns/`. Any other path, or a missing file, is refused.
+
+Accepted by Gabriel when he merged PR #382.

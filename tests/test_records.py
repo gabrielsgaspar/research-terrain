@@ -103,6 +103,16 @@ def test_parked_status_is_accepted(tmp_path):
     assert vr.validate(make_tree(tmp_path, idea(status="parked"))) == []
 
 
+def test_proposed_decision_is_rejected(tmp_path):
+    root = make_tree(tmp_path)
+    path = root / "research" / "decisions" / "0001-a-decision.md"
+    path.write_text(DECISION.replace("status: accepted", "status: proposed"), encoding="utf-8")
+    problems = vr.validate(root)
+    assert len(problems) == 1
+    assert "merging the pull request is the acceptance" in problems[0]
+    assert vr.main([str(root)]) == 1
+
+
 def test_duplicate_title_is_caught(tmp_path):
     make_tree(
         tmp_path,
