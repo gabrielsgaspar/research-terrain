@@ -208,6 +208,24 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
   delete, why), one full path per file, deletions included, with no braces,
   globs or directories. The workflow prints it as **Files to change** and
   the build's checks enforce exactly that list.
+- Contradictions (decision 0021): when two instructions that bind a task
+  cannot both hold, the builder applies the one that wins (the higher of
+  `AGENTS.md` and decisions, the campaign file and kill rules, the issue,
+  the plan, review must-fix items, agent notes; at the same level, the
+  stricter, and an instruction that loosens what a kill rule reads or
+  weakens a test always loses), tests it, and writes a "## Contradiction
+  (decision 0021)" section in the pull request body. The reviewer marks a
+  losing Done-when item "Lost (decision 0021)". If neither is stricter, the
+  builder returns `contradiction` with two quotes; plain code checks that
+  each appears word for word in its named source (otherwise the run counts
+  as `blocked`), and agent-build posts "## Agent build: contradiction
+  (decision 0021)" (a campaign task gets no `needs-human`).
+- Waiting for main (decision 0021): when verify's `pytest` fails, it runs
+  the failing test ids again on main's current head. If every one fails
+  there too, the task is not at fault: a campaign task gets "## Agent
+  build: waiting for main (decision 0021)", no fix round and no
+  `needs-human`; the second wait on the same issue adds `needs-human`.
+  Ruff, path, secret-scan and set-up failures stop as before.
 - Agents never push to main and never change workflows. They never merge,
   with one exception: the campaign tick merges an agent pull request of an
   active campaign when the required `campaign-gate` check passes (see

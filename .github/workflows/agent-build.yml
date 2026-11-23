@@ -38,6 +38,20 @@ name: Agent build
 # commits; otherwise it starts from main. One round per issue; if it fails
 # too, report adds needs-human. Every check runs exactly as for a first
 # build, and verify also refuses a round that deletes a first-attempt test.
+#
+# Contradictions (decision 0021): the builder applies the instruction that
+# wins (higher level; at the same level, the stricter) and the PR body gets a
+# "## Contradiction (decision 0021)" section. If neither is stricter it
+# returns `contradiction` with two quotes. The step "Check the contradiction
+# quotes" (plain code, src/terrain/campaigns/contradiction.py, copied from
+# main before the builder starts) checks that each quote appears word for
+# word in its source; if one does not, the run counts as blocked. Report
+# posts Comment C ("## Agent build: contradiction (decision 0021)"; in a
+# campaign no needs-human and no fix round).
+# Waiting for main: when verify's pytest fails, it runs the failing ids on
+# main's head in a separate directory. If all fail there too, report posts
+# Comment W ("## Agent build: waiting for main (decision 0021)"), with no fix
+# round and, in a campaign, no needs-human (the second wait adds it).
 on:
   issues:
     types: [labeled]
@@ -169,7 +183,7 @@ jobs:
       contents: read # check out the repo and its history
       issues: read # read the plan comment and when the issue was last edited
     outputs:
-      reason: ${{ steps.context.outputs.reason || steps.guard.outputs.reason || steps.plan.outputs.reason || steps.branch.outputs.reason || steps.result.outputs.reason || steps.commits.outputs.reason }}
+      reason: ${{ steps.context.outputs.reason || steps.guard.outputs.reason || steps.plan.outputs.reason || steps.branch.outputs.reason || steps.result.outputs.reason || steps.quotes.outputs.reason || steps.commits.outputs.reason }}
       guard_ok: ${{ steps.guard.outputs.guard_ok }}
       base_sha: ${{ steps.branch.outputs.base_sha }}
       plan_url: ${{ steps.plan.outputs.plan_url }}
@@ -186,7 +200,10 @@ jobs:
       retry: ${{ steps.context.outputs.retry }}
       prior_run: ${{ steps.context.outputs.prior_run }}
       prior_head: ${{ steps.context.outputs.prior_head }}
-      fixable: ${{ steps.result.outputs.fixable || steps.commits.outputs.fixable }}
+      fixable: ${{ steps.result.outputs.fixable || steps.quotes.outputs.fixable || steps.commits.outputs.fixable }}
+      # Decision 0021: Comment C, rendered by the quote check once every quote
+      # was found word for word in its source; report only posts it.
+      contradiction_comment: ${{ steps.quotes.outputs.contradiction_comment }}
     steps:
       # 0. Context. Which issue, who asked, and (for a fix round) the review.
       #    Reads only, through the API; the guard below still decides.
@@ -555,6 +572,12 @@ jobs:
         id: role
         run: python3 -I scripts/role.py builder
 
+      # Decision 0021: the quote check below is plain code from main, copied
+      # now, before the builder starts, so its commits cannot change the check
+      # that reads them. It uses only the standard library.
+      - name: Keep a trusted copy of the contradiction check
+        run: install -m 0644 src/terrain/campaigns/contradiction.py "${RUNNER_TEMP}/contradiction.py"
+
       # 4. Dependencies before Claude starts, outside the sandbox. Inside it,
       #    uv could not download Python 3.12 (the download hosts are not on the
       #    network allowlist). After this, Claude's `uv sync` is a no-op and
@@ -749,7 +772,7 @@ jobs:
             --tools "Read,Grep,Glob,Edit,Write,Bash"
             --allowedTools "Read" "Grep" "Glob" "Edit(./**)" "Bash(uv sync)" "Bash(uv run ruff *)" "Bash(uv run pytest *)" "Bash(git status)" "Bash(git diff)" "Bash(git add *)" "Bash(git rm *)" "Bash(git commit -m *)"
             --disallowedTools "mcp__*" "NotebookEdit" "WebFetch" "WebSearch" "Edit(./.git/**)" "Edit(./.agent-build/**)" "Bash(git commit *-F *)" "Bash(git commit *--file*)" "Bash(git commit *--template*)" "Bash(git commit *-t *)" "Bash(git * --pathspec-from-file*)" "Read(./.git/config)" "Read(//proc/**)" "Read(//etc/**)" "Read(//root/**)" "Read(//tmp/**)" "Read(//home/runner/.*)" "Read(//home/runner/.*/**)" "Read(//home/runner/work/_temp/**)" "Read(//home/runner/work/_actions/**)" "Read(//home/runner/work/_tool/**)" "Read(//home/runner/runners/**)"
-            --json-schema '{"type":"object","properties":{"status":{"type":"string","enum":["done","blocked"]},"summary":{"type":"string"}},"required":["status","summary"]}'
+            --json-schema '{"type":"object","properties":{"status":{"type":"string","enum":["done","blocked","contradiction"]},"summary":{"type":"string"},"contradictions_resolved":{"type":"array","items":{"type":"object","properties":{"winner":{"type":"object","properties":{"text":{"type":"string"},"source":{"type":"string"},"level":{"type":"integer","minimum":1,"maximum":6}},"required":["text","source","level"]},"loser":{"type":"object","properties":{"text":{"type":"string"},"source":{"type":"string"},"level":{"type":"integer","minimum":1,"maximum":6}},"required":["text","source","level"]},"why":{"type":"string"},"tests":{"type":"array","items":{"type":"string"}}},"required":["winner","loser","why","tests"]}},"quotes":{"type":"array","items":{"type":"object","properties":{"text":{"type":"string"},"source":{"type":"string"},"level":{"type":"integer","minimum":1,"maximum":6}},"required":["text","source","level"]}}},"required":["status","summary"]}'
           prompt: ${{ steps.role.outputs.prompt }}
 
       # 7. Claude's result, checked by plain code, in two steps so that no
@@ -772,8 +795,22 @@ jobs:
           fail() { printf 'reason=%s\n' "$1" >> "${GITHUB_OUTPUT}"; echo "::error::$1"; exit 1; }
           status="$(jq -r '.status // empty' <<< "${STRUCTURED:-}" 2>/dev/null || true)"
           summary="$(jq -r '.summary // empty' <<< "${STRUCTURED:-}" 2>/dev/null || true)"
-          if [ "${status}" = "done" ]; then
-            echo "The builder returned done."
+          if [ "${status}" = "done" ] || [ "${status}" = "contradiction" ]; then
+            # Decision 0021: the quote check reads the whole result. The two
+            # fields it quotes are checked here for the token values and
+            # prefixes, since they reach a comment and the PR body.
+            quoted="$(jq -c '[.contradictions_resolved, .quotes]' <<< "${STRUCTURED}")"
+            clean=1
+            for secret in "${CLAUDE_CODE_OAUTH_TOKEN:-}" "${JOB_TOKEN:-}"; do
+              if [ -n "${secret}" ] && [[ "${quoted}" == *"${secret}"* ]]; then clean=0; fi
+            done
+            if grep -qE 'sk-ant-|lsv2_|gh[pousr]_|github_pat_|ya29\.|olp_|-----BEGIN' <<< "${quoted}"; then clean=0; fi
+            if [ "${clean}" = "0" ]; then
+              echo "fixable=fresh" >> "${GITHUB_OUTPUT}"
+              fail "The builder's result looked like it contained a token, so it is not shown."
+            fi
+            printf '%s' "${STRUCTURED}" > "${RUNNER_TEMP}/agent-out/result.json"
+            echo "The builder returned ${status}."
             exit 0
           fi
           # Decision 0019: the builder stopped or gave no usable result, so
@@ -799,7 +836,30 @@ jobs:
           fi
           fail "The builder did not return a usable result."
 
-      #    b. The commits. No secrets in env (the job-level env holds none).
+      #    b. Decision 0021: the quote check, plain code from main (copied
+      #       before the builder started). Every quoted text must appear
+      #       word for word in its named source: the issue body, the plan
+      #       comment this build used, the review file, or a file on main.
+      #       A failure makes the run `blocked` (decision 0019's fix round);
+      #       a contradiction that passes ends the build here with Comment C
+      #       for report to post; a done result's contradictions become the
+      #       PR body's section. No secrets in env; git runs hardened inside
+      #       the module and reads blobs of main only.
+      - name: Check the contradiction quotes
+        id: quotes
+        if: ${{ !cancelled() && steps.result.outcome == 'success' }}
+        env:
+          BASE_SHA: ${{ steps.branch.outputs.base_sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          out="${RUNNER_TEMP}/agent-out"
+          python3 -I "${RUNNER_TEMP}/contradiction.py" check-result \
+            --result "${out}/result.json" --issue "${out}/issue-body.md" --plan "${out}/plan.md" \
+            --review "${out}/review.md" --base "${BASE_SHA}" --run "${RUN_ID}" \
+            --section-out "${out}/contradiction-section.md"
+
+      #    c. The commits. No secrets in env (the job-level env holds none).
       #       Nested repositories are refused before git runs at all, gitlinks
       #       and .gitmodules after. Every git call has fsmonitor and hooks
       #       off and never recurses into submodules. The commits go to the
@@ -807,7 +867,7 @@ jobs:
       #       exactly what Claude was given.
       - name: Check the commits and bundle them
         id: commits
-        if: ${{ !cancelled() && steps.result.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.quotes.outcome == 'success' }}
         env:
           BASE_SHA: ${{ steps.branch.outputs.base_sha }}
         run: |
@@ -855,6 +915,7 @@ jobs:
           path: |
             ${{ runner.temp }}/agent-out/agent.bundle
             ${{ runner.temp }}/agent-out/plan.md
+            ${{ runner.temp }}/agent-out/contradiction-section.md
           if-no-files-found: error
           retention-days: 7
 
@@ -895,11 +956,20 @@ jobs:
       check: ${{ steps.checks.outputs.check }}
       tail: ${{ steps.checks.outputs.tail }}
       round_tests: ${{ steps.kept.outputs.changed }}
+      # Decision 0021: every failing pytest id also fails on main's head, and
+      # Comment W (rendered by the module) for report to post.
+      waiting: ${{ steps.main.outputs.waiting }}
+      waiting_comment: ${{ steps.main.outputs.waiting_comment }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
+
+      # Decision 0021: plain code from main, kept before the load step puts
+      # the builder's commits in this checkout.
+      - name: Keep a trusted copy of the contradiction check
+        run: install -m 0644 src/terrain/campaigns/contradiction.py "${RUNNER_TEMP}/contradiction.py"
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -1357,7 +1427,54 @@ jobs:
           uv sync --locked || fail "uv sync --locked failed: pyproject.toml and uv.lock do not match."
           uv run ruff check . 2>&1 | tee "${log}" || fixable "ruff check"
           uv run ruff format --check . 2>&1 | tee "${log}" || fixable "ruff format --check"
-          uv run pytest 2>&1 | tee "${log}" || fixable "pytest"
+          # Decision 0021: when pytest fails, the failing node ids go to a
+          # file for the run on main below. No usable id (a crash, a space or
+          # comma in an id) leaves the file out, and the failure is the task's.
+          if ! uv run pytest 2>&1 | tee "${log}"; then
+            if python3 -I "${RUNNER_TEMP}/contradiction.py" failing-ids "${log}" > "${RUNNER_TEMP}/failing-ids.txt"; then
+              echo "pytest_ids=true" >> "${GITHUB_OUTPUT}"
+            fi
+            fixable "pytest"
+          fi
+
+      # Decision 0021, point 6: before anything else, run exactly the failing
+      # ids on main's current head, in a separate directory on this runner.
+      # If every one fails there too, the failure is not the task's: report
+      # posts Comment W and starts no fix round. If any passes (or cannot be
+      # found, or main cannot be set up), nothing changes: decision 0019
+      # applies as before. Only pytest failures get here; ruff, the paths, the
+      # secret scan and set-up stop earlier.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ failure() && steps.checks.outputs.pytest_ids == 'true' }}
+        with:
+          ref: main
+          path: main-head
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Run the failing tests on main
+        id: main
+        if: ${{ failure() && steps.checks.outputs.pytest_ids == 'true' }}
+        working-directory: main-head
+        env:
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -uo pipefail
+          check="${RUNNER_TEMP}/contradiction.py"
+          ids="${RUNNER_TEMP}/failing-ids.txt"
+          log="${RUNNER_TEMP}/main.log"
+          sha="$(git -c core.fsmonitor=false -c core.hooksPath=/dev/null rev-parse HEAD)" || exit 0
+          if ! uv sync --locked --offline; then
+            echo "main could not be set up offline, so the failure counts as the task's."
+            exit 0
+          fi
+          mapfile -t nodes < "${ids}"
+          uv run pytest -- "${nodes[@]}" 2>&1 | tee "${log}"
+          decision="$(python3 -I "${check}" decide-waiting --ids "${ids}" --main-log "${log}")" || exit 0
+          echo "Decision: ${decision}"
+          if [ "${decision}" = waiting_for_main ]; then
+            python3 -I "${check}" render-waiting --ids "${ids}" --run "${RUN_ID}" --sha "${sha}" --github-output
+          fi
 
       # pytest ran Claude's code in this checkout, so it is deleted before
       # actions/checkout's post-job step can run git in it with the job
@@ -1507,6 +1624,7 @@ jobs:
           RETRY: ${{ needs.build.outputs.retry }}
           FIRST_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ needs.build.outputs.prior_run }}
           ROUND_TESTS: ${{ needs.verify.outputs.round_tests }}
+          SECTION: ${{ runner.temp }}/agent-in/contradiction-section.md
         run: |
           set -euo pipefail
           fail() { printf 'reason=%s\n' "$1" >> "${GITHUB_OUTPUT}"; echo "::error::$1"; exit 1; }
@@ -1537,6 +1655,10 @@ jobs:
           print("A person reviews and merges; the workflow never merges.\n")
           print("## Done when (from the plan)\n")
           print(done_when + "\n")
+          # Decision 0021: written by build's quote check, from the builder's
+          # contradictions_resolved, once every quote was found in its source.
+          if os.path.exists(os.environ["SECTION"]):
+              print(open(os.environ["SECTION"], encoding="utf-8").read().rstrip("\n") + "\n")
           retry = os.environ.get("RETRY", "")
           if retry:
               print("## Automatic fix round (decision 0019)\n")
@@ -1556,6 +1678,25 @@ jobs:
           gh pr create --repo "${REPO}" --base "${BASE_BRANCH}" --head "${BRANCH}" \
             --title "${ISSUE_TITLE}" --body-file "${RUNNER_TEMP}/pr-body.md" \
             || fail "The branch was pushed, but opening the pull request failed."
+
+      # Decision 0021: a review fix round opens no PR, so a contradiction it
+      # settled is added to the open PR's body here. If this fails, the section
+      # is missing and the reviewer says so; the push itself is fine.
+      - name: Add the contradiction section to the pull request
+        if: ${{ needs.build.outputs.fix_round != '' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPO: ${{ github.repository }}
+          SECTION: ${{ runner.temp }}/agent-in/contradiction-section.md
+        run: |
+          set -euo pipefail
+          [ -f "${SECTION}" ] || { echo "No contradiction section."; exit 0; }
+          pr="$(gh pr list --repo "${REPO}" --head "${BRANCH}" --state open --json number --jq '.[0].number // empty')"
+          [ -n "${pr}" ] || { echo "::warning::No open pull request for ${BRANCH}."; exit 0; }
+          gh pr view "${pr}" --repo "${REPO}" --json body --jq .body > "${RUNNER_TEMP}/old-body.md"
+          { cat "${RUNNER_TEMP}/old-body.md"; printf '\n\n'; cat "${SECTION}"; } > "${RUNNER_TEMP}/new-body.md"
+          gh pr edit "${pr}" --repo "${REPO}" --body-file "${RUNNER_TEMP}/new-body.md"
 
   report:
     needs: [build, verify, publish]
@@ -1595,6 +1736,12 @@ jobs:
           CHECK: ${{ needs.verify.outputs.check }}
           TAIL: ${{ needs.verify.outputs.tail }}
           HEAD_SHA: ${{ needs.verify.outputs.head_sha }}
+          # Decision 0021: Comment C (build's quote check passed) and
+          # Comment W (every failing pytest id also fails on main), both
+          # rendered by contradiction.py in a job that holds no secret.
+          CONTRADICTION_COMMENT: ${{ needs.build.outputs.contradiction_comment }}
+          WAITING: ${{ needs.verify.outputs.waiting }}
+          WAITING_COMMENT: ${{ needs.verify.outputs.waiting_comment }}
         run: |
           set -euo pipefail
           tokens='sk-ant-|lsv2_|gh[pousr]_|github_pat_|-----BEGIN|ya29\.|olp_'
@@ -1608,7 +1755,55 @@ jobs:
           fi
           fix=""
           note=""
-          if [ -n "${FIXABLE}" ] && [ "${FIRST}" = true ] && [ "${CAMPAIGN}" = true ] \
+          skip_fix=false
+          # Decision 0021, point 4: the builder found two instructions and
+          # neither is stricter, and every quote was found word for word in
+          # its source. The comment is posted exactly as rendered (its last
+          # line is the marker the tick reads). In a campaign there is no
+          # needs-human and no fix round: the tick skips the step. Outside a
+          # campaign the issue gets needs-human, as for any stop.
+          if [ -n "${CONTRADICTION_COMMENT:-}" ]; then
+            skip_fix=true
+            if grep -qE "${tokens}" <<< "${CONTRADICTION_COMMENT:-}"; then
+              note="The builder found a contradiction (decision 0021), but its quotes looked like they contained a token, so they are not shown."
+            else
+              printf '%s\n' "${CONTRADICTION_COMMENT:-}" > "${RUNNER_TEMP}/comment.md"
+              if post "${RUNNER_TEMP}/comment.md" > /dev/null; then
+                if [ "${CAMPAIGN}" != true ]; then
+                  gh issue edit "${ISSUE}" --add-label needs-human
+                fi
+                echo "Posted the contradiction comment on #${ISSUE}."
+                exit 0
+              fi
+              note="The builder found a contradiction (decision 0021), but its comment could not be posted."
+            fi
+          fi
+          # Decision 0021, point 6: every failing test also fails on main, so
+          # the task is not at fault. A campaign task waits (Comment W): no
+          # fix round, no needs-human. The second wait on the same issue
+          # stops for a person. Outside a campaign a failure is handled as
+          # before.
+          if [ "${WAITING:-}" = true ] && [ "${CAMPAIGN}" = true ] && [ -n "${WAITING_COMMENT:-}" ]; then
+            skip_fix=true
+            earlier="$(gh api --paginate "repos/${GH_REPO}/issues/${ISSUE}/comments?per_page=100" \
+              --jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("## Agent build: waiting for main")))] | length' \
+              | awk '{ s += $1 } END { print s + 0 }')" || earlier=unknown
+            if [ "${earlier}" = 0 ]; then
+              if grep -qE "${tokens}" <<< "${WAITING_COMMENT:-}"; then
+                note="Every failing test also fails on main (decision 0021), but the comment looked like it contained a token, so it is not shown."
+              else
+                printf '%s\n' "${WAITING_COMMENT:-}" > "${RUNNER_TEMP}/comment.md"
+                if post "${RUNNER_TEMP}/comment.md" > /dev/null; then
+                  echo "Posted the waiting-for-main comment on #${ISSUE}."
+                  exit 0
+                fi
+                note="Every failing test also fails on main (decision 0021), but the comment could not be posted."
+              fi
+            else
+              note="Every failing test also fails on main, and this step has already waited for main once, so a person must decide (decision 0021, point 6: the second wait)."
+            fi
+          fi
+          if [ -n "${FIXABLE}" ] && [ "${skip_fix}" = false ] && [ "${FIRST}" = true ] && [ "${CAMPAIGN}" = true ] \
             && { [ "${FIXABLE}" != bundle ] || [[ "${HEAD_SHA}" =~ ^[0-9a-f]{40}$ ]]; }; then
             earlier="$(gh api --paginate "repos/${GH_REPO}/issues/${ISSUE}/comments?per_page=100" \
               --jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("## Agent build: fix round")))] | length' \
@@ -1654,7 +1849,7 @@ jobs:
               note="The automatic fix round (decision 0019) was not started: the dispatch failed."
             fi
           fi
-          if [ -n "${RETRY}" ]; then
+          if [ -n "${RETRY}" ] && [ -z "${note}" ]; then
             note="This was the automatic fix round (decision 0019), so a person must decide."
           fi
           {

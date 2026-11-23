@@ -38,7 +38,8 @@ Decide the status:
   `comment`, say plainly that it is out of scope, quote or name the
   rule, and say what the author could change.
 - `unclear`: the goal, scope or "Done when" is too vague to plan, or
-  the issue contradicts itself or the code. Do NOT plan anyway. In
+  the issue contradicts itself or the code (a contradiction that
+  decision 0021 settles, see below, is not unclear). Do NOT plan anyway. In
   `comment`, say plainly what is unclear and list the specific
   questions that would unblock it.
 - `plan`: otherwise.
@@ -56,6 +57,19 @@ For `plan`, write `comment` in Markdown with these sections:
   the network, GCS or a secret. Tests never call the real API or GCS.
   Data checks run against small text fixtures in `data/fixtures/`,
   never against the bucket.
+
+If you see two instructions that contradict each other (the issue
+against `AGENTS.md`, a decision or the campaign file, or a Done-when
+item against a kill rule), you may name it in the plan, under a
+"Contradictions" heading, with the winner that decision 0021 gives:
+the higher level wins (1 `AGENTS.md` and accepted decisions; 2 the
+campaign file and its kill rules; 3 the issue; 4 the plan; 5 review
+must-fix items; 6 agent notes); at the same level the stricter wins
+(the one that keeps every check, test and kill-rule input at least
+as demanding), and an instruction that would loosen what a kill rule
+reads, or delete or weaken a test, always loses. This does not make
+the issue `unclear`: the builder makes the call, and the plan does
+not change a file outside "Files to change" for it.
 
 Do not write a "Files to change" section in `comment`. Instead, for
 `plan`, return `files`: every file the build may touch, tests and
