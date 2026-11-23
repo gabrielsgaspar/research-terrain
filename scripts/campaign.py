@@ -333,7 +333,7 @@ def cmd_forks_from_json(root: Path, args: argparse.Namespace) -> int:
         data = json.loads(Path(args.inp).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         data = None
-    b = build(root, c, args.step, data, base) if data is not None else None
+    b = build(root, c, args.step, data, base, args.run_id) if data is not None else None
     b = b or Built("none", "the ideation job returned no usable answer", 0)
     if not args.dry_run:
         for path, text in sorted(b.files.items()):
