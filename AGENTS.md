@@ -294,6 +294,12 @@ workflow carries it out; the `campaign-gate` check decides what may merge.
     than "finite".
   - One type and one dimension per fork; nothing else differs from the
     parent (the reviewer's R8 checks it).
+  - A fork's delta and each Done-when item never name a parent kill rule's
+    id (`k2`) or field (the dotted path, or its last part in backticks);
+    code adds one fixed line per inherited field to every fork draft. Code
+    refuses a fork that does, before it is written, and records it in
+    `forks/refused-<step>-<run id>.md` (type, summary, token), never edited
+    afterwards (decision 0021, point 5).
   - A sample fork filters only on things fixed before the outcome, never on
     outcomes, and gets the library rule `min_clusters`.
   - New data only from `data/approved-publishers.yaml`, with no identifiers

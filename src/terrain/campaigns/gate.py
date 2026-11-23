@@ -160,7 +160,7 @@ def fork_edits(pr: PullRequest) -> list[str]:
     return sorted({p for p, status in pr.changes if FORK_PATH.match(p) and status != "added"})
 
 
-def _fork_plan(pr: PullRequest, ctx: GateContext, cid: str, sid: str) -> GateResult:
+def _fork_plan(pr: PullRequest, ctx: GateContext, cid: str, sid: str, run: str) -> GateResult:
     """The gate for a fork plan pull request (decision 0015): anything unexpected fails."""
     label = f"Campaign {cid} step {sid} fork plan"
 
@@ -199,7 +199,17 @@ def _fork_plan(pr: PullRequest, ctx: GateContext, cid: str, sid: str) -> GateRes
         failures.append(f"files the gate could not read: {unread[:5]}")
     if not failures:
         on_main = {f.id for f in campaign.fork_files}
-        fids = sorted({p[len(folder) :].split("/")[0].removesuffix(".md") for p in pr.files})
+        refusal = f"{folder}refused-{sid}-{run}.md"  # decision 0021, point 5: written once
+        if refusal in pr.files and (ctx.root / refusal).exists():
+            failures.append(f"{refusal} is on main already (refusal records are append-only)")
+        stray = [
+            p for p in pr.files if forks.REFUSED_FILE.match(p.rsplit("/", 1)[-1]) and p != refusal
+        ]
+        if stray:
+            failures.append(f"refusal records other than {refusal}: {stray[:3]}")
+        fids = sorted(
+            {p[len(folder) :].split("/")[0].removesuffix(".md") for p in pr.files if p != refusal}
+        )
         again = [f for f in fids if f in on_main]
         if again:
             failures.append(f"forks already on main: {again} (fork files are append-only)")
@@ -210,7 +220,7 @@ def _fork_plan(pr: PullRequest, ctx: GateContext, cid: str, sid: str) -> GateRes
         new = [f for f in c2.fork_files if f.id in fids]
         if not problems and any(f.parent_step != sid for f in new):
             failures.append(f"a fork in it is not at {sid}")
-        if not problems and not new:
+        if not problems and not new and refusal not in pr.files:
             failures.append("it adds no fork file")
         failures += problems[1:4]
     return _checks_ci(pr, label, failures, cid, sid)
@@ -279,7 +289,7 @@ def evaluate(pr: PullRequest, ctx: GateContext) -> GateResult:
         return GateResult("failure", "The pull request is not open.")
     m_fork = FORK_BRANCH.match(pr.head_ref)
     if m_fork:
-        return _fork_plan(pr, ctx, m_fork.group(1), m_fork.group(2))
+        return _fork_plan(pr, ctx, m_fork.group(1), m_fork.group(2), m_fork.group(3))
 
     kind, cid, sid = "", "", ""
     run_id = ""

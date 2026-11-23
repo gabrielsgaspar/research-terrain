@@ -132,6 +132,14 @@ class Refused(Exception):
     """A proposal code will not write; the message says why, in plain words."""
 
 
+class NamesKillRule(Refused):
+    """A delta or Done-when item names a parent kill rule (decision 0021, point 5)."""
+
+    def __init__(self, where: str, token: str, rule_id: str) -> None:
+        super().__init__(f"{where} names {token}, kill rule {rule_id} of the parent")
+        self.token = token
+
+
 @dataclass
 class Built:
     """What `build` made of the model's answer."""
@@ -143,6 +151,7 @@ class Built:
     written: list[tuple[str, str, str]] = field(default_factory=list)  # (fork id, title, line)
     refused: list[tuple[str, str]] = field(default_factory=list)  # (title, reason)
     suggestions: list[tuple[str, str]] = field(default_factory=list)  # (title, why not run)
+    named: list[tuple[str, str, str]] = field(default_factory=list)  # (type, summary, token)
 
 
 def _safe(text: object, limit: int = TEXT_MAX) -> str:
@@ -325,6 +334,7 @@ def render(
     fid: str,
     first_step: int,
     order: int,
+    library: dict[str, forks.LibraryRule] | None = None,
 ) -> dict[str, str]:
     """The fork file and drafts for one proposal, as code writes them. Raises Refused."""
     if not isinstance(prop, dict):
@@ -338,6 +348,7 @@ def render(
     if not any(isinstance(s, dict) and s.get("kind") == "explore_run" for s in raw_steps):
         raise Refused("it has no explore run, so nothing would give it a verdict")
     ids = [f"s{first_step + k}" for k in range(len(raw_steps))]
+    inherited = forks.inherited_rules(c.step(point), raw_steps, ftype, library or {})
     steps, drafts = [], {}
     for i, s in enumerate(raw_steps):
         if not isinstance(s, dict):
@@ -349,8 +360,13 @@ def render(
             draft = _safe(_named(s.get("draft"), fid), 12000)
             if "## Done when" not in draft:
                 raise Refused(f"the draft of step {i + 1} has no '## Done when' list")
+            for item in forks.done_when_items(draft):
+                token, rid = forks.breaking_token(item, inherited)
+                if token:
+                    raise NamesKillRule(f"a Done-when item of step {i + 1}", token, rid)
             if DIFFERS not in draft:
                 draft = f"{draft}\n\n{DIFFERS}\n\nOnly this: {dimension}."
+            draft = forks.with_fixed_lines(draft, inherited)
             task_title = _line(s.get("title")) or title
             drafts[f"{c.folder}/forks/{fid}/drafts/{sid}.md"] = (
                 f"# Task: {task_title} ({s.get('type', 'explore')}, fork {fid} of campaign "
@@ -395,6 +411,9 @@ def render(
     delta = _safe(_named(prop.get("delta"), fid), 10 * forks.DELTA_MAX) if adopts else ""
     if len(delta) > forks.DELTA_MAX:
         raise Refused(f"its delta is longer than {forks.DELTA_MAX} characters")
+    token, rid = forks.breaking_token(delta, inherited)
+    if token:
+        raise NamesKillRule("its delta", token, rid)
     evidence = [record] if record else []
     evidence += [
         e for e in (prop.get("evidence") or []) if isinstance(e, str) and e not in evidence
@@ -432,6 +451,7 @@ def build(
     point: str,
     data: object,
     base: dict[str, str] | None = None,
+    run_id: str = "",
 ) -> Built:
     """Turn the model's answer into fork files that pass every check, and say what was refused.
 
@@ -474,7 +494,11 @@ def build(
             continue
         fid = f"f{fork_no}"
         try:
-            files = render(c, point, verdict, record, prop, fid, step_no, order)
+            files = render(c, point, verdict, record, prop, fid, step_no, order, library)
+        except NamesKillRule as exc:
+            out.refused.append((title, str(exc)))
+            out.named.append((str(prop.get("type", "")), title, exc.token))
+            continue
         except Refused as exc:
             out.refused.append((title, str(exc)))
             continue
@@ -495,6 +519,9 @@ def build(
         fork_no += 1
         step_no += len(fork.step_ids)
         order += 1
+    if out.named and run_id:
+        path = f"{c.folder}/forks/refused-{point}-{run_id}.md"
+        out.files[path] = forks.refusal_text(point, run_id, out.named)
     return out
 
 

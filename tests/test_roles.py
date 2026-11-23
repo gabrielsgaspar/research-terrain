@@ -54,7 +54,7 @@ EXPECTED = {
         "Ideate",
         "claude-opus-5-5",
         "40",
-        "ac0292130b951ad66d68ce316254785010280fbb35a7bac24d52c13355fe1b3d",
+        "a379a8ad6b7a6b304b7b26b4a0c7c4e47534135967ed7f5b0c6907881501eca9",
     ),
 }
 

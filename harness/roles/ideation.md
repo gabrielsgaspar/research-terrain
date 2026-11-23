@@ -61,6 +61,10 @@ How to choose:
   paths. A `question` fork whose results those rules cannot read names
   rules from the kill-rule library instead (`rules`), with at least one
   other than `finite`.
+- Never name a parent kill rule's id (such as `k2`) or its field (the dotted
+  path, or its last part in backticks) in a `delta` or in a Done-when item.
+  Code adds a fixed line to every draft that says the field is written the
+  same way; a fork that names one is refused.
 - New data only from the approved publishers, with no identifiers and within
   the size cap; follow each publisher's rules.
 - `adopts_downstream: true` only at a killed point, when the surviving
