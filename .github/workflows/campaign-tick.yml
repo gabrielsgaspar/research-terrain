@@ -11,7 +11,9 @@ name: Campaign tick
 #           from fixed sets, merges name the exact head commit, only an
 #           issue whose body carries a campaign-tracking marker may be
 #           closed, a restart only removes and re-adds `agent-build` on the
-#           App's open task issue, and `needs-human` comes off only in an
+#           App's open task issue, `close_task` closes only the App's open
+#           issue that carries a task or owner-fix marker, with the reason
+#           not_planned or completed and one comment (decision 0021), and `needs-human` comes off only in an
 #           unblock, after the script reads that the repository owner opened
 #           and merged the pull request that says `Unblocks #<issue>`) and
 #           carries it out. Merges also need the required checks on main, so a wrong
@@ -208,7 +210,9 @@ jobs:
               # a fork point's ideation job (decision 0015); never a dry run from here
               "campaign-ideate.yml": {"campaign": r"^[0-9]{4}$", "step": r"^s[0-9]{1,2}$"},
           }
-          MARKER = re.compile(r"<!-- campaign-(step|tracking|closeout|ledger|repair|status): [0-9]{4}")
+          # An owner-fix issue's marker (decision 0021): one failing test id, no spaces or commas.
+          OWNERFIX = re.compile(r"<!-- campaign-ownerfix: [^\s,<>]{1,200} -->")
+          MARKER = re.compile(r"<!-- campaign-(step|tracking|closeout|ledger|repair|status): [0-9]{4}|<!-- campaign-ownerfix: [^\s,<>]{1,200} -->")
           TRACKING = re.compile(r"<!-- campaign-tracking: [0-9]{4} -->")
           STATUS = re.compile(r"<!-- campaign-status: 0000 -->")
           # A task's marker: one issue per step, repair or close-out (decision 0019).
@@ -244,7 +248,7 @@ jobs:
               Read now, newest first and without a label filter: the decide job's
               list of `campaign` issues can lag a just-filed issue by seconds, and
               campaign 0013's s5 was filed twice that way (#456, #459)."""
-              found = TASK.search(body)
+              found = TASK.search(body) or OWNERFIX.search(body)
               if not found:
                   return None
               for page in range(1, 11):
@@ -270,7 +274,7 @@ jobs:
                       labels, then = list(a.get("labels", [])), list(a.get("then_labels", []))
                       if not set(labels + then) <= LABELS or "campaign" not in labels:
                           raise ValueError(f"labels outside the fixed set: {labels + then}")
-                      if not isinstance(a.get("title"), str) or not 0 < len(a["title"]) <= 200:
+                      if not isinstance(a.get("title"), str) or not 0 < len(a["title"]) <= 256:
                           raise ValueError("bad title")
                       twin = filed_already(a["body"])
                       if twin is not None:
@@ -349,6 +353,25 @@ jobs:
                               raise ValueError(f"bad input {key}={value!r}")
                       call("POST", f"/actions/workflows/{wf}/dispatches", {"ref": "main", "inputs": inputs})
                       print(f"started {wf} {inputs}")
+                  elif kind == "close_task":
+                      # decision 0021: a skipped step's issue, or an owner-fix issue whose
+                      # test passes again. Only the App's open issue with a task or
+                      # owner-fix marker, and only these two reasons.
+                      n = number(a["issue"])
+                      reason, text = a.get("state_reason"), a.get("comment")
+                      if reason not in ("not_planned", "completed"):
+                          raise ValueError(f"state_reason {reason!r} is not allowed")
+                      if not isinstance(text, str) or not 0 < len(text) <= 2000:
+                          raise ValueError("close_task needs one comment of at most 2000 characters")
+                      issue = call("GET", f"/issues/{n}")
+                      body = issue.get("body") or ""
+                      if ("pull_request" in issue or issue.get("state") != "open" or not APP_BOT
+                              or (issue.get("user") or {}).get("login") != APP_BOT
+                              or not (TASK.search(body) or OWNERFIX.search(body))):
+                          raise ValueError(f"#{n} is not the agent App's open task or owner-fix issue")
+                      call("PATCH", f"/issues/{n}", {"state": "closed", "state_reason": reason})
+                      call("POST", f"/issues/{n}/comments", {"body": text})
+                      print(f"closed #{n} as {reason}")
                   elif kind == "close_issue":
                       n = number(a["issue"])
                       issue = call("GET", f"/issues/{n}")
