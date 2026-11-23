@@ -37,12 +37,16 @@ from typing import Any
 from terrain import datarule
 from terrain.campaigns import markers, repair
 from terrain.campaigns.facts import (
+    UNBLOCKS_LINE,
     Comment,
     Issue,
+    LabelEvent,
     LogFacts,
+    MainCheck,
     PullRequest,
     Run,
     Snapshot,
+    Unblock,
     parse_review,
 )
 from terrain.campaigns.gate import FORK_BRANCH, MANIFEST_BRANCH, RECORD_BRANCH, TASK_BRANCH
@@ -53,7 +57,10 @@ LOG_TAIL_BYTES = 64 * 1024  # of a job log, kept while reading; the rest is drop
 LOG_TAIL_LINES = 200
 FAILED = ("failure", "timed_out")
 IDEATE_WORKFLOW = "campaign-ideate.yml"
+BUILD_WORKFLOW = "agent-build.yml"
 MAX_FORK_PLAN_FILES = 40  # a fork plan adds at most a few forks' files
+RESTART_LABELS = ("agent-build", "needs-human")  # the label events the tick restarts from
+UNBLOCK_PRS = 50  # recently updated closed pull requests read for `Unblocks #<n>` lines
 
 
 class RateLimited(RuntimeError):  # noqa: N818 (a state to wait out, not a fault)
@@ -411,6 +418,82 @@ class GitHub:
                 facts[r.id] = scanner.facts()
         return logs
 
+    # -- restarts and the red-main pause -------------------------------------
+
+    def builds_in_flight(self, now: str) -> int:
+        """Agent build runs queued or in progress, for any issue, created in the last day.
+
+        A run is not tied to its issue: a label's run is titled after the issue,
+        but a fix round's run (a dispatch) carries no issue number at all."""
+        start = dt.datetime.fromisoformat(now.replace("Z", "+00:00")) - dt.timedelta(days=1)
+        raw = self.pages(
+            f"/actions/workflows/{BUILD_WORKFLOW}/runs",
+            key="workflow_runs",
+            limit=3,
+            created=f">={start.strftime('%Y-%m-%dT%H:%M:%SZ')}",
+        )
+        return sum(1 for r in raw if r.get("status") != "completed")
+
+    def main_check(self) -> MainCheck:
+        """CI's `test` check on main's head commit: failure, success or pending.
+
+        Only a check that ended 'failure' or 'timed_out' is red; one still
+        running, cancelled or not there yet counts as pending."""
+        checks = self.get("/commits/main/check-runs", check_name="test").get("check_runs", [])
+        if not checks:
+            return MainCheck("", "pending")
+        newest = max(checks, key=lambda c: c.get("id", 0))  # a re-run replaces older runs
+        state = "pending"
+        if newest.get("status") == "completed":
+            state = {"failure": "failure", "timed_out": "failure", "success": "success"}.get(
+                newest.get("conclusion") or "", "pending"
+            )
+        return MainCheck(str(newest.get("head_sha", "")), state, str(newest.get("html_url", "")))
+
+    def agent_branches(self) -> frozenset[str]:
+        """The agent/issue-<n> branches that exist."""
+        raw = self.pages("/git/matching-refs/heads/agent/issue-", limit=3)
+        return frozenset(
+            str(r["ref"]).removeprefix("refs/heads/") for r in raw or [] if r.get("ref")
+        )
+
+    def label_events(self, number: int) -> tuple[LabelEvent, ...]:
+        """Issue `number`'s agent-build and needs-human label events, oldest first."""
+        raw = self.pages(f"/issues/{number}/events", limit=5)
+        return tuple(
+            LabelEvent(
+                e["label"]["name"],
+                e["event"],
+                (e.get("actor") or {}).get("login", ""),
+                e["created_at"],
+                int(e.get("id") or 0),
+            )
+            for e in raw
+            if e.get("event") in ("labeled", "unlabeled")
+            and (e.get("label") or {}).get("name") in RESTART_LABELS
+        )
+
+    def unblocks(self) -> tuple[Unblock, ...]:
+        """`Unblocks #<n>` lines of the repository owner's recently merged pull requests.
+
+        Only pull requests the owner opened are kept; for those, who merged it
+        is read from the pull request itself (the list does not say)."""
+        owner = self.repo.split("/")[0]
+        raw = self.get(
+            "/pulls", state="closed", sort="updated", direction="desc", per_page=UNBLOCK_PRS
+        )
+        out: list[Unblock] = []
+        for p in raw or []:
+            found = UNBLOCKS_LINE.findall((p.get("body") or "").replace("\r\n", "\n"))
+            author = (p.get("user") or {}).get("login", "")
+            if not found or not p.get("merged_at") or author != owner:
+                continue
+            merged_by = (self.get(f"/pulls/{p['number']}").get("merged_by") or {}).get("login", "")
+            out.extend(
+                Unblock(p["number"], int(n), author, merged_by, p["merged_at"]) for n in found
+            )
+        return tuple(out)
+
     def snapshot(
         self,
         now: str,
@@ -428,15 +511,23 @@ class GitHub:
         With `active` (the ids of the active campaigns) it reads only what is
         needed (`_needs`); without it, every campaign issue in full, as before.
         `ended` holds the ids of done and stopped campaigns.
+
+        Builds in flight are read first: a build that ends while the rest is
+        read then shows up with its pull request or its needs-human label.
         """
+        building = self.builds_in_flight(now)
         raw_issues = [r for r in self.pages("/issues", state="all", labels="campaign")]
         raw_issues = [r for r in raw_issues if "pull_request" not in r]
         needs = _needs(raw_issues, app_bot, active, ended)
         issues: list[Issue] = []
+        label_events: dict[int, tuple[LabelEvent, ...]] = {}
         for raw in raw_issues:
             number = raw["number"]
             comments, with_pr = needs.get(number, (False, False))
             body, title = raw.get("body") or "", raw.get("title") or ""
+            names = {lb["name"] for lb in raw.get("labels", [])}
+            if with_pr and raw["state"] == "open" and names & set(RESTART_LABELS):
+                label_events[number] = self.label_events(number)
             pr = self.pr_for_branch(f"agent/issue-{number}", with_issue=False) if with_pr else None
             if pr is not None:
                 pr = replace(pr, issue_body=body, issue_title=title)
@@ -506,7 +597,7 @@ class GitHub:
                 continue
             if found := datarule.rules_in_notes(notes):
                 data_rules[rel] = found
-        return Snapshot(
+        snap = Snapshot(
             now,
             enabled,
             app_bot,
@@ -520,6 +611,14 @@ class GitHub:
             fork_prs,
             run_facts,
             data_rules,
+        )
+        return replace(
+            snap,
+            label_events=label_events,
+            builds_in_flight=building,
+            branches=self.agent_branches(),
+            main_ci=self.main_check(),
+            unblocks=self.unblocks(),
         )
 
 

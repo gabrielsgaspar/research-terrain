@@ -16,7 +16,18 @@ import pytest
 from terrain.campaigns import markers, tick
 from terrain.campaigns.closeout import NOTE_BANNED, REPORT_OPENING, REPORT_SECTIONS, number_word
 from terrain.campaigns.codeowners import CodeOwners
-from terrain.campaigns.facts import Comment, Issue, PullRequest, Review, Run, Snapshot, parse_review
+from terrain.campaigns.facts import (
+    Comment,
+    Issue,
+    LabelEvent,
+    MainCheck,
+    PullRequest,
+    Review,
+    Run,
+    Snapshot,
+    Unblock,
+    parse_review,
+)
 from terrain.campaigns.gate import GateContext, evaluate
 from terrain.campaigns.rules import evaluate as apply_rules
 from terrain.campaigns.spec import (
@@ -1424,6 +1435,15 @@ def test_act_closes_only_campaign_tracking_issues(tmp_path, monkeypatch):
 # -- the GitHub reader, against canned API answers ---------------------------------
 
 
+# what the snapshot reads for restarts and the red-main pause, with nothing in it
+RESTART_READS = {
+    "/actions/workflows/agent-build.yml/runs": {"workflow_runs": []},
+    "/git/matching-refs/heads/agent/issue-": [],
+    "/commits/main/check-runs": {"check_runs": []},
+    "/pulls?state=closed": [],
+}
+
+
 class FakeGitHub:
     """`terrain.campaigns.github.GitHub` with `_request` answered from a dict."""
 
@@ -1512,6 +1532,7 @@ def test_github_reader_builds_the_facts(tmp_path):
         "/actions/workflows/data-pipeline.yml/runs": {"workflow_runs": []},
         "/actions/workflows/campaign-ideate.yml/runs": {"workflow_runs": []},
         "/pulls?head=o%3Aexplore%2F0003_count-555": [],
+        **RESTART_READS,
     }
     gh = FakeGitHub(answers)
     pr = gh.pull_request(20)
@@ -3796,6 +3817,7 @@ def test_snapshot_reads_only_what_the_tick_needs(tmp_path):
         "/actions/workflows/explore-run.yml/runs": {"workflow_runs": []},
         "/actions/workflows/data-pipeline.yml/runs": {"workflow_runs": []},
         "/actions/workflows/campaign-ideate.yml/runs": {"workflow_runs": []},
+        **RESTART_READS,
     }
     gh = FakeGitHub(answers)  # any other request fails the test
     s = gh.snapshot(
@@ -3878,3 +3900,437 @@ def test_waiting_on_you_quotes_the_pull_requests_note(tmp_path):
     assert agent_reason(replace(st, pr=replace(pr, labels=()))) == ""
     issue = step_issue(root, [plan_comment()], labels=("campaign", "needs-human"))
     assert agent_reason(tick.StepState("blocked", issue=issue)) == ""
+
+
+# -- restarts of stalled and unblocked builds, and the red-main pause -----------------------
+
+STALLED = "no pull request twelve hours after the plan"
+STALLED_AGAIN = "no pull request twelve hours after the build was started again"
+NEEDS_HUMAN = "an agent stopped and labelled it needs-human"
+RED_SHA = "b" * 40
+
+
+def building(root, labels=("campaign", "explore", "agent-build")) -> Issue:
+    """Step s1's issue: planned at 01:00 on 9 November, labelled agent-build, no PR."""
+    return step_issue(root, [plan_comment()], labels=labels)
+
+
+def flagged(root) -> Issue:
+    return building(root, labels=("campaign", "explore", "agent-build", "needs-human"))
+
+
+def early_ledger(*events: str, at: str = "2026-11-09T00:30:00Z") -> Issue:
+    return tracking([ledger("started", "s1:filed", *events, at=at)])
+
+
+def restarts(actions) -> list[dict]:
+    return [a for a in actions if a["type"] in ("restart_build", "unblock")]
+
+
+def events_of(actions) -> set[str]:
+    found: set[str] = set()
+    for a in actions:
+        if a["type"] == "comment":
+            found |= markers.parse_ledger(a["body"])[1]
+    return found
+
+
+def red(sha: str = RED_SHA) -> MainCheck:
+    return MainCheck(sha, "failure", "https://github.com/o/r/runs/77")
+
+
+def needs_human_events(*more: LabelEvent) -> dict[int, tuple[LabelEvent, ...]]:
+    added = LabelEvent("needs-human", "labeled", "github-actions[bot]", "2026-11-09T02:00:00Z", 1)
+    return {10: (added, *more)}
+
+
+def owner_unblock(merged: str = "2026-11-09T05:00:00Z") -> Unblock:
+    return Unblock(30, 10, OWNER, OWNER, merged)
+
+
+def test_a_stalled_build_restarts_after_twelve_hours_and_not_before(tmp_path):
+    root = make_repo(tmp_path)
+    issue = building(root)
+    before = run_decide(root, snap([early_ledger(), issue], now="2026-11-09T12:59:00Z"))
+    assert before == []  # 11 h 59 min: still building
+    after = run_decide(root, snap([early_ledger(), issue], now="2026-11-09T13:01:00Z"))
+    assert restarts(after) == [{"type": "restart_build", "issue": 10}]
+    assert events_of(after) == {f"s1:restart:{block_id(STALLED, '#10')}"}
+    assert "starting the build again" in after[0]["body"] and "@" not in after[0]["body"]
+
+
+def test_a_stalled_build_restarts_at_most_once_per_block(tmp_path):
+    root = make_repo(tmp_path)
+    issue = building(root)
+    first = run_decide(root, snap([early_ledger(), issue], now="2026-11-09T13:01:00Z"))
+    # the next tick reads the restart from the ledger: the build is going again
+    again = tracking([*early_ledger().comments, *posted(first, "2026-11-09T13:01:00Z")])
+    assert run_decide(root, snap([again, issue], now="2026-11-09T14:00:00Z")) == []
+    # twelve hours after the restart, a new block: one more restart
+    later = run_decide(root, snap([again, issue], now="2026-11-10T01:02:00Z"))
+    assert restarts(later) == [{"type": "restart_build", "issue": 10}]
+    assert events_of(later) == {f"s1:restart:{block_id(STALLED_AGAIN, '#10')}"}
+    # the same block once more: no restart, the owner is asked
+    third = tracking([*again.comments, *posted(later, "2026-11-10T01:02:00Z")])
+    last = run_decide(root, snap([third, issue], now="2026-11-10T13:03:00Z"))
+    assert restarts(last) == []
+    assert f"s1: **blocked**. Cause: {STALLED_AGAIN}. Needs you: " in last[0]["body"]
+    assert NEEDS_YOU["build_stalled"] in last[0]["body"]
+
+
+def test_no_restart_while_an_agent_build_run_is_in_flight(tmp_path):
+    root = make_repo(tmp_path)
+    s = snap([early_ledger(), building(root)], now="2026-11-09T13:01:00Z", builds_in_flight=1)
+    assert run_decide(root, s) == []  # it waits, without asking the owner
+    _, views = tick._advance(active_campaigns(root), s, ctx(root), root)
+    st = views[0].states["s1"]
+    assert st.status == "restart_waiting"
+    assert st.detail == "its build starts again once no agent-build run is queued or in progress"
+
+
+def test_an_existing_branch_blocks_the_restart(tmp_path):
+    root = make_repo(tmp_path)
+    s = snap(
+        [early_ledger(), building(root)],
+        now="2026-11-09T13:01:00Z",
+        branches=frozenset({"agent/issue-10"}),
+    )
+    actions = run_decide(root, s)
+    assert restarts(actions) == [] and types(actions) == ["comment"]
+    cause = "an earlier build's branch agent/issue-10 exists, so agent-build cannot start again"
+    assert (
+        f"s1: **blocked**. Cause: {cause}. Needs you: {NEEDS_YOU['branch_exists']}"
+        in (actions[0]["body"])
+    )
+
+
+def test_needs_human_removed_by_the_owner_restarts_at_once(tmp_path):
+    root = make_repo(tmp_path)
+    t = early_ledger(f"s1:blocked:{block_id(NEEDS_HUMAN, '#10')}")
+    off = "2026-11-09T03:00:00Z"
+    # removed by someone else: nothing (the build is not twelve hours old)
+    other = needs_human_events(LabelEvent("needs-human", "unlabeled", "someone", off, 2))
+    s = snap([t, building(root)], now="2026-11-09T04:00:00Z", label_events=other)
+    assert restarts(run_decide(root, s)) == []
+    # removed by the owner: at once
+    mine = needs_human_events(LabelEvent("needs-human", "unlabeled", OWNER, off, 2))
+    s = snap([t, building(root)], now="2026-11-09T04:00:00Z", label_events=mine)
+    actions = run_decide(root, s)
+    assert restarts(actions) == [{"type": "restart_build", "issue": 10}]
+    assert "s1:restart:owner-20261109030000" in events_of(actions)
+    assert "- s1: unblocked." in actions[0]["body"]
+    # once per unblock: the next tick reads the restart in the ledger
+    t2 = tracking([*t.comments, *posted(actions, "2026-11-09T04:00:00Z")])
+    s = snap([t2, building(root)], now="2026-11-09T05:00:00Z", label_events=mine)
+    assert restarts(run_decide(root, s)) == []
+    # a build the owner started by hand after removing it: no restart either
+    relabel = LabelEvent("agent-build", "labeled", OWNER, "2026-11-09T03:01:00Z", 3)
+    s = snap(
+        [t, building(root)], now="2026-11-09T04:00:00Z", label_events={10: (*mine[10], relabel)}
+    )
+    assert restarts(run_decide(root, s)) == []
+
+
+def test_an_unblocks_line_only_counts_in_a_pull_request_of_the_owner(tmp_path):
+    root = make_repo(tmp_path)
+    t = early_ledger(f"s1:blocked:{block_id(NEEDS_HUMAN, '#10')}")
+    merged = "2026-11-09T05:00:00Z"
+    for pr in (
+        Unblock(30, 10, "someone", OWNER, merged),  # opened by someone else
+        Unblock(30, 10, OWNER, "someone", merged),  # merged by someone else
+        owner_unblock("2026-11-09T01:30:00Z"),  # merged before the block
+        Unblock(30, 11, OWNER, OWNER, merged),  # another issue
+    ):
+        s = snap(
+            [t, flagged(root)],
+            now="2026-11-09T06:00:00Z",
+            label_events=needs_human_events(),
+            unblocks=(pr,),
+        )
+        assert run_decide(root, s) == [], pr
+    s = snap(
+        [t, flagged(root)],
+        now="2026-11-09T06:00:00Z",
+        label_events=needs_human_events(),
+        unblocks=(owner_unblock(merged),),
+    )
+    actions = run_decide(root, s)
+    assert restarts(actions) == [{"type": "unblock", "issue": 10, "pr": 30}]
+    assert "s1:unblock:30" in events_of(actions)
+    assert (
+        "PR #30, opened and merged by the repository owner, says Unblocks #10"
+        in (actions[0]["body"])
+    )
+    # once: the next tick finds the event in the ledger
+    t2 = tracking([*t.comments, *posted(actions, "2026-11-09T06:00:00Z")])
+    assert restarts(run_decide(root, replace(s, issues=[t2, flagged(root)]))) == []
+
+
+def test_red_main_merges_files_builds_and_restarts_nothing(tmp_path):
+    root = make_repo(tmp_path)
+    t = early_ledger()
+    mergeable = step_issue(
+        root, [plan_comment()], labels=("campaign", "explore", "agent-build"), pr=task_pr(root)
+    )
+    no_gate = replace(mergeable, pr=task_pr(root, gate_status=None))
+    cases = [
+        (snap([tracking()]), "create_issue"),  # the first task
+        (snap([]), "create_issue"),  # the tracking issue
+        (snap([t, mergeable]), "merge"),
+        (snap([t, no_gate]), "dispatch"),
+        (snap([t, step_issue(root, [plan_comment()])]), "swap_labels"),
+        (snap([t, building(root)], now="2026-11-09T13:01:00Z"), "restart_build"),
+        (
+            snap(
+                [early_ledger(f"s1:blocked:{block_id(NEEDS_HUMAN, '#10')}"), flagged(root)],
+                now="2026-11-09T06:00:00Z",
+                label_events=needs_human_events(),
+                unblocks=(owner_unblock(),),
+            ),
+            "unblock",
+        ),
+    ]
+    for s, kind in cases:
+        # green, pending or not read: it happens
+        for check in (None, MainCheck(RED_SHA, "pending"), MainCheck(RED_SHA, "success")):
+            assert kind in types(run_decide(root, replace(s, main_ci=check))), (kind, check)
+        # red: nothing but ledger lines
+        acted = [x for x in types(run_decide(root, replace(s, main_ci=red()))) if x != "comment"]
+        assert acted == [], (kind, acted)
+    # the status page says so first, linked to the run
+    s = replace(cases[2][0], main_ci=red())
+    page = tick.render_status_page(active_campaigns(root), s, ctx(root), root)
+    waiting = page.split("## Waiting on you\n\n", 1)[1]
+    assert waiting.startswith(
+        f"- main is red: CI's test check failed on {RED_SHA[:12]} "
+        "([the run](https://github.com/o/r/runs/77))."
+    )
+    green = tick.render_status_page(active_campaigns(root), cases[2][0], ctx(root), root)
+    assert "main is red" not in green
+
+
+def test_the_breaker_holds_automatic_restarts_but_not_the_owners(tmp_path):
+    root = make_repo(tmp_path)
+    holding = [f"s{k}:blocked:0000000{k}" for k in (7, 8, 9)]  # three recent blocks
+    t = early_ledger(*holding, at="2026-11-09T02:00:00Z")
+    stalled = run_decide(root, snap([t, building(root)], now="2026-11-09T13:01:00Z"))
+    assert restarts(stalled) == []
+    assert "Paused by the circuit breaker" in stalled[0]["body"]
+    assert f"s1: **blocked**. Cause: {STALLED}." in stalled[0]["body"]
+    block = f"s1:blocked:{block_id(NEEDS_HUMAN, '#10')}"
+    t = early_ledger(*holding, block, at="2026-11-09T02:00:00Z")
+    s = snap(
+        [t, flagged(root)],
+        now="2026-11-09T06:00:00Z",
+        label_events=needs_human_events(),
+        unblocks=(owner_unblock(),),
+    )
+    assert restarts(run_decide(root, s)) == [{"type": "unblock", "issue": 10, "pr": 30}]
+    off = LabelEvent("needs-human", "unlabeled", OWNER, "2026-11-09T05:00:00Z", 2)
+    s = snap([t, building(root)], now="2026-11-09T06:00:00Z", label_events=needs_human_events(off))
+    assert restarts(run_decide(root, s)) == [{"type": "restart_build", "issue": 10}]
+
+
+def test_a_build_that_stopped_while_main_was_red_restarts_once_when_green(tmp_path):
+    root = make_repo(tmp_path)
+    issue = building(root)
+    # red: the build (started at the plan, 01:00) is idle; it is noted, not restarted
+    s = snap([early_ledger(), issue], now="2026-11-09T03:00:00Z", main_ci=red())
+    first = run_decide(root, s)
+    assert types(first) == ["comment"]
+    assert events_of(first) == {f"s1:stopped-red:{RED_SHA[:12]}"}
+    page = tick.render_status_page(active_campaigns(root), s, ctx(root), root)
+    assert "its build starts again once main is green again" in page
+    # still red an hour later: nothing new
+    t = tracking([*early_ledger().comments, *posted(first, "2026-11-09T03:00:00Z")])
+    assert run_decide(root, replace(s, issues=[t, issue], now="2026-11-09T04:00:00Z")) == []
+    # green: one restart
+    green = snap([t, issue], now="2026-11-09T05:00:00Z", main_ci=MainCheck("c" * 40, "success"))
+    second = run_decide(root, green)
+    assert restarts(second) == [{"type": "restart_build", "issue": 10}]
+    assert events_of(second) == {f"s1:restart:red-{RED_SHA[:12]}"}
+    # and only one
+    t = tracking([*t.comments, *posted(second, "2026-11-09T05:00:00Z")])
+    assert run_decide(root, replace(green, issues=[t, issue], now="2026-11-09T07:00:00Z")) == []
+    # a build that may still be going (a run in flight somewhere) is not noted while red
+    assert run_decide(root, replace(s, builds_in_flight=1)) == []
+    # nor one that started less than half an hour ago
+    assert run_decide(root, replace(s, now="2026-11-09T01:20:00Z")) == []
+
+
+def test_a_restart_counts_against_the_model_job_budget(tmp_path):
+    root = make_repo(tmp_path)
+    c = active_campaigns(root)[0]
+    plain = tick.view(c, snap([early_ledger(), building(root)]), ctx(root))
+    once = tick.view(c, snap([early_ledger("s1:restart:abcd1234"), building(root)]), ctx(root))
+    assert once.used["max_model_jobs"] == plain.used["max_model_jobs"] + 1 == 2
+    # the restart a tick makes is counted at once
+    s = snap([early_ledger(), building(root)], now="2026-11-09T13:01:00Z")
+    _, views = tick._advance(active_campaigns(root), s, ctx(root), root)
+    assert views[0].used["max_model_jobs"] == 2
+    # the plan and nine restarts use the budget of ten: no tenth, the owner is asked
+    used = [f"s1:restart:owner-2026110800{k:04d}" for k in range(9)]
+    t = early_ledger(*used, at="2026-11-08T12:00:00Z")
+    actions = run_decide(root, snap([t, building(root)], now="2026-11-09T13:01:00Z"))
+    assert restarts(actions) == []
+    assert "Not started again: the model-job budget is used up" in actions[0]["body"]
+
+
+def test_a_restart_waits_while_another_task_is_in_flight(tmp_path):
+    root = make_repo(tmp_path)
+    c = active_campaigns(root)[0]
+    s = snap([early_ledger(), building(root)], now="2026-11-09T13:01:00Z")
+    v = tick.view(c, s, ctx(root))
+    v.states["s2"] = tick.StepState("repair_filing", repairing=True)  # another task going
+    st, act, _ = tick._restart(v, c.step("s1"), v.states["s1"], s, ctx(root), held=False)
+    assert act is None and st.status == "restart_waiting"
+    assert st.detail == "its build starts again once no other task of the campaign is in flight"
+
+
+# -- the act job's restart_build and unblock --------------------------------------------------
+
+TASK_ISSUE = {
+    "body": f"x\n{markers.step_marker('0001', 's1')}",
+    "state": "open",
+    "user": {"login": BOT},
+}
+
+
+def test_act_restarts_a_build_only_on_an_open_task_issue_of_the_app(tmp_path, monkeypatch):
+    issues = {
+        10: TASK_ISSUE,
+        11: {**TASK_ISSUE, "state": "closed"},
+        12: {**TASK_ISSUE, "user": {"login": "someone"}},
+        13: {**TASK_ISSUE, "body": f"x\n{markers.tracking_marker('0001')}"},
+        14: {**TASK_ISSUE, "pull_request": {}},
+    }
+    code, calls = run_act(tmp_path, monkeypatch, [{"type": "restart_build", "issue": 10}], issues)
+    assert code == 0
+    assert calls == [
+        ("GET", "/issues/10", None),
+        ("DELETE", "/issues/10/labels/agent-build", None),
+        ("POST", "/issues/10/labels", {"labels": ["agent-build"]}),
+    ]
+    for n in (11, 12, 13, 14):
+        action = [{"type": "restart_build", "issue": n}]
+        code, calls = run_act(tmp_path, monkeypatch, action, issues)
+        assert code == 1 and [c[0] for c in calls] == ["GET"], n
+
+
+def test_act_unblocks_only_for_the_owners_merged_pull_request(tmp_path, monkeypatch):
+    owner = {"login": "o"}  # run_act's repository is o/r
+    good = {"merged": True, "merged_by": owner, "user": owner, "body": "Fix.\r\nUnblocks #10\r\n"}
+    issues = {
+        10: TASK_ISSUE,
+        30: good,
+        31: {**good, "merged": False},
+        32: {**good, "merged_by": {"login": "someone"}},
+        33: {**good, "user": {"login": "someone"}},
+        34: {**good, "body": "Unblocks #10 now"},
+        35: {**good, "body": "Unblocks #11"},
+    }
+    action = [{"type": "unblock", "issue": 10, "pr": 30}]
+    code, calls = run_act(tmp_path, monkeypatch, action, issues)
+    assert code == 0
+    assert calls == [
+        ("GET", "/issues/10", None),
+        ("GET", "/pulls/30", None),
+        ("DELETE", "/issues/10/labels/needs-human", None),
+        ("DELETE", "/issues/10/labels/agent-build", None),
+        ("POST", "/issues/10/labels", {"labels": ["agent-build"]}),
+    ]
+    for p in (31, 32, 33, 34, 35):
+        action = [{"type": "unblock", "issue": 10, "pr": p}]
+        code, calls = run_act(tmp_path, monkeypatch, action, issues)
+        assert code == 1 and [c[0] for c in calls] == ["GET", "GET"], p
+
+
+# -- the GitHub reader's restart facts -------------------------------------------------------
+
+
+def test_github_reader_reads_the_restart_facts(tmp_path):
+    root = make_repo(tmp_path)
+    title, body = issue_body(root)
+
+    def label(n, event, name, actor):
+        return {
+            "id": n,
+            "event": event,
+            "label": {"name": name},
+            "actor": {"login": actor},
+            "created_at": NOW,
+        }
+
+    def closed(n, author, merged_at, text):
+        return {"number": n, "user": {"login": author}, "merged_at": merged_at, "body": text}
+
+    answers = {
+        "/actions/workflows/agent-build.yml/runs": {
+            "workflow_runs": [
+                {"status": "completed"},
+                {"status": "in_progress"},
+                {"status": "queued"},
+            ]
+        },
+        "/issues?labels=campaign": [
+            {
+                "number": 10,
+                "title": title,
+                "body": body,
+                "state": "open",
+                "labels": [{"name": "campaign"}, {"name": "agent-build"}],
+                "user": {"login": BOT},
+                "created_at": NOW,
+            }
+        ],
+        "/issues/10/comments": [],
+        "/issues/10/events": [
+            label(1, "labeled", "campaign", BOT),
+            label(2, "unlabeled", "needs-human", OWNER),
+            {"id": 3, "event": "assigned", "actor": {"login": OWNER}, "created_at": NOW},
+        ],
+        "/pulls?head=o%3Aagent%2Fissue-10": [],
+        "/actions/workflows/explore-run.yml/runs": {"workflow_runs": []},
+        "/actions/workflows/data-pipeline.yml/runs": {"workflow_runs": []},
+        "/actions/workflows/campaign-ideate.yml/runs": {"workflow_runs": []},
+        "/git/matching-refs/heads/agent/issue-": [{"ref": "refs/heads/agent/issue-10"}],
+        "/commits/main/check-runs": {
+            "check_runs": [
+                {"id": 1, "status": "completed", "conclusion": "success", "head_sha": SHA},
+                {
+                    "id": 2,
+                    "status": "completed",
+                    "conclusion": "failure",
+                    "head_sha": SHA,
+                    "html_url": "https://github.com/o/r/runs/2",
+                },
+            ]
+        },
+        "/pulls?state=closed": [
+            closed(40, "o", NOW, "x\r\nUnblocks #10\r\n"),
+            closed(41, "someone", NOW, "Unblocks #10"),  # not the owner's
+            closed(42, "o", None, "Unblocks #10"),  # closed without merging
+            closed(43, "o", NOW, "Unblocks #10 too"),  # not the exact line
+        ],
+        "/pulls/40": {"merged_by": {"login": "o"}},
+    }
+    s = FakeGitHub(answers).snapshot(
+        now=NOW, enabled=True, app_bot=BOT, since="2026-11-08", root=root
+    )
+    assert s.builds_in_flight == 2
+    assert s.label_events == {10: (LabelEvent("needs-human", "unlabeled", OWNER, NOW, 2),)}
+    assert s.branches == frozenset({"agent/issue-10"})
+    assert s.main_ci == MainCheck(SHA, "failure", "https://github.com/o/r/runs/2") and s.main_red
+    assert s.unblocks == (Unblock(40, 10, "o", "o", NOW),)
+
+
+def test_restarts_are_listed_as_handled_without_you(tmp_path):
+    root = make_repo(tmp_path)
+    issue = building(root)
+    first = run_decide(root, snap([early_ledger(), issue], now="2026-11-09T13:01:00Z"))
+    t = tracking([*early_ledger().comments, *posted(first, "2026-11-09T13:01:00Z")])
+    s = snap([t, issue], now="2026-11-09T14:00:00Z")
+    page = tick.render_status_page(active_campaigns(root), s, ctx(root), root)
+    handled = page.split("## Handled without you\n\n", 1)[1].split("\n## ", 1)[0]
+    assert "s1: no pull request on #10 twelve hours after its build started" in handled
+    assert "s1 (#10): the builder is writing the pull request" in page

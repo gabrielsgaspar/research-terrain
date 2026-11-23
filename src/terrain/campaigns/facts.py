@@ -17,6 +17,9 @@ PLAN_PREFIX = "## Agent plan: "
 BUILD_ROUND_PREFIX = "## Agent build: fix round"
 # who posts the agent workflows' comments (plans, reviews, stops, fix rounds)
 WORKFLOW_BOT = "github-actions[bot]"
+# a line of an owner's merged pull request that unblocks a task issue; the act job of
+# campaign-tick.yml checks the same line (bodies are read with "\r\n" made "\n")
+UNBLOCKS_LINE = re.compile(r"^Unblocks #(\d+)$", re.M)
 
 
 @dataclass(frozen=True)
@@ -135,6 +138,41 @@ class LogFacts:
     profile: tuple[str, ...] = ()  # the profile's lines, a one-line "none" or "refused", or ()
 
 
+@dataclass(frozen=True)
+class LabelEvent:
+    """One `agent-build` or `needs-human` label added to or removed from an issue.
+
+    What the tick restarts a build from: who removed `needs-human` and when,
+    and when a build was last started by a label (`terrain.campaigns.tick`).
+    """
+
+    label: str
+    action: str  # "labeled" or "unlabeled"
+    actor: str
+    created_at: str
+    id: int = 0  # GitHub's id of the event
+
+
+@dataclass(frozen=True)
+class MainCheck:
+    """CI's `test` check on main's head commit."""
+
+    sha: str
+    state: str  # "failure", "success" or "pending" (running, or no check yet)
+    url: str = ""  # the check run on GitHub
+
+
+@dataclass(frozen=True)
+class Unblock:
+    """A merged pull request whose body has a line `Unblocks #<issue>`."""
+
+    pr: int
+    issue: int
+    author: str
+    merged_by: str
+    merged_at: str
+
+
 @dataclass
 class Snapshot:
     """Everything the tick reads in one pass."""
@@ -162,3 +200,21 @@ class Snapshot:
     # manifest path on main (data/manifests/<stage>/<target>.json) -> its data-rule notes
     # lines (`terrain.datarule`), only for manifests that have any
     data_rules: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    # restarts (the tick restarts stalled and unblocked builds):
+    # issue number -> its agent-build and needs-human label events, oldest first; only
+    # for open task issues that carry one of the two labels
+    label_events: dict[int, tuple[LabelEvent, ...]] = field(default_factory=dict)
+    # Agent build runs queued or in progress, for any issue (a run cannot be tied to
+    # its issue from the API: a fix round's run carries no issue number)
+    builds_in_flight: int = 0
+    # the agent/issue-<n> branches that exist (agent-build refuses to start on one)
+    branches: frozenset[str] = frozenset()
+    # CI's test check on main's head commit; None if it was not read
+    main_ci: MainCheck | None = None
+    # recently merged pull requests with an `Unblocks #<n>` line
+    unblocks: tuple[Unblock, ...] = ()
+
+    @property
+    def main_red(self) -> bool:
+        """Did CI's test check fail on main's head commit?"""
+        return self.main_ci is not None and self.main_ci.state == "failure"

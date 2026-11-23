@@ -48,6 +48,31 @@ tick starts nothing new in it (no step, no retry, no repair, no run after a
 repair). Work in flight goes on and merges through the gate go on. The
 breaker holding and lifting each get one ledger line (`breaker:held:<k>`,
 `breaker:lifted:<k>`).
+
+Restarts. agent-build starts only when the `agent-build` label is added, so
+a build that stops without a pull request and without `needs-human` would
+wait forever. The tick starts a task step's build again (`restart_build`:
+the label removed and added again), one model job each, in four cases:
+- stalled: no pull request BUILD_TIMEOUT after the build started (the plan,
+  or the tick's last restart, or a person adding the label by hand), and no
+  agent-build run queued or in progress at all (the API cannot tie a run to
+  its issue); at most once per block (`<step>:restart:<block id>`);
+- the repository owner removed `needs-human` after the latest block, and no
+  build started since: at once (`<step>:restart:owner-<time>`);
+- a pull request the owner opened and merged after the block has a line
+  `Unblocks #<issue>`: the act job removes `needs-human` and restarts
+  (`unblock`, `<step>:unblock:<pr>`);
+- a build that stopped while main was red (`<step>:stopped-red:<sha>`:
+  idle IDLE_BUILD after it started, no run in flight anywhere) once main is
+  green again (`<step>:restart:red-<sha>`).
+The breaker holds the automatic ones (stalled, red), not the owner's. One
+task in flight per campaign and the model-job budget hold all of them. If
+the issue's branch agent/issue-<n> exists, agent-build would refuse it, so
+the step is blocked instead.
+
+While CI's test check failed on main's head commit, the tick merges nothing,
+files nothing, starts no build, restart or run and dispatches no workflow;
+work in flight goes on, and so do the ledger and the status page.
 """
 
 from __future__ import annotations
@@ -67,6 +92,7 @@ from terrain.campaigns.facts import (
     PLAN_PREFIX,
     WORKFLOW_BOT,
     Issue,
+    Plan,
     PullRequest,
     Run,
     Snapshot,
@@ -85,6 +111,12 @@ WORKFLOW_NAMES = {EXPLORE_WORKFLOW: "Explore run", PIPELINE_WORKFLOW: "Data pipe
 
 PLAN_TIMEOUT = dt.timedelta(hours=2)
 BUILD_TIMEOUT = dt.timedelta(hours=12)
+# a build with no run in flight anywhere this long after it started has stopped
+# (used only while main is red; see "Restarts" above)
+IDLE_BUILD = dt.timedelta(minutes=30)
+# the ledger events of the tick's restarts of a step's build, one model job each
+_RESTART = re.compile(r"^(s\d{1,2}):(?:restart|unblock):")
+_STOPPED_RED = re.compile(r"^(s\d{1,2}):stopped-red:([0-9a-f]{12})$")
 RUN_APPEAR_TIMEOUT = dt.timedelta(hours=2)
 RECORD_TIMEOUT = dt.timedelta(hours=3)
 BLOCK_GRACE = dt.timedelta(hours=24)  # time the owner has to unblock a step before close-out
@@ -154,6 +186,15 @@ NEEDS_YOU = {
         "open the pull request, read why it was closed, and choose Reopen pull request "
         "if that was a mistake"
     ),
+    "build_stalled": (
+        "open the Actions tab and read the issue's last Agent build run; to start it "
+        "again, remove and re-add the `agent-build` label on the issue"
+    ),
+    "branch_exists": (
+        "open the Code tab, choose Branches, delete the issue's `agent/issue-<n>` branch "
+        "if no pull request needs it, then remove and re-add the `agent-build` label on "
+        "the issue"
+    ),
 }
 NEEDS_YOU_DEFAULT = "open the links and read the last comment"
 
@@ -173,6 +214,7 @@ IN_FLIGHT = {
     "repair_waiting",  # a repair to file once no other task of the campaign is in flight
     "repair_filing",  # a repair filed, its issue not seen yet
     "repair_merged",  # a merged repair: the run starts again once the run limits allow
+    "restart_waiting",  # a stopped or unblocked build, to start again once the tick may
 }
 RUN_IN_FLIGHT = {"waiting_run", "running", "recording", "in_review", "mergeable", "awaiting_gate"}
 
@@ -307,12 +349,26 @@ def _plan_problem(
     return ""
 
 
+def _build_started(issue: Issue, plan_at: str, snap: Snapshot, restarted: str = "") -> str:
+    """When the issue's build last started: its plan, the tick's last restart of it
+    (`restarted`, from the ledger), or a person adding `agent-build` by hand since.
+    The App's own label swap right after the plan does not count: the first build's
+    time is counted from the plan, as before restarts."""
+    by_hand = [
+        e.created_at
+        for e in snap.label_events.get(issue.number, ())
+        if e.label == "agent-build" and e.action == "labeled" and e.actor != snap.app_bot
+    ]
+    return max((t for t in (plan_at, restarted, *by_hand) if t), key=_time)
+
+
 def _task_state(
     issue: Issue,
     allowed: tuple[str, ...],
     snap: Snapshot,
     gctx: GateContext,
     allow_owned: bool = False,
+    restarted: str = "",
 ) -> StepState:
     st = StepState("filed", issue=issue, pr=issue.pr)
     pr = issue.pr
@@ -343,8 +399,15 @@ def _task_state(
     if pr is None:
         if "agent-build" not in issue.labels:
             st.status = "plan_ready"
-        elif _older(snap.now, plan.created_at, BUILD_TIMEOUT):
-            st.status, st.detail = "blocked", "no pull request twelve hours after the plan"
+            return st
+        since = _build_started(issue, plan.created_at, snap, restarted)
+        if _older(snap.now, since, BUILD_TIMEOUT):
+            st.status, st.cause = "blocked", "build_stalled"
+            st.detail = (
+                "no pull request twelve hours after the plan"
+                if since == plan.created_at
+                else "no pull request twelve hours after the build was started again"
+            )
         else:
             st.status = "building"
         return st
@@ -694,7 +757,11 @@ def view(
         if s.kind == "task":
             issue = by_step.get(s.id)
             st = (
-                _task_state(issue, s.allowed_paths, snap, gctx) if issue else StepState("unstarted")
+                _task_state(
+                    issue, s.allowed_paths, snap, gctx, restarted=_last_restart(s.id, events)
+                )
+                if issue
+                else StepState("unstarted")
             )
         else:
             st = _run_state(c, s, snap, gctx, events)
@@ -749,10 +816,12 @@ def view(
         ),
         "max_explore_runs": runs_of("explore_run", False),
         "max_pipeline_runs": runs_of("pipeline_run", False),
+        # plans, reviews and fix rounds of the issues, and the tick's restarts of builds
         "max_model_jobs": sum(
             _model_jobs(i)
             for i in [*plan_issues, *by_repair.values(), *([closeout] if closeout else [])]
-        ),
+        )
+        + sum(len(_restart_events(s.id, events)) for s in c.steps if not s.fork),
     }
     fork_used = {
         "max_tasks": sum(1 for s in c.steps if s.kind == "task" and s.fork and states[s.id].issue),
@@ -760,7 +829,8 @@ def view(
         "max_pipeline_runs": runs_of("pipeline_run", True),
         # each fork task's plans and reviews, and one job per ideation (F12)
         "max_model_jobs": sum(_model_jobs(i) for i in fork_issues)
-        + sum(1 for e in events if IDEATE_EVENT.match(e)),
+        + sum(1 for e in events if IDEATE_EVENT.match(e))
+        + sum(len(_restart_events(s.id, events)) for s in c.steps if s.fork),
     }
     recent = breaker_blocks(events, snap.now)
     breaker = recent if len(recent) >= BREAKER_BLOCKS else ()
@@ -1117,12 +1187,188 @@ def _id_range(ids: Sequence[str]) -> str:
     return ids[0] if len(ids) == 1 else f"{ids[0]} to {ids[-1]}"
 
 
-def _tasks_in_flight(v: CampaignView) -> int:
-    """Tasks of the campaign in flight: task steps, and repairs being worked."""
+def _tasks_in_flight(v: CampaignView, but: str = "") -> int:
+    """Tasks of the campaign in flight: task steps, and repairs being worked
+    (step `but` left out)."""
     return sum(
         1
         for s in v.campaign.steps
-        if v.states[s.id].status in IN_FLIGHT and (s.kind == "task" or v.states[s.id].repairing)
+        if s.id != but
+        and v.states[s.id].status in IN_FLIGHT
+        and (s.kind == "task" or v.states[s.id].repairing)
+    )
+
+
+# -- restarts of builds (see "Restarts" in the module docstring) -----------------------
+
+
+def _restart_events(sid: str, events: dict[str, str]) -> list[str]:
+    """The ledger events of the tick's restarts of step `sid`'s build."""
+    return [e for e in events if (m := _RESTART.match(e)) and m.group(1) == sid]
+
+
+def _last_restart(sid: str, events: dict[str, str]) -> str:
+    """When the tick last restarted step `sid`'s build ("" if never)."""
+    return max((events[e] for e in _restart_events(sid, events)), key=_time, default="")
+
+
+def _accepted_plan(issue: Issue, allowed: tuple[str, ...], gctx: GateContext) -> Plan | None:
+    """The issue's latest plan, if the tick accepts it (a Plan inside the allowed paths)."""
+    plan = latest_plan(list(issue.comments))
+    if plan is None or plan.title != "Plan":
+        return None
+    return None if _plan_problem(plan.files, allowed, gctx.codeowners, False) else plan
+
+
+def _digits(when: str) -> str:
+    """`2026-11-23T10:05:00Z` -> `20261123100500`, for a ledger event name."""
+    return re.sub(r"\D", "", when)[:14]
+
+
+Due = tuple[str, str, str, int, bool]  # (action, ledger event, ledger line, PR, the owner's)
+
+
+def _restart_due(
+    v: CampaignView, s: Step, st: StepState, snap: Snapshot, gctx: GateContext, plan: Plan
+) -> tuple[Due | None, list[tuple[str, str]]]:
+    """The restart task step `s` is due, if any, and a stopped-red event to post."""
+    issue = st.issue
+    events, owner, n = v.events, gctx.repo_owner, issue.number
+    labels = sorted(snap.label_events.get(n, ()), key=lambda e: (_time(e.created_at), e.id))
+    last = _last_restart(s.id, events)
+    if "needs-human" in issue.labels:
+        # an Unblocks line in a pull request the owner opened and merged after the block
+        flags = [e.created_at for e in labels if e.label == "needs-human" and e.action == "labeled"]
+        block_at = max(flags or [events[b] for b in _blocks(s.id, events)], key=_time, default="")
+        for u in snap.unblocks:
+            name = f"{s.id}:unblock:{u.pr}"
+            if (
+                u.issue == n
+                and u.author == owner
+                and u.merged_by == owner
+                and block_at
+                and _time(u.merged_at) > _time(block_at)
+                and name not in events
+            ):
+                line = (
+                    f"{s.id}: PR #{u.pr}, opened and merged by the repository owner, says "
+                    f"Unblocks #{n}; removing needs-human and starting the build again."
+                )
+                return ("unblock", name, line, u.pr, True), []
+        return None, []
+    if "agent-build" not in issue.labels:
+        return None, []  # planned, not built: the tick's label swap starts the build
+    flags = [e for e in labels if e.label == "needs-human"]
+    off = flags[-1] if flags and flags[-1].action == "unlabeled" else None
+    if off is not None and off.actor == owner:
+        # the owner removed needs-human after the latest block: at once, if no build since
+        after = _time(off.created_at)
+        built = any(
+            e.label == "agent-build" and e.action == "labeled" and _time(e.created_at) > after
+            for e in labels
+        ) or bool(last and _time(last) > after)
+        name = f"{s.id}:restart:owner-{_digits(off.created_at)}"
+        if not built and name not in events:
+            line = (
+                f"{s.id}: the repository owner removed needs-human from #{n}; "
+                "starting the build again."
+            )
+            return ("restart_build", name, line, 0, True), []
+    if st.status == "blocked" and st.cause == "build_stalled":
+        block = _holding_block(s.id, st, events).partition(":blocked:")[2] or "plain"
+        name = f"{s.id}:restart:{block}"
+        if name not in events:
+            line = (
+                f"{s.id}: no pull request on #{n} twelve hours after its build started, and "
+                "no agent-build run is queued or in progress; starting the build again."
+            )
+            return ("restart_build", name, line, 0, False), []
+    # a build that stopped while main was red: idle, with no build in flight anywhere
+    since = _time(_build_started(issue, plan.created_at, snap, last))
+    if snap.builds_in_flight or _time(snap.now) - since <= IDLE_BUILD:
+        return None, []
+    stops = [
+        (_time(when), m.group(2))
+        for e, when in events.items()
+        if (m := _STOPPED_RED.match(e)) and m.group(1) == s.id and _time(when) > since
+    ]
+    posts: list[tuple[str, str]] = []
+    if snap.main_red and not stops:
+        sha = snap.main_ci.sha[:12]
+        name = f"{s.id}:stopped-red:{sha}"
+        if name in events:
+            return None, []  # the same commit red again after a restart: the stall rule is left
+        posts.append(
+            (
+                name,
+                f"{s.id}: the build of #{n} stopped while main was red (CI's test check failed "
+                f"on {sha}); it starts again once main is green.",
+            )
+        )
+        stops.append((_time(snap.now), sha))
+    sha = max(stops)[1] if stops else ""
+    name = f"{s.id}:restart:red-{sha}"
+    if not sha or name in events:
+        return None, posts
+    line = (
+        f"{s.id}: the build of #{n} stopped while main was red ({sha}); main is green "
+        "again, so starting the build again."
+    )
+    return ("restart_build", name, line, 0, False), posts
+
+
+def _restart(
+    v: CampaignView, s: Step, st: StepState, snap: Snapshot, gctx: GateContext, held: bool
+) -> tuple[StepState, dict | None, list[tuple[str, str]]]:
+    """Task step `s`'s build: started again now, waiting to be, or blocked from it.
+
+    Returns the step's state, the action (`restart_build` or `unblock`, or
+    None) and the ledger events to post. The breaker (`held`) holds the
+    automatic restarts, not the owner's; red main, one task in flight and the
+    model-job budget hold every restart.
+    """
+    issue = st.issue
+    if issue is None or issue.state != "open" or issue.pr is not None:
+        return st, None, []
+    plan = _accepted_plan(issue, s.allowed_paths, gctx)
+    if plan is None:
+        return st, None, []
+    due, posts = _restart_due(v, s, st, snap, gctx, plan)
+    if due is None:
+        return st, None, posts
+    action, name, line, pr, owners = due
+    branch = f"agent/issue-{issue.number}"
+    if branch in snap.branches:
+        detail = f"an earlier build's branch {branch} exists, so agent-build cannot start again"
+        return StepState("blocked", detail, cause="branch_exists", issue=issue), None, posts
+    c = v.campaign
+    used, budget = (v.fork_used, c.forks.budget) if s.fork and c.forks else (v.used, c.budget)
+    if used.get("max_model_jobs", 0) >= budget.get("max_model_jobs", 0):
+        what = st.detail if st.status == "blocked" else "its build stopped without a pull request"
+        detail = f"{what.rstrip('.')}. Not started again: the model-job budget is used up"
+        cause = st.cause if st.status == "blocked" else "build_stalled"
+        return StepState("blocked", detail, cause=cause, issue=issue), None, posts
+    if held and not owners:
+        return st, None, posts  # the circuit breaker holds every automatic restart
+    wait = ""
+    if snap.main_red:
+        wait = "once main is green again"
+    elif _tasks_in_flight(v, but=s.id):
+        wait = "once no other task of the campaign is in flight"
+    elif not owners and snap.builds_in_flight:
+        wait = "once no agent-build run is queued or in progress"
+    if wait:
+        return (
+            StepState("restart_waiting", f"its build starts again {wait}", issue=issue),
+            None,
+            posts,
+        )
+    used["max_model_jobs"] = used.get("max_model_jobs", 0) + 1
+    act = {"type": action, "issue": issue.number} | ({"pr": pr} if action == "unblock" else {})
+    return (
+        StepState("building", "the build was started again", issue=issue),
+        act,
+        [*posts, (name, line)],
     )
 
 
@@ -1563,9 +1809,13 @@ def _advance(
     views = [view(c, snap, gctx) for c in campaigns]
     slots = RunSlots.count(views)
     today = _time(snap.now).date()
+    # main is red: nothing merges, is filed, built, restarted, run or dispatched
+    red = snap.main_red
     for v in views:
         c = v.campaign
         if v.tracking is None:
+            if red:
+                continue  # filed once main is green again
             actions.append(
                 {
                     "type": "create_issue",
@@ -1597,13 +1847,21 @@ def _advance(
             event(name, line)
         if not held:
             v.breaker = ()
-        breaker_wait = "once the circuit breaker lifts"
+        hold = held or red  # nothing new starts
+        breaker_wait = "once main is green again" if red else "once the circuit breaker lifts"
         filed_repair = False
         for s in c.steps:
             st = v.states[s.id]
+            if s.kind == "task" and can_start and v.closeout is None:
+                st, restart, posts = _restart(v, s, st, snap, gctx, held)
+                for name, line in posts:
+                    event(name, line)
+                if restart is not None:
+                    doing.append(restart)
+                v.states[s.id] = st
             why_not = _no_repair(c, s, st, v, gctx) if can_start else "-"
-            if why_not == "" and (held or _tasks_in_flight(v)):
-                wait = breaker_wait if held else "once no other task is in flight"
+            if why_not == "" and (hold or _tasks_in_flight(v)):
+                wait = breaker_wait if hold else "once no other task is in flight"
                 st = StepState(
                     "repair_waiting",
                     f"run {st.run.id} ended '{st.run.conclusion}' after {MAX_AUTO_RETRIES} "
@@ -1649,8 +1907,8 @@ def _advance(
                     "date, so the run was not started again"
                 )
                 st.cause, st.run_again = "run_failed", _run_again(c, s)
-            elif st.status == "repair_merged" and (held or slots.wait(c, s)):
-                st.detail = f"{st.detail} {breaker_wait if held else slots.wait(c, s)}"
+            elif st.status == "repair_merged" and (hold or slots.wait(c, s)):
+                st.detail = f"{st.detail} {breaker_wait if hold else slots.wait(c, s)}"
             elif st.status == "repair_merged":
                 event(
                     _repair_event(s.id, "run"),
@@ -1662,11 +1920,11 @@ def _advance(
                 st = StepState("waiting_run", run=st.run, repair=st.repair)
             v.states[s.id] = st
             if st.retry and can_start:
-                if held or slots.wait(c, s):
+                if hold or slots.wait(c, s):
                     st = StepState(
                         "retry_waiting",
                         f"run {st.run.id} ended '{st.run.conclusion}'; it starts again "
-                        f"{breaker_wait if held else slots.wait(c, s)}",
+                        f"{breaker_wait if hold else slots.wait(c, s)}",
                         run=st.run,
                     )
                 else:
@@ -1681,11 +1939,11 @@ def _advance(
                 v.states[s.id] = st
             if st.resume and can_start:
                 k, n, m = st.resume
-                if held or slots.wait(c, s):
+                if hold or slots.wait(c, s):
                     st = StepState(
                         "resume_waiting",
                         f"run {st.run.id} is still exporting ({n} of {m} done); it starts "
-                        f"again {breaker_wait if held else slots.wait(c, s)}",
+                        f"again {breaker_wait if hold else slots.wait(c, s)}",
                         run=st.run,
                     )
                 else:
@@ -1723,8 +1981,8 @@ def _advance(
                 event(f"{s.id}:skipped", f"{s.id}: skipped ({st.detail}).")
             for name, line in _block_events(s.id, st, c.owner, v.events):
                 event(name, line)
-            if stopped:
-                continue
+            if stopped or red:
+                continue  # red: no build, merge or gate run until main is green again
             if st.status == "plan_ready":
                 doing.append(
                     {
@@ -1760,7 +2018,9 @@ def _advance(
                     f"{sid}: the ideation proposed forks in PR #{ps.pr.number}; the gate checks "
                     "them and the tick merges it.",
                 )
-                if ps.detail == "mergeable":
+                if red:
+                    pass  # merged once main is green again
+                elif ps.detail == "mergeable":
                     doing.append({"type": "merge", "pr": ps.pr.number, "sha": ps.pr.head_sha})
                 elif ps.detail == "awaiting_gate":
                     doing.append(
@@ -1785,7 +2045,7 @@ def _advance(
                     f"{sid}:ideate:skip",
                     f"{sid}: fork point, but the forks' model-job budget is used up; no ideation.",
                 )
-            elif held:
+            elif hold:
                 points_waiting = True
             else:
                 event(f"{sid}:ideate", f"{sid}: fork point; ideation started.")
@@ -1824,7 +2084,7 @@ def _advance(
         )
         for s in c.steps:
             st = v.states[s.id]
-            if not can_start or held or st.status != "unstarted":
+            if not can_start or hold or st.status != "unstarted":
                 continue
             if paced and (s.kind != "pipeline_run" or filed_repair):
                 continue
@@ -1871,7 +2131,9 @@ def _advance(
                 when = v.events.get(_holding_block(sid, st, v.events), "")
                 if not when or not _older(snap.now, when, BLOCK_GRACE):
                     finished = False
-        if finished:
+        if finished and red and v.closeout is None:
+            pass  # the close-out is filed once main is green again
+        elif finished:
             reason = _reason(v, stopped, today)
             if v.closeout is None:
                 rows = [
@@ -1916,7 +2178,9 @@ def _advance(
                 event("closeout:filed", f"Close-out filed as #{v.closeout.number}.")
                 for name, line in _block_events("closeout", cst, c.owner, v.events, "close-out"):
                     event(name, line)
-                if cst.status == "plan_ready":
+                if red and cst.status in ("plan_ready", "awaiting_gate", "mergeable"):
+                    pass  # built, checked and merged once main is green again
+                elif cst.status == "plan_ready":
                     doing.append(
                         {
                             "type": "swap_labels",

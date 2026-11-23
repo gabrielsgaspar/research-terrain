@@ -67,6 +67,7 @@ PLAIN = {
     "repair_waiting": "the run still fails; a repair task is filed once no other task is going",
     "repair_filing": "a repair task was just filed",
     "repair_merged": "the repair merged; the run starts again",
+    "restart_waiting": "the build stopped or was unblocked",
     "blocked": "blocked (see Waiting on you)",
     "done": "done",
     "skipped": "skipped",
@@ -79,6 +80,7 @@ _REPAIR = re.compile(
     r"|repair filed as #\d+\.|repair PR #\d+ merged\.|started .+ again after the repair)"
 )
 _UNBLOCKED = re.compile(r"^(s\d{1,2}|close-out): unblocked\.$")
+_RESTARTED = re.compile(r"^(s\d{1,2}): .+starting the build again\.$")
 _FINISHED = re.compile(r"^Campaign finished: (.+?)\. Filing the close-out task\.$")
 
 
@@ -178,16 +180,27 @@ def _block_item(
     return _clip(item)
 
 
+def red_line(snap: Snapshot) -> str:
+    """The first line under Waiting on you while CI's test check fails on main."""
+    check = snap.main_ci
+    run = f" ([the run]({_safe(check.url)}))" if check and check.url else ""
+    return (
+        f"- main is red: CI's test check failed on {check.sha[:12] if check else ''}{run}. "
+        "Until it passes, the tick merges, files, builds, restarts and runs nothing; work "
+        "in flight goes on."
+    )
+
+
 def waiting_on_you(
     views: Sequence[CampaignView], snap: Snapshot, gctx: GateContext, root: Path
 ) -> list[str]:
-    """One line per thing Gabriel must do: blocks, reports to approve, pauses,
-    and a circuit breaker that holds (its blocks follow it).
+    """One line per thing Gabriel must do: red main (first), blocks, reports to
+    approve, pauses, and a circuit breaker that holds (its blocks follow it).
 
     Once a campaign's close-out is filed, its steps no longer hold anything up
     (nothing more starts), so only the close-out itself can be listed.
     """
-    out: list[str] = []
+    out: list[str] = [red_line(snap)] if snap.main_red else []
     for v in views:
         c, tracking = v.campaign, v.tracking
         if tracking is None:
@@ -226,7 +239,7 @@ def _now(v: CampaignView, cst: StepState | None, snap: Snapshot) -> str:
         if st.status not in IN_FLIGHT:
             continue
         words = PLAIN.get(st.status, st.status)
-        if st.status == "in_review" and st.detail:
+        if st.status in ("in_review", "restart_waiting") and st.detail:
             words += f": {_safe(st.detail)}"
         if st.repairing:
             words = f"its repair task: {words}"
@@ -289,20 +302,21 @@ def running(
 
 def _kind(line: str, events: set[str]) -> bool:
     """Is this ledger line one the tick handled by itself (and does its event say so)?"""
-    for pattern, event in (
-        (_RETRY, ":retry:"),
-        (_REPAIR, ":repair:"),
-        (_UNBLOCKED, ":unblocked"),
+    for pattern, kinds in (
+        (_RETRY, (":retry:",)),
+        (_REPAIR, (":repair:",)),
+        (_UNBLOCKED, (":unblocked",)),
+        (_RESTARTED, (":restart:", ":unblock:")),
     ):
         m = pattern.match(line)
         if m:
             sid = "closeout" if m.group(1) == "close-out" else m.group(1)
-            return any(e.startswith(sid + event) for e in events)
+            return any(e.startswith(sid + k) for e in events for k in kinds)
     return False
 
 
 def handled(campaigns: Sequence[Campaign], snap: Snapshot) -> list[str]:
-    """Every retry, repair and unblock line in the ledgers, newest first."""
+    """Every retry, repair, unblock and restart line in the ledgers, newest first."""
     found: list[tuple[str, int, str, str]] = []
     for c in campaigns:
         _, tracking, _ = _own_issues(c, snap)
@@ -450,7 +464,7 @@ def render(
         _Section(
             "Handled without you",
             lines[:HANDLED_LINES],
-            "Nothing yet: no automatic retry, repair or unblocked step.",
+            "Nothing yet: no automatic retry, repair, restart or unblocked step.",
             "lines",
             left_out=max(len(lines) - HANDLED_LINES, 0),
         ),

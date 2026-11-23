@@ -36,6 +36,21 @@ plan review. They fall into five groups:
 Expect the rate to fall: each first use of a capability (first build, first
 deletion, first big task) has now happened once.
 
+## 2026-11-23: Two pull requests each passed CI against an older main, and main broke (#476, #479, #457)
+- Tried: merging #476 (it added the test that forbids a direct `pf.fepois`
+  call) and #479 (it added such a call) on 22 November.
+- Result: each passed CI against the main it started from; together they
+  made CI's `test` fail on main. #457's rebuild then failed on that test
+  until #485 fixed main, and builds stopped for a person to restart.
+- Why: GitHub checks a pull request against the main it was tested on, not
+  the main it merges into. "Require branches to be up to date" would catch
+  it, but it is not used: the gate needs the agent review of the head
+  commit, and updating a branch changes the head, so every update would need
+  a new review (two more model jobs) before the tick could merge.
+- Implication: the tick reads CI's `test` on main's head and, while it
+  failed, merges, files, builds and runs nothing; a build that stopped
+  meanwhile is started again once main is green (the tick's restarts).
+
 ## 2026-11-10: A campaign step's allowed files missed a test that its own change breaks (campaign 0005, #292)
 - Tried: campaign 0005 step s1, which changed the number of TSE vote files.
 - Result: `tests/test_acquire.py` pins that number, and it was not in the
