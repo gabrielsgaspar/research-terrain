@@ -312,15 +312,14 @@ workflow carries it out; the `campaign-gate` check decides what may merge.
   and gate merges go on. Every report lists its "Checks not run" from the tick's
   list; text cut by code says so; the repair reviewer never sees the run log or
   its error line, only the row counts.
-- Restarts and the red-main pause: the tick starts a task step's build again
-  (removes and re-adds `agent-build`, one model job) when it has no pull
-  request 12 hours after it started and no agent-build run is in flight (once
-  per block); at once when Gabriel removes `needs-human`, or merges a pull
-  request of his own with a line `Unblocks #<issue>` (the tick then removes
-  `needs-human`); and once after main turns green for a build that stopped
-  while it was red. Not if `agent/issue-<n>` exists (blocked instead). While
-  CI's `test` failed on main's head, nothing merges, is filed, built,
-  restarted or run; work in flight goes on.
+- Restarts, skips and waiting (#502, decision 0021): the tick restarts a task
+  build (one model job): after 12 idle hours, when Gabriel removes
+  `needs-human` or merges his `Unblocks #<issue>` PR, and once when main turns
+  green after a stop. Never if `agent/issue-<n>` exists. While `test` fails on
+  main, nothing merges, is filed or restarted, except owner-fix issues (one per
+  failing test, label `campaign`); one main restart per step per red episode.
+  A bot "contradiction" comment skips the step and its dependents (no block, no
+  fork adoption); "waiting for main" keeps it in flight until main passes.
 
 ### Writing for Gabriel
 

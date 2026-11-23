@@ -4334,3 +4334,545 @@ def test_restarts_are_listed_as_handled_without_you(tmp_path):
     handled = page.split("## Handled without you\n\n", 1)[1].split("\n## ", 1)[0]
     assert "s1: no pull request on #10 twelve hours after its build started" in handled
     assert "s1 (#10): the builder is writing the pull request" in page
+
+
+# -- decision 0021, the tick's side: skipped steps, waiting for main, owner-fix issues -----------
+
+BUILD_BOT = "github-actions[bot]"
+C_FIRST = "## Agent build: contradiction (decision 0021)"
+W_FIRST = "## Agent build: waiting for main (decision 0021)"
+TEST_A = "tests/test_explore.py::test_scripts_fit_poisson"
+TEST_B = "tests/test_x.py::test_b[1-2]"
+MAIN_SHA = "a" * 12
+QUOTE_1 = "Out of scope: how `estimates.finite` is computed."
+QUOTE_2 = "Done when 3: `estimates.finite` is true on this table."
+REPO_URL = "https://example.test/o/r"
+
+
+def comment_c(
+    run: int = 777, at: str = "2026-11-09T03:00:00Z", author: str = BUILD_BOT, last: str = ""
+) -> Comment:
+    quotes = f"- the issue (level 3):\n> {QUOTE_1}\n\n- the issue (level 3):\n> {QUOTE_2}"
+    body = f"{C_FIRST}\n\n{quotes}\n\n" + (last or f"<!-- agent-build-contradiction: run {run} -->")
+    return Comment(author, body, at)
+
+
+def comment_w(
+    tests=(TEST_A,),
+    run: int = 888,
+    sha: str = MAIN_SHA,
+    at: str = "2026-11-09T03:00:00Z",
+    author: str = BUILD_BOT,
+    first: str = W_FIRST,
+) -> Comment:
+    marker = f"<!-- agent-build-waiting-for-main: run {run} sha {sha} tests {','.join(tests)} -->"
+    body = f"{first}\n\n" + "\n".join(tests) + f"\n\n{marker}"
+    return Comment(author, body, at)
+
+
+def with_comments(root, *comments, labels=("campaign", "explore", "agent-build")) -> Issue:
+    return step_issue(root, [plan_comment(), *comments], labels=labels)
+
+
+def view_of(root, s):
+    c = active_campaigns(root)[0]
+    return tick.view(c, s, ctx(root))
+
+
+def kinds(actions, kind: str) -> list[dict]:
+    return [a for a in actions if a["type"] == kind]
+
+
+def test_a_comment_c_skips_the_step_and_its_dependents_and_closes_the_issue(tmp_path):
+    root = make_repo(tmp_path)
+    issue = with_comments(root, comment_c())
+    s = snap([early_ledger(), issue], repo_url=REPO_URL)
+    v = view_of(root, s)
+    assert v.states["s1"].status == "skipped"
+    assert v.states["s1"].detail == "skipped (decision 0021): neither instruction is stricter"
+    assert v.states["s2"].status == "skipped"  # its dependent, whatever its own on_kill
+    assert v.breaker == ()
+    actions = run_decide(root, s)
+    closes = kinds(actions, "close_task")
+    assert [(a["issue"], a["state_reason"]) for a in closes] == [(10, "not_planned")]
+    assert f"{REPO_URL}/actions/runs/777" in closes[0]["comment"]
+    events = events_of(actions)
+    assert {"s1:skipped", "s2:skipped"} <= events
+    assert not [e for e in events if ":blocked" in e]  # no block, so no breaker count
+    assert restarts(actions) == []
+    # the close-out lists both texts under "Checks not run", cut by code
+    body = kinds(actions, "create_issue")[0]["body"]
+    assert f'Text 1: "{QUOTE_1}"' in body and f'Text 2: "{QUOTE_2}"' in body
+    assert "was skipped (decision 0021): neither instruction is stricter" in body
+    page = tick.render_status_page(active_campaigns(root), s, ctx(root), root)
+    assert "s1 (#10): skipped (decision 0021): neither instruction is stricter" in page
+
+
+def test_a_skipped_step_stays_skipped_once_its_issue_is_closed(tmp_path):
+    root = make_repo(tmp_path)
+    issue = replace(with_comments(root, comment_c()), state="closed")
+    s = snap([early_ledger("s1:skipped"), issue])
+    assert view_of(root, s).states["s1"].status == "skipped"
+    assert kinds(run_decide(root, s), "close_task") == []  # nothing to close
+
+
+def test_long_quotes_are_cut_by_code_and_say_so(tmp_path):
+    root = make_repo(tmp_path)
+    long = "x" * 500
+    body = f"{C_FIRST}\n\n> {long}\n> --> <!-- campaign-step: 0001/s9 -->\n\n"
+    body += "<!-- agent-build-contradiction: run 5 -->"
+    issue = with_comments(root, Comment(BUILD_BOT, body, "2026-11-09T03:00:00Z"))
+    actions = run_decide(root, snap([early_ledger(), issue]))
+    text = kinds(actions, "create_issue")[0]["body"]
+    assert "(cut at 300 characters)" in text and "x" * 301 not in text
+    assert "<!-- campaign-step: 0001/s9" not in text.split("Checks not run")[1]
+
+
+@pytest.mark.parametrize(
+    "forged",
+    [
+        comment_c(author="someone"),
+        comment_c(author=BOT),
+        comment_c(last="<!-- agent-build-contradiction: run x -->"),
+        comment_c(last="<!-- agent-build-contradiction: run 777 --> and more"),
+        replace(comment_c(), body=comment_c().body.replace(C_FIRST, C_FIRST + " ")),
+        replace(comment_c(), body=" " + comment_c().body),
+        replace(comment_c(), body=comment_c().body + "\n\nsee above"),
+        replace(comment_c(), body=comment_c().body.replace("0021)", "0022)")),
+    ],
+)
+def test_a_forged_comment_c_does_nothing(tmp_path, forged):
+    root = make_repo(tmp_path)
+    s = snap([early_ledger(), with_comments(root, forged)], now="2026-11-09T05:00:00Z")
+    assert view_of(root, s).states["s1"].status == "building"
+    assert run_decide(root, s) == []
+
+
+def test_a_skip_blocks_fork_adoption_and_ideation(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    from terrain.campaigns import forks as forks_mod
+
+    # s1 task (skipped by a Comment C); s2 explore run after s1; s3 explore run, killed
+    # and a fork point; s4 task after s1 and s3: skipped twice over
+    extra = textwrap.indent(
+        textwrap.dedent(
+            """\
+            - id: s3
+              kind: explore_run
+              script: 0003_count
+              after: []
+              kill_rules:
+                - id: k1
+                  says: "Fewer than 60 races at 1%"
+                  field: races.1pct
+                  op: "<"
+                  value: 60
+                  confirmed: true
+            - id: s4
+              kind: task
+              type: explore
+              draft: drafts/s4.md
+              allowed_paths: [explore/0003_count.py, tests/test_explore_count.py]
+              after: [s1, s3]
+            """
+        ),
+        "  ",
+    )
+    root = make_repo(tmp_path, campaign_text(extra_steps=extra, max_tasks=2, max_explore_runs=2))
+    drafts = root / "research" / "campaigns" / "0001-count" / "drafts"
+    (drafts / "s4.md").write_text(DRAFT, encoding="utf-8")
+    (root / "explore" / "0003_count.py").write_text("", encoding="utf-8")
+    killed = Run(
+        600,
+        "explore-run.yml",
+        markers.explore_run_title("0003_count", "0001", "s3"),
+        "completed",
+        "success",
+        "2026-11-10T09:00:00Z",
+    )
+    merged = record_pr(number=31, run_title=killed.title, merged=True, state="closed")
+    s = snap(
+        [
+            tracking([ledger("started", "s1:filed", "s3:dispatched")]),
+            with_comments(root, comment_c()),
+        ],
+        runs=[killed],
+        record_prs={600: merged},
+        results={"research/explore-runs/0003/600.json": {"races": {"1pct": 3}}},
+    )
+    v = view_of(root, s)
+    st = v.states
+    assert (st["s3"].status, st["s3"].verdict) == ("done", "killed")
+    assert st["s4"].status == "skipped" and st["s4"].cause == tick.SKIP_CAUSE
+    assert st["s2"].cause == tick.SKIP_CAUSE
+    # a fork at s3 that survived may not adopt s4, which a Comment C skipped
+    fork = SimpleNamespace(
+        id="f1", parent_step="s3", order=1, adopts_downstream=True, step_ids=("s5",)
+    )
+    fork_step = tick.Step("s5", "explore_run", fork="f1")
+    v.campaign = replace(
+        v.campaign,
+        forks=SimpleNamespace(on=("killed", "survived")),
+        fork_files=(fork,),
+        steps=(*v.campaign.steps, fork_step),
+    )
+    v.states["s5"] = tick.StepState("done", verdict="survived")
+    assert tick.find_adoption(v, True, NOW) is None
+    # the same view with a plain kill-skipped s4 would be adopted (the test can fail)
+    v.states["s4"] = tick.StepState("skipped", "step s3 was killed")
+    assert tick.find_adoption(v, True, NOW) == ("f1", "s3", ("s4",))
+    # a fork point at a skipped step starts no ideation
+    monkeypatch.setattr(forks_mod, "load_library", lambda _root: {})
+    monkeypatch.setattr(forks_mod, "fork_points", lambda _c, _lib: ["s2", "s3"])
+    assert tick.open_points(v, root) == ["s3"]  # s2 is skipped: it never opens a point
+
+
+def test_a_comment_w_waits_in_flight_and_files_one_owner_fix_issue_per_test(tmp_path):
+    root = make_repo(tmp_path)
+    issue = with_comments(root, comment_w((TEST_A, TEST_B), run=888))
+    s = snap([early_ledger(), issue], now="2026-11-09T05:00:00Z", main_ci=red(), repo_url=REPO_URL)
+    v = view_of(root, s)
+    st = v.states["s1"]
+    assert st.status == "waiting_main" and st.status in tick.IN_FLIGHT and st.cause == ""
+    assert tick._tasks_in_flight(v) == 1  # the campaign's next task waits too
+    assert v.breaker == ()
+    actions = run_decide(root, s)
+    # red main files nothing else, but the owner-fix issues go out
+    assert [a["type"] for a in actions] == ["create_issue", "create_issue"]
+    titles = [a["title"] for a in actions]
+    assert titles == [f"Owner fix: {TEST_A} fails on main", f"Owner fix: {TEST_B} fails on main"]
+    first = actions[0]
+    assert first["labels"] == ["campaign"] and first["then_labels"] == []
+    assert first["body"].endswith(f"<!-- campaign-ownerfix: {TEST_A} -->\n")
+    assert f"{REPO_URL}/actions/runs/888" in first["body"]
+    assert f"{REPO_URL}/commit/{MAIN_SHA}" in first["body"]
+    assert (
+        "the tick restarts the builds that wait on it, once each, and closes this issue"
+        in (first["body"])
+    )
+    # not a block, no restart, no close-out
+    assert not [e for e in events_of(actions) if ":blocked" in e]
+    assert restarts(actions) == []
+    page = tick.render_status_page(active_campaigns(root), s, ctx(root), root)
+    assert "waits for main" in page
+
+
+def test_an_open_owner_fix_issue_is_not_filed_twice_and_is_shown_on_the_status_page(tmp_path):
+    root = make_repo(tmp_path)
+    issue = with_comments(root, comment_w((TEST_A,)))
+    marker = f"x\n<!-- campaign-ownerfix: {TEST_A} -->\n"
+    fix = Issue(50, "Owner fix", marker, "open", ("campaign",), BOT, NOW)
+    s = snap(
+        [early_ledger(), issue, fix], now="2026-11-09T05:00:00Z", main_ci=red(), repo_url=REPO_URL
+    )
+    assert run_decide(root, s) == []
+    page = tick.render_status_page(active_campaigns(root), s, ctx(root), root)
+    line = f"- main is broken: fix `{TEST_A}` ([#50]({REPO_URL}/issues/50))."
+    assert line in page.split("## Running")[0]
+    # an owner-fix issue by someone else, or one that is closed, does not count
+    for other in (replace(fix, author="someone"), replace(fix, state="closed")):
+        acts = run_decide(root, replace(s, issues=[early_ledger(), issue, other]))
+        assert len(kinds(acts, "create_issue")) == 1
+
+
+def two_task_repo(tmp_path) -> Path:
+    extra = textwrap.indent(
+        textwrap.dedent(
+            """\
+            - id: s3
+              kind: task
+              type: explore
+              draft: drafts/s3.md
+              allowed_paths: [explore/0003_count.py, tests/test_explore_count.py]
+              after: []
+            """
+        ),
+        "  ",
+    )
+    root = make_repo(tmp_path, campaign_text(extra_steps=extra, max_tasks=2))
+    drafts = root / "research" / "campaigns" / "0001-count" / "drafts"
+    (drafts / "s3.md").write_text(DRAFT, encoding="utf-8")
+    return root
+
+
+def test_two_steps_waiting_on_the_same_test_share_one_issue(tmp_path):
+    root = two_task_repo(tmp_path)
+    first = with_comments(root, comment_w((TEST_A,), run=888))
+    title, body = issue_body(root)
+    body = body.replace(markers.step_marker("0001", "s1"), markers.step_marker("0001", "s3"))
+    second = Issue(
+        11,
+        title,
+        body,
+        "open",
+        ("campaign", "explore", "agent-build"),
+        BOT,
+        "2026-11-09T00:00:00Z",
+        (plan_comment(), comment_w((TEST_A,), run=999)),
+    )
+    s = snap([early_ledger("s3:filed"), first, second], now="2026-11-09T05:00:00Z", main_ci=red())
+    v = view_of(root, s)
+    assert v.states["s1"].status == v.states["s3"].status == "waiting_main"
+    created = kinds(run_decide(root, s), "create_issue")
+    assert [a["title"] for a in created] == [f"Owner fix: {TEST_A} fails on main"]
+
+
+def test_main_green_at_a_new_commit_restarts_once(tmp_path):
+    root = make_repo(tmp_path)
+    issue = with_comments(root, comment_w(run=888))
+    green = MainCheck("c" * 40, "success")
+    s = snap([early_ledger(), issue], now="2026-11-09T04:00:00Z", main_ci=green)
+    actions = run_decide(root, s)
+    assert restarts(actions) == [{"type": "restart_build", "issue": 10}]
+    assert events_of(actions) == {"s1:restart:main-888"}
+    # once: the next tick reads the restart from the ledger
+    t = tracking([*early_ledger().comments, *posted(actions, "2026-11-09T04:00:00Z")])
+    later = replace(s, issues=[t, issue], now="2026-11-09T06:00:00Z")
+    assert restarts(run_decide(root, later)) == []
+    assert view_of(root, later).states["s1"].status == "building"
+    # counted as one model job: the plan's and the restart's
+    before = view_of(root, replace(s, issues=[early_ledger(), issue]))
+    assert (before.used["max_model_jobs"], view_of(root, later).used["max_model_jobs"]) == (1, 2)
+    # not while main is pending, red or unread
+    for check in (MainCheck("c" * 40, "pending"), red("c" * 40), None):
+        assert restarts(run_decide(root, replace(s, main_ci=check))) == []
+
+
+def test_main_green_at_the_same_commit_restarts_after_sixty_minutes(tmp_path):
+    root = make_repo(tmp_path)
+    issue = with_comments(root, comment_w(run=888, sha=MAIN_SHA, at="2026-11-09T03:00:00Z"))
+    green = MainCheck(MAIN_SHA + "b" * 28, "success")
+    s = snap([early_ledger(), issue], main_ci=green)
+    early = replace(s, now="2026-11-09T03:59:00Z")
+    assert run_decide(root, early) == []
+    assert view_of(root, early).states["s1"].status == "waiting_main"
+    late = run_decide(root, replace(s, now="2026-11-09T04:01:00Z"))
+    assert restarts(late) == [{"type": "restart_build", "issue": 10}]
+    assert events_of(late) == {"s1:restart:main-888"}
+
+
+def walk_red_episode(root, order: str) -> list[list[dict]]:
+    """One red episode, tick by tick. "red first": the stopped-red note comes before the
+    Comment W; "w first": the Comment W is there before any tick sees main red."""
+    log: list[list[dict]] = []
+    ledger_comments = list(early_ledger().comments)
+    owner_fixes: list[Issue] = []  # the owner-fix issues the issue list would now show
+
+    def tick_at(now: str, check: MainCheck, issue: Issue) -> None:
+        t = tracking(list(ledger_comments))
+        acts = run_decide(root, snap([t, issue, *owner_fixes], now=now, main_ci=check))
+        ledger_comments.extend(posted(acts, now))
+        for a in kinds(acts, "create_issue"):
+            number = 50 + len(owner_fixes)
+            owner_fixes.append(
+                Issue(number, a["title"], a["body"], "open", ("campaign",), BOT, now)
+            )
+        log.append(acts)
+
+    plain = building(root)
+    waiting = with_comments(root, comment_w(run=888, sha=RED_SHA[:12], at="2026-11-09T03:30:00Z"))
+    if order == "red first":
+        tick_at("2026-11-09T03:00:00Z", red(), plain)  # idle build, main red: noted
+        tick_at("2026-11-09T04:00:00Z", red(), waiting)  # now the Comment W is there
+    else:
+        tick_at("2026-11-09T03:40:00Z", red(), waiting)  # the Comment W first, main red
+        tick_at("2026-11-09T04:00:00Z", red(), waiting)
+    green = MainCheck("c" * 40, "success")
+    tick_at("2026-11-09T05:00:00Z", green, waiting)  # main passes at a new commit
+    tick_at("2026-11-09T07:00:00Z", green, waiting)
+    tick_at("2026-11-09T09:00:00Z", green, waiting)
+    return log
+
+
+@pytest.mark.parametrize("order", ["red first", "w first"])
+def test_a_red_episode_and_a_comment_w_give_exactly_one_restart(tmp_path, order):
+    root = make_repo(tmp_path)
+    log = walk_red_episode(root, order)
+    every = [a for acts in log for a in acts]
+    assert len(restarts(every)) == 1
+    assert "s1:restart:main-888" in events_of(every)
+    assert not [e for e in events_of(every) if e.startswith("s1:restart:red-")]
+    if order == "w first":
+        assert not [e for e in events_of(every) if ":stopped-red:" in e]
+    else:
+        assert any(":stopped-red:" in e for e in events_of(log[0]))
+    # the restart is in the tick where main turned green
+    assert len(restarts(log[2])) == 1 and not any(restarts(x) for x in (*log[:2], *log[3:]))
+    # one owner-fix issue was filed during the red ticks, and none after
+    assert len(kinds([a for acts in log[:2] for a in acts], "create_issue")) == 1
+    assert kinds(log[3], "create_issue") == []
+
+
+def test_owner_fix_issues_close_when_no_step_waits_and_main_passes(tmp_path):
+    root = make_repo(tmp_path)
+    marker = f"x\n<!-- campaign-ownerfix: {TEST_A} -->\n"
+    fix = Issue(50, "Owner fix", marker, "open", ("campaign",), BOT, NOW)
+    done = tracking([ledger("started", "s1:filed", "s1:merged")])
+    green = MainCheck("c" * 40, "success")
+    base = snap([done, merged_issue(root), fix], now="2026-11-10T10:00:00Z")
+    closes = kinds(run_decide(root, replace(base, main_ci=green)), "close_task")
+    assert [(a["issue"], a["state_reason"]) for a in closes] == [(50, "completed")]
+    # red or pending main: it stays open
+    for check in (red(), MainCheck("c" * 40, "pending"), None):
+        assert kinds(run_decide(root, replace(base, main_ci=check)), "close_task") == []
+    # a step still waiting for it (same commit, under an hour): it stays open
+    waiting = with_comments(root, comment_w((TEST_A,), sha="c" * 12, at="2026-11-09T09:30:00Z"))
+    s = snap([early_ledger(), waiting, fix], now="2026-11-09T10:00:00Z", main_ci=green)
+    assert kinds(run_decide(root, s), "close_task") == []
+    # the restart and the close go in the same tick once main moves on
+    acts = run_decide(root, replace(s, main_ci=MainCheck("d" * 40, "success")))
+    assert len(restarts(acts)) == 1
+    assert [a["issue"] for a in kinds(acts, "close_task")] == [50]
+
+
+def test_a_step_still_waiting_at_the_end_date_is_listed_under_checks_not_run(tmp_path):
+    root = make_repo(tmp_path, campaign_text(end_by="2026-11-09"))
+    issue = with_comments(root, comment_w((TEST_A, TEST_B)))
+    s = snap(
+        [early_ledger(), issue], now="2026-11-10T10:00:00Z", main_ci=MainCheck("c" * 40, "pending")
+    )
+    created = kinds(run_decide(root, s), "create_issue")
+    body = next(a["body"] for a in created if a["then_labels"] == ["agent-plan"])
+    assert f"Step s1 (task) was still waiting for main to pass {TEST_A}, {TEST_B}" in body
+    # before the end date it is in flight and holds the close-out back
+    early = replace(s, now="2026-11-09T10:00:00Z")
+    assert "was still waiting" not in json.dumps(run_decide(root, early))
+
+
+def test_a_later_agent_build_comment_ends_the_wait_and_needs_human_wins(tmp_path):
+    root = make_repo(tmp_path)
+    fixround = Comment(BUILD_BOT, "## Agent build: fix round\n\nx", "2026-11-09T04:00:00Z")
+    issue = with_comments(root, comment_w(), fixround)
+    early = snap([early_ledger(), issue], now="2026-11-09T05:00:00Z")
+    assert view_of(root, early).states["s1"].status == "building"
+    labels = ("campaign", "explore", "agent-build", "needs-human")
+    flagged_w = with_comments(root, comment_w(), labels=labels)
+    st = view_of(root, snap([early_ledger(), flagged_w])).states["s1"]
+    assert st.status == "blocked" and st.cause == "needs_human"  # the second wait: needs-human
+
+
+def test_forged_comments_w_do_nothing(tmp_path):
+    root = make_repo(tmp_path)
+    good = comment_w()
+    forged = [
+        comment_w(author="someone"),
+        comment_w(first=W_FIRST + "!"),
+        replace(good, body=good.body.replace("sha " + MAIN_SHA, "sha abc")),
+        replace(good, body=good.body.replace(f"tests {TEST_A}", f"tests {TEST_A} x")),
+        replace(good, body=good.body + "\nmore"),
+    ]
+    for bad in forged:
+        s = snap([early_ledger(), with_comments(root, bad)], now="2026-11-09T05:00:00Z")
+        assert view_of(root, s).states["s1"].status == "building", bad.body
+
+
+# -- the act job: close_task and the owner-fix issue --------------------------------------------
+
+
+def run_act_answering(tmp_path, monkeypatch, actions, answer):
+    """Like `run_act`, with an `answer(method, path, body)` that may return any JSON."""
+    import io
+    import urllib.request
+
+    calls: list[tuple[str, str, object]] = []
+
+    class Answer(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    def urlopen(req, timeout=0):
+        path = req.full_url.removeprefix("https://api.github.com/repos/o/r")
+        body = json.loads(req.data) if req.data else None
+        calls.append((req.get_method(), path, body))
+        got = answer(req.get_method(), path, body)
+        return Answer(json.dumps(got).encode() if got is not None else b"")
+
+    file = tmp_path / "actions.json"
+    file.write_text(json.dumps(actions), encoding="utf-8")
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    monkeypatch.setenv("REPO", "o/r")
+    monkeypatch.setenv("APP_TOKEN", "test")
+    monkeypatch.setenv("APP_BOT", BOT)
+    monkeypatch.setenv("ACTIONS", str(file))
+    with pytest.raises(SystemExit) as done:
+        exec(compile(act_script(), "campaign-tick act", "exec"), {"__name__": "__main__"})
+    return done.value.code, calls
+
+
+def test_act_close_task_refuses_what_is_not_a_task_or_owner_fix_issue(tmp_path, monkeypatch):
+    fix_body = f"x\n<!-- campaign-ownerfix: {TEST_A} -->\n"
+    issues = {
+        10: TASK_ISSUE,
+        11: {**TASK_ISSUE, "body": fix_body},
+        12: {**TASK_ISSUE, "body": f"x\n{markers.tracking_marker('0001')}"},  # no task marker
+        13: {**TASK_ISSUE, "body": "no marker at all"},
+        14: {**TASK_ISSUE, "state": "closed"},
+        15: {**TASK_ISSUE, "user": {"login": "someone"}},
+        16: {**TASK_ISSUE, "pull_request": {}},
+        17: {**TASK_ISSUE, "body": "x\n<!-- campaign-ownerfix: has space -->"},
+    }
+
+    def answer(method, path, body):
+        return issues[int(path.rsplit("/", 1)[1])] if method == "GET" else None
+
+    def close(n, reason="not_planned", comment="Done."):
+        return [{"type": "close_task", "issue": n, "state_reason": reason, "comment": comment}]
+
+    code, calls = run_act_answering(tmp_path, monkeypatch, close(10), answer)
+    assert code == 0 and calls == [
+        ("GET", "/issues/10", None),
+        ("PATCH", "/issues/10", {"state": "closed", "state_reason": "not_planned"}),
+        ("POST", "/issues/10/comments", {"body": "Done."}),
+    ]
+    code, calls = run_act_answering(tmp_path, monkeypatch, close(11, "completed"), answer)
+    assert code == 0 and calls[1] == (
+        "PATCH",
+        "/issues/11",
+        {"state": "closed", "state_reason": "completed"},
+    )
+    for n in (12, 13, 14, 15, 16, 17):
+        code, calls = run_act_answering(tmp_path, monkeypatch, close(n), answer)
+        assert code == 1 and [c[0] for c in calls] == ["GET"], n
+    # any other reason, or none, or a missing or long comment: refused before any call
+    for bad in (
+        close(10, "duplicate"),
+        close(10, "reopened"),
+        close(10, ""),
+        close(10, comment=""),
+        [{"type": "close_task", "issue": 10}],
+        close(10, comment="x" * 2001),
+    ):
+        code, calls = run_act_answering(tmp_path, monkeypatch, bad, answer)
+        assert code == 1 and calls == [], bad
+
+
+def test_act_files_an_owner_fix_issue_once(tmp_path, monkeypatch):
+    action = tick.ownerfix_issue(TEST_A, 888, MAIN_SHA, snap([], repo_url=REPO_URL))
+    already: list[dict] = []
+
+    def answer(method, path, body):
+        if method == "GET" and path.startswith("/issues?"):
+            return already
+        if method == "POST" and path == "/issues":
+            return {"number": 60}
+        return None
+
+    code, calls = run_act_answering(tmp_path, monkeypatch, [action], answer)
+    assert code == 0
+    filed = next(c for c in calls if c[:2] == ("POST", "/issues"))
+    assert filed[2]["labels"] == ["campaign"] and "agent-plan" not in json.dumps(calls)
+    # an open issue already carries the marker: not filed again
+    already.append({"number": 59, "body": action["body"]})
+    code, calls = run_act_answering(tmp_path, monkeypatch, [action], answer)
+    assert code == 0 and not [c for c in calls if c[:2] == ("POST", "/issues")]
+    # a body without any marker is refused; so is a label outside the set
+    for bad in (
+        {**action, "body": "no marker"},
+        {**action, "labels": ["campaign", "agent-plan-x"]},
+    ):
+        code, calls = run_act_answering(tmp_path, monkeypatch, [bad], answer)
+        assert code == 1 and not [c for c in calls if c[:2] == ("POST", "/issues")]

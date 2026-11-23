@@ -22,7 +22,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from terrain.campaigns import markers
-from terrain.campaigns.facts import PLAN_PREFIX, WORKFLOW_BOT, Comment, Issue, Snapshot
+from terrain.campaigns.facts import (
+    PLAN_PREFIX,
+    WORKFLOW_BOT,
+    Comment,
+    Issue,
+    Snapshot,
+    parse_ownerfix,
+)
 from terrain.campaigns.gate import GateContext, closeout_paths
 from terrain.campaigns.spec import Campaign, read_front_matter
 from terrain.campaigns.tick import (
@@ -68,6 +75,7 @@ PLAIN = {
     "repair_filing": "a repair task was just filed",
     "repair_merged": "the repair merged; the run starts again",
     "restart_waiting": "the build stopped or was unblocked",
+    "waiting_main": "the build waits for main to pass the tests it failed on (decision 0021)",
     "blocked": "blocked (see Waiting on you)",
     "done": "done",
     "skipped": "skipped",
@@ -191,6 +199,21 @@ def red_line(snap: Snapshot) -> str:
     )
 
 
+def ownerfix_lines(snap: Snapshot) -> list[str]:
+    """One line per open owner-fix issue (decision 0021): a test that fails on main."""
+    out = []
+    for i in sorted(snap.issues, key=lambda i: i.number):
+        test = parse_ownerfix(i.body) if i.state == "open" and i.author == snap.app_bot else None
+        if test:
+            link = (
+                f"[#{i.number}]({snap.repo_url}/issues/{i.number})"
+                if snap.repo_url
+                else f"#{i.number}"
+            )
+            out.append(f"- main is broken: fix `{_safe(test)}` ({link}).")
+    return out
+
+
 def waiting_on_you(
     views: Sequence[CampaignView], snap: Snapshot, gctx: GateContext, root: Path
 ) -> list[str]:
@@ -201,6 +224,7 @@ def waiting_on_you(
     (nothing more starts), so only the close-out itself can be listed.
     """
     out: list[str] = [red_line(snap)] if snap.main_red else []
+    out += ownerfix_lines(snap)
     for v in views:
         c, tracking = v.campaign, v.tracking
         if tracking is None:
@@ -239,7 +263,7 @@ def _now(v: CampaignView, cst: StepState | None, snap: Snapshot) -> str:
         if st.status not in IN_FLIGHT:
             continue
         words = PLAIN.get(st.status, st.status)
-        if st.status in ("in_review", "restart_waiting") and st.detail:
+        if st.status in ("in_review", "restart_waiting", "waiting_main") and st.detail:
             words += f": {_safe(st.detail)}"
         if st.repairing:
             words = f"its repair task: {words}"
@@ -254,6 +278,11 @@ def _now(v: CampaignView, cst: StepState | None, snap: Snapshot) -> str:
             parts.append(f"{', '.join(blocked)} blocked (see Waiting on you)")
         else:
             parts.append("nothing in progress")
+    # steps skipped for a contradiction (decision 0021) are shown beside what is going on
+    for s in v.campaign.steps:
+        st = v.states[s.id]
+        if st.contradiction is not None and st.issue is not None:
+            parts.append(f"{s.id} (#{st.issue.number}): {_safe(st.detail)}")
     if v.tracking is not None and "campaign-pause" in v.tracking.labels:
         parts.insert(0, "paused")
     elif v.tracking is None:

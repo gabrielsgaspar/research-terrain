@@ -7,6 +7,7 @@ them by hand and never touch the network.
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 _REVIEW_HEAD = re.compile(r"^## Agent review: (Approve|Changes needed)", re.M)
@@ -20,6 +21,23 @@ WORKFLOW_BOT = "github-actions[bot]"
 # a line of an owner's merged pull request that unblocks a task issue; the act job of
 # campaign-tick.yml checks the same line (bodies are read with "\r\n" made "\n")
 UNBLOCKS_LINE = re.compile(r"^Unblocks #(\d+)$", re.M)
+
+# Decision 0021: two comments agent-build's report job posts (github-actions[bot]) and the
+# tick reads. Only a comment whose first and last lines match exactly counts.
+BUILD_COMMENT_PREFIX = "## Agent build"
+CONTRADICTION_FIRST = "## Agent build: contradiction (decision 0021)"
+WAITING_FIRST = "## Agent build: waiting for main (decision 0021)"
+_TEST_ID = r"[^\s,<>]{1,200}"  # a pytest node id: no spaces or commas, at most 200 characters
+_CONTRADICTION_LAST = re.compile(r"^<!-- agent-build-contradiction: run (\d{1,20}) -->$")
+_WAITING_LAST = re.compile(
+    rf"^<!-- agent-build-waiting-for-main: run (\d{{1,20}}) sha ([0-9a-f]{{12}}) "
+    rf"tests ({_TEST_ID}(?:,{_TEST_ID})*) -->$"
+)
+TEST_ID = re.compile(rf"^{_TEST_ID}$")
+# an owner-fix issue (decision 0021): one per failing test, filed by the tick
+_OWNERFIX = re.compile(rf"<!-- campaign-ownerfix: ({_TEST_ID}) -->")
+QUOTE_CHARS = 300  # a quote of a contradiction is cut to this when the tick repeats it
+MAX_QUOTES = 4
 
 
 @dataclass(frozen=True)
@@ -218,3 +236,101 @@ class Snapshot:
     def main_red(self) -> bool:
         """Did CI's test check fail on main's head commit?"""
         return self.main_ci is not None and self.main_ci.state == "failure"
+
+
+def ownerfix_marker(test: str) -> str:
+    """The marker of the owner-fix issue for failing test `test` (decision 0021)."""
+    return f"<!-- campaign-ownerfix: {test} -->"
+
+
+def parse_ownerfix(body: str) -> str | None:
+    m = _OWNERFIX.search(body or "")
+    return m.group(1) if m else None
+
+
+def cut_quote(text: str) -> str:
+    """One quote as the tick repeats it: one line, no hidden markers, cut to QUOTE_CHARS
+    characters with a note that says it was cut."""
+    one = " ".join((text or "").replace("<!--", "&lt;!--").replace("-->", "--&gt;").split())
+    if len(one) <= QUOTE_CHARS:
+        return one
+    return f"{one[:QUOTE_CHARS].rstrip()}... (cut at {QUOTE_CHARS} characters)"
+
+
+@dataclass(frozen=True)
+class Contradiction:
+    """A valid Comment C: the builder found two instructions, neither stricter."""
+
+    run: int  # the build run that posted it
+    quotes: tuple[str, ...]  # the quoted texts as written (not yet cut)
+    created_at: str
+
+
+@dataclass(frozen=True)
+class Waiting:
+    """A valid Comment W: the build waits for main to pass the tests listed."""
+
+    run: int
+    sha: str  # first 12 characters of main's head when the build ran
+    tests: tuple[str, ...]
+    created_at: str
+
+
+def _lines(comment: Comment) -> list[str]:
+    return comment.body.replace("\r\n", "\n").rstrip().split("\n")
+
+
+def _quotes(middle: list[str]) -> tuple[str, ...]:
+    """The block quotes (`> ...` lines) between a comment's first and last lines; with
+    none, the whole text between them as one quote."""
+    found: list[list[str]] = []
+    open_ = False
+    for line in middle:
+        if line.startswith(">") and line[1:].strip():
+            if not open_:
+                found.append([])
+            found[-1].append(line[1:].strip())
+            open_ = True
+        else:
+            open_ = False
+    quotes = [" ".join(q) for q in found] or [" ".join(x.strip() for x in middle if x.strip())]
+    return tuple(q for q in quotes if q)[:MAX_QUOTES]
+
+
+def parse_contradiction(comment: Comment, bot: str = WORKFLOW_BOT) -> Contradiction | None:
+    if comment.author != bot:
+        return None
+    lines = _lines(comment)
+    last = _CONTRADICTION_LAST.match(lines[-1]) if len(lines) > 1 else None
+    if lines[0] != CONTRADICTION_FIRST or not last:
+        return None
+    return Contradiction(int(last.group(1)), _quotes(lines[1:-1]), comment.created_at)
+
+
+def parse_waiting(comment: Comment, bot: str = WORKFLOW_BOT) -> Waiting | None:
+    if comment.author != bot:
+        return None
+    lines = _lines(comment)
+    last = _WAITING_LAST.match(lines[-1]) if len(lines) > 1 else None
+    if lines[0] != WAITING_FIRST or not last:
+        return None
+    return Waiting(
+        int(last.group(1)), last.group(2), tuple(last.group(3).split(",")), comment.created_at
+    )
+
+
+def contradiction_of(comments: Sequence[Comment]) -> Contradiction | None:
+    """The newest valid Comment C on an issue, if any."""
+    found = [c for c in map(parse_contradiction, comments) if c]
+    return max(found, key=lambda c: c.created_at, default=None)
+
+
+def latest_waiting(comments: Sequence[Comment]) -> Waiting | None:
+    """The newest agent-build comment, if it is a valid Comment W. Any later agent-build
+    comment (a fix round, a stop, a contradiction) means the build went on."""
+    builds = [
+        (c.created_at, k, c)
+        for k, c in enumerate(comments)
+        if c.author == WORKFLOW_BOT and c.body.startswith(BUILD_COMMENT_PREFIX)
+    ]
+    return parse_waiting(max(builds, key=lambda b: b[:2])[2]) if builds else None
