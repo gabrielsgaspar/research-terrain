@@ -1,9 +1,9 @@
 ---
 id: "0010"
 title: "What do budget amendments buy at the ballot box? The municipality's share of the deputy's money"
-status: exploring
+status: promising
 created: 2026-11-19
-updated: 2026-11-22
+updated: 2026-11-23
 datasets:
   - amendments_panel
   - camara_deputies
@@ -116,10 +116,13 @@ acquired in the campaign's first step), `tse_results`, `tse_candidates`,
 - 2026-11-19: promising, the recommendation of campaign 0011's close-out report (`research/campaigns/0011-amendments-share-of-quota/report.md`); Gabriel accepts it by approving this pull request. Both explore runs survived every kill rule; only `log_pc` was powered, with a positive first stage (b 0.192) and reduced form (b 0.0119) on the exploration half.
 - 2026-11-22: exploring. Campaign 0013 (`research/campaigns/0013-amendments-mechanisms/`)
   starts when this pull request merges.
+- 2026-11-23: promising, the recommendation of campaign 0013's close-out report (`research/campaigns/0013-amendments-mechanisms/report.md`); Gabriel accepts it by approving this pull request. All three plan steps and all three forks survived their kill rules on the exploration half; the weakest result is the quadratic fork's controlled first-stage F of 10.3.
 
 ## Variants tried
 
-None: no fork was declared.
+- f1 (parent s4, spec): controls added in every party-level, deputy-level and placebo fit; survived (fork).
+- f2 (parent s6, transform): outcome in ln(1 + reais per inhabitant); survived (fork).
+- f3 (parent s2, spec): local quadratic in the margin instead of local linear; survived (fork).
 
 ## Log
 
