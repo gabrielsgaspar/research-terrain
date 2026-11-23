@@ -877,6 +877,10 @@ jobs:
 
   verify:
     needs: build
+    # prior is skipped on every labelled build, and a job without an if
+    # (an implicit success()) is skipped when any job before it in the needs
+    # chain was. So this job and publish test their direct needs instead.
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 15
     # Runs Claude's code (pytest) again, from a fresh checkout. No secrets.
@@ -1372,6 +1376,7 @@ jobs:
 
   publish:
     needs: [build, verify]
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.verify.result == 'success' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     env:

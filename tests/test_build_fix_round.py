@@ -103,6 +103,28 @@ def test_only_the_prior_job_may_read_other_runs():
     assert all_jobs["verify"]["permissions"] == {"contents": "read"}
 
 
+def test_a_labelled_build_runs_past_the_skipped_prior_job():
+    """prior is skipped unless dispatched. A job with no `if` (an implicit success()) is
+    skipped when any job before it in the needs chain was, so every job after prior must
+    say when it runs. Builds 45238232851 and 45238246955 skipped verify and publish."""
+    all_jobs = jobs()
+
+    def before(name: str) -> set[str]:
+        needs = all_jobs[name].get("needs", [])
+        direct = {needs} if isinstance(needs, str) else set(needs)
+        return direct.union(*(before(n) for n in direct)) if direct else set()
+
+    after_prior = [n for n in all_jobs if "prior" in before(n)]
+    assert sorted(after_prior) == ["build", "publish", "report", "verify"]
+    for name in after_prior:
+        cond = str(all_jobs[name].get("if", ""))
+        assert cond.startswith(("${{ !cancelled() && ", "${{ always() && ")), name
+    # verify and publish still run only after every job they need succeeded
+    assert "needs.build.result == 'success'" in all_jobs["verify"]["if"]
+    publish = all_jobs["publish"]["if"]
+    assert all(f"needs.{n}.result == 'success'" in publish for n in ("build", "verify"))
+
+
 def test_the_build_excludes_the_sandbox_placeholders():
     """sandbox-runtime's protected files and folders (Claude Code 2.1.330), decision 0019."""
     run = step("build", "Create the branch and write the issue and plan to files")["run"]
