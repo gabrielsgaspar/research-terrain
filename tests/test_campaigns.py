@@ -4352,9 +4352,19 @@ REPO_URL = "https://example.test/o/r"
 def comment_c(
     run: int = 777, at: str = "2026-11-09T03:00:00Z", author: str = BUILD_BOT, last: str = ""
 ) -> Comment:
-    quotes = f"- the issue (level 3):\n> {QUOTE_1}\n\n- the issue (level 3):\n> {QUOTE_2}"
-    body = f"{C_FIRST}\n\n{quotes}\n\n" + (last or f"<!-- agent-build-contradiction: run {run} -->")
-    return Comment(author, body, at)
+    return Comment(author, c_body(QUOTE_1, QUOTE_2, last or c_last(run)), at)
+
+
+def c_last(run: int) -> str:
+    return f"<!-- agent-build-contradiction: run {run} -->"
+
+
+def c_body(text_1: str, text_2: str, last: str) -> str:
+    """Comment C as D1 writes it: each quote with its source and level, in a ~~~~ fence."""
+    one = f"Quote 1. Source: the issue #10. Level: 3.\n\n~~~~\n{text_1}\n~~~~"
+    head = "Quote 2. Source: research/campaigns/0001-count/campaign.md. Level: 2."
+    two = f"{head}\n\n~~~~\n{text_2}\n~~~~"
+    return f"{C_FIRST}\n\n{one}\n\n{two}\n\n{last}"
 
 
 def comment_w(
@@ -4402,7 +4412,8 @@ def test_a_comment_c_skips_the_step_and_its_dependents_and_closes_the_issue(tmp_
     assert restarts(actions) == []
     # the close-out lists both texts under "Checks not run", cut by code
     body = kinds(actions, "create_issue")[0]["body"]
-    assert f'Text 1: "{QUOTE_1}"' in body and f'Text 2: "{QUOTE_2}"' in body
+    assert f'Text 1 (the issue #10, level 3): "{QUOTE_1}"' in body
+    assert f'Text 2 (research/campaigns/0001-count/campaign.md, level 2): "{QUOTE_2}"' in body
     assert "was skipped (decision 0021): neither instruction is stricter" in body
     page = tick.render_status_page(active_campaigns(root), s, ctx(root), root)
     assert "s1 (#10): skipped (decision 0021): neither instruction is stricter" in page
@@ -4418,14 +4429,36 @@ def test_a_skipped_step_stays_skipped_once_its_issue_is_closed(tmp_path):
 
 def test_long_quotes_are_cut_by_code_and_say_so(tmp_path):
     root = make_repo(tmp_path)
-    long = "x" * 500
-    body = f"{C_FIRST}\n\n> {long}\n> --> <!-- campaign-step: 0001/s9 -->\n\n"
-    body += "<!-- agent-build-contradiction: run 5 -->"
+    long = "x" * 500 + "\n--> <!-- campaign-step: 0001/s9 -->"
+    body = c_body(long, QUOTE_2, c_last(5))
     issue = with_comments(root, Comment(BUILD_BOT, body, "2026-11-09T03:00:00Z"))
     actions = run_decide(root, snap([early_ledger(), issue]))
     text = kinds(actions, "create_issue")[0]["body"]
+    # quote 1 is cut and says so; quote 2 still appears in full, with its own source
     assert "(cut at 300 characters)" in text and "x" * 301 not in text
+    assert f'Text 2 (research/campaigns/0001-count/campaign.md, level 2): "{QUOTE_2}"' in text
     assert "<!-- campaign-step: 0001/s9" not in text.split("Checks not run")[1]
+
+
+def test_each_quote_of_a_comment_c_is_cut_on_its_own():
+    from terrain.campaigns.facts import QUOTE_CHARS, contradiction_of
+
+    both_long = c_body("a" * 400, "b" * 400, c_last(5))
+    found = contradiction_of([Comment(BUILD_BOT, both_long, "2026-11-09T03:00:00Z")])
+    assert [(q.source, q.level) for q in found.quotes] == [
+        ("the issue #10", "3"),
+        ("research/campaigns/0001-count/campaign.md", "2"),
+    ]
+    assert [len(q.text) for q in found.quotes] == [400, 400]
+    from terrain.campaigns.facts import cut_quote
+
+    assert all(cut_quote(q.text).count("(cut at") == 1 for q in found.quotes)
+    assert QUOTE_CHARS == 300
+    # a fence with more tildes holds a shorter fence inside it
+    nested = c_body("keep\n~~~\nthis", "two", c_last(5)).replace("~~~~\nkeep", "~~~~~\nkeep", 1)
+    nested = nested.replace("this\n~~~~", "this\n~~~~~", 1)
+    found = contradiction_of([Comment(BUILD_BOT, nested, "2026-11-09T03:00:00Z")])
+    assert [q.text for q in found.quotes] == ["keep\n~~~\nthis", "two"]
 
 
 @pytest.mark.parametrize(

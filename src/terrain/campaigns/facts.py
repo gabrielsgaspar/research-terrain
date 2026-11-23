@@ -258,11 +258,20 @@ def cut_quote(text: str) -> str:
 
 
 @dataclass(frozen=True)
+class Quote:
+    """One quoted text of Comment C, with the source it names and its level."""
+
+    text: str  # as written (not yet cut)
+    source: str
+    level: str
+
+
+@dataclass(frozen=True)
 class Contradiction:
     """A valid Comment C: the builder found two instructions, neither stricter."""
 
     run: int  # the build run that posted it
-    quotes: tuple[str, ...]  # the quoted texts as written (not yet cut)
+    quotes: tuple[Quote, ...]
     created_at: str
 
 
@@ -280,21 +289,40 @@ def _lines(comment: Comment) -> list[str]:
     return comment.body.replace("\r\n", "\n").rstrip().split("\n")
 
 
-def _quotes(middle: list[str]) -> tuple[str, ...]:
-    """The block quotes (`> ...` lines) between a comment's first and last lines; with
-    none, the whole text between them as one quote."""
-    found: list[list[str]] = []
-    open_ = False
-    for line in middle:
-        if line.startswith(">") and line[1:].strip():
-            if not open_:
-                found.append([])
-            found[-1].append(line[1:].strip())
-            open_ = True
-        else:
-            open_ = False
-    quotes = [" ".join(q) for q in found] or [" ".join(x.strip() for x in middle if x.strip())]
-    return tuple(q for q in quotes if q)[:MAX_QUOTES]
+_QUOTE_HEAD = re.compile(r"^Quote (\d+)\. Source: (.+)\. Level: (.+)\.$")
+_FENCE = re.compile(r"^(~{4,})\s*$")
+
+
+def _quotes(middle: list[str]) -> tuple[Quote, ...]:
+    """Each `Quote N. Source: <s>. Level: <n>.` block and the ~~~~ fence under it as its own
+    quote. With no such block, the whole text between the first and last lines is one
+    quote (no source, no level)."""
+    found: list[Quote] = []
+    k = 0
+    while k < len(middle):
+        head = _QUOTE_HEAD.match(middle[k].strip())
+        k += 1
+        if not head:
+            continue
+        while k < len(middle) and not middle[k].strip():
+            k += 1
+        opening = _FENCE.match(middle[k]) if k < len(middle) else None
+        if not opening:
+            continue
+        body: list[str] = []
+        k += 1
+        while k < len(middle):
+            closing = _FENCE.match(middle[k])
+            if closing and len(closing.group(1)) >= len(opening.group(1)):
+                break
+            body.append(middle[k])
+            k += 1
+        k += 1
+        found.append(Quote("\n".join(body).strip(), head.group(2).strip(), head.group(3).strip()))
+    if not found:
+        text = " ".join(x.strip() for x in middle if x.strip())
+        found = [Quote(text, "", "")] if text else []
+    return tuple(found[:MAX_QUOTES])
 
 
 def parse_contradiction(comment: Comment, bot: str = WORKFLOW_BOT) -> Contradiction | None:

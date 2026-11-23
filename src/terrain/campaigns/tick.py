@@ -1609,11 +1609,19 @@ def _breaker_events(v: CampaignView, held: bool) -> list[tuple[str, str]]:
     return []
 
 
+def _where(q) -> str:  # noqa: ANN001 (a facts.Quote)
+    """` (source, level n)` for a quote that names them, cut like the text."""
+    if not q.source and not q.level:
+        return ""
+    return f" ({cut_quote(q.source)}, level {cut_quote(q.level)})"
+
+
 def _skipped_line(s: Step, st: StepState) -> str:
     """The "Checks not run" line of a step skipped for a contradiction: both quotes, as
     the builder's comment gave them, each cut by code to QUOTE_CHARS characters."""
     quotes = " ".join(
-        f'Text {k}: "{cut_quote(q)}"' for k, q in enumerate(st.contradiction.quotes, 1)
+        f'Text {k}{_where(q)}: "{cut_quote(q.text)}"'
+        for k, q in enumerate(st.contradiction.quotes, 1)
     )
     where = f"#{st.issue.number}" if st.issue else "its issue"
     return (
