@@ -1,9 +1,9 @@
 ---
 id: "0012"
 title: "Did the incumbency curse of Brazilian mayors' parties lift in 2020?"
-status: exploring
+status: promising
 created: 2026-11-22
-updated: 2026-11-22
+updated: 2026-11-23
 datasets:
   - mayor_incumbency_panel
 kill_criteria:
@@ -159,10 +159,11 @@ data and no build.
 - 2026-11-22: proposed (Gabriel's brief, 2026-11-22).
 - 2026-11-22: exploring. Campaign 0014 (`research/campaigns/0014-incumbency-curse/`)
   starts when this pull request merges.
+- 2026-11-23: promising, the recommendation of campaign 0014's close-out report (`research/campaigns/0014-incumbency-curse/report.md`); Gabriel accepts it by approving this pull request. The gate, the main run and fork f1 passed every kill rule on the exploration half; the main run's H1 difference is 0.216 (RI p 0.0005), and nothing here is a finding.
 
 ## Variants tried
 
-None yet.
+- f1 (parent step s2): uniform kernel with |margin| <= 0.10 instead of triangular with h = 0.135, in every gate fit; survived (fork), 1 of 1 tried at s2.
 
 ## Log
 

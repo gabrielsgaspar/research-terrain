@@ -1,7 +1,7 @@
 ---
 id: "0014"
 title: "Did the incumbency curse of Brazilian mayors' parties lift in 2020? A regression discontinuity fixed in advance (decision 0017)"
-status: active
+status: done
 idea: "0012"
 owner: gabrielsgaspar
 created: 2026-11-22
