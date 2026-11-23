@@ -350,7 +350,9 @@ def test_failing_ids_are_parsed_in_order_without_repeats():
         "FAILED tests/test_p.py::test_param[a,b] - x\n",  # a comma in the id
         "FAILED tests/test_p.py::test_param[a - x\n",  # an unclosed bracket
         "FAILED -x::y - no\n",  # looks like an option
-        "FAILED tests/t.py::a-->b - no\n",  # would end the marker
+        "FAILED tests/t.py::a-->b - no\n",
+        "FAILED tests/test_x.py::test_a[<lambda>] - no\n",  # < and > are not in the tick's id class
+        "FAILED tests/test_x.py::test_a[a>b] - no\n",  # would end the marker
         "FAILED tests/test_a.py::" + "t" * 200 + " - long\n",  # over 200 characters
         "FAILED tests/a.py::ok - x\nFAILED tests/t.py::t[a b] - y\n",  # one bad id spoils all
     ],
@@ -753,3 +755,12 @@ def test_an_id_passing_on_main_leaves_the_failure_with_the_task(tmp_path):
     (tmp_path / "failing-ids.txt").write_text("\n".join(IDS) + "\n", encoding="utf-8")
     done = run_step("verify", "Run the failing tests on main", env, main_checkout(tmp_path))
     assert done.returncode == 0 and "waiting" not in tbfr.read_outputs(out)
+
+
+@pytest.mark.parametrize(
+    "node", ["tests/test_x.py::test_a[<lambda>]", "tests/t.py::t[a<b]", "tests/t.py::t[a>b]"]
+)
+def test_ids_with_angle_brackets_are_refused(node):
+    assert not c.valid_node_id(node)
+    with pytest.raises(ValueError):
+        c.render_waiting([node], "1", "0123456789ab")

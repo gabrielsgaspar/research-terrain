@@ -44,8 +44,8 @@ TOKEN_PREFIX = re.compile(r"sk-ant-|lsv2_|gh[pousr]_|github_pat_|-----BEGIN|ya29
 RUN_ID = re.compile(r"^[0-9]{1,15}$")
 SHA12 = re.compile(r"^[0-9a-f]{12}$")
 PATH_SOURCE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_./-]*$")
-# A pytest node id: no whitespace, no comma, no leading dash, never a comment marker.
-NODE_ID = re.compile(r"^[A-Za-z0-9_.][^\s,]*$")
+# A pytest node id: no whitespace, comma, < or > (the tick reads [^\s,<>]{1,200}), no leading dash.
+NODE_ID = re.compile(r"^[A-Za-z0-9_.][^\s,<>]*$")
 FAILED_LINE = re.compile(r"^(?:FAILED|ERROR) (\S.*)$")
 
 
