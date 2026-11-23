@@ -312,6 +312,15 @@ workflow carries it out; the `campaign-gate` check decides what may merge.
   and gate merges go on. Every report lists its "Checks not run" from the tick's
   list; text cut by code says so; the repair reviewer never sees the run log or
   its error line, only the row counts.
+- Restarts and the red-main pause: the tick starts a task step's build again
+  (removes and re-adds `agent-build`, one model job) when it has no pull
+  request 12 hours after it started and no agent-build run is in flight (once
+  per block); at once when Gabriel removes `needs-human`, or merges a pull
+  request of his own with a line `Unblocks #<issue>` (the tick then removes
+  `needs-human`); and once after main turns green for a build that stopped
+  while it was red. Not if `agent/issue-<n>` exists (blocked instead). While
+  CI's `test` failed on main's head, nothing merges, is filed, built,
+  restarted or run; work in flight goes on.
 
 ### Writing for Gabriel
 

@@ -8,9 +8,13 @@ name: Campaign tick
 #   act     Holds the agent App's token and runs no repository code: a fixed
 #           script below checks each action against a closed list (issue
 #           bodies must carry a campaign marker, labels and workflows come
-#           from fixed sets, merges name the exact head commit, and only an
+#           from fixed sets, merges name the exact head commit, only an
 #           issue whose body carries a campaign-tracking marker may be
-#           closed) and carries it out. Merges also need the required checks on main, so a wrong
+#           closed, a restart only removes and re-adds `agent-build` on the
+#           App's open task issue, and `needs-human` comes off only in an
+#           unblock, after the script reads that the repository owner opened
+#           and merged the pull request that says `Unblocks #<issue>`) and
+#           carries it out. Merges also need the required checks on main, so a wrong
 #           action cannot merge anything the gate and the ruleset refuse.
 #
 # Set the repository variable CAMPAIGNS_ENABLED to `true` to run; anything
@@ -211,6 +215,8 @@ jobs:
           TASK = re.compile(r"<!-- campaign-(?:step|repair|closeout): [^>]{1,80}-->")
           # GitHub's answer to a merge while a required check still runs (run 45040286988).
           CHECK_RUNNING = re.compile(r"Required status check .{1,80} is in progress")
+          # The repository owner: only their merged pull request may unblock a task.
+          OWNER = REPO.split("/")[0]
 
           def call(method, path, body=None):
               req = urllib.request.Request(
@@ -286,6 +292,38 @@ jobs:
                               raise
                       call("POST", f"/issues/{n}/labels", {"labels": ["agent-build"]})
                       print(f"#{n}: agent-plan -> agent-build")
+                  elif kind in ("restart_build", "unblock"):
+                      # start a task's build again: agent-build starts only when its label
+                      # is added. Only on the agent App's open task issue.
+                      n = number(a["issue"])
+                      issue = call("GET", f"/issues/{n}")
+                      if ("pull_request" in issue or issue.get("state") != "open" or not APP_BOT
+                              or (issue.get("user") or {}).get("login") != APP_BOT
+                              or not TASK.search(issue.get("body") or "")):
+                          raise ValueError(f"#{n} is not the agent App's open campaign task issue")
+                      if kind == "unblock":
+                          # the owner's merged pull request says so, word for word
+                          p = number(a["pr"])
+                          pr = call("GET", f"/pulls/{p}")
+                          lines = (pr.get("body") or "").replace("\r\n", "\n").split("\n")
+                          if (pr.get("merged") is not True
+                                  or (pr.get("merged_by") or {}).get("login") != OWNER
+                                  or (pr.get("user") or {}).get("login") != OWNER
+                                  or f"Unblocks #{n}" not in lines):
+                              raise ValueError(f"PR #{p} is no merged pull request of the owner that unblocks #{n}")
+                          try:
+                              call("DELETE", f"/issues/{n}/labels/needs-human")
+                          except urllib.error.HTTPError as exc:
+                              if exc.code != 404:
+                                  raise
+                          print(f"#{n}: removed needs-human (PR #{p})")
+                      try:
+                          call("DELETE", f"/issues/{n}/labels/agent-build")
+                      except urllib.error.HTTPError as exc:
+                          if exc.code != 404:
+                              raise
+                      call("POST", f"/issues/{n}/labels", {"labels": ["agent-build"]})
+                      print(f"#{n}: agent-build removed and added again")
                   elif kind == "merge":
                       sha = a.get("sha", "")
                       if not re.fullmatch(r"[0-9a-f]{40}", sha):

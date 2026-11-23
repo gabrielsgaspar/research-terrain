@@ -55,16 +55,24 @@ can change a campaign while it runs.
    you once in the ledger. Work in flight and merges through the gate go on. It lifts
    by itself, with one ledger line, once fewer than 3 such blocks remain: when they are
    older than 24 hours or you clear them.
-6. When nothing more can run, the tick files the close-out task. Its PR
+6. Restarts and red main: a task's build that has no pull request 12 hours after it
+   started, with no agent-build run in flight, is started again once per block (one
+   model job, held by the breaker). Removing `needs-human` yourself restarts it at once,
+   and so does merging a pull request of your own with a line `Unblocks #<issue>`: the
+   tick then removes `needs-human` for you. If the issue's `agent/issue-<n>` branch
+   exists, the step blocks instead. While CI's `test` check fails on main, the tick
+   merges, files, builds and runs nothing (the status page says so first); a build that
+   stopped meanwhile is started again once main is green.
+7. When nothing more can run, the tick files the close-out task. Its PR
    holds the report, the ledger, a lessons entry and the idea's new status:
    the report's recommendation (`promising`, `parked` or `dead`), with a
    status line saying so. You read it and decide. To accept it, approve the PR (Files
    changed, then Review changes, then Approve); that also accepts the
    idea's new status, and the next tick merges the commit you approved. To reject it, close the PR. Only your approval
    counts, and only on the PR's newest commit.
-7. The report carries the friction facts the tick counted (blocks, extra plans and fix rounds, repeated runs, long gaps) and a section "Checks not run": every step that did not finish, every kill rule never applied, and every referee row a review marked "Not applicable", from a list the tick builds; it says "None" only when that list is empty. From the friction facts the close-out adds at most three notes and one Scoreboard row to `research/agent-notes.md` (decision 0013).
-8. Every agent reads those notes as advice for its role, never as rules; checks in code are only proposed in the report, for you to batch into tasks later.
-9. The close-out may not touch the harness, the workflows, `AGENTS.md` or the skills, and the notes file changes only in a close-out you approve.
+8. The report carries the friction facts the tick counted (blocks, extra plans and fix rounds, repeated runs, long gaps) and a section "Checks not run": every step that did not finish, every kill rule never applied, and every referee row a review marked "Not applicable", from a list the tick builds; it says "None" only when that list is empty. From the friction facts the close-out adds at most three notes and one Scoreboard row to `research/agent-notes.md` (decision 0013).
+9. Every agent reads those notes as advice for its role, never as rules; checks in code are only proposed in the report, for you to batch into tasks later.
+10. The close-out may not touch the harness, the workflows, `AGENTS.md` or the skills, and the notes file changes only in a close-out you approve.
 
 ## The approval card
 
