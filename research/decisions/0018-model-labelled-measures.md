@@ -1,14 +1,14 @@
 ---
 id: "0018"
 title: "Measures built from text with model labels"
-status: proposed
+status: accepted
 date: 2026-11-22
 supersedes: null
 ---
 
 # 0018: Measures built from text with model labels
 
-Date: 2026-11-22. Status: proposed, drafted by Claude for Gabriel from his
+Date: 2026-11-22. Status: accepted, drafted by Claude for Gabriel from his
 brief of 2026-11-22 (campaign 0015). It takes effect when Gabriel merges
 the pull request that adds it, with the codebook
 `data/reference/pix_object_codebook.md`, the labels
@@ -86,3 +86,5 @@ before a campaign starts.
   `scripts/pix_label_sample.py` (the sample), the build
   `amendments_objects`.
 - First use: idea 0013, campaign 0015.
+
+Accepted by Gabriel when he merged PR #470.
