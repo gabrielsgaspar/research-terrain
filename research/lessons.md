@@ -16,6 +16,28 @@ Format:
 - Implication: what changes because of it.
 ```
 
+## 2026-11-23: Did the incumbency curse lift in 2020: the gate, the main run and one fork all survive (idea 0012, issue #455)
+- Tried: campaign 0014 ran a gate on the exploration half
+  (`research/explore-runs/0012/45246860634.md`), a main run
+  (`research/explore-runs/0012/45252259366.md`) and one fork of the gate with a
+  uniform kernel at |margin| <= 0.10
+  (`research/explore-runs/0012/45261184634.md`). The design was fixed before
+  any outcome was read (decision 0017), on data already seen at the gate stage
+  of campaign 0012.
+- Result: the gate passed every rule (omnibus p 0.252, MDE 0.143, 1378 races in
+  the smallest cycle). The main run's H1 difference (2020 minus 2008-2016) is
+  0.216 (SE 0.0425, RI p 0.0005). The fork also passed (omnibus p 0.331, MDE
+  0.15, 1096 races). No kill rule was met. Two differences between records
+  stay unexplained: the uniform 10% window gives omnibus p 0.0185 in decision
+  0008's table and 0.331 in the fork.
+- Why: the designs are balanced and powered at these windows on the
+  exploration half. The pandemic, the change in campaign finance and the end of
+  council coalitions could also move the 2020 effect.
+- Implication: nothing here is a finding. The report
+  (`research/campaigns/0014-incumbency-curse/report.md`) recommends
+  `promising`. A fork's result is never a finding, and a registration must list
+  every fork tried.
+
 ## 2026-11-23: Amendments mechanisms: every step and fork survives, one weak spot (idea 0010, issue #450)
 - Tried: campaign 0013 ran three plan steps and one fork of each on the
   exploration half: instrument and sorting
