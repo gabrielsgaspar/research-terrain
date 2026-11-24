@@ -1,7 +1,7 @@
 ---
 id: "0013"
 title: "Amendments: favouritism or more money, Pix, sorting, whose votes move and when the money is paid"
-status: active
+status: done
 idea: "0010"
 owner: gabrielsgaspar
 created: 2026-11-22
