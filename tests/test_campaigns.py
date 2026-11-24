@@ -1649,7 +1649,7 @@ def test_closeout_carries_every_block_and_the_fix_rounds(tmp_path):
     # four gaps between ledger times, three shown: the last line counts the one left out
     assert time.endswith("\n\n1 shorter gap left out.")
     # the report must list those blocks; "none" only without block rows
-    assert '"Stops and blocks" copies the friction facts above' in body
+    assert '"Stops and blocks" copies the friction facts and the "Stops by cause"' in body
 
 
 def test_closeout_counts_the_runs_of_a_run_step(tmp_path):
@@ -1732,11 +1732,12 @@ def test_closeout_writes_notes_and_proposes_checks(tmp_path):
     assert "design, planner, builder, reviewer, closeout" in scope
     for word in NOTE_BANNED:
         assert f"`{word}`" in scope
-    assert "`| 0001 | 2 | blocks | fix rounds | retries | hours | notes added |`" in scope
-    assert "add no note\n    and still add the row" in scope
+    # the last two numbers are the tick's: the owner stopped it before anything stopped
+    assert "`| 0001 | 2 | blocks | fix rounds | retries | hours | notes added | 0 | 0 |`" in scope
+    assert "add no note and still add\n    the row" in scope
     assert "merge or remove the oldest notes" in scope
     done = body.split("## Done when", 1)[1]
-    assert "the Scoreboard\n    has exactly one new row" in done
+    assert "the Scoreboard has exactly one new\n    row" in done
     assert "uv run python scripts/validate_records.py` passes" in done
 
 

@@ -135,9 +135,10 @@ NOTES_HEAD = "# Agent notes\n\nAdvice, not rules.\n\n## Notes\n\n"
 BOARD = (
     "\n## Scoreboard\n\n"
     "| Campaign | Steps | Blocks | Fix rounds | Retries | Hours from start to finish "
-    "| Notes added |\n| --- | --- | --- | --- | --- | --- | --- |\n"
+    "| Notes added | Stops for Gabriel | Plumbing stops |\n"
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n"
 )
-ROW = "| 0007 | 5 | 2 | 1 | 0 | 30.5 | 1 |\n"
+ROW = "| 0007 | 5 | 2 | 1 | 0 | 30.5 | 1 | 2 | 1 |\n"
 
 
 def note(nid="N001", role="planner", advice="List the test file next to the script it tests."):
@@ -211,8 +212,11 @@ SCOREBOARD_CASES = [
     ("unknown campaign", BOARD + ROW.replace("0007", "0009"), "no such campaign"),
     ("not a number", BOARD + ROW.replace("| 5 |", "| five |"), "'Steps' must be a whole number"),
     ("bad hours", BOARD + ROW.replace("30.5", "about 30"), "hours must be a number"),
-    ("too many added", BOARD + ROW.replace("| 1 |\n", "| 4 |\n"), "notes added must be 0 to 3"),
-    ("short row", BOARD + "| 0007 | 5 |\n", "needs 7 cells"),
+    ("too many added", BOARD + ROW.replace("| 1 | 2 |", "| 4 | 2 |"), "notes added must be 0 to 3"),
+    ("short row", BOARD + "| 0007 | 5 |\n", "needs 9 cells"),
+    ("old row", BOARD + "| 0007 | 5 | 2 | 1 | 0 | 30.5 | 1 |\n", "needs 9 cells"),
+    ("stops not a number", BOARD + ROW.replace("| 2 | 1 |\n", "| two | 1 |\n"), "whole number"),
+    ("more plumbing", BOARD + ROW.replace("| 2 | 1 |\n", "| 1 | 2 |\n"), "exceed stops"),
 ]
 
 
@@ -226,6 +230,24 @@ def test_each_scoreboard_problem_is_caught(tmp_path, name, tail, message):
     problems = vr.validate(root)
     assert len(problems) == 1, problems
     assert message in problems[0]
+
+
+def test_stops_columns_may_say_na_only_before_campaign_0015(tmp_path):
+    """Rows 0007 to 0014 were filled after the fact; a cause their reports do not
+    show is "n/a". From 0015 on, the close-out copies the tick's two numbers."""
+    na = ROW.replace("| 2 | 1 |\n", "| n/a | n/a |\n")
+    assert vr.validate(notes_tree(tmp_path, rows=na)) == []
+    assert (
+        vr.validate(notes_tree(tmp_path / "b", rows=ROW.replace("| 2 | 1 |\n", "| 3 | n/a |\n")))
+        == []
+    )
+    root = notes_tree(tmp_path / "c", rows=na.replace("0007", "0015"))
+    (root / "research" / "campaigns" / "0015-x").mkdir(parents=True)
+    (root / "research" / "campaigns" / "0015-x" / "campaign.md").write_text("x", encoding="utf-8")
+    problems = vr.validate(root)
+    assert len(problems) == 2, problems
+    assert all("may be n/a only for campaigns before 0015" in p for p in problems)
+    assert "'Stops for Gabriel'" in problems[0] and "'Plumbing stops'" in problems[1]
 
 
 def test_a_note_needs_its_campaigns_scoreboard_row(tmp_path):

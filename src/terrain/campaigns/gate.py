@@ -35,6 +35,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from terrain.campaigns import forks, markers, repair
+from terrain.campaigns.closeout import (
+    FAILURE_LOG_PATH,
+    failure_log_problem,
+    failure_log_section_of,
+)
 from terrain.campaigns.codeowners import CodeOwners
 from terrain.campaigns.facts import PullRequest
 from terrain.campaigns.spec import (
@@ -86,8 +91,25 @@ def closeout_paths(c: Campaign, root: Path) -> tuple[str, ...]:
         f"{c.folder}/campaign.md",
         "research/lessons.md",
         NOTES_PATH,
+        FAILURE_LOG_PATH,  # only appended to: `_failure_log` checks the text
         *ideas,
     )
+
+
+def _failure_log(pr: PullRequest, root: Path) -> str:
+    """A close-out may change FAILURE_LOG_PATH only by appending, unchanged, the
+    section its issue carries (written by the tick); earlier sections are never
+    edited. "" if the pull request keeps to that."""
+    base_path = root / FAILURE_LOG_PATH
+    base = base_path.read_text(encoding="utf-8") if base_path.is_file() else ""
+    head = dict(pr.added_texts).get(FAILURE_LOG_PATH)
+    touched = (
+        any(path == FAILURE_LOG_PATH for path, _ in pr.changes) or FAILURE_LOG_PATH in pr.files
+    )
+    status = {path: st for path, st in pr.changes}.get(FAILURE_LOG_PATH, "")
+    if status in ("removed", "renamed", "renamed-from"):
+        return f"{FAILURE_LOG_PATH} may not be removed or renamed"
+    return failure_log_problem(head, base, failure_log_section_of(pr.issue_body), touched)
 
 
 def _outside(pr: PullRequest, ctx: GateContext, why: str) -> GateResult:
@@ -330,6 +352,9 @@ def evaluate(pr: PullRequest, ctx: GateContext) -> GateResult:
         outside = [f for f in pr.files if f not in allowed]
         if outside:
             failures.append(f"files outside the close-out list: {outside[:5]}")
+        log = _failure_log(pr, ctx.root)
+        if log:
+            failures.append(log)
     else:
         step = campaign.step(sid)
         expected = {"task": "task", "record": "explore_run", "manifest": "pipeline_run"}[kind]

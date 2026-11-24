@@ -36,6 +36,7 @@ from typing import Any
 
 from terrain import datarule
 from terrain.campaigns import markers, repair
+from terrain.campaigns.closeout import FAILURE_LOG_PATH
 from terrain.campaigns.facts import (
     UNBLOCKS_LINE,
     Comment,
@@ -310,6 +311,10 @@ class GitHub:
             run_workflow = str(run.get("path", ""))
         if FORK_BRANCH.match(head_ref):
             added = self._added_texts(changes, head_sha)
+        elif markers.parse_closeout(issue_body) and FAILURE_LOG_PATH in files:
+            # the gate checks that a close-out only appends its section (closeout.py)
+            text = self._text_at(FAILURE_LOG_PATH, head_sha)
+            added = ((FAILURE_LOG_PATH, text),) if text is not None else ()
         return PullRequest(
             number=number,
             author=pr["user"]["login"],
@@ -349,14 +354,21 @@ class GitHub:
         for path, status in changes[:MAX_FORK_PLAN_FILES]:
             if status != "added" or "/forks/" not in path:
                 continue
-            got = self.get(f"/contents/{urllib.parse.quote(path)}", ref=sha)
-            if isinstance(got, dict) and got.get("encoding") == "base64":
-                try:
-                    text = base64.b64decode(got.get("content", "")).decode("utf-8")
-                except (ValueError, UnicodeDecodeError):
-                    continue
+            text = self._text_at(path, sha)
+            if text is not None:
                 out.append((path, text))
         return tuple(out)
+
+    def _text_at(self, path: str, sha: str) -> str | None:
+        """The text of `path` at commit `sha`, through the contents API (never a
+        checkout); None if it cannot be read as UTF-8."""
+        got = self.get(f"/contents/{urllib.parse.quote(path)}", ref=sha)
+        if isinstance(got, dict) and got.get("encoding") == "base64":
+            try:
+                return base64.b64decode(got.get("content", "")).decode("utf-8")
+            except (ValueError, UnicodeDecodeError):
+                return None
+        return None
 
     def pr_for_branch(self, branch: str, with_issue: bool = True) -> PullRequest | None:
         owner = self.repo.split("/")[0]

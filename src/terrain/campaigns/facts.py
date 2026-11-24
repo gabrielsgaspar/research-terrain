@@ -109,7 +109,8 @@ class PullRequest:
     # for a renamed file also its old path, as ("old path", "renamed-from")
     changes: tuple[tuple[str, str], ...] = ()
     run_workflow: str = ""  # for explore/, data/ and forks/ branches: the run's workflow file
-    # for a fork plan pull request: (path, text) of each added file, read at the head
+    # (path, text) read at the head: for a fork plan pull request each added file, for a
+    # close-out pull request harness/failure-log.md (the gate checks it is only appended to)
     added_texts: tuple[tuple[str, str], ...] = ()
     # the newest comment an agent workflow posted on the pull request (decision 0019)
     agent_note: Comment | None = None
