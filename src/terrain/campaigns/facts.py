@@ -10,6 +10,8 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
+from terrain.campaigns.limits import Limits, load
+
 _REVIEW_HEAD = re.compile(r"^## Agent review: (Approve|Changes needed)", re.M)
 _REVIEWED_SHA = re.compile(r"Reviewed commit `([0-9a-f]{7,40})`")
 _REFEREE_ROW = re.compile(r"^\| (R[1-8]) \| [^|]*\| ([^|]+?) \|", re.M)
@@ -105,6 +107,7 @@ class PullRequest:
     run_conclusion: str | None = None
     created_at: str = ""
     merged_at: str = ""
+    closed_at: str = ""  # when it was closed (merged or not), "" while open
     # (path, GitHub's status: added, modified, removed, renamed, ...) of each file, and
     # for a renamed file also its old path, as ("old path", "renamed-from")
     changes: tuple[tuple[str, str], ...] = ()
@@ -231,6 +234,9 @@ class Snapshot:
     main_ci: MainCheck | None = None
     # recently merged pull requests with an `Unblocks #<n>` line
     unblocks: tuple[Unblock, ...] = ()
+    # ops/limits.yaml (decision 0020), read at the start of the tick; built by hand
+    # (tests), the file of this checkout. Never a default value: a bad file raises.
+    limits: Limits = field(default_factory=load)
 
     @property
     def main_red(self) -> bool:

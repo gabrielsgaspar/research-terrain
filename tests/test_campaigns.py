@@ -6,7 +6,9 @@ Nothing here calls the network.
 
 from __future__ import annotations
 
+import datetime as dt
 import json
+import shutil
 import textwrap
 from dataclasses import replace
 from pathlib import Path
@@ -29,6 +31,8 @@ from terrain.campaigns.facts import (
     parse_review,
 )
 from terrain.campaigns.gate import GateContext, evaluate
+from terrain.campaigns.limits import Limits, LimitsError
+from terrain.campaigns.limits import load as load_limits
 from terrain.campaigns.rules import evaluate as apply_rules
 from terrain.campaigns.spec import (
     MAX_ACTIVE,
@@ -40,7 +44,6 @@ from terrain.campaigns.spec import (
     validate,
 )
 from terrain.campaigns.tick import (
-    MAX_AUTO_RETRIES,
     NEEDS_YOU,
     NEEDS_YOU_DEFAULT,
     WORKFLOW_NAMES,
@@ -143,6 +146,8 @@ def make_repo(root: Path, text: str | None = None, draft: str = DRAFT) -> Path:
     (root / ".github").mkdir()
     (root / ".github" / "CODEOWNERS").write_text(CODEOWNERS, encoding="utf-8")
     (root / "explore").mkdir()
+    (root / "ops").mkdir()
+    shutil.copy(REPO / "ops" / "limits.yaml", root / "ops" / "limits.yaml")
     return root
 
 
@@ -945,7 +950,7 @@ def test_tick_retries_twice_then_asks(tmp_path):
     actions, _ = tick_s2(root, ledgers, runs, "2026-11-10T14:00:00Z")
     assert "dispatch" not in types(actions)
     assert "Cause: run 558 ended 'failure'. Retried 2 times." in actions[0]["body"]
-    assert MAX_AUTO_RETRIES == 2
+    assert load_limits().max_auto_retries == 2
 
 
 def test_tick_retry_that_succeeds_goes_on_as_usual(tmp_path):
@@ -3904,8 +3909,12 @@ def test_waiting_on_you_quotes_the_pull_requests_note(tmp_path):
 
 # -- restarts of stalled and unblocked builds, and the red-main pause -----------------------
 
+# a stalled build's block ids hash the old fixed wording (`StepState.block_key`); the
+# ledger line prints the limit from ops/limits.yaml
 STALLED = "no pull request twelve hours after the plan"
 STALLED_AGAIN = "no pull request twelve hours after the build was started again"
+STALLED_TEXT = "no pull request 12 hours after the plan"
+CAPPED = "the build stalled again after 2 automatic restarts"
 NEEDS_HUMAN = "an agent stopped and labelled it needs-human"
 RED_SHA = "b" * 40
 
@@ -3974,7 +3983,9 @@ def test_a_stalled_build_restarts_at_most_once_per_block(tmp_path):
     third = tracking([*again.comments, *posted(later, "2026-11-10T01:02:00Z")])
     last = run_decide(root, snap([third, issue], now="2026-11-10T13:03:00Z"))
     assert restarts(last) == []
-    assert f"s1: **blocked**. Cause: {STALLED_AGAIN}. Needs you: " in last[0]["body"]
+    assert f"s1: **blocked**. Cause: {CAPPED}. Needs you: " in last[0]["body"]
+    # the same block id as before the cap was explicit
+    assert f"s1:blocked:{block_id(STALLED_AGAIN, '#10')}" in events_of(last)
     assert NEEDS_YOU["build_stalled"] in last[0]["body"]
 
 
@@ -4116,7 +4127,7 @@ def test_the_breaker_holds_automatic_restarts_but_not_the_owners(tmp_path):
     stalled = run_decide(root, snap([t, building(root)], now="2026-11-09T13:01:00Z"))
     assert restarts(stalled) == []
     assert "Paused by the circuit breaker" in stalled[0]["body"]
-    assert f"s1: **blocked**. Cause: {STALLED}." in stalled[0]["body"]
+    assert f"s1: **blocked**. Cause: {STALLED_TEXT}." in stalled[0]["body"]
     block = f"s1:blocked:{block_id(NEEDS_HUMAN, '#10')}"
     t = early_ledger(*holding, block, at="2026-11-09T02:00:00Z")
     s = snap(
@@ -4332,7 +4343,7 @@ def test_restarts_are_listed_as_handled_without_you(tmp_path):
     s = snap([t, issue], now="2026-11-09T14:00:00Z")
     page = tick.render_status_page(active_campaigns(root), s, ctx(root), root)
     handled = page.split("## Handled without you\n\n", 1)[1].split("\n## ", 1)[0]
-    assert "s1: no pull request on #10 twelve hours after its build started" in handled
+    assert "s1: no pull request on #10 12 hours after its build started" in handled
     assert "s1 (#10): the builder is writing the pull request" in page
 
 
@@ -4909,3 +4920,281 @@ def test_act_files_an_owner_fix_issue_once(tmp_path, monkeypatch):
     ):
         code, calls = run_act_answering(tmp_path, monkeypatch, [bad], answer)
         assert code == 1 and not [c for c in calls if c[:2] == ("POST", "/issues")]
+
+
+# -- ops/limits.yaml (decision 0020): the tick's limits, read from the file ----------------
+
+GOOD_LIMITS = (REPO / "ops" / "limits.yaml").read_text(encoding="utf-8")
+
+
+def limits_with(**values: int) -> Limits:
+    return replace(load_limits(), **values)
+
+
+def test_limits_load_the_real_file_with_the_old_values():
+    assert load_limits() == Limits(2, 12, 2, 3, 2, 6, 2, 2)
+    assert load_limits().build_timeout == dt.timedelta(hours=12)
+
+
+@pytest.mark.parametrize(
+    ("text", "words"),
+    [
+        (GOOD_LIMITS.replace("plan_timeout_hours: 2\n", ""), "plan_timeout_hours is missing"),
+        (GOOD_LIMITS + "extra_hours: 3\n", "unknown key 'extra_hours'"),
+        (GOOD_LIMITS.replace("record_timeout_hours: 3", "record_timeout_hours: 2.5"), "2.5"),
+        (GOOD_LIMITS.replace("record_timeout_hours: 3", 'record_timeout_hours: "3"'), "'3'"),
+        (GOOD_LIMITS.replace("record_timeout_hours: 3", "record_timeout_hours: true"), "True"),
+        (GOOD_LIMITS.replace("record_timeout_hours: 3", "record_timeout_hours:"), "None"),
+        (GOOD_LIMITS + "record_timeout_hours: 3\n", "record_timeout_hours is written twice"),
+        (GOOD_LIMITS.replace("plan_timeout_hours: 2", "plan_timeout_hours: 0"), "outside"),
+        (GOOD_LIMITS.replace("plan_timeout_hours: 2", "plan_timeout_hours: 7"), "outside"),
+    ],
+)
+def test_a_bad_limits_file_names_the_key_and_its_bound(text, words):
+    from terrain.campaigns import limits
+
+    with pytest.raises(LimitsError) as err:
+        limits.parse(text)
+    message = str(err.value)
+    assert words in message and message.startswith("ops/limits.yaml")
+    key = next((k for k in limits.BOUNDS if k in message), "")
+    if "unknown key" in message:
+        assert all(k in message for k in limits.BOUNDS)  # the keys it may have instead
+    else:
+        assert key and limits.bound(key) in message, message
+
+
+@pytest.mark.parametrize(
+    ("key", "value", "bound"),
+    [
+        ("build_timeout_hours", 5, "6 to 24"),
+        ("build_timeout_hours", 25, "6 to 24"),
+        ("fork_plan_timeout_hours", 1, "2 to 12"),
+        ("max_auto_retries", 4, "0 to 3"),
+        ("max_auto_build_restarts_per_step", 3, "0 to 2"),
+        ("max_auto_build_restarts_per_step", -1, "0 to 2"),
+    ],
+)
+def test_every_bound_is_enforced(key, value, bound):
+    from terrain.campaigns import limits
+
+    text = "".join(f"{k}: {value if k == key else v}\n" for k, v in vars(load_limits()).items())
+    with pytest.raises(LimitsError, match=f"{key} is {value}, outside its bound {bound}"):
+        limits.parse(text)
+    with pytest.raises(LimitsError, match=f"outside its bound {bound}"):
+        limits_with(**{key: value})  # built by hand, the same check
+
+
+def test_a_missing_or_shapeless_limits_file_stops_the_tick(tmp_path):
+    from terrain.campaigns import limits
+
+    with pytest.raises(LimitsError, match="ops/limits.yaml is missing") as err:
+        limits.load(tmp_path)
+    assert "plan_timeout_hours (1 to 6)" in str(err.value)
+    assert "max_auto_build_restarts_per_step (0 to 2)" in str(err.value)
+    for text in ("- 2\n- 3\n", "", "a: [\n"):
+        with pytest.raises(LimitsError, match="plan_timeout_hours \\(1 to 6\\)"):
+            limits.parse(text)
+    # the tick reads it first: GitHub is not read at all
+    root = make_repo(tmp_path / "repo")
+    (root / "ops" / "limits.yaml").unlink()
+    with pytest.raises(LimitsError, match="is missing"):
+        FakeGitHub({}).snapshot(now=NOW, enabled=True, app_bot=BOT, since="2026-11-08", root=root)
+    (root / "ops" / "limits.yaml").write_text(
+        GOOD_LIMITS.replace("max_auto_retries: 2", "max_auto_retries: 9"), encoding="utf-8"
+    )
+    with pytest.raises(LimitsError, match="max_auto_retries is 9, outside its bound 0 to 3"):
+        FakeGitHub({}).snapshot(now=NOW, enabled=True, app_bot=BOT, since="2026-11-08", root=root)
+
+
+def test_the_tick_uses_the_plan_limit_from_the_file(tmp_path):
+    root = make_repo(tmp_path)
+    t = tracking([ledger("started", "s1:filed")])
+    unplanned = step_issue(root)  # filed at 00:00 on 9 November, no plan
+    # 2 h 30 min after filing: blocked with the file's 2 hours, still planning with 3
+    actions = run_decide(root, snap([t, unplanned], now="2026-11-09T02:30:00Z"))
+    assert "Cause: no plan 2 hours after filing." in actions[0]["body"]
+    three = limits_with(plan_timeout_hours=3)
+    later = snap([t, unplanned], now="2026-11-09T02:30:00Z", limits=three)
+    assert run_decide(root, later) == []
+    actions = run_decide(root, replace(later, now="2026-11-09T03:01:00Z"))
+    assert "Cause: no plan 3 hours after filing." in actions[0]["body"]
+    one = snap([t, unplanned], now="2026-11-09T01:01:00Z", limits=limits_with(plan_timeout_hours=1))
+    assert "Cause: no plan 1 hour after filing." in run_decide(root, one)[0]["body"]
+    # the block's id keeps the old wording, so a new value is not a new block
+    old_id = block_id("no plan two hours after filing", "#10")
+    assert markers.parse_ledger(actions[0]["body"])[1] == {f"s1:blocked:{old_id}"}
+
+
+def test_the_tick_uses_the_build_limit_from_the_file(tmp_path):
+    root = make_repo(tmp_path)
+    six = limits_with(build_timeout_hours=6)
+    early = snap([early_ledger(), building(root)], now="2026-11-09T06:59:00Z", limits=six)
+    assert run_decide(root, early) == []  # planned at 01:00: 5 h 59 min
+    actions = run_decide(root, replace(early, now="2026-11-09T07:01:00Z"))
+    assert restarts(actions) == [{"type": "restart_build", "issue": 10}]
+    assert "s1: no pull request on #10 6 hours after its build started" in actions[0]["body"]
+    assert events_of(actions) == {f"s1:restart:{block_id(STALLED, '#10')}"}
+    # no automatic restart allowed: the first stall blocks, with the file's hours
+    none = limits_with(build_timeout_hours=6, max_auto_build_restarts_per_step=0)
+    actions = run_decide(root, replace(early, now="2026-11-09T07:01:00Z", limits=none))
+    assert restarts(actions) == []
+    assert "Cause: no pull request 6 hours after the plan." in actions[0]["body"]
+    assert events_of(actions) == {f"s1:blocked:{block_id(STALLED, '#10')}"}
+
+
+def test_the_tick_uses_the_retry_and_record_limits_from_the_file(tmp_path):
+    root = make_repo(tmp_path)
+    t = tracking([ledger(*RUN_EVENTS, at="2026-11-10T08:00:00Z")])
+    failed = [s2_run(555, "failure", "2026-11-10T09:00:00Z")]
+    s = snap([t, merged_issue(root)], runs=failed, now="2026-11-10T10:00:00Z")
+    assert "dispatch" in types(run_decide(root, s))  # the file allows 2 retries
+    s = replace(s, limits=limits_with(max_auto_retries=0))
+    actions = run_decide(root, s)
+    assert "dispatch" not in types(actions)
+    assert "s2: **blocked**. Cause: run 555 ended 'failure'." in actions[0]["body"]
+    three = replace(s, limits=limits_with(max_auto_retries=3))
+    assert "(1 of 3)" in run_decide(root, three)[0]["body"]
+    # a run that succeeded and has no record pull request: blocked after the file's hours
+    done = [s2_run(556, "success", "2026-11-10T09:00:00Z")]
+    s = snap([t, merged_issue(root)], runs=done, now="2026-11-10T10:01:00Z")
+    assert run_decide(root, s) == []  # 1 h 1 min: still recording with 3 hours
+    actions = run_decide(root, replace(s, limits=limits_with(record_timeout_hours=1)))
+    assert "Cause: no record pull request 1 hour after the run." in actions[0]["body"]
+    old_id = block_id("no record pull request three hours after the run", "run 556")
+    assert events_of(actions) == {f"s2:blocked:{old_id}"}
+
+
+# -- the restart cap: max_auto_build_restarts_per_step ---------------------------------------
+
+OWNERS_AND_MAINS = (
+    "s1:restart:owner-20261109013000",
+    "s1:unblock:30",
+    f"s1:restart:red-{RED_SHA[:12]}",
+    "s1:restart:main-888",
+)
+
+
+def test_the_restart_cap_does_not_count_the_owners_or_mains_restarts(tmp_path):
+    root = make_repo(tmp_path)
+    # restarted at 02:00: once automatically, four times by the owner or for main
+    auto = f"s1:restart:{block_id(STALLED, '#10')}"
+    t = early_ledger(*OWNERS_AND_MAINS, auto, at="2026-11-09T02:00:00Z")
+    actions = run_decide(root, snap([t, building(root)], now="2026-11-09T14:01:00Z"))
+    assert restarts(actions) == [{"type": "restart_build", "issue": 10}]
+    assert events_of(actions) == {f"s1:restart:{block_id(STALLED_AGAIN, '#10')}"}
+    assert tick._auto_restarts("s1", tick._ledger_events(t, "0001", BOT)) == 1
+
+
+def test_the_restart_cap_blocks_the_stall_after_the_last_automatic_restart(tmp_path):
+    root = make_repo(tmp_path)
+    two = (f"s1:restart:{block_id(STALLED, '#10')}", "s1:restart:abcd1234-2")
+    t = early_ledger(*OWNERS_AND_MAINS, *two, at="2026-11-09T02:00:00Z")
+    actions = run_decide(root, snap([t, building(root)], now="2026-11-09T14:01:00Z"))
+    assert restarts(actions) == []
+    assert f"s1: **blocked**. Cause: {CAPPED}. Needs you: " in actions[0]["body"]
+    assert NEEDS_YOU["build_stalled"] in actions[0]["body"]
+    # a cap of one: blocked after the first automatic restart
+    one = early_ledger(two[0], at="2026-11-09T02:00:00Z")
+    s = snap([one, building(root)], now="2026-11-09T14:01:00Z")
+    assert restarts(run_decide(root, s)) != []
+    actions = run_decide(root, replace(s, limits=limits_with(max_auto_build_restarts_per_step=1)))
+    assert restarts(actions) == []
+    assert "Cause: the build stalled again after 1 automatic restart." in actions[0]["body"]
+    # the owner's restart still goes ahead at the cap: removing needs-human restarts at once
+    off = LabelEvent("needs-human", "unlabeled", OWNER, "2026-11-09T13:00:00Z", 2)
+    s = snap([t, building(root)], now="2026-11-09T14:01:00Z", label_events=needs_human_events(off))
+    actions = run_decide(root, s)
+    assert restarts(actions) == [{"type": "restart_build", "issue": 10}]
+    assert "s1:restart:owner-20261109130000" in events_of(actions)
+
+
+# -- a pull request closed without merging, with a newer plan, is an earlier attempt ----------
+
+CLOSED_AT = "2026-11-09T05:00:00Z"
+
+
+def closed_attempt(root, **over) -> PullRequest:
+    return task_pr(root, **{"state": "closed", "merged": False, "closed_at": CLOSED_AT, **over})
+
+
+def test_a_closed_pull_request_with_a_newer_plan_builds_again(tmp_path):
+    root = make_repo(tmp_path)
+    t = tracking([ledger("started", "s1:filed")])
+    replanned = [plan_comment(), good_plan("2026-11-09T06:00:00Z")]
+    issue = step_issue(root, replanned, pr=closed_attempt(root))
+    assert types(run_decide(root, snap([t, issue]))) == ["swap_labels"]
+    st = tick.view(active_campaigns(root)[0], snap([t, issue]), ctx(root)).states["s1"]
+    assert st.status == "plan_ready" and st.pr is None
+    # building: the stall and restart rules apply as usual, counted from the new plan
+    labels = ("campaign", "explore", "agent-build")
+    building_again = replace(issue, labels=labels)
+    s = snap([early_ledger(), building_again], now="2026-11-09T17:59:00Z")
+    assert run_decide(root, s) == []
+    actions = run_decide(root, replace(s, now="2026-11-09T18:01:00Z"))
+    assert restarts(actions) == [{"type": "restart_build", "issue": 10}]
+
+
+def test_a_closed_pull_request_without_a_newer_plan_still_blocks(tmp_path):
+    root = make_repo(tmp_path)
+    t = tracking([ledger("started", "s1:filed")])
+    for issue in (
+        step_issue(root, [plan_comment()], pr=closed_attempt(root)),  # plan at 01:00
+        # no time it was closed: read as before
+        step_issue(
+            root, [good_plan("2026-11-09T06:00:00Z")], pr=closed_attempt(root, closed_at="")
+        ),
+    ):
+        actions = run_decide(root, snap([t, issue]))
+        assert "Cause: PR #20 was closed without merging." in actions[0]["body"], issue
+        assert restarts(actions) == []
+
+
+def test_the_tick_follows_the_new_pull_request_after_an_earlier_attempt(tmp_path):
+    root = make_repo(tmp_path)
+    t = tracking([ledger("started", "s1:filed")])
+    replanned = [plan_comment(), good_plan("2026-11-09T06:00:00Z")]
+    issue = step_issue(
+        root, replanned, ("campaign", "explore", "agent-build"), task_pr(root, number=21)
+    )
+    actions = run_decide(root, snap([t, issue]))
+    assert {"type": "merge", "pr": 21, "sha": SHA} in actions
+    st = tick.view(active_campaigns(root)[0], snap([t, issue]), ctx(root)).states["s1"]
+    assert st.pr.number == 21 and st.status == "mergeable"
+
+
+# -- the lane files are refused in every campaign plan and pull request for now -----------------
+
+
+def test_a_plan_that_lists_a_lane_file_is_refused(tmp_path):
+    from terrain.campaigns.gate import LANE_FILES
+
+    root = make_repo(tmp_path)
+    t = tracking([ledger("started", "s1:filed")])
+    for lane in LANE_FILES:
+        issue = step_issue(root, [plan_comment(("explore/0003_count.py", lane))])
+        actions = run_decide(root, snap([t, issue]))
+        assert types(actions) == ["comment"] and "**blocked**" in actions[0]["body"]
+        assert NEEDS_YOU["plan_paths"] in actions[0]["body"]
+        # refused even where a step lists the path and owned paths are allowed (a close-out)
+        problem = tick._plan_problem((lane,), (lane,), ctx(root).codeowners, True)
+        assert problem == (
+            "the plan lists plumbing lane files, which only a person merges for now "
+            f"(decision 0020): ['{lane}']"
+        )
+
+
+def test_the_gate_refuses_a_campaign_pull_request_that_touches_a_lane_file(tmp_path):
+    from terrain.campaigns.gate import LANE_FILES
+
+    root = make_repo(tmp_path)
+    for lane in LANE_FILES:
+        pr = task_pr(root, files=("explore/0003_count.py", lane))
+        result = evaluate(pr, ctx(root))
+        assert result.state == "failure"
+        assert (
+            f"plumbing lane files, which only a person merges for now (decision 0020): ['{lane}']"
+            in (result.details)
+        )
+        # a pull request the owner opened is not the gate's business: he merges it
+        assert evaluate(replace(pr, author=OWNER), ctx(root)).state == "success"

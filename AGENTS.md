@@ -336,8 +336,13 @@ workflow carries it out; the `campaign-gate` check decides what may merge.
   and gate merges go on. Every report lists its "Checks not run" from the tick's
   list; text cut by code says so; the repair reviewer never sees the run log or
   its error line, only the row counts.
+- Limits (decision 0020): `ops/limits.yaml` holds the tick's eight limits (hours, retries,
+  restarts), whole numbers inside bounds in `terrain.campaigns.limits`; a bad file stops
+  the tick. For now only Gabriel merges changes to it or `tests/conftest.py`. A stalled build
+  restarts by itself at most `max_auto_build_restarts_per_step` times (his and main's restarts
+  not counted). A closed, unmerged PR with a newer plan is an earlier attempt: no block.
 - Restarts, skips and waiting (#502, decision 0021): the tick restarts a task
-  build (one model job): after 12 idle hours, when Gabriel removes
+  build (one model job): after 12 idle hours (`build_timeout_hours`), when Gabriel removes
   `needs-human` or merges his `Unblocks #<issue>` PR, and once when main turns
   green after a stop. Never if `agent/issue-<n>` exists. While `test` fails on
   main, nothing merges, is filed or restarted, except owner-fix issues (one per

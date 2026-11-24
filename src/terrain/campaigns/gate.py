@@ -26,6 +26,11 @@ pull request and the campaign files on main; no model takes part.
 
 Code-owner review (CODEOWNERS plus the ruleset) is a second, separate lock:
 the App cannot merge an owned path even if the gate said success.
+
+The plumbing lane's files (decision 0020, `LANE_FILES`) are not owned in
+CODEOWNERS, but until the tick merges lane pull requests (a later session)
+Gabriel merges every change to them: any campaign pull request, and any task's
+plan (`terrain.campaigns.tick`), that touches one is refused, as an owned path is.
 """
 
 from __future__ import annotations
@@ -52,6 +57,22 @@ MANIFEST_BRANCH = re.compile(r"^data/(acquire|build)-([a-z][a-z0-9_]{0,63})-(\d+
 FORK_BRANCH = re.compile(r"^forks/(\d{4})-(s\d{1,2})-(\d+)$")
 FORK_PATH = re.compile(r"^research/campaigns/[^/]+/forks/")
 IDEATE_PATH = ".github/workflows/campaign-ideate.yml"
+# Decision 0020: the plumbing lane's files, refused in every campaign pull request and
+# plan for now (see the module docstring).
+LANE_FILES = ("ops/limits.yaml", "tests/conftest.py")
+
+
+def lane_files(paths: tuple[str, ...] | list[str]) -> list[str]:
+    """The plumbing lane files (decision 0020) among `paths`."""
+    return [p for p in paths if p.removeprefix("./").lstrip("/") in LANE_FILES]
+
+
+def lane_problem(paths: tuple[str, ...] | list[str]) -> str:
+    """Why `paths` may not change in a campaign ("" if they may, as far as the lane goes)."""
+    found = lane_files(paths)
+    if not found:
+        return ""
+    return f"plumbing lane files, which only a person merges for now (decision 0020): {found}"
 
 
 @dataclass(frozen=True)
@@ -150,6 +171,8 @@ def _repair(pr: PullRequest, ctx: GateContext, cid: str, sid: str, n: int) -> Ga
     prot = [f for f in pr.files if is_protected(f) or ctx.codeowners.owned(f)]
     if prot:
         failures.append(f"protected or owned paths: {prot[:5]}")
+    if lane := lane_problem(pr.files):
+        failures.append(lane)
     if not repair.matches_template(campaign, step, pr.issue_title, pr.issue_body, paths, n):
         failures.append("the issue is not the repair template the tick files for this step")
     return _checks(pr, label, failures, cid, sid)
@@ -193,6 +216,8 @@ def _fork_plan(pr: PullRequest, ctx: GateContext, cid: str, sid: str, run: str) 
     outside = [p for p in pr.files if not p.startswith(folder)]
     if outside:
         failures.append(f"files outside {folder}: {outside[:5]}")
+    if lane := lane_problem(pr.files):
+        failures.append(lane)
     overlay = dict(pr.added_texts)
     unread = [p for p in pr.files if p not in overlay]
     if unread and not outside:
@@ -324,6 +349,8 @@ def evaluate(pr: PullRequest, ctx: GateContext) -> GateResult:
     pending: list[str] = []
     if not pr.files:
         failures.append("the pull request changes no files")
+    if lane := lane_problem(pr.files):
+        failures.append(lane)
 
     if kind == "closeout":
         allowed = closeout_paths(campaign, ctx.root)
