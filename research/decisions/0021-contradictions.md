@@ -182,3 +182,7 @@ applied stops the step; it never passes.
   show it. The campaign's end date bounds the wait.
 - **A skip loses later steps.** It skips only the dependents, as a kill
   with `skip_dependents` does, and the campaign goes on with the rest.
+
+Amended 2026-11-23 (point 5): the fixed line added to every fork draft for each inherited rule reads: `<field>` is written under the same key, by the same formula and rule as in the parent step, on this fork's own specification. A fork may change how an estimate is computed along its one declared dimension; it may not rename a field, change a rule's condition, or change the formula a rule applies (such as how estimates.finite is decided).
+
+Amended 2026-11-23 (point 6): the restart after main is green is the same restart as the tick's red-main restart (PR #502): one per step per red episode.

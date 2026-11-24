@@ -101,6 +101,8 @@ DIFFERS = "## What differs from the parent"
 
 FORK_FILE = re.compile(r"^f([1-9])\.md$")
 FORK_ID = re.compile(r"^f[1-9]$")
+# The record of refused proposals (decision 0021, point 5): not a fork file.
+REFUSED_FILE = re.compile(r"^refused-(s\d{1,2})-(\d{1,20})\.md$")
 STEP_ID = re.compile(r"^s(\d{1,2})$")
 RULE_NAME = re.compile(r"^[a-z][a-z0-9_]{1,40}$")
 HOST = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$")
@@ -454,6 +456,7 @@ def fork_files(root: Path, folder: str, overlay: Overlay | None = None) -> list[
     for path in overlay or {}:
         if path.startswith(f"{folder}/forks/") and path.count("/") == folder.count("/") + 2:
             found.add(path)
+    found = {p for p in found if not REFUSED_FILE.match(p.rsplit("/", 1)[-1])}
     return sorted(found, key=lambda p: (len(p), p))
 
 
@@ -1094,3 +1097,111 @@ def check_registrations(root: Path, c: Any) -> list[str]:
                 f"must list every fork tried: '{want}' (decision 0015, F10)"
             )
     return out
+
+
+# -- decision 0021, point 5: a fork never names a parent kill rule ---------------------
+
+FIXED_LINE = (
+    "`{field}` is written under the same key, by the same formula and rule as in the "
+    "parent step, on this fork's own specification."
+)
+DONE_WHEN = "## Done when"
+_ITEM = re.compile(r"^\s*(\d+[.)]|[-*])\s")
+
+
+def _token(text: str, word: str) -> bool:
+    """`word` appears in `text` as a whole token (case-sensitive)."""
+    return re.search(rf"(?<![A-Za-z0-9_]){re.escape(word)}(?![A-Za-z0-9_])", text) is not None
+
+
+def named_token(text: str, rule_id: str, field: str, library: bool = False) -> str:
+    """The first token of `text` that names a kill rule, or "".
+
+    A rule is named by its id (whole token), by its field's full dotted path
+    (whole token), or by the last part of the field in backticks. A library
+    rule's name is a plain word (`finite`), so only its backticked form counts.
+    """
+    if not library and _token(text, rule_id):
+        return rule_id
+    if _token(text, field):
+        return field
+    if "." in field:
+        last = f"`{field.rsplit('.', 1)[-1]}`"
+        if last in text:
+            return last
+    if library and f"`{rule_id}`" in text:
+        return f"`{rule_id}`"
+    return ""
+
+
+def done_when_items(draft: str) -> list[str]:
+    """The items of a draft's '## Done when' section (a continuation line joins its item)."""
+    lines = draft.replace("\r\n", "\n").split("\n")
+    start = next((i for i, ln in enumerate(lines) if ln.strip() == DONE_WHEN), None)
+    if start is None:
+        return []
+    items: list[str] = []
+    for ln in lines[start + 1 :]:
+        if ln.startswith("## "):
+            break
+        if not ln.strip():
+            continue
+        if _ITEM.match(ln) or not items:
+            items.append(ln.strip())
+        else:
+            items[-1] += " " + ln.strip()
+    return items
+
+
+def inherited_rules(
+    parent: Any, steps: list[dict], ftype: str, library: dict[str, LibraryRule]
+) -> list[tuple[str, str, bool]]:
+    """(id, field, is a library rule) of each kill rule a fork inherits.
+
+    A non-question fork inherits its parent step's rules; a question fork the
+    library rules its explore runs name (`rules`).
+    """
+    if ftype != "question":
+        return [(r.id, r.field, False) for r in getattr(parent, "kill_rules", ())]
+    names = [
+        str(n)
+        for s in steps
+        if isinstance(s, dict) and s.get("kind") == "explore_run"
+        for n in s.get("rules") or []
+    ]
+    return [(n, library[n].field, True) for n in dict.fromkeys(names) if n in library]
+
+
+def breaking_token(text: str, rules: list[tuple[str, str, bool]]) -> tuple[str, str]:
+    """(token, rule id) for the first parent kill rule `text` names, else ("", "")."""
+    for rid, fld, lib in rules:
+        token = named_token(text, rid, fld, lib)
+        if token:
+            return token, rid
+    return "", ""
+
+
+def with_fixed_lines(draft: str, rules: list[tuple[str, str, bool]]) -> str:
+    """The draft with one fixed line per inherited field, at the end of its differs section."""
+    fields = list(dict.fromkeys(f for _, f, _ in rules))
+    if not fields:
+        return draft
+    lines = "\n\n".join(FIXED_LINE.format(field=f) for f in fields)
+    m = re.search(rf"^{re.escape(DIFFERS)}[ \t]*$", draft, re.M)
+    if not m:
+        return f"{draft.rstrip()}\n\n{DIFFERS}\n\n{lines}"
+    nxt = re.search(r"^## ", draft[m.end() :], re.M)
+    end = m.end() + nxt.start() if nxt else len(draft)
+    head, tail = draft[:end].rstrip(), draft[end:]
+    return f"{head}\n\n{lines}\n\n{tail}".rstrip("\n") if tail else f"{head}\n\n{lines}"
+
+
+def refusal_text(step: str, run_id: str, refused: list[tuple[str, str, str]]) -> str:
+    """The record of refused proposals, as code writes it: type, summary, token. Nothing else."""
+    rows = "\n".join(f'- type: {t}; summary: {s}; token: "{k}"' for t, s, k in refused)
+    return (
+        f"# Refused fork proposals: step {step}, ideation run {run_id}\n\n"
+        "Written by code (decision 0021, point 5), never edited afterwards. Each proposal "
+        "below named a parent kill rule's id or field in its delta or a Done-when item.\n\n"
+        f"{rows}\n"
+    )

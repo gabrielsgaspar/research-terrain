@@ -1719,3 +1719,188 @@ def test_every_real_campaign_decides_without_any_fork_action(tmp_path):
         actions = decide([replace(c, status="active")], s, gate_ctx(REPO), REPO)
         assert not dispatches(actions, "campaign-ideate.yml"), c.id
         assert not {e for e in events_of(actions) if ":ideate" in e or e.startswith("adopt:")}
+
+
+# -- decision 0021, point 5: a fork never names a parent kill rule -------------------------------
+
+FIXED_F_CLUSTER = (
+    "`first_stage.f_cluster` is written under the same key, by the same formula and rule as in "
+    "the parent step, on this fork's own specification."
+)
+
+
+def with_draft(prop: dict, done_when: str, **over) -> dict:
+    """YES_NO with its task's Done-when list (and other keys) replaced."""
+    step = dict(prop["steps"][0], draft=f"## Goal\n\nRe-run s15.\n\n## Done when\n\n{done_when}\n")
+    return dict(prop, steps=[step, prop["steps"][1]], **over)
+
+
+def old_482_item_3() -> str:
+    """Item 3 of #482's Done-when as it read before #486 (the parent of commit be985fe)."""
+    import subprocess
+
+    path = "research/campaigns/0015-amendment-objects/forks/f1/drafts/s6.md"
+    shown = subprocess.run(
+        ["git", "show", f"be985fe^:{path}"], cwd=REPO, capture_output=True, text=True
+    )
+    if shown.returncode != 0:
+        pytest.skip("be985fe is not in this checkout's history")
+    return forks.done_when_items(shown.stdout)[2]
+
+
+def test_482s_old_item_3_is_refused():
+    item = old_482_item_3()
+    assert "`estimates.finite` is true" in item
+    rules = [("k2", "estimates.finite", False)]
+    assert forks.breaking_token(item, rules) == ("estimates.finite", "k2")
+
+
+def test_a_spec_fork_like_0013_f3_passes_and_gets_the_fixed_lines():
+    (c,) = [c for c in load_campaigns(REPO) if c.id == "0013"]
+    parent = c.step("s2")
+    library = forks.load_library(REPO)
+    steps = [{"kind": "task"}, {"kind": "explore_run"}]
+    rules = forks.inherited_rules(parent, steps, "spec", library)
+    assert rules and {r for r, _, _ in rules} == {r.id for r in parent.kill_rules}
+    folder = "research/campaigns/0013-amendments-mechanisms/forks/f3/drafts/s11.md"
+    draft = (REPO / folder).read_text(encoding="utf-8")
+    # f3 as it stands on main is not checked again; today its item 5 would be refused
+    named = [i for i in forks.done_when_items(draft) if forks.breaking_token(i, rules)[0]]
+    assert "`pre_fail`" in [forks.breaking_token(i, rules)[0] for i in named]
+    for item in named:  # the same fork, with no field named
+        draft = draft.replace(item.split(" ", 1)[1], "A neutral item.")
+    for item in forks.done_when_items(draft):
+        assert forks.breaking_token(item, rules) == ("", ""), item
+    out = forks.with_fixed_lines(draft, rules)
+    for field in dict.fromkeys(f for _, f, _ in rules):
+        assert out.count(forks.FIXED_LINE.format(field=field)) == 1
+    # the lines sit in the differs section, before the next one
+    head = out.split(forks.DIFFERS, 1)[1]
+    assert forks.FIXED_LINE.format(field=rules[0][1]) in head.split("\n## ", 1)[0]
+
+
+@pytest.mark.parametrize(
+    "delta, done_when, token",
+    [
+        ("Keep k3 as it is.", "1. `uv run pytest` passes.", "k3"),
+        ("Use geo_exposed.", "1. `estimates.finite` is true.", "estimates.finite"),
+        ("Use geo_exposed.", "1. `finite` is true.\n2. `uv run pytest` passes.", "`finite`"),
+        ("Use geo_exposed.", "1. Fine, and\n   `lead_ratio` is read.\n2. Done.", "`lead_ratio`"),
+    ],
+)
+def test_naming_a_kill_rule_refuses_the_fork(tmp_path, delta, done_when, token):
+    root = replay_repo(tmp_path)
+    c = campaign_0007(root)
+    prop = with_draft(YES_NO, done_when, delta=delta)
+    b = ideation.build(root, c, "s15", answer(prop), run_id="777")
+    assert b.written == [] and len(b.refused) == 1 and "names" in b.refused[0][1]
+    assert b.named == [("transform", "yes/no gold measure", token)]
+
+
+def test_plain_words_and_other_cases_pass(tmp_path):
+    root = replay_repo(tmp_path)
+    c = campaign_0007(root)
+    done = (
+        "1. Every number is finite, and the lead ratio is reported.\n"
+        "2. Case matters: K3 and Estimates.Finite are not the ids.\n"
+        "3. `uv run pytest` passes."
+    )
+    b = ideation.build(root, c, "s15", answer(with_draft(YES_NO, done)), run_id="777")
+    assert [f for f, _, _ in b.written] == ["f1"] and not b.named
+    draft = b.files[f"{C07}/forks/f1/drafts/s24.md"]
+    assert FIXED_F_CLUSTER in draft
+    assert "`placebo.lead_ratio` is written under the same key" in draft
+    assert "`estimates.finite` is written under the same key" in draft
+    assert not any(p.rsplit("/", 1)[-1].startswith("refused-") for p in b.files)
+
+
+def test_the_refusal_file_holds_only_the_allowed_content(tmp_path):
+    root = replay_repo(tmp_path)
+    c = campaign_0007(root)
+    bad = with_draft(YES_NO, "1. `estimates.finite` is true.", title="bad one")
+    bad["rationale"] = "SECRET-RATIONALE from the model"
+    good = dict(YES_NO, title="good one")
+    b = ideation.build(root, c, "s15", answer(bad, good), run_id="777")
+    # ids stay in the declared order without gaps: the refused one takes none
+    assert [f for f, _, _ in b.written] == ["f1"]
+    assert b.written[0][1] == "good one"
+    path = f"{C07}/forks/refused-s15-777.md"
+    assert b.files[path] == (
+        "# Refused fork proposals: step s15, ideation run 777\n\n"
+        "Written by code (decision 0021, point 5), never edited afterwards. Each proposal "
+        "below named a parent kill rule's id or field in its delta or a Done-when item.\n\n"
+        '- type: transform; summary: bad one; token: "estimates.finite"\n'
+    )
+    # on disk beside the fork, the campaign still validates and the file is no fork
+    for p, text in b.files.items():
+        (root / p).parent.mkdir(parents=True, exist_ok=True)
+        (root / p).write_text(text, encoding="utf-8")
+    assert validate(root) == []
+    assert [f.id for f in campaign_0007(root).fork_files] == ["f1"]
+    # all refused: only the record is written
+    b2 = ideation.build(root, campaign_0007(root), "s15", answer(bad), run_id="778")
+    assert list(b2.files) == [f"{C07}/forks/refused-s15-778.md"]
+    text = ideation.comment(b2, c, "s15", "u", dry_run=False)
+    assert "### Refused by the envelope check\n\n- bad one: " in text
+
+
+def test_the_gate_accepts_the_refusal_file_once_and_refuses_an_edit(tmp_path):
+    root = replay_repo(tmp_path)
+    path = f"{C07}/forks/refused-s15-777.md"
+    files = {**FORK_FILES, path: "# Refused fork proposals\n"}
+    assert evaluate(fork_plan_pr(root, files), gate_ctx(root)).state == "success"
+    only = fork_plan_pr(root, {path: "# Refused fork proposals\n"})
+    assert evaluate(only, gate_ctx(root)).state == "success"
+    # another name of the same kind (other run, other step) is refused
+    for name in ("refused-s15-999.md", "refused-s9-777.md"):
+        other = {**FORK_FILES, f"{C07}/forks/{name}": "x"}
+        result = evaluate(fork_plan_pr(root, other), gate_ctx(root))
+        assert result.state == "failure" and "refusal records other than" in result.description
+    # written once: it is on main now
+    (root / path).parent.mkdir(parents=True, exist_ok=True)
+    (root / path).write_text("# Refused fork proposals\n", encoding="utf-8")
+    again = evaluate(fork_plan_pr(root, files), gate_ctx(root))
+    assert again.state == "failure" and "on main already" in again.description
+    # a later edit is refused like a fork file (F2)
+    edit = merged_pr(
+        71,
+        "agent/issue-72",
+        state="open",
+        merged=False,
+        files=(path,),
+        changes=((path, "modified"),),
+    )
+    result = evaluate(edit, gate_ctx(root))
+    assert result.state == "failure" and "append-only" in result.description
+
+
+def test_f9_holds_for_a_fork_draft_with_the_fixed_lines(tmp_path):
+    root = replay_repo(tmp_path)
+    b = ideation.build(root, campaign_0007(root), "s15", answer(YES_NO), run_id="777")
+    for p, text in b.files.items():
+        (root / p).parent.mkdir(parents=True, exist_ok=True)
+        (root / p).write_text(text, encoding="utf-8")
+    c = campaign_0007(root)
+    assert FIXED_F_CLUSTER in (root / c.step("s24").draft).read_text(encoding="utf-8")
+    issue = task_issue_of(root, c, "s24", 61)
+    pr = task_pr_of({"title": issue.title, "body": issue.body})
+    assert evaluate(pr, gate_ctx(root)).state == "success"
+    # an adopted step's issue is still the approved draft plus the fork's delta
+    adopted = markers.delta_section("f1", c.fork("f1").delta)
+    assert DELTA in adopted and FIXED_F_CLUSTER not in adopted
+
+
+def test_question_forks_count_library_rules_as_inherited():
+    library = forks.load_library(REPO)
+    steps = [{"kind": "explore_run", "rules": ["first_stage_strength", "finite"]}]
+    rules = forks.inherited_rules(None, steps, "question", library)
+    assert rules == [
+        ("first_stage_strength", "first_stage.f_cluster", True),
+        ("finite", "estimates.finite", True),
+    ]
+    assert forks.breaking_token("`finite` is true", rules) == ("`finite`", "finite")
+    assert forks.breaking_token("`first_stage_strength` holds", rules)[1] == "first_stage_strength"
+    assert forks.breaking_token("the F statistic is finite", rules) == ("", "")
+    assert forks.breaking_token("reads first_stage.f_cluster", rules)[0] == "first_stage.f_cluster"
+    out = forks.with_fixed_lines("## Goal\n\nx\n\n## What differs from the parent\n\ny\n", rules)
+    assert out.count("is written under the same key") == 2

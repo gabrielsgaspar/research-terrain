@@ -1,14 +1,14 @@
 ---
 id: "0019"
 title: "Task builds get one automatic fix round"
-status: proposed
+status: accepted
 date: 2026-11-22
 supersedes: null
 ---
 
 # 0019: Task builds get one automatic fix round
 
-Date: 2026-11-22. Status: proposed, drafted by Claude for Gabriel from his
+Date: 2026-11-22. Status: accepted, drafted by Claude for Gabriel from his
 request of 2026-11-22. It takes effect when Gabriel merges the pull request
 that adds it, with the changes to `agent-build.yml`, `campaign-tick.yml`,
 `harness/roles/builder.md` (rule 9), the tick and the status page in
@@ -146,3 +146,5 @@ agent-review's posting job has.
   moment of filing, without the label index the decide job uses, so the
   window is seconds rather than the length of a tick. A duplicate that
   still slips through is visible on the status page and costs one plan.
+
+Accepted by Gabriel when he merged PR #484.

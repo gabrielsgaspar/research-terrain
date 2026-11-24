@@ -37,7 +37,7 @@ IDEA_STATUSES = {
     "confirmed",
     "rejected",
 }
-DECISION_STATUSES = {"proposed", "accepted", "superseded"}
+DECISION_STATUSES = {"accepted", "superseded"}
 IDEA_KEYS = {
     "id",
     "title",
@@ -55,8 +55,8 @@ SKIP = {"README.md", "TEMPLATE.md"}
 # exploring; once its newest campaign has finished (and none is active), it is
 # no longer proposed or exploring: the close-out sets the report's
 # recommendation. Campaigns before FIRST_CHECKED_CAMPAIGN are not checked:
-# their close-outs left the status to Gabriel, and idea 0001 stays exploring
-# after campaigns 0002 and 0003, which checked it in passing.
+# their close-outs left the status to Gabriel, so idea 0001 (campaigns 0002 and
+# 0003, which checked it in passing) is parked by hand, not by this check.
 FIRST_CHECKED_CAMPAIGN = "0005"
 FINISHED = {"done", "stopped"}
 NOT_AFTER_FINISHED = {"proposed", "exploring"}
@@ -357,7 +357,12 @@ def check_idea(label: str, fm: dict, catalog: set[str], ids: set[str]) -> list[s
 
 def check_decision(label: str, fm: dict, decision_ids: set[str]) -> list[str]:
     out: list[str] = []
-    if "status" in fm and fm["status"] not in DECISION_STATUSES:
+    if fm.get("status") == "proposed":
+        out.append(
+            f"{label}: decisions are written as accepted: merging the pull "
+            "request is the acceptance (Gabriel, 2026-11-23)"
+        )
+    elif "status" in fm and fm["status"] not in DECISION_STATUSES:
         out.append(f"{label}: bad status {fm['status']!r}")
     out += check_date(label, fm, "date")
     sup = fm.get("supersedes")

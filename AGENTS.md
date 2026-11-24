@@ -208,6 +208,24 @@ overleaf/         the paper (Git submodule to Overleaf), human-only
   delete, why), one full path per file, deletions included, with no braces,
   globs or directories. The workflow prints it as **Files to change** and
   the build's checks enforce exactly that list.
+- Contradictions (decision 0021): when two instructions that bind a task
+  cannot both hold, the builder applies the one that wins (the higher of
+  `AGENTS.md` and decisions, the campaign file and kill rules, the issue,
+  the plan, review must-fix items, agent notes; at the same level, the
+  stricter, and an instruction that loosens what a kill rule reads or
+  weakens a test always loses), tests it, and writes a "## Contradiction
+  (decision 0021)" section in the pull request body. The reviewer marks a
+  losing Done-when item "Lost (decision 0021)". If neither is stricter, the
+  builder returns `contradiction` with two quotes; plain code checks that
+  each appears word for word in its named source (otherwise the run counts
+  as `blocked`), and agent-build posts "## Agent build: contradiction
+  (decision 0021)" (a campaign task gets no `needs-human`).
+- Waiting for main (decision 0021): when verify's `pytest` fails, it runs
+  the failing test ids again on main's current head. If every one fails
+  there too, the task is not at fault: a campaign task gets "## Agent
+  build: waiting for main (decision 0021)", no fix round and no
+  `needs-human`; the second wait on the same issue adds `needs-human`.
+  Ruff, path, secret-scan and set-up failures stop as before.
 - Agents never push to main and never change workflows. They never merge,
   with one exception: the campaign tick merges an agent pull request of an
   active campaign when the required `campaign-gate` check passes (see
@@ -294,6 +312,12 @@ workflow carries it out; the `campaign-gate` check decides what may merge.
     than "finite".
   - One type and one dimension per fork; nothing else differs from the
     parent (the reviewer's R8 checks it).
+  - A fork's delta and each Done-when item never name a parent kill rule's
+    id (`k2`) or field (the dotted path, or its last part in backticks);
+    code adds one fixed line per inherited field to every fork draft. Code
+    refuses a fork that does, before it is written, and records it in
+    `forks/refused-<step>-<run id>.md` (type, summary, token), never edited
+    afterwards (decision 0021, point 5).
   - A sample fork filters only on things fixed before the outcome, never on
     outcomes, and gets the library rule `min_clusters`.
   - New data only from `data/approved-publishers.yaml`, with no identifiers
@@ -312,15 +336,14 @@ workflow carries it out; the `campaign-gate` check decides what may merge.
   and gate merges go on. Every report lists its "Checks not run" from the tick's
   list; text cut by code says so; the repair reviewer never sees the run log or
   its error line, only the row counts.
-- Restarts and the red-main pause: the tick starts a task step's build again
-  (removes and re-adds `agent-build`, one model job) when it has no pull
-  request 12 hours after it started and no agent-build run is in flight (once
-  per block); at once when Gabriel removes `needs-human`, or merges a pull
-  request of his own with a line `Unblocks #<issue>` (the tick then removes
-  `needs-human`); and once after main turns green for a build that stopped
-  while it was red. Not if `agent/issue-<n>` exists (blocked instead). While
-  CI's `test` failed on main's head, nothing merges, is filed, built,
-  restarted or run; work in flight goes on.
+- Restarts, skips and waiting (#502, decision 0021): the tick restarts a task
+  build (one model job): after 12 idle hours, when Gabriel removes
+  `needs-human` or merges his `Unblocks #<issue>` PR, and once when main turns
+  green after a stop. Never if `agent/issue-<n>` exists. While `test` fails on
+  main, nothing merges, is filed or restarted, except owner-fix issues (one per
+  failing test, label `campaign`); one main restart per step per red episode.
+  A bot "contradiction" comment skips the step and its dependents (no block, no
+  fork adoption); "waiting for main" keeps it in flight until main passes.
 
 ### Writing for Gabriel
 

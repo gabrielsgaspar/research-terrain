@@ -65,6 +65,11 @@ the label removed and added again), one model job each, in four cases:
 - a build that stopped while main was red (`<step>:stopped-red:<sha>`:
   idle IDLE_BUILD after it started, no run in flight anywhere) once main is
   green again (`<step>:restart:red-<sha>`).
+- a build that waits for main (decision 0021, below).
+A step has at most one main-related restart per red episode (from the first tick
+that sees main red, or the first Comment W, until main's CI passes): a step with a
+Comment W is restarted only by the wait, never by the stopped-red case, and the
+restart after main is green is the same one, not a second.
 The breaker holds the automatic ones (stalled, red), not the owner's. One
 task in flight per campaign and the model-job budget hold all of them. If
 the issue's branch agent/issue-<n> exists, agent-build would refuse it, so
@@ -72,7 +77,26 @@ the step is blocked instead.
 
 While CI's test check failed on main's head commit, the tick merges nothing,
 files nothing, starts no build, restart or run and dispatches no workflow;
-work in flight goes on, and so do the ledger and the status page.
+work in flight goes on, and so do the ledger and the status page. The one thing
+it files while main is red is an owner-fix issue (below).
+
+Contradictions and waiting for main (decision 0021). agent-build's report job
+posts two kinds of comment, read here only from the workflow bot and only when
+the first and last lines match exactly (`terrain.campaigns.facts`):
+- Comment C (contradiction): the task step is `skipped`, its dependents are
+  skipped whatever their `on_kill`, the campaign goes on, it is no block for the
+  breaker, no fork adopts the skipped steps and no ideation starts at them. The
+  tick closes the issue as not planned (`close_task`) and lists both quotes, cut
+  by code, under "Checks not run".
+- Comment W (waiting for main): the step is `waiting_main`, in flight (so the
+  campaign's next task waits), no block. For each failing test with no open
+  owner-fix issue the tick files one, even while main is red (title, body and
+  marker fixed by code; label `campaign` only). It restarts the build once
+  (`<step>:restart:main-<run id>`, one model job) when CI's test check passed on a
+  commit other than the comment's, or 60 minutes after the comment when main's
+  head is still that commit. An owner-fix issue is closed (`close_task`) once no
+  waiting step names its test and main's CI passed. At the end date a step still
+  waiting is listed under "Checks not run".
 """
 
 from __future__ import annotations
@@ -91,12 +115,19 @@ from terrain.campaigns.facts import (
     BUILD_ROUND_PREFIX,
     PLAN_PREFIX,
     WORKFLOW_BOT,
+    Contradiction,
     Issue,
     Plan,
     PullRequest,
     Run,
     Snapshot,
+    Waiting,
+    contradiction_of,
+    cut_quote,
     latest_plan,
+    latest_waiting,
+    ownerfix_marker,
+    parse_ownerfix,
 )
 from terrain.campaigns.gate import GateContext, closeout_paths, evaluate
 from terrain.campaigns.rules import evaluate as apply_rules
@@ -117,6 +148,13 @@ IDLE_BUILD = dt.timedelta(minutes=30)
 # the ledger events of the tick's restarts of a step's build, one model job each
 _RESTART = re.compile(r"^(s\d{1,2}):(?:restart|unblock):")
 _STOPPED_RED = re.compile(r"^(s\d{1,2}):stopped-red:([0-9a-f]{12})$")
+# Decision 0021. A step skipped for a contradiction; a step waiting for main to pass the
+# tests its build failed on, restarted once when main's head moves on and passes, or this
+# long after the comment when main's head is still the commit the comment names.
+SKIP_CAUSE = "decision_0021"
+SKIP_DETAIL = "skipped (decision 0021): neither instruction is stricter"
+MAIN_SAME_SHA_WAIT = dt.timedelta(minutes=60)
+MAX_OWNERFIX_PER_TICK = 5
 RUN_APPEAR_TIMEOUT = dt.timedelta(hours=2)
 RECORD_TIMEOUT = dt.timedelta(hours=3)
 BLOCK_GRACE = dt.timedelta(hours=24)  # time the owner has to unblock a step before close-out
@@ -215,6 +253,7 @@ IN_FLIGHT = {
     "repair_filing",  # a repair filed, its issue not seen yet
     "repair_merged",  # a merged repair: the run starts again once the run limits allow
     "restart_waiting",  # a stopped or unblocked build, to start again once the tick may
+    "waiting_main",  # the build failed only on tests main fails too (decision 0021)
 }
 RUN_IN_FLIGHT = {"waiting_run", "running", "recording", "in_review", "mergeable", "awaiting_gate"}
 
@@ -237,6 +276,9 @@ class StepState:
     resume: tuple[int, int, int] | None = None
     repair: Issue | None = None  # for a pipeline_run step: its repair issue, once seen
     repairing: bool = False  # the repair task (not a run) is what is in flight
+    # decision 0021: a skipped step's Comment C, and a waiting step's Comment W
+    contradiction: Contradiction | None = None
+    waiting: Waiting | None = None
 
     def links(self) -> str:
         parts = []
@@ -369,11 +411,21 @@ def _task_state(
     gctx: GateContext,
     allow_owned: bool = False,
     restarted: str = "",
+    task_step: bool = False,
+    waiting: Waiting | None = None,
 ) -> StepState:
+    """`task_step`: the issue is a plan task step (not a repair or close-out), so a
+    Comment C skips it (decision 0021); `waiting` is its valid Comment W, if the tick
+    has not restarted the build for it yet."""
     st = StepState("filed", issue=issue, pr=issue.pr)
     pr = issue.pr
     if pr and pr.merged:
         st.status, st.verdict = "done", "merged"
+        return st
+    found = contradiction_of(issue.comments) if task_step else None
+    if found is not None:
+        st.status, st.cause, st.detail = "skipped", SKIP_CAUSE, SKIP_DETAIL
+        st.contradiction = found
         return st
     if issue.state == "closed":
         st.status, st.detail = "blocked", "the issue was closed without a merged pull request"
@@ -381,6 +433,10 @@ def _task_state(
     if "needs-human" in issue.labels or (pr and "needs-human" in pr.labels):
         st.status, st.detail = "blocked", "an agent stopped and labelled it needs-human"
         st.cause = "needs_human"
+        return st
+    if waiting is not None and pr is None:
+        st.status, st.waiting = "waiting_main", waiting
+        st.detail = f"waiting for main to pass {', '.join(waiting.tests)}"
         return st
     plan = latest_plan(list(issue.comments))
     if plan is None:
@@ -756,9 +812,18 @@ def view(
     for s in c.steps:
         if s.kind == "task":
             issue = by_step.get(s.id)
+            wait = latest_waiting(issue.comments) if issue else None
+            if wait and f"{s.id}:restart:main-{wait.run}" in events:
+                wait = None  # the tick restarted the build for this comment already
             st = (
                 _task_state(
-                    issue, s.allowed_paths, snap, gctx, restarted=_last_restart(s.id, events)
+                    issue,
+                    s.allowed_paths,
+                    snap,
+                    gctx,
+                    restarted=_last_restart(s.id, events),
+                    task_step=True,
+                    waiting=wait,
                 )
                 if issue
                 else StepState("unstarted")
@@ -779,13 +844,18 @@ def view(
                 if a == parent or (s.id in adopted and a == point):
                     continue  # a fork point: its verdict, whatever it is, is what forks follow
                 if dep.status == "skipped":
-                    st = StepState("skipped", f"step {a} was skipped")
+                    # a step skipped by decision 0021 passes its cause on: no fork adopts it
+                    st = StepState("skipped", f"step {a} was skipped", cause=dep.cause)
                 elif (
                     dep.status == "done"
                     and dep.verdict == "killed"
                     and dep_step.on_kill != "continue"
                 ):
                     st = StepState("skipped", f"step {a} was killed")
+            if st.status == "skipped" and any(
+                states[a].status == "skipped" and states[a].cause == SKIP_CAUSE for a in s.after
+            ):
+                st.cause = SKIP_CAUSE  # however else it was skipped, no fork adopts it
             if st.status == "unstarted" and not all(d.status == "done" for d in deps):
                 st.status = "waiting"
         if (
@@ -991,6 +1061,7 @@ def find_adoption(
             sid
             for sid in forks.adoptable(c, s.id)
             if v.states[sid].status == "skipped"
+            and v.states[sid].cause != SKIP_CAUSE  # decision 0021: never adopted
             and v.states[sid].issue is None
             and v.states[sid].run is None
             and f"{sid}:dispatched" not in v.events
@@ -1228,6 +1299,27 @@ def _digits(when: str) -> str:
 Due = tuple[str, str, str, int, bool]  # (action, ledger event, ledger line, PR, the owner's)
 
 
+def _waiting_due(s: Step, st: StepState, snap: Snapshot) -> Due | None:
+    """The restart of a step waiting for main (decision 0021), once main's test check passes:
+    on a commit other than the Comment W's, or (the tests then fail only in the build's own
+    environment) when more than MAIN_SAME_SHA_WAIT has passed since the comment."""
+    w, check = st.waiting, snap.main_ci
+    if w is None or check is None or check.state != "success":
+        return None
+    n = st.issue.number
+    if check.sha[:12] != w.sha:
+        why = f"CI's test check passed on main at {check.sha[:12]}, not {w.sha}"
+    elif _older(snap.now, w.created_at, MAIN_SAME_SHA_WAIT):
+        why = f"CI's test check passed on main at {w.sha} and the wait of 60 minutes is over"
+    else:
+        return None
+    line = (
+        f"{s.id}: the build of #{n} waited for main to pass {', '.join(w.tests)} ({why}); "
+        "starting the build again."
+    )
+    return "restart_build", f"{s.id}:restart:main-{w.run}", line, 0, False
+
+
 def _restart_due(
     v: CampaignView, s: Step, st: StepState, snap: Snapshot, gctx: GateContext, plan: Plan
 ) -> tuple[Due | None, list[tuple[str, str]]]:
@@ -1256,6 +1348,10 @@ def _restart_due(
                 )
                 return ("unblock", name, line, u.pr, True), []
         return None, []
+    if st.status == "waiting_main" and st.waiting:
+        # decision 0021: the build waits on a Comment W. #502's stopped-red path does not
+        # apply to it, so one red episode gives one restart, whichever came first
+        return _waiting_due(s, st, snap), []
     if "agent-build" not in issue.labels:
         return None, []  # planned, not built: the tick's label swap starts the build
     flags = [e for e in labels if e.label == "needs-human"]
@@ -1328,7 +1424,7 @@ def _restart(
     model-job budget hold every restart.
     """
     issue = st.issue
-    if issue is None or issue.state != "open" or issue.pr is not None:
+    if issue is None or issue.state != "open" or issue.pr is not None or st.status == "skipped":
         return st, None, []
     plan = _accepted_plan(issue, s.allowed_paths, gctx)
     if plan is None:
@@ -1345,6 +1441,8 @@ def _restart(
     used, budget = (v.fork_used, c.forks.budget) if s.fork and c.forks else (v.used, c.budget)
     if used.get("max_model_jobs", 0) >= budget.get("max_model_jobs", 0):
         what = st.detail if st.status == "blocked" else "its build stopped without a pull request"
+        if st.status == "waiting_main":
+            what = "its build waited for main"
         detail = f"{what.rstrip('.')}. Not started again: the model-job budget is used up"
         cause = st.cause if st.status == "blocked" else "build_stalled"
         return StepState("blocked", detail, cause=cause, issue=issue), None, posts
@@ -1357,6 +1455,9 @@ def _restart(
         wait = "once no other task of the campaign is in flight"
     elif not owners and snap.builds_in_flight:
         wait = "once no agent-build run is queued or in progress"
+    if wait and st.status == "waiting_main":
+        st.detail = f"{st.detail}; its build starts again {wait}"
+        return st, None, posts
     if wait:
         return (
             StepState("restart_waiting", f"its build starts again {wait}", issue=issue),
@@ -1370,6 +1471,26 @@ def _restart(
         act,
         [*posts, (name, line)],
     )
+
+
+def _run_link(snap: Snapshot, run: int) -> str:
+    return f"[run {run}]({snap.repo_url}/actions/runs/{run})" if snap.repo_url else f"run {run}"
+
+
+def _close_skipped(st: StepState, snap: Snapshot) -> dict:
+    """close_task for the issue of a step skipped by decision 0021: not planned, one comment."""
+    comment = (
+        "Skipped by the campaign tick (decision 0021): the build found two instructions "
+        "and neither is stricter, so it stopped. The build: "
+        f"{_run_link(snap, st.contradiction.run)}. The campaign goes on without this step "
+        "and the steps after it."
+    )
+    return {
+        "type": "close_task",
+        "issue": st.issue.number,
+        "state_reason": "not_planned",
+        "comment": comment,
+    }
 
 
 def block_id(cause: str, links: str) -> str:
@@ -1488,6 +1609,27 @@ def _breaker_events(v: CampaignView, held: bool) -> list[tuple[str, str]]:
     return []
 
 
+def _where(q) -> str:  # noqa: ANN001 (a facts.Quote)
+    """` (source, level n)` for a quote that names them, cut like the text."""
+    if not q.source and not q.level:
+        return ""
+    return f" ({cut_quote(q.source)}, level {cut_quote(q.level)})"
+
+
+def _skipped_line(s: Step, st: StepState) -> str:
+    """The "Checks not run" line of a step skipped for a contradiction: both quotes, as
+    the builder's comment gave them, each cut by code to QUOTE_CHARS characters."""
+    quotes = " ".join(
+        f'Text {k}{_where(q)}: "{cut_quote(q.text)}"'
+        for k, q in enumerate(st.contradiction.quotes, 1)
+    )
+    where = f"#{st.issue.number}" if st.issue else "its issue"
+    return (
+        f"Step {s.id} ({s.kind}) was skipped (decision 0021): neither instruction is stricter "
+        f"({where}). {quotes or 'The comment quotes no text.'}"
+    )
+
+
 def checks_not_run(v: CampaignView) -> list[str]:
     """What the campaign never checked, for the close-out report, one line each.
 
@@ -1499,7 +1641,14 @@ def checks_not_run(v: CampaignView) -> list[str]:
     c, out = v.campaign, []
     for s in c.steps:
         st = v.states[s.id]
-        if st.status != "done":
+        if st.contradiction is not None:
+            out.append(_skipped_line(s, st))
+        elif st.status == "waiting_main" and st.waiting is not None:
+            out.append(
+                f"Step {s.id} ({s.kind}) was still waiting for main to pass "
+                f"{', '.join(st.waiting.tests)} when the campaign ended (decision 0021)."
+            )
+        elif st.status != "done":
             why = f"{st.status}: {st.detail}" if st.detail else st.status
             out.append(f"Step {s.id} ({s.kind}) did not finish ({why.strip().rstrip('.')}).")
     for s in c.steps:
@@ -1977,7 +2126,11 @@ def _advance(
                 )
             if st.status == "done" and s.kind == "pipeline_run":
                 event(f"{s.id}:recorded", f"{s.id}: {s.stage} {s.target} recorded ({st.links()}).")
-            if st.status == "skipped":
+            if st.status == "skipped" and st.contradiction is not None:
+                event(f"{s.id}:skipped", f"{s.id}: {st.detail}.")
+                if st.issue is not None and st.issue.state == "open":
+                    doing.append(_close_skipped(st, snap))
+            elif st.status == "skipped":
                 event(f"{s.id}:skipped", f"{s.id}: skipped ({st.detail}).")
             for name, line in _block_events(s.id, st, c.owner, v.events):
                 event(name, line)
@@ -2112,7 +2265,16 @@ def _advance(
                 started = True
                 paced |= s.kind == "explore_run"
 
-        in_flight = any(st.status in IN_FLIGHT for st in v.states.values()) or points_busy
+        # a step waiting for main is no reason to stay open past the end date: it is
+        # listed under "Checks not run" (decision 0021)
+        past_end = today > dt.date.fromisoformat(c.end_by)
+        in_flight = (
+            any(
+                st.status in IN_FLIGHT and not (past_end and st.status == "waiting_main")
+                for st in v.states.values()
+            )
+            or points_busy
+        )
         startable = points_waiting
         if can_start and not started:
             for s in c.steps:
@@ -2223,7 +2385,90 @@ def _advance(
             body += "\n\n" + markers.ledger_marker(c.id, [e for e, _ in new]) + "\n"
             actions.append({"type": "comment", "issue": v.tracking.number, "body": body})
         actions.extend(doing)
+    actions.extend(_ownerfix_actions(views, snap))
     return actions, views
+
+
+# -- owner-fix issues (decision 0021) ------------------------------------------------------
+
+
+def ownerfix_issue(test: str, run: int, sha: str, snap: Snapshot) -> dict:
+    """The create_issue action for the owner-fix issue of failing test `test`.
+
+    Fixed title and fixed body: the test id, links to the build run and to main's commit, and
+    one sentence on what the tick does next. Label `campaign` only: never `agent-plan`."""
+    commit = f"[{sha}]({snap.repo_url}/commit/{sha})" if snap.repo_url else sha
+    body = (
+        f"The test `{test}` fails on main, and a campaign build waits for it "
+        "(decision 0021).\n\n"
+        f"- Test: `{test}`\n"
+        f"- The build run: {_run_link(snap, run)}\n"
+        f"- Main's commit: {commit}\n\n"
+        "When CI's test check passes on main again, the tick restarts the builds that wait "
+        "on it, once each, and closes this issue.\n\n"
+        f"{ownerfix_marker(test)}\n"
+    )
+    return {
+        "type": "create_issue",
+        "title": f"Owner fix: {test} fails on main",
+        "body": body,
+        "labels": ["campaign"],
+        "then_labels": [],
+    }
+
+
+def _ownerfix_actions(views: Sequence[CampaignView], snap: Snapshot) -> list[dict]:
+    """File one owner-fix issue per test a step waits on (none open yet), and close the
+    ones no step waits on once CI's test check passes on main.
+
+    Filing is the one exception to "nothing is filed while main is red"; it is skipped
+    while main is green (the build restarts instead) and for a stopped campaign."""
+    waiting: dict[str, Waiting] = {}  # test -> the first Comment W that names it
+    fileable: set[str] = set()
+    for v in views:
+        usable = (
+            v.tracking is not None
+            and "campaign-pause" not in v.tracking.labels
+            and v.tracking.state == "open"
+            and "campaign-stop" not in v.tracking.labels
+        )
+        for s in v.campaign.steps:
+            st = v.states[s.id]
+            if st.status != "waiting_main" or st.waiting is None:
+                continue
+            for test in st.waiting.tests:
+                waiting.setdefault(test, st.waiting)
+                if usable:
+                    fileable.add(test)
+    open_fixes = [
+        (test, i)
+        for i in sorted(snap.issues, key=lambda i: i.number)
+        if i.state == "open" and i.author == snap.app_bot and (test := parse_ownerfix(i.body))
+    ]
+    out: list[dict] = []
+    green = snap.main_ci is not None and snap.main_ci.state == "success"
+    if not green:
+        have = {test for test, _ in open_fixes}
+        for test, w in waiting.items():
+            if test in fileable and test not in have and len(out) < MAX_OWNERFIX_PER_TICK:
+                out.append(ownerfix_issue(test, w.run, w.sha, snap))
+    else:
+        sha = snap.main_ci.sha[:12]
+        for test, i in open_fixes:
+            if test not in waiting:
+                comment = (
+                    f"CI's test check passed on main at {sha} and no campaign build waits "
+                    "on this test any more. Closing."
+                )
+                out.append(
+                    {
+                        "type": "close_task",
+                        "issue": i.number,
+                        "state_reason": "completed",
+                        "comment": comment,
+                    }
+                )
+    return out
 
 
 def close_tracking(c: Campaign, snap: Snapshot) -> list[dict]:

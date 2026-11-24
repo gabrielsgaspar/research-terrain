@@ -30,7 +30,7 @@ EXPECTED = {
         "Plan",
         "claude-opus-5-5",
         "40",
-        "46d2e7c9b4733d619cf2852c12f7f22af426bbec46614aa4a3b5d15c6aa26d25",
+        "d61227a5e7ec75cdf0a5b67fe78847d9a64a59f7d9a76283e2040680c30f1bf8",
     ),
     "builder": (
         "agent-build.yml",
@@ -38,7 +38,7 @@ EXPECTED = {
         "Build",
         "claude-sonnet-5-5",
         "160",
-        "fe5198e94d072c23d91300f162bc5427b92b5c671c8737133245564fc1f8bf00",
+        "407bd2570671d63d75542f26f722848b890abd5faae8f8945e91ac2bcc5bf936",
     ),
     "reviewer": (
         "agent-review.yml",
@@ -46,7 +46,7 @@ EXPECTED = {
         "Review",
         "claude-opus-5-5",
         "50",
-        "efa8ea325637a3f86f09bdae03375d372e9621dabb271bb689f21b3f753b9520",
+        "9a8d6f9917e32d9c8e56f2bf11976293a460723f45607e55b0c20b6ace6d0f8b",
     ),
     "ideation": (
         "campaign-ideate.yml",
@@ -54,7 +54,7 @@ EXPECTED = {
         "Ideate",
         "claude-opus-5-5",
         "40",
-        "ac0292130b951ad66d68ce316254785010280fbb35a7bac24d52c13355fe1b3d",
+        "a379a8ad6b7a6b304b7b26b4a0c7c4e47534135967ed7f5b0c6907881501eca9",
     ),
 }
 
@@ -284,3 +284,61 @@ def test_other_workflows_do_not_call_the_loader():
     for path in sorted(WORKFLOWS.glob("*.yml")):
         if path.name not in named:
             assert "scripts/role.py" not in path.read_text(encoding="utf-8"), path.name
+
+
+# --- decision 0021: contradictions ----------------------------------------------
+
+
+def test_builder_role_decides_contradictions_and_has_the_new_results():
+    body = role_py.load("builder")["prompt"]
+    assert "contradicts the plan, return `blocked`" not in body
+    for text in (
+        "decision 0021",
+        "`contradictions_resolved`",
+        "`contradiction`",
+        "exactly two",
+        "word for word",
+        "the stricter wins",
+    ):
+        assert text in body
+
+
+def test_reviewer_role_knows_lost_and_the_contradiction_section():
+    body = role_py.load("reviewer")["prompt"]
+    for text in (
+        "`lost`",
+        "Lost (decision 0021)",
+        "## Contradiction (decision 0021)",
+        "pr-body.md",
+    ):
+        assert text in body
+
+
+def test_planner_role_may_name_a_contradiction():
+    body = role_py.load("planner")["prompt"]
+    assert '"Contradictions" heading' in body and "decision 0021" in body
+
+
+def _json_schema(role):
+    import json
+    import re
+
+    steps, at = claude_steps(role)
+    args = steps[at]["with"]["claude_args"]
+    return json.loads(re.search(r"--json-schema '(.*)'", args).group(1))
+
+
+def test_builder_result_schema_has_the_contradiction_fields():
+    props = _json_schema("builder")["properties"]
+    assert props["status"]["enum"] == ["done", "blocked", "contradiction"]
+    quote = props["quotes"]["items"]
+    assert quote["required"] == ["text", "source", "level"]
+    assert props["quotes"]["items"] == quote
+    item = props["contradictions_resolved"]["items"]
+    assert item["required"] == ["winner", "loser", "why", "tests"]
+    assert item["properties"]["winner"] == item["properties"]["loser"] == quote
+
+
+def test_reviewer_result_schema_allows_lost():
+    checked = _json_schema("reviewer")["properties"]["checked"]["items"]["properties"]
+    assert "lost" in checked["status"]["enum"]

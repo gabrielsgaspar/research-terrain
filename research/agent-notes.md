@@ -21,9 +21,12 @@ checks this file.
 - [N005] (builder) Before the first commit of a task that changes an estimator, list each rule the issue states for it and test each one, because s9 needed two fix rounds. From: campaign 0008, s9 had 2 fix rounds. Added 2026-11-14.
 - [N006] (builder) Before a pipeline build is merged, run it on every fixture year and on the messiest real-file shape the issue describes, because s5 failed all four of its runs. From: campaign 0009, s5 had 4 runs, all failure. Added 2026-11-18.
 - [N007] (design) When one build gates several later steps, split it into smaller builds, so one failure does not leave s7, s8 and s9 waiting. From: campaign 0009, s5 blocked and s7 to s9 waiting. Added 2026-11-18.
-- [N008] (builder) When a task stops, say in one sentence the single thing a person must do to continue, so the wait ends with one reply. From: campaign 0014, s1 blocked for 21.9 hours. Added 2026-11-23.
-- [N009] (planner) When a task needs an answer that only a person can give, put that question first in the plan, so the first stop is not followed by a second. From: campaign 0014, s1 blocked twice, 5.6 and 21.9 hours. Added 2026-11-23.
-- [N010] (design) For the first task of a campaign, name in the issue every input it needs, so a builder is not left without a pull request after the plan. From: campaign 0014, s1 had no pull request twelve hours after the plan. Added 2026-11-23.
+- [N008] (planner) Name in the plan every input the first task needs, with its path, so the build has no reason to stop and wait for a person. From: campaign 0013, s1 stopped for a person, 7.7 hours. Added 2026-11-23.
+- [N009] (design) Check that the first task of a campaign can run from what is on main before the campaign starts, because s1 stopped a second time and waited 21.8 hours. From: campaign 0013, s1 second stop, 21.8 hours until unblocked. Added 2026-11-23.
+- [N010] (builder) Commit the work as soon as the checks pass, so a pull request exists soon after the plan. From: campaign 0013, s1 had no pull request twelve hours after the plan. Added 2026-11-23.
+- [N011] (builder) When a task stops, say in one sentence the single thing a person must do to continue, so the wait ends with one reply. From: campaign 0014, s1 blocked for 21.9 hours. Added 2026-11-23.
+- [N012] (planner) When a task needs an answer that only a person can give, put that question first in the plan, so the first stop is not followed by a second. From: campaign 0014, s1 blocked twice, 5.6 and 21.9 hours. Added 2026-11-23.
+- [N013] (design) For the first task of a campaign, name in the issue every input it needs, so a builder is not left without a pull request after the plan. From: campaign 0014, s1 had no pull request twelve hours after the plan. Added 2026-11-23.
 
 ## Scoreboard
 
@@ -35,4 +38,5 @@ checks this file.
 | 0010 | 4 | 0 | 0 | 0 | 1.7 | 0 |
 | 0011 | 6 | 0 | 0 | 0 | 6.3 | 0 |
 | 0012 | 12 | 0 | 0 | 0 | 0.5 | 0 |
+| 0013 | 12 | 3 | 0 | 0 | 32.0 | 3 |
 | 0014 | 6 | 3 | 0 | 0 | 30.1 | 3 |

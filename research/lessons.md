@@ -38,6 +38,25 @@ Format:
   `promising`. A fork's result is never a finding, and a registration must list
   every fork tried.
 
+## 2026-11-23: Amendments mechanisms: every step and fork survives, one weak spot (idea 0010, issue #450)
+- Tried: campaign 0013 ran three plan steps and one fork of each on the
+  exploration half: instrument and sorting
+  (`research/explore-runs/0010/45248303745.md`), whose votes move
+  (`research/explore-runs/0010/45034178304.md`) and payment timing
+  (`research/explore-runs/0010/45036043356.md`); forks f1 controls
+  (`research/explore-runs/0010/45038011532.md`), f2 log outcome
+  (`research/explore-runs/0010/45040009981.md`) and f3 local quadratic
+  (`research/explore-runs/0010/45255609706.md`).
+- Result: no kill rule was met. The controlled first stage is b 0.185 with F
+  26.4 (2300 races); d_party is 0.0268 (RI p 0.0045); the payment lead ratio
+  is 0.0257. Under the quadratic, F falls to 10.3, only just above 10.
+- Why: a quadratic costs precision, so the standard error grows (0.0359 to
+  0.053) while the point estimate moves little (0.185 to 0.17).
+- Implication: the report
+  (`research/campaigns/0013-amendments-mechanisms/report.md`) recommends
+  `promising`. Each fork is one of 1 tried at its point, and nothing here is a
+  finding.
+
 ## 2026-11-20: Who gains from emendas Pix: the mayoral gate is killed (idea 0011, issue #438)
 - Tried: campaign 0012 built the mayor and amendments panels, then ran a gate
   on the exploration half (`research/explore-runs/0011/44768996266.md`) for

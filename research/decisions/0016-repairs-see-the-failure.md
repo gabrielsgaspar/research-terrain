@@ -1,14 +1,14 @@
 ---
 id: "0016"
 title: "Repairs see the failure, and may add only bounded data rules"
-status: proposed
+status: accepted
 date: 2026-11-19
 supersedes: null
 ---
 
 # 0016: Repairs see the failure, and may add only bounded data rules
 
-Date: 2026-11-19. Status: proposed, drafted by Claude for Gabriel from his
+Date: 2026-11-19. Status: accepted, drafted by Claude for Gabriel from his
 request of 2026-11-19 (lessons of campaigns 0009 to 0011). It takes effect
 when Gabriel merges the pull request that adds it, with
 `src/terrain/profile.py`, `src/terrain/datarule.py`,
@@ -91,3 +91,5 @@ run after a repair is never retried or repaired again.
 - **Builds that do not count rows yet.** The issue says "no row counts"
   and the repair works from the error line, as before. New checks count
   rows (`AGENTS.md`, "Data").
+
+Accepted by Gabriel when he merged PR #434.

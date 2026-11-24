@@ -164,9 +164,9 @@ Every step finished and every kill rule was applied. The tick's list gives no re
 
 Three notes were added to `research/agent-notes.md`. No old note was merged or removed (the file now holds 10 of at most 30).
 
-- [N008] (builder) When a task stops, say in one sentence the single thing a person must do to continue, so the wait ends with one reply. From: campaign 0014, s1 blocked for 21.9 hours. Added 2026-11-23.
-- [N009] (planner) When a task needs an answer that only a person can give, put that question first in the plan, so the first stop is not followed by a second. From: campaign 0014, s1 blocked twice, 5.6 and 21.9 hours. Added 2026-11-23.
-- [N010] (design) For the first task of a campaign, name in the issue every input it needs, so a builder is not left without a pull request after the plan. From: campaign 0014, s1 had no pull request twelve hours after the plan. Added 2026-11-23.
+- [N011] (builder) When a task stops, say in one sentence the single thing a person must do to continue, so the wait ends with one reply. From: campaign 0014, s1 blocked for 21.9 hours. Added 2026-11-23.
+- [N012] (planner) When a task needs an answer that only a person can give, put that question first in the plan, so the first stop is not followed by a second. From: campaign 0014, s1 blocked twice, 5.6 and 21.9 hours. Added 2026-11-23.
+- [N013] (design) For the first task of a campaign, name in the issue every input it needs, so a builder is not left without a pull request after the plan. From: campaign 0014, s1 had no pull request twelve hours after the plan. Added 2026-11-23.
 
 ### Checks in code proposed
 

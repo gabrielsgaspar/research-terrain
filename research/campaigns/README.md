@@ -152,6 +152,17 @@ fork point, and a budget of their own. Without it, nothing changes.
 Fork files are not owned (the tick merges them), but the gate refuses any
 change to a merged fork file unless you open the pull request.
 
+## Contradictions and waiting for main (decision 0021)
+
+Two comments from agent-build change a task step, and the tick reads them only
+from `github-actions[bot]` when the first and last lines match exactly. A
+"contradiction" comment means the builder found two instructions and neither is
+stricter: the step and the steps after it are skipped, the issue is closed as not
+planned, and the close-out lists both quotes under "Checks not run". A "waiting for
+main" comment means a test fails on main too: the step stays in flight, the tick
+files one `Owner fix: <test> fails on main` issue per test (shown on the status
+page), restarts the build once when CI passes on main, and closes that issue.
+
 ## The status page
 
 One issue, titled "Research Terrain: status", shows on one page where every
