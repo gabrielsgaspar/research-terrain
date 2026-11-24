@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from terrain.campaigns import markers
+from terrain.campaigns.closeout import read_scoreboard
 from terrain.campaigns.facts import (
     PLAN_PREFIX,
     WORKFLOW_BOT,
@@ -272,6 +273,8 @@ def _now(v: CampaignView, cst: StepState | None, snap: Snapshot) -> str:
     if cst is not None:
         where = _links(cst, snap)
         parts.append(f"close-out ({where}): {PLAIN.get(cst.status, cst.status)}")
+    elif v.closeout_wait:
+        parts.append(f"close-out: {v.closeout_wait} (one close-out at a time)")
     if not parts:
         blocked = [s.id for s in v.campaign.steps if v.states[s.id].status == "blocked"]
         if blocked:
@@ -384,6 +387,26 @@ def recently_closed(ended: Sequence[Campaign], snap: Snapshot, root: Path) -> li
     dated = sorted((r for r in rows if r[0]), key=lambda r: (_time(r[0]), r[1]), reverse=True)
     undated = sorted((r for r in rows if not r[0]), key=lambda r: r[1], reverse=True)
     return [_clip(line) for _, _, line in dated + undated]
+
+
+STOPS_CAMPAIGNS = 5
+
+
+def stops_line(root: Path) -> str:
+    """Stops for Gabriel and plumbing stops over the last STOPS_CAMPAIGNS finished
+    campaigns, oldest to newest, from the Scoreboard on main ("" with no rows)."""
+    rows = sorted(read_scoreboard(root), key=lambda r: r.get("Campaign", ""))[-STOPS_CAMPAIGNS:]
+    if not rows:
+        return ""
+
+    def one(r: dict[str, str]) -> str:
+        mine, plumbing = r.get("Stops for Gabriel", "n/a"), r.get("Plumbing stops", "n/a")
+        extra = "" if plumbing == "0" else f" ({plumbing} plumbing)"
+        return f"{r.get('Campaign', '')} {mine}{extra}"
+
+    return f"Stops for you, last {len(rows)} campaign{'s' if len(rows) > 1 else ''}: " + ", ".join(
+        map(one, rows)
+    )
 
 
 def _records(root: Path, folder: str) -> list[tuple[str, dict]]:
@@ -499,7 +522,7 @@ def render(
         ),
         _Section(
             "Recently closed",
-            closed[:CLOSED_CAMPAIGNS],
+            [x for x in (_safe(stops_line(root)),) if x] + closed[:CLOSED_CAMPAIGNS],
             "None yet.",
             "campaigns",
             left_out=max(len(closed) - CLOSED_CAMPAIGNS, 0),

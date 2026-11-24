@@ -74,6 +74,25 @@ can change a campaign while it runs.
 9. Every agent reads those notes as advice for its role, never as rules; checks in code are only proposed in the report, for you to batch into tasks later.
 10. The close-out may not touch the harness, the workflows, `AGENTS.md` or the skills, and the notes file changes only in a close-out you approve.
 
+### The learning loop: one close-out at a time, a cause for every stop
+
+At most one close-out issue or pull request is open across all campaigns.
+Another campaign that is ready waits ("waiting for campaign NNNN's close-out
+to merge" in its ledger and on the status page), oldest end of work first,
+so its report is written from main after the earlier one merged and note ids
+and Scoreboard rows never clash. Every friction fact the tick hands the
+close-out (blocks, fix rounds, retries, restarts, unblocks, skips, waits for
+main, the reason it ended) gets one cause and one category from the table in
+`src/terrain/campaigns/closeout.py`: plumbing (the harness let the work
+down), spec (a contradiction or an unclear issue, plan or draft), design (a
+kill rule, a budget or the campaign's design), agent (an agent's own error)
+or handled (the tick resolved it without you). Notes learn only from agent,
+spec and design stops. Plumbing stops go to `harness/failure-log.md`
+instead: each close-out appends one dated section, written by the tick, and
+the gate refuses any other change to that file. The Scoreboard counts, per
+campaign, the stops that waited for you and how many of them were plumbing;
+the status page shows both for the last five campaigns.
+
 ## The approval card
 
 `uv run python scripts/campaign.py card NNNN` prints one page, built by code from the campaign's files and never by a model: phases, every kill rule, new data, limits, paths and papers to read first.

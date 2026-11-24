@@ -124,9 +124,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from terrain.campaigns import forks, markers, repair
-from terrain.campaigns.closeout import closeout_issue, table
+from terrain.campaigns.closeout import Stop, block_cause, closeout_issue, table
 from terrain.campaigns.codeowners import CodeOwners
 from terrain.campaigns.facts import (
+    BUILD_COMMENT_PREFIX,
     BUILD_ROUND_PREFIX,
     PLAN_PREFIX,
     WORKFLOW_BOT,
@@ -143,6 +144,7 @@ from terrain.campaigns.facts import (
     latest_waiting,
     ownerfix_marker,
     parse_ownerfix,
+    parse_waiting,
 )
 from terrain.campaigns.gate import GateContext, closeout_paths, evaluate, lane_problem
 from terrain.campaigns.limits import BOUNDS, Limits
@@ -326,6 +328,8 @@ class CampaignView:
     # (fork id, fork point, the adopted steps)
     fork_used: dict[str, int] = field(default_factory=dict)
     adoption: tuple[str, str, tuple[str, ...]] | None = None
+    # one close-out at a time: why this finished campaign's close-out is not filed yet
+    closeout_wait: str = ""
 
 
 @dataclass
@@ -1808,6 +1812,48 @@ def _data_rules_after(s: Step, st: StepState, events: dict[str, str], snap: Snap
     return "; ".join(rules) or "none"
 
 
+# One close-out at a time: a finished campaign whose close-out may not be filed yet posts
+# `closeout:waiting:<k>`, again whenever it went on working since its last one.
+_WAITING_EVENT = re.compile(r"^closeout:waiting:(\d+)$")
+_TRANSPARENT = re.compile(r"^(finished|breaker:(held|lifted):\d+)$")
+
+
+def end_of_work(events: dict[str, str]) -> str:
+    """When the campaign's work ended: its `finished` event, or, if its close-out waited
+    for another campaign's, the first of the waiting events nothing but waiting (and the
+    breaker) followed. "" if neither is in `events`."""
+    end = events.get("finished", "")
+    # a waiting event is the last line of its comment, so it sorts after the others
+    order = sorted(
+        events.items(),
+        key=lambda e: (_time(e[1]), bool(_WAITING_EVENT.match(e[0])), e[0]),
+        reverse=True,
+    )
+    for name, when in order:
+        if _WAITING_EVENT.match(name):
+            end = when
+        elif not _TRANSPARENT.match(name):
+            break
+    return end
+
+
+def _closeout_open(v: CampaignView) -> bool:
+    """Does this campaign's close-out hold the one close-out slot? It does from filing
+    (also before the issue list shows the new issue) until its pull request merges, or
+    until both its issue and its pull request are closed."""
+    if v.closeout is None:
+        return "finished" in v.events  # filed, not seen in the issue list yet
+    pr = v.closeout.pr
+    if pr is not None and pr.merged:
+        return False
+    return v.closeout.state == "open" or (pr is not None and pr.state == "open")
+
+
+def _waiting_since(v: CampaignView) -> str:
+    """When this finished campaign's close-out began to wait, if it still waits ("" if not)."""
+    return "" if "finished" in v.events else end_of_work(v.events)
+
+
 def friction_facts(v: CampaignView, snap: Snapshot, new: Sequence[tuple[str, str]] = ()) -> str:
     """What slowed the campaign down, as plain facts from the ledger and GitHub.
 
@@ -1884,9 +1930,11 @@ def friction_facts(v: CampaignView, snap: Snapshot, new: Sequence[tuple[str, str
             ended = ", ".join(f"{r.id} {r.conclusion or r.status}" for r in runs)
             run_rows.append([s.id, str(len(runs)), ended])
 
+    end = end_of_work(events)
     at: dict[str, list[str]] = {}
     for name, when in events.items():
-        at.setdefault(when, []).append(name)
+        if _time(when) <= _time(end):  # the close-out's wait for another one is no gap
+            at.setdefault(when, []).append(name)
     times = sorted(at, key=_time)
     all_gaps = sorted(
         ((_hours(a, b), a, b) for a, b in zip(times, times[1:], strict=False)),
@@ -1904,9 +1952,20 @@ def friction_facts(v: CampaignView, snap: Snapshot, new: Sequence[tuple[str, str
         return table(header, rows) if rows else "None."
 
     started = events.get("started", "")
+    finished = events["finished"]
+    if end == finished:
+        upto = f"`finished` ({finished})"
+        waited = ""
+    else:
+        first = min((n for n in at.get(end, ()) if _WAITING_EVENT.match(n)), default="")
+        upto = f"the end of the work (`{first}`, {end})"
+        waited = (
+            f" The close-out then waited {_hours(end, finished):.1f} hours for another "
+            "campaign's close-out to merge (one close-out at a time), not counted here."
+        )
     wall = (
-        f"Wall-clock time from `started` ({started}) to `finished` ({events['finished']}): "
-        f"{_hours(started, events['finished']):.1f} hours."
+        f"Wall-clock time from `started` ({started}) to {upto}: "
+        f"{_hours(started, end):.1f} hours.{waited}"
         if started
         else "Wall-clock time: none (the ledger has no `started` event)."
     )
@@ -1937,6 +1996,158 @@ def friction_facts(v: CampaignView, snap: Snapshot, new: Sequence[tuple[str, str
 The three longest gaps between two ledger events:
 
 {group(gap_rows, ["Hours", "After", "Before"])}{gaps_line}"""
+
+
+# -- stops by cause: every friction fact with its cause and category (closeout.STOP_CAUSES) --
+
+# the reason a campaign ended (`_reason`) -> its cause; the other reasons are no stop
+_END_CAUSES = (
+    ("a kill rule stopped it", "kill_rule"),
+    ("its budget ran out", "budget_ran_out"),
+    ("its end date", "end_date"),
+)
+_OWNER_ACTION = re.compile(r"^(s\d{1,2}):(?:unblock:\d+|restart:owner-\d+)$")
+_TICK_RESTART = re.compile(r"^(s\d{1,2}):restart:(red-|main-)?(.+)$")
+
+
+def _waits(issue: Issue | None) -> list[Waiting]:
+    """Every valid Comment W (decision 0021) on the issue, oldest first."""
+    found = [w for cm in (issue.comments if issue else ()) if (w := parse_waiting(cm))]
+    return sorted(found, key=lambda w: _time(w.created_at))
+
+
+def _second_wait_before(issue: Issue | None, when: str) -> Waiting | None:
+    """The Comment W that put `needs-human` on the issue before `when`: the latest
+    agent-build comment by then is a Comment W, and an earlier one exists too."""
+    if issue is None:
+        return None
+    builds = [
+        cm
+        for cm in issue.comments
+        if cm.author == WORKFLOW_BOT
+        and cm.body.startswith(BUILD_COMMENT_PREFIX)
+        and _time(cm.created_at) <= _time(when)
+    ]
+    if not builds:
+        return None
+    last = parse_waiting(max(builds, key=lambda cm: _time(cm.created_at)))
+    if last is None:
+        return None
+    earlier = [w for w in _waits(issue) if _time(w.created_at) < _time(last.created_at)]
+    return last if earlier else None
+
+
+def stop_facts(
+    v: CampaignView, snap: Snapshot, new: Sequence[tuple[str, str]] = (), reason: str = ""
+) -> list[Stop]:
+    """Every friction fact of the campaign with its cause (a key of
+    `closeout.STOP_CAUSES`), oldest first, and the reason it ended.
+
+    Blocks take their cause from the cause text of the ledger line that posted
+    them; a stall the tick restarted by itself is handled, and a needs-human
+    that followed a second wait for main is a test broken on main. A restart or
+    unblock by the owner while a block held is that block's answer, not another
+    stop. No model is involved.
+    """
+    c = v.campaign
+    events = dict(v.events)
+    for name, _ in new:
+        events.setdefault(name, snap.now)
+    events.setdefault("finished", snap.now)
+    end = end_of_work(events)
+    texts = _block_causes(v.tracking, c.id, snap.app_bot, new)
+
+    def lost(start: str, stop: str) -> float:
+        return max(_hours(start, stop or end), 0.0)
+
+    out: list[Stop] = []
+    for sid in [*(s.id for s in c.steps), "closeout"]:
+        label = "close-out" if sid == "closeout" else sid
+        st = v.states.get(sid)
+        issue = v.closeout if sid == "closeout" else (st.repair or st.issue if st else None)
+        windows: list[tuple[str, str]] = []
+        consumed: set[str] = set()  # the Comment W a needs-human block came from
+        for name in _blocks(sid, events):
+            when, off = events[name], events.get(_unblocked(name), "")
+            detail = texts.get(name, "")
+            cause = block_cause(detail) if detail else "unrecognised"
+            bid = name.partition(":blocked:")[2]
+            if cause == "build_stalled" and bid and f"{sid}:restart:{bid}" in events:
+                cause = "build_stalled_restarted"
+            if cause == "needs_human" and (w := _second_wait_before(issue, when)):
+                cause = "needs_human_main"
+                consumed.add(w.created_at)
+            out.append(
+                Stop(
+                    label,
+                    "block",
+                    cause,
+                    detail or "not readable from the ledger line",
+                    when,
+                    lost(when, off),
+                    cause != "build_stalled_restarted",
+                )
+            )
+            windows.append((when, off or end))
+        for name in sorted(e for e in events if e.startswith(f"{sid}:")):
+            when, rest = events[name], name.partition(":")[2]
+            if _OWNER_ACTION.match(name):
+                if any(_time(a) <= _time(when) <= _time(b) for a, b in windows):
+                    continue  # the answer to a block already counted
+                w = _second_wait_before(issue, when)
+                cause = "needs_human_main" if w else "owner_unblock"
+                out.append(Stop(label, "unblock by you", cause, f"`{name}`", when, None, True))
+            elif m := _TICK_RESTART.match(name):
+                cause = {"red-": "restart_red", "main-": "restart_main"}.get(
+                    m.group(2) or "", "restart_stalled"
+                )
+                out.append(Stop(label, "restart", cause, f"`{name}`", when))
+            elif m := _STOPPED_RED.match(name):
+                back = events.get(f"{sid}:restart:red-{m.group(2)}", "")
+                detail = f"CI's test check failed on main at {m.group(2)}"
+                out.append(
+                    Stop(label, "stop", "main_red_stop", detail, when, lost(when, back), True)
+                )
+            elif rest.startswith("retry:"):
+                out.append(Stop(label, "retry", "retry", f"`{name}`", when))
+            elif rest.startswith("continue:"):
+                out.append(Stop(label, "continue", "continue", f"`{name}`", when))
+            elif name == _repair_event(sid):
+                out.append(Stop(label, "repair", "repair", f"`{name}`", when))
+        for w in _waits(issue):
+            if w.created_at in consumed:
+                continue
+            back = events.get(f"{sid}:restart:main-{w.run}", "")
+            detail = f"run {w.run} waited for main to pass {', '.join(w.tests)}"
+            out.append(
+                Stop(
+                    label,
+                    "wait for main",
+                    "waiting_for_main",
+                    detail,
+                    w.created_at,
+                    lost(w.created_at, back),
+                    True,
+                )
+            )
+    for s in c.steps:
+        st = v.states[s.id]
+        if s.kind == "task" and st.issue is not None:
+            plans = _plans(st.issue)
+            fixes = (max(len(st.issue.pr.reviews) - 1, 0) if st.issue.pr else 0) + _build_rounds(
+                st.issue
+            )
+            if plans > 1:
+                out.append(Stop(s.id, "extra plan", "extra_plan", f"{plans} plans posted"))
+            if fixes:
+                out.append(Stop(s.id, "fix round", "fix_round", f"{fixes} fix round(s)"))
+        if st.status == "skipped":
+            cause = "decision_0021" if st.cause == SKIP_CAUSE else "kill_skip"
+            out.append(Stop(s.id, "skip", cause, st.detail, events.get(f"{s.id}:skipped", "")))
+    for words, cause in _END_CAUSES:
+        if reason.startswith(words):
+            out.append(Stop("campaign", "end", cause, reason, end))
+    return sorted(out, key=lambda x: (_time(x.when) if x.when else _time(end), x.step))
 
 
 def _tracking_body(c: Campaign) -> str:
@@ -2033,6 +2244,16 @@ def _advance(
     today = _time(snap.now).date()
     # main is red: nothing merges, is filed, built, restarted, run or dispatched
     red = snap.main_red
+    # one close-out at a time, across all campaigns: the campaign whose close-out is open,
+    # and the finished ones waiting to file theirs, oldest end of work first
+    holder = next((v.campaign.id for v in views if _closeout_open(v)), "")
+    queue = sorted(
+        (_time(since), v.campaign.id)
+        for v in views
+        if (since := _waiting_since(v))
+        and v.tracking is not None
+        and "campaign-pause" not in v.tracking.labels
+    )
     for v in views:
         c = v.campaign
         if v.tracking is None:
@@ -2372,7 +2593,21 @@ def _advance(
             pass  # the close-out is filed once main is green again
         elif finished:
             reason = _reason(v, stopped, today)
-            if v.closeout is None:
+            mine = (_time(_waiting_since(v) or snap.now), c.id)
+            ahead = next((cid for q, cid in queue if (q, cid) < mine and cid != c.id), "")
+            first = holder if holder and holder != c.id else ahead
+            if v.closeout is None and first:
+                v.closeout_wait = f"waiting for campaign {first}'s close-out to merge"
+                since = _waiting_since(v)
+                if not since or any(not _TRANSPARENT.match(n) for n, _ in new):
+                    k = 1 + sum(1 for e in v.events if _WAITING_EVENT.match(e))
+                    event(
+                        f"closeout:waiting:{k}",
+                        f"Campaign finished: {reason}. Its close-out task waits for campaign "
+                        f"{first}'s close-out to merge (one close-out at a time).",
+                    )
+            elif v.closeout is None:
+                holder = c.id
                 rows = [
                     {
                         "step": s.id + (f" ({s.fork})" if s.fork else ""),
@@ -2399,6 +2634,8 @@ def _advance(
                     friction_facts(v, snap, new),
                     checks_not_run(v),
                     forks_facts(v, snap, root) if c.forks else "",
+                    stops=stop_facts(v, snap, new, reason),
+                    today=today.isoformat(),
                 )
                 doing.append(
                     {

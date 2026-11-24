@@ -22,6 +22,7 @@ from terrain.campaigns.closeout import (
     NOTE_BANNED,
     NOTE_ROLES,
     SCOREBOARD_HEADER,
+    SCOREBOARD_NA_BEFORE,
 )
 from terrain.campaigns.spec import NOTES_PATH
 
@@ -297,7 +298,7 @@ def check_agent_notes(root: Path) -> list[str]:
         if not row.startswith("|") or len(cells) != len(SCOREBOARD_HEADER):
             out.append(f"{label}: Scoreboard row '{row}' needs {len(SCOREBOARD_HEADER)} cells")
             continue
-        cid, steps, blocks, fixes, retries, hours, added = cells
+        cid, steps, blocks, fixes, retries, hours, added, mine, plumbing = cells
         where = f"{label}: Scoreboard row for campaign {cid}"
         if not ID.match(cid):
             out.append(f"{label}: Scoreboard campaign '{cid}' is not a four-digit id")
@@ -315,6 +316,18 @@ def check_agent_notes(root: Path) -> list[str]:
             out.append(f"{where}: hours must be a number, not '{hours}'")
         if not added.isdigit() or int(added) > MAX_NEW_NOTES:
             out.append(f"{where}: notes added must be 0 to {MAX_NEW_NOTES}, not '{added}'")
+        # the stops columns: whole numbers; "n/a" only for campaigns whose ledgers and
+        # reports came before the stops had causes
+        na_ok = ID.match(cid) is not None and cid < SCOREBOARD_NA_BEFORE
+        for head, value in zip(SCOREBOARD_HEADER[7:], (mine, plumbing), strict=True):
+            if value == "n/a" and not na_ok:
+                out.append(
+                    f"{where}: '{head}' may be n/a only for campaigns before {SCOREBOARD_NA_BEFORE}"
+                )
+            elif value != "n/a" and not value.isdigit():
+                out.append(f"{where}: '{head}' must be a whole number, not '{value}'")
+        if mine.isdigit() and plumbing.isdigit() and int(plumbing) > int(mine):
+            out.append(f"{where}: plumbing stops ({plumbing}) exceed stops for Gabriel ({mine})")
     out += [
         f"{label}: note {nid} cites campaign {cid}, which has no Scoreboard row"
         for nid, cid in cited
