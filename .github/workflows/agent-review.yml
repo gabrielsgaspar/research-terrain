@@ -26,6 +26,10 @@ name: Agent review
 #   post    One comment and one label, with issues: write and nothing that
 #           can approve or merge. After a failed guard on a matched PR it only
 #           removes agent-approved, with no comment.
+# Decision 0021: the PR body is read as data too (pr-body.md). A Done-when
+# item that lost a contradiction has the status `lost`, shown as "Lost
+# (decision 0021)"; it counts like a met one only if the builder's
+# "## Contradiction (decision 0021)" section is in the PR body.
 # workflow_run only fires once this file is on main.
 on:
   workflow_run:
@@ -203,6 +207,7 @@ jobs:
           NAME: ${{ github.event.repository.name }}
           ISSUE: ${{ steps.guard.outputs.issue }}
           PR_CREATED: ${{ steps.guard.outputs.pr_created }}
+          PR: ${{ steps.guard.outputs.pr }}
         run: |
           set -euo pipefail
           fail() { printf 'reason=%s\n' "$1" >> "${GITHUB_OUTPUT}"; echo "::error::$1"; exit 1; }
@@ -225,6 +230,10 @@ jobs:
           fi
           gh api "repos/${REPO}/issues/comments/${id}" --jq .body > "${work}/data/plan.md"
           gh api "repos/${REPO}/issues/${ISSUE}" --jq '"# " + .title + "\n\n" + (.body // "")' > "${work}/data/issue.md"
+          # Decision 0021: the builder's "## Contradiction (decision 0021)"
+          # section is in the PR body; the reviewer reads it as data.
+          gh api "repos/${REPO}/pulls/${PR}" --jq '.body // ""' > "${work}/data/pr-body.md" \
+            || fail "Could not read the body of #${PR}."
           echo "plan_url=${url}" >> "${GITHUB_OUTPUT}"
           if [ "$(gh api "repos/${REPO}/issues/${ISSUE}" --jq '[.labels[].name] | index("explore") != null')" = true ]; then
             task_type=explore
@@ -548,7 +557,7 @@ jobs:
             --tools "Read,Grep,Glob,Bash"
             --allowedTools "Read" "Grep" "Glob" "Bash(git log *)"
             --disallowedTools "mcp__*" "Edit" "Write" "NotebookEdit" "Bash(* --output*)" "Bash(git diff --no-index*)" "Bash(* --no-index*)" "Read(./.git/config)" "Read(//proc/**)" "Read(//etc/**)" "Read(//root/**)" "Read(//tmp/**)" "Read(//home/runner/.*)" "Read(//home/runner/.*/**)" "Read(//home/runner/work/_temp/**)" "Read(//home/runner/work/_actions/**)" "Read(//home/runner/work/_tool/**)" "Read(//home/runner/runners/**)"
-            --json-schema '{"type":"object","properties":{"verdict":{"type":"string","enum":["approve","changes"]},"must_fix":{"type":"array","items":{"type":"string"}},"nice_to_have":{"type":"array","items":{"type":"string"}},"checked":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"status":{"type":"string","enum":["verified","not_met","not_verifiable_without_running_code"]},"how":{"type":"string"}},"required":["id","status","how"]}},"referee":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"status":{"type":"string","enum":["ok","problem","not_applicable"]},"note":{"type":"string"}},"required":["id","status","note"]}}},"required":["verdict","must_fix","nice_to_have","checked","referee"]}'
+            --json-schema '{"type":"object","properties":{"verdict":{"type":"string","enum":["approve","changes"]},"must_fix":{"type":"array","items":{"type":"string"}},"nice_to_have":{"type":"array","items":{"type":"string"}},"checked":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"status":{"type":"string","enum":["verified","not_met","not_verifiable_without_running_code","lost"]},"how":{"type":"string"}},"required":["id","status","how"]}},"referee":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"status":{"type":"string","enum":["ok","problem","not_applicable"]},"note":{"type":"string"}},"required":["id","status","note"]}}},"required":["verdict","must_fix","nice_to_have","checked","referee"]}'
           prompt: ${{ steps.role.outputs.prompt }}
 
       # 9. Claude's result, checked by plain code. This step holds the two
@@ -581,6 +590,7 @@ jobs:
               "verified": "Verified",
               "not_met": "Not met",
               "not_verifiable_without_running_code": "Not verifiable without running code",
+              "lost": "Lost (decision 0021)",
           }
           work = os.path.join(os.environ["RUNNER_TEMP"], "agent-review")
 
@@ -653,6 +663,18 @@ jobs:
           must_fix += [f"{problem} (found by the workflow's path check)." for problem in scope]
           missing = [item["id"] for item in items if item["id"] not in checked]
           not_met = [item["id"] for item in items if checked.get(item["id"], {}).get("status") == "not_met"]
+          # Decision 0021: a lost item counts like a met one only when the
+          # builder's Contradiction section is in the PR body (the reviewer
+          # checked that the section names the item, and agreed). Without
+          # the section the item is a must-fix item, not a way to approve.
+          lost = [item["id"] for item in items if checked.get(item["id"], {}).get("status") == "lost"]
+          if lost:
+              pr_body = open(os.path.join(work, "data", "pr-body.md"), encoding="utf-8").read()
+              if not any(line.strip() == "## Contradiction (decision 0021)" for line in pr_body.splitlines()):
+                  must_fix.append(
+                      "Done when item(s) " + ", ".join(lost) + " are marked lost (decision 0021), but the pull "
+                      "request body has no \"## Contradiction (decision 0021)\" section (found by the workflow)."
+                  )
 
           overruled = []
           if result["verdict"] == "approve":

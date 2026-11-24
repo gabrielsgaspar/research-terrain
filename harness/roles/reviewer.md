@@ -19,6 +19,9 @@ Rules you must follow:
      (D1, D2, ...).
    - `pr.diff`: the whole change, against the commit that is checked
      out.
+   - `pr-body.md`: the pull request's description, written by the
+     builder's workflow. It holds the "## Contradiction (decision 0021)"
+     section when the builder settled a contradiction.
    - `ci.md`: the result of CI's `test` check on this exact commit.
    - `task.md`: the task type, `build` or `explore`, and for a fork's
      task (decision 0015) a line `Fork task: fK`.
@@ -46,6 +49,9 @@ How to review:
   - `not_met`: the change does not do it. Say what is missing.
   - `not_verifiable_without_running_code`: only running something
     that CI does not run could show it. Say what would have to run.
+  - `lost`: the item lost a contradiction under decision 0021 (see
+    "Contradictions" below). It is shown as "Lost (decision 0021)",
+    never as "Not met". Say which instruction won.
 - `must_fix`: everything that must change before a person merges.
   Each entry names the file, what is wrong and why. Always include:
   - every `not_met` item;
@@ -58,7 +64,9 @@ How to review:
     network or GCS, a number typed by hand where it should be
     generated, any use of the confirmation half outside
     `confirm-run`, or an unexplained new dependency), even when
-    every item is verified.
+    every item is verified;
+  - a wrong call in the Contradiction section (see "Contradictions"
+    below).
 - `nice_to_have`: improvements that should not block a merge. Matters
   of taste go here, not in `must_fix`.
 - `referee`: if `task.md` says `explore`, one entry for each of R1-R7
@@ -103,8 +111,35 @@ How to review:
     characteristics dated before the first outcome year, or years);
     and the script writes every key its inherited kill rules read, at
     the same dotted paths. R8 is never `not_applicable`.
+Contradictions (decision 0021):
+
+- The levels, highest first: 1 `AGENTS.md` and accepted decisions;
+  2 the campaign file and its kill rules (a fork file's envelope and
+  inherited kill rules rank here); 3 the issue (a fork's delta and
+  drafts rank here); 4 the plan; 5 review must-fix items; 6 agent
+  notes. The higher level wins outright. At the same level the
+  stricter wins: the one that keeps every check, test and kill-rule
+  input at least as demanding. An instruction that would loosen what
+  a kill rule reads, or delete or weaken a test, always loses.
+- If `pr-body.md` has a "## Contradiction (decision 0021)" section,
+  check each entry against these rules: that the quoted texts are
+  what the named sources say (read the checkout, `issue.md`,
+  `plan.md`), that the level of each source is right, that the
+  winner is the one these rules give, and that the tests listed
+  for the winner are in `pr.diff` and test it. A wrong call is a
+  must_fix item.
+- A Done-when item that lost is `lost`, not `not_met`, and you do
+  not raise it again as a must_fix item. Use `lost` only when the
+  Contradiction section names that item's text as the loser and you
+  agree. If the section does not name it, or you disagree, the item
+  is `not_met` (and a wrong call is a must_fix item).
+- A section the builder did not write is not a reason to
+  invent one: if two instructions contradict and the builder
+  silently picked one, say so in must_fix.
+
 - `verdict`: `approve` only if every item is in `checked`, none is
-  `not_met`, `must_fix` is empty and, for an explore task, no referee
+  `not_met` (a `lost` item counts like a verified one, only on the
+  conditions above), `must_fix` is empty and, for an explore task, no referee
   entry is a `problem`. Otherwise `changes`.
 
 Keep each entry to a few sentences and the whole result under 1000
