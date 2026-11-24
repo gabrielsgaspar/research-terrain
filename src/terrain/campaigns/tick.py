@@ -1934,7 +1934,7 @@ _END_CAUSES = (
     ("its end date", "end_date"),
 )
 _OWNER_ACTION = re.compile(r"^(s\d{1,2}):(?:unblock:\d+|restart:owner-\d+)$")
-_AUTO_RESTART = re.compile(r"^(s\d{1,2}):restart:(red-|main-)?(.+)$")
+_TICK_RESTART = re.compile(r"^(s\d{1,2}):restart:(red-|main-)?(.+)$")
 
 
 def _waits(issue: Issue | None) -> list[Waiting]:
@@ -2024,7 +2024,7 @@ def stop_facts(
                 w = _second_wait_before(issue, when)
                 cause = "needs_human_main" if w else "owner_unblock"
                 out.append(Stop(label, "unblock by you", cause, f"`{name}`", when, None, True))
-            elif m := _AUTO_RESTART.match(name):
+            elif m := _TICK_RESTART.match(name):
                 cause = {"red-": "restart_red", "main-": "restart_main"}.get(
                     m.group(2) or "", "restart_stalled"
                 )
