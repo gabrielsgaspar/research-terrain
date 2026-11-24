@@ -42,7 +42,7 @@ report (`research/campaigns/NNNN-*/report.md`), where it shows them.
 | 0014 s1 (#457), 0013 s1 (#451) | The rebuilds failed on a test another pull request had broken on main (`explore/0013_objects_main.py` called `pyfixest.fepois`; #476 and #479 merged against an older main). | plumbing | 21.9 (0014), 21.8 (0013) | #485 (the fix on main), #502 (red-main pause), decision 0021 (waiting for main, #511 and #512) |
 | 0015 (#482) | A review must-fix item contradicted a Done-when item. | spec | - | #486, then decision 0021 |
 | 0015 (#482) | A closed pull request blocked a newer plan. | plumbing | - | session E1's #514 |
-| 0013, 0014 close-outs (#507, #508) | Two close-outs ran at once: both gave new notes the ids N008 to N010, and they conflicted in `research/agent-notes.md` and `research/lessons.md`. | plumbing | - | the learning-loop pull request (one close-out at a time, note ids chosen by the tick) |
+| 0013, 0014 close-outs (#507, #508) | Two close-outs ran at once: both gave new notes the ids N008 to N010, and they conflicted in `research/agent-notes.md` and `research/lessons.md`. | plumbing | - | #515 (one close-out at a time, note ids chosen by the tick) |
 | 0008 s9 | The planner asked for clarification on a thin draft. | spec | 16.8 | no harness change; note N004 |
 | 0009 s5 | Data edge cases broke the build twice. | agent | - | decision 0016 (#434: the repair sees the failure; bounded data rules) |
 | 0010, 0012 | Design choices killed the campaigns. | design | - | none needed |
