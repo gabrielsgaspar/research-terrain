@@ -23,8 +23,15 @@ flight until its record is merged):
   pipeline runs start as far as the limits above and the budget allow.
 Retries and the run after a repair follow the same limits (`RunSlots`).
 
+Limits (decision 0020). The time limits below, the retries and the automatic
+build restarts are read from `ops/limits.yaml` at the start of every tick
+(`Snapshot.limits`, `terrain.campaigns.limits`); every other constant stays here.
+A message that names a limit prints its value from the file. A block whose cause
+names a limit keeps its old fixed wording as its id (`StepState.block_key`), so a
+new value neither re-posts a block that holds nor counts as a new one.
+
 A run step whose run ended 'failure' or 'timed_out' is started again by the
-tick, at most MAX_AUTO_RETRIES times per step, before the owner is asked.
+tick, at most `max_auto_retries` times per step, before the owner is asked.
 A data-pipeline run that stopped only because its exports are still running
 (its log says `still exporting: N of M done`, `terrain.earthengine`) is no
 failure: it is started again without using a retry, while N grows from one
@@ -53,10 +60,14 @@ Restarts. agent-build starts only when the `agent-build` label is added, so
 a build that stops without a pull request and without `needs-human` would
 wait forever. The tick starts a task step's build again (`restart_build`:
 the label removed and added again), one model job each, in four cases:
-- stalled: no pull request BUILD_TIMEOUT after the build started (the plan,
-  or the tick's last restart, or a person adding the label by hand), and no
+- stalled: no pull request `build_timeout_hours` after the build started (the
+  plan, or the tick's last restart, or a person adding the label by hand), and no
   agent-build run queued or in progress at all (the API cannot tie a run to
-  its issue); at most once per block (`<step>:restart:<block id>`);
+  its issue); at most once per block (`<step>:restart:<block id>`), and at most
+  `max_auto_build_restarts_per_step` times per step, counted from those ledger
+  events (not the owner's restarts or unblocks, nor the main-related ones below).
+  The next stall after the last of them blocks: "the build stalled again after
+  <n> automatic restarts";
 - the repository owner removed `needs-human` after the latest block, and no
   build started since: at once (`<step>:restart:owner-<time>`);
 - a pull request the owner opened and merged after the block has a line
@@ -70,6 +81,10 @@ A step has at most one main-related restart per red episode (from the first tick
 that sees main red, or the first Comment W, until main's CI passes): a step with a
 Comment W is restarted only by the wait, never by the stopped-red case, and the
 restart after main is green is the same one, not a second.
+A pull request from agent/issue-<n> that was closed without merging is an
+earlier attempt once a newer plan was posted after it closed: the step is read
+as if it had no pull request (plan ready, building, stalled, restarted as usual),
+until a newer pull request exists. With no newer plan it still blocks.
 The breaker holds the automatic ones (stalled, red), not the owner's. One
 task in flight per campaign and the model-job budget hold all of them. If
 the issue's branch agent/issue-<n> exists, agent-build would refuse it, so
@@ -129,7 +144,8 @@ from terrain.campaigns.facts import (
     ownerfix_marker,
     parse_ownerfix,
 )
-from terrain.campaigns.gate import GateContext, closeout_paths, evaluate
+from terrain.campaigns.gate import GateContext, closeout_paths, evaluate, lane_problem
+from terrain.campaigns.limits import BOUNDS, Limits
 from terrain.campaigns.rules import evaluate as apply_rules
 from terrain.campaigns.spec import Campaign, Step, is_protected, path_allowed
 
@@ -140,13 +156,16 @@ IDEATE_WORKFLOW = "campaign-ideate.yml"
 # Each run workflow's name as GitHub shows it in the Actions tab (its `name:`).
 WORKFLOW_NAMES = {EXPLORE_WORKFLOW: "Explore run", PIPELINE_WORKFLOW: "Data pipeline"}
 
-PLAN_TIMEOUT = dt.timedelta(hours=2)
-BUILD_TIMEOUT = dt.timedelta(hours=12)
+# The time limits of plans, builds, runs, records, ideation jobs and fork plans, the
+# retries and the automatic build restarts are in ops/limits.yaml (`Snapshot.limits`).
 # a build with no run in flight anywhere this long after it started has stopped
 # (used only while main is red; see "Restarts" above)
 IDLE_BUILD = dt.timedelta(minutes=30)
 # the ledger events of the tick's restarts of a step's build, one model job each
 _RESTART = re.compile(r"^(s\d{1,2}):(?:restart|unblock):")
+# the automatic ones among them: a stalled build's, once per block (`<step>:restart:<block
+# id>`, or `plain`); not the owner's (`owner-`, `unblock:`) nor main's (`red-`, `main-`)
+_AUTO_RESTART = re.compile(r"^(s\d{1,2}):restart:(?:[0-9a-f]{8}(?:-\d+)?|plain)$")
 _STOPPED_RED = re.compile(r"^(s\d{1,2}):stopped-red:([0-9a-f]{12})$")
 # Decision 0021. A step skipped for a contradiction; a step waiting for main to pass the
 # tests its build failed on, restarted once when main's head moves on and passes, or this
@@ -155,20 +174,15 @@ SKIP_CAUSE = "decision_0021"
 SKIP_DETAIL = "skipped (decision 0021): neither instruction is stricter"
 MAIN_SAME_SHA_WAIT = dt.timedelta(minutes=60)
 MAX_OWNERFIX_PER_TICK = 5
-RUN_APPEAR_TIMEOUT = dt.timedelta(hours=2)
-RECORD_TIMEOUT = dt.timedelta(hours=3)
 BLOCK_GRACE = dt.timedelta(hours=24)  # time the owner has to unblock a step before close-out
-# Forks (decision 0015): an ideation job with no result after IDEATION_TIMEOUT, or a
-# fork plan pull request not merged FORK_PLAN_TIMEOUT after the ideation started,
-# means "no forks at this point"; ideation never blocks a campaign.
-IDEATION_TIMEOUT = dt.timedelta(hours=2)
-FORK_PLAN_TIMEOUT = dt.timedelta(hours=6)
+# Forks (decision 0015): an ideation job with no result after `ideation_timeout_hours`,
+# or a fork plan pull request not merged `fork_plan_timeout_hours` after the ideation
+# started, means "no forks at this point"; ideation never blocks a campaign.
 IDEATE_EVENT = re.compile(r"^s\d{1,2}:ideate$")
 
-# A failed run step is started again by itself this many times, counted from the
-# ledger's `<step>:retry:<k>` events (not from runs, so runs started by hand do not
+# A failed run step is started again by itself `max_auto_retries` times, counted from
+# the ledger's `<step>:retry:<k>` events (not from runs, so runs started by hand do not
 # use them up). Only these conclusions are retried: 'cancelled' means someone stopped it.
-MAX_AUTO_RETRIES = 2
 RETRY_CONCLUSIONS = {"failure", "timed_out"}
 # A run that ran out of time with exports still running prints this line; the tick
 # starts it again (`<step>:continue:<k>:<N>` in the ledger) without using a retry,
@@ -279,6 +293,9 @@ class StepState:
     # decision 0021: a skipped step's Comment C, and a waiting step's Comment W
     contradiction: Contradiction | None = None
     waiting: Waiting | None = None
+    # for a block whose cause names a limit from ops/limits.yaml: the cause in its old
+    # fixed wording, which its id hashes instead of `detail` (see the module docstring)
+    block_key: str = ""
 
     def links(self) -> str:
         parts = []
@@ -360,6 +377,29 @@ def _older(now: str, then: str, delta: dt.timedelta) -> bool:
     return bool(then) and _time(now) - _time(then) > delta
 
 
+def _hours_text(n: int) -> str:
+    """`1` -> "1 hour", `12` -> "12 hours": a limit from ops/limits.yaml, in a message."""
+    return f"{n} hour" if n == 1 else f"{n} hours"
+
+
+def live_pr(issue: Issue) -> PullRequest | None:
+    """The issue's pull request, unless it is an earlier attempt: one from agent/issue-<n>
+    closed without merging, with the issue's newest plan posted after it was closed."""
+    pr = issue.pr
+    if (
+        pr is None
+        or pr.merged
+        or pr.state != "closed"
+        or pr.head_ref != f"agent/issue-{issue.number}"
+        or not pr.closed_at
+    ):
+        return pr
+    plan = latest_plan(list(issue.comments))
+    if plan is not None and _time(plan.created_at) > _time(pr.closed_at):
+        return None
+    return pr
+
+
 def _ledger_events(tracking: Issue | None, cid: str, app_bot: str) -> dict[str, str]:
     events: dict[str, str] = {}
     if tracking is None:
@@ -388,6 +428,9 @@ def _plan_problem(
         prot = [f for f in files if is_protected(f) or owners.owned(f)]
         if prot:
             return f"the plan lists protected or owned paths: {prot[:5]}"
+    lane = lane_problem(files)  # decision 0020: refused even where owned paths are allowed
+    if lane:
+        return f"the plan lists {lane}"
     return ""
 
 
@@ -417,8 +460,9 @@ def _task_state(
     """`task_step`: the issue is a plan task step (not a repair or close-out), so a
     Comment C skips it (decision 0021); `waiting` is its valid Comment W, if the tick
     has not restarted the build for it yet."""
-    st = StepState("filed", issue=issue, pr=issue.pr)
-    pr = issue.pr
+    pr = live_pr(issue)  # an earlier attempt's closed pull request counts as none
+    st = StepState("filed", issue=issue, pr=pr)
+    limits = snap.limits
     if pr and pr.merged:
         st.status, st.verdict = "done", "merged"
         return st
@@ -440,8 +484,10 @@ def _task_state(
         return st
     plan = latest_plan(list(issue.comments))
     if plan is None:
-        if _older(snap.now, issue.created_at, PLAN_TIMEOUT):
-            st.status, st.detail, st.cause = "blocked", "no plan two hours after filing", "no_plan"
+        if _older(snap.now, issue.created_at, limits.plan_timeout):
+            st.status, st.cause = "blocked", "no_plan"
+            st.detail = f"no plan {_hours_text(limits.plan_timeout_hours)} after filing"
+            st.block_key = "no plan two hours after filing"
         else:
             st.status = "planning"
         return st
@@ -457,13 +503,12 @@ def _task_state(
             st.status = "plan_ready"
             return st
         since = _build_started(issue, plan.created_at, snap, restarted)
-        if _older(snap.now, since, BUILD_TIMEOUT):
+        if _older(snap.now, since, limits.build_timeout):
             st.status, st.cause = "blocked", "build_stalled"
-            st.detail = (
-                "no pull request twelve hours after the plan"
-                if since == plan.created_at
-                else "no pull request twelve hours after the build was started again"
-            )
+            after = "the plan" if since == plan.created_at else "the build was started again"
+            hours = _hours_text(limits.build_timeout_hours)
+            st.detail = f"no pull request {hours} after {after}"
+            st.block_key = f"no pull request twelve hours after {after}"
         else:
             st.status = "building"
         return st
@@ -525,8 +570,11 @@ def _step_runs(c: Campaign, s: Step, snap: Snapshot) -> list[Run]:
 
 
 def _retries(sid: str, events: dict[str, str]) -> int:
+    """How many times the tick retried step `sid`'s run (up to the bound of
+    `max_auto_retries`, so a lower value in ops/limits.yaml still counts them all)."""
     """How many times the tick started step `sid` again by itself, from the ledger."""
-    return sum(1 for k in range(1, MAX_AUTO_RETRIES + 1) if f"{sid}:retry:{k}" in events)
+    most = BOUNDS["max_auto_retries"][1]
+    return sum(1 for k in range(1, most + 1) if f"{sid}:retry:{k}" in events)
 
 
 def _continues(sid: str, events: dict[str, str]) -> list[tuple[int, int]]:
@@ -580,7 +628,7 @@ def _run_state(
     if not runs:
         if not dispatched:
             return StepState("unstarted")
-        if _older(snap.now, dispatched, RUN_APPEAR_TIMEOUT):
+        if _older(snap.now, dispatched, snap.limits.run_appear_timeout):
             return StepState("blocked", "the run was started but never appeared")
         return StepState("waiting_run")
     run = runs[-1]
@@ -591,7 +639,7 @@ def _run_state(
     restarted = max((t for t in (retried, repaired, resumed) if t), key=_time, default="")
     if restarted and _time(restarted) > _time(run.created_at):
         # the newest run is older than the newest restart: the fresh run has not appeared yet
-        if _older(snap.now, restarted, RUN_APPEAR_TIMEOUT):
+        if _older(snap.now, restarted, snap.limits.run_appear_timeout):
             return StepState("blocked", "the run was started again but never appeared", run=run)
         return StepState("waiting_run", run=run)
     st = StepState("running", run=run)
@@ -612,7 +660,11 @@ def _run_state(
             return st
         if why_not:
             st.detail = f"{st.detail.rstrip('.')}. It was {why_not}."
-        if run.conclusion in RETRY_CONCLUSIONS and retries < MAX_AUTO_RETRIES and not repaired:
+        if (
+            run.conclusion in RETRY_CONCLUSIONS
+            and retries < snap.limits.max_auto_retries
+            and not repaired
+        ):
             st.retry = retries + 1
         return st
     pr = snap.record_prs.get(run.id)
@@ -630,8 +682,10 @@ def _run_state(
                 "recorded",
                 "the manifest was already up to date",
             )
-        elif _older(snap.now, finished, RECORD_TIMEOUT):
-            st.status, st.detail = "blocked", "no record pull request three hours after the run"
+        elif _older(snap.now, finished, snap.limits.record_timeout):
+            hours = _hours_text(snap.limits.record_timeout_hours)
+            st.status, st.detail = "blocked", f"no record pull request {hours} after the run"
+            st.block_key = "no record pull request three hours after the run"
             st.cause = "record_missing"
         else:
             st.status = "recording"
@@ -685,7 +739,7 @@ def _repair_state(
         st.repair = issue
         return st
     if issue is None:
-        if _older(snap.now, filing, RUN_APPEAR_TIMEOUT):
+        if _older(snap.now, filing, snap.limits.run_appear_timeout):
             return StepState("blocked", "the repair task was filed but never appeared", run=st.run)
         return StepState(
             "repair_filing", "the repair task was just filed", run=st.run, repairing=True
@@ -697,6 +751,7 @@ def _repair_state(
         out.detail = f"repair PR #{rst.pr.number} merged; the run starts again"
     elif rst.status == "blocked":
         out.detail, out.cause = f"the repair task: {rst.detail}", rst.cause
+        out.block_key = f"the repair task: {rst.block_key}" if rst.block_key else ""
     else:
         out.detail, out.repairing = rst.detail, True
     return out
@@ -711,7 +766,9 @@ def _repairs(c: Campaign, v: CampaignView) -> int:
     )
 
 
-def _no_repair(c: Campaign, s: Step, st: StepState, v: CampaignView, gctx: GateContext) -> str:
+def _no_repair(
+    c: Campaign, s: Step, st: StepState, v: CampaignView, gctx: GateContext, limits: Limits
+) -> str:
     """Why failed run step `s` gets no repair now ("" if it may get one).
 
     "-" means it is not a repair case at all (the campaign does not allow
@@ -727,7 +784,7 @@ def _no_repair(c: Campaign, s: Step, st: StepState, v: CampaignView, gctx: GateC
         and st.run.conclusion in RETRY_CONCLUSIONS
         and not st.retry
         and not st.resume
-        and _retries(s.id, v.events) >= MAX_AUTO_RETRIES
+        and _retries(s.id, v.events) >= limits.max_auto_retries
         and st.repair is None
         and _repair_event(s.id) not in v.events
     ):
@@ -953,7 +1010,7 @@ def point_state(v: CampaignView, sid: str, snap: Snapshot, gctx: GateContext) ->
             return PointState(sid, "plan", "merged; the fork files are read next", pr, facts)
         if pr.state != "open":
             return PointState(sid, "closed", f"PR #{pr.number} was closed", pr, facts)
-        if started and _older(snap.now, started, FORK_PLAN_TIMEOUT):
+        if started and _older(snap.now, started, snap.limits.fork_plan_timeout):
             return PointState(sid, "closed", f"PR #{pr.number} did not merge in time", pr, facts)
         st = _pr_state(StepState("in_review"), pr, gctx)
         if st.status == "blocked":
@@ -964,7 +1021,7 @@ def point_state(v: CampaignView, sid: str, snap: Snapshot, gctx: GateContext) ->
     if f"{sid}:ideate:skip" in v.events:
         return PointState(sid, "closed", "skipped")
     if started:
-        if _older(snap.now, started, IDEATION_TIMEOUT):
+        if _older(snap.now, started, snap.limits.ideation_timeout):
             return PointState(sid, "closed", "timeout", None, facts)
         return PointState(sid, "ideating", "", None, facts)
     return PointState(sid, "open")
@@ -1278,6 +1335,11 @@ def _restart_events(sid: str, events: dict[str, str]) -> list[str]:
     return [e for e in events if (m := _RESTART.match(e)) and m.group(1) == sid]
 
 
+def _auto_restarts(sid: str, events: dict[str, str]) -> int:
+    """How many automatic restarts (a stalled build's) the tick made of step `sid`'s build."""
+    return sum(1 for e in events if (m := _AUTO_RESTART.match(e)) and m.group(1) == sid)
+
+
 def _last_restart(sid: str, events: dict[str, str]) -> str:
     """When the tick last restarted step `sid`'s build ("" if never)."""
     return max((events[e] for e in _restart_events(sid, events)), key=_time, default="")
@@ -1370,12 +1432,15 @@ def _restart_due(
                 "starting the build again."
             )
             return ("restart_build", name, line, 0, True), []
-    if st.status == "blocked" and st.cause == "build_stalled":
+    cap = snap.limits.max_auto_build_restarts_per_step
+    stalled = st.status == "blocked" and st.cause == "build_stalled"
+    if stalled and _auto_restarts(s.id, events) < cap:
         block = _holding_block(s.id, st, events).partition(":blocked:")[2] or "plain"
         name = f"{s.id}:restart:{block}"
         if name not in events:
+            hours = _hours_text(snap.limits.build_timeout_hours)
             line = (
-                f"{s.id}: no pull request on #{n} twelve hours after its build started, and "
+                f"{s.id}: no pull request on #{n} {hours} after its build started, and "
                 "no agent-build run is queued or in progress; starting the build again."
             )
             return ("restart_build", name, line, 0, False), []
@@ -1424,13 +1489,21 @@ def _restart(
     model-job budget hold every restart.
     """
     issue = st.issue
-    if issue is None or issue.state != "open" or issue.pr is not None or st.status == "skipped":
+    if issue is None or issue.state != "open" or live_pr(issue) is not None:
+        return st, None, []
+    if st.status == "skipped":
         return st, None, []
     plan = _accepted_plan(issue, s.allowed_paths, gctx)
     if plan is None:
         return st, None, []
     due, posts = _restart_due(v, s, st, snap, gctx, plan)
     if due is None:
+        n = _auto_restarts(s.id, v.events)
+        cap = snap.limits.max_auto_build_restarts_per_step
+        if st.status == "blocked" and st.cause == "build_stalled" and n and n >= cap:
+            # the cap is reached; the block keeps its id (`block_key`), as before the cap
+            times = "1 automatic restart" if n == 1 else f"{n} automatic restarts"
+            st.detail = f"the build stalled again after {times}"
         return st, None, posts
     action, name, line, pr, owners = due
     branch = f"agent/issue-{issue.number}"
@@ -1522,7 +1595,7 @@ def _holding_block(sid: str, st: StepState, events: dict[str, str]) -> str:
     plain = f"{sid}:blocked"
     if plain in events and _unblocked(plain) not in events:
         return plain
-    base = f"{plain}:{block_id(st.detail, st.links())}"
+    base = f"{plain}:{block_id(st.block_key or st.detail, st.links())}"
     name, n = base, 1
     while name in events and _unblocked(name) in events:
         n += 1
@@ -2008,20 +2081,21 @@ def _advance(
                 if restart is not None:
                     doing.append(restart)
                 v.states[s.id] = st
-            why_not = _no_repair(c, s, st, v, gctx) if can_start else "-"
+            why_not = _no_repair(c, s, st, v, gctx, snap.limits) if can_start else "-"
             if why_not == "" and (hold or _tasks_in_flight(v)):
                 wait = breaker_wait if hold else "once no other task is in flight"
                 st = StepState(
                     "repair_waiting",
-                    f"run {st.run.id} ended '{st.run.conclusion}' after {MAX_AUTO_RETRIES} "
-                    f"retries; a repair is filed {wait}",
+                    f"run {st.run.id} ended '{st.run.conclusion}' after "
+                    f"{snap.limits.max_auto_retries} retries; a repair is filed {wait}",
                     run=st.run,
                 )
             elif why_not == "":
                 event(
                     _repair_event(s.id),
                     f"{s.id}: run {st.run.id} ended '{st.run.conclusion}' after "
-                    f"{MAX_AUTO_RETRIES} retries. Filing a repair task to fix the code "
+                    f"{snap.limits.max_auto_retries} retries. Filing a repair task to fix "
+                    "the code "
                     f"(repair {_repairs(c, v) + 1} of at most {repair.MAX_PER_CAMPAIGN} "
                     "in this campaign).",
                 )
@@ -2080,7 +2154,8 @@ def _advance(
                     event(
                         f"{s.id}:retry:{st.retry}",
                         f"{s.id}: run {st.run.id} ended '{st.run.conclusion}'. Retrying by "
-                        f"itself ({st.retry} of {MAX_AUTO_RETRIES}) with a fresh run.",
+                        f"itself ({st.retry} of {snap.limits.max_auto_retries}) with a "
+                        "fresh run.",
                     )
                     doing.append(run_dispatch(c, s))
                     slots.take(c, s)

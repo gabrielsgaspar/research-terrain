@@ -21,6 +21,9 @@
 /scripts/campaign.py @gabrielsgaspar
 /tests/test_campaigns.py @gabrielsgaspar
 /tests/test_forks.py @gabrielsgaspar
+# The plumbing lane's bounds (decision 0020); ops/limits.yaml and tests/conftest.py
+# themselves are lane files, not owned here (the gate refuses them in campaigns for now)
+/tests/test_ops_limits.py @gabrielsgaspar
 # What a repair sees and the bound on its data rules (decision 0016)
 /src/terrain/profile.py @gabrielsgaspar
 /src/terrain/datarule.py @gabrielsgaspar

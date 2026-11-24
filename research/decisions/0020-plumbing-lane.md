@@ -165,3 +165,7 @@ campaign pull request that passes the gate.
 - **Per-test time limits need a package.** `pytest-timeout` is not in
   `uv.lock` on 2026-11-23. A time limit in `conftest.py` waits until
   Gabriel adds it, as for any dependency.
+
+Amended 2026-11-24 (point 3): the key `build_restarts_per_block` (0 to 1) becomes `max_auto_build_restarts_per_step`, value 2, bounds 0 to 2. It caps the tick's automatic restarts of a stalled build per step, counted from the ledger's restart events; restarts from Gabriel's unblocks (removing `needs-human`, or an `Unblocks #<issue>` pull request) and the one main-related restart per red episode (decision 0021, amended) do not count. When the cap is reached, the next stall blocks with "the build stalled again after <n> automatic restarts".
+
+Amended 2026-11-24: the tick's merge of lane pull requests (point 4), the Plumbing changes lists (point 6) and the 30-day review (point 7) come in a later session, with the agent that opens plumbing pull requests. Until then Gabriel merges every lane change.

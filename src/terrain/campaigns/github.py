@@ -50,6 +50,7 @@ from terrain.campaigns.facts import (
     parse_review,
 )
 from terrain.campaigns.gate import FORK_BRANCH, MANIFEST_BRANCH, RECORD_BRANCH, TASK_BRANCH
+from terrain.campaigns.limits import load as load_limits
 
 _NEXT = re.compile(r'<([^>]+)>;\s*rel="next"')
 REVIEW_BOT = "github-actions[bot]"
@@ -330,6 +331,7 @@ class GitHub:
             run_conclusion=run_conclusion,
             created_at=pr.get("created_at", ""),
             merged_at=pr.get("merged_at") or "",
+            closed_at=pr.get("closed_at") or "",
             changes=changes,
             run_workflow=run_workflow,
             added_texts=added,
@@ -515,6 +517,8 @@ class GitHub:
         Builds in flight are read first: a build that ends while the rest is
         read then shows up with its pull request or its needs-human label.
         """
+        # ops/limits.yaml first: a bad file stops the tick before it reads GitHub
+        limits = load_limits(root)
         building = self.builds_in_flight(now)
         raw_issues = [r for r in self.pages("/issues", state="all", labels="campaign")]
         raw_issues = [r for r in raw_issues if "pull_request" not in r]
@@ -619,6 +623,7 @@ class GitHub:
             branches=self.agent_branches(),
             main_ci=self.main_check(),
             unblocks=self.unblocks(),
+            limits=limits,
         )
 
 

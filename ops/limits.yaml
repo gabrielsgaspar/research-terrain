@@ -1,0 +1,12 @@
+# Operational limits of the campaign tick (decision 0020, the plumbing lane).
+# Exactly these eight keys, each a whole number. The bounds of each key are in
+# src/terrain/campaigns/limits.py; the tick stops if a key is missing, unknown,
+# not a whole number, or outside its bound. A new value applies from the next tick.
+plan_timeout_hours: 2
+build_timeout_hours: 12
+run_appear_timeout_hours: 2
+record_timeout_hours: 3
+ideation_timeout_hours: 2
+fork_plan_timeout_hours: 6
+max_auto_retries: 2
+max_auto_build_restarts_per_step: 2
