@@ -73,8 +73,9 @@ STOP_CAUSES: dict[str, StopCause] = {
     ),
     "no_plan": StopCause(
         "plumbing",
-        "no plan two hours after filing (the plan run failed or never ran)",
-        r"^no plan two hours after filing",
+        "no plan in time after filing (the plan run failed or never ran)",
+        # "two hours", or the hours ops/limits.yaml names ("2 hours")
+        r"^no plan (\w+|\d+) hours? after filing",
     ),
     "planner_question": StopCause(
         "spec", "the planner asked a question instead of planning", r"^the planner answered '"
@@ -87,8 +88,9 @@ STOP_CAUSES: dict[str, StopCause] = {
     ),
     "build_stalled": StopCause(
         "plumbing",
-        "no pull request twelve hours after the build started (a stall)",
-        r"^no pull request twelve hours after ",
+        "no pull request in time after the build started (a stall)",
+        # also the block once the automatic restarts are used up
+        r"^(no pull request (\w+|\d+) hours? after |the build stalled again after )",
     ),
     "branch_exists": StopCause(
         "plumbing",
@@ -136,8 +138,8 @@ STOP_CAUSES: dict[str, StopCause] = {
     ),
     "record_missing": StopCause(
         "plumbing",
-        "no record pull request three hours after the run",
-        r"^no record pull request three hours after the run",
+        "no record pull request in time after the run",
+        r"^no record pull request (\w+|\d+) hours? after the run",
     ),
     "unreadable": StopCause(
         "agent",

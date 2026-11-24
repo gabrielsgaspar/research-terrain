@@ -269,6 +269,10 @@ def test_every_gate_failure_reads_as_a_gate_failure():
         ("the planner answered 'Needs clarification - no plan yet'", "planner_question"),
         ("record PR #4 was closed without merging", "pr_closed"),
         ("Campaign 0013 step s1: CI's test check is 'failure' on the head commit", "gate_failed"),
+        ("no plan 2 hours after filing", "no_plan"),
+        ("no pull request 12 hours after the plan", "build_stalled"),
+        ("the build stalled again after 2 automatic restarts", "build_stalled"),
+        ("no record pull request 3 hours after the run", "record_missing"),
         ("something no tick ever wrote", "unrecognised"),
     ],
 )
@@ -548,9 +552,7 @@ def test_the_closeout_carries_stops_by_cause_and_the_tick_numbers(tmp_path):
     stops = body.split("## Stops by cause (written by the tick; copy as is)\n", 1)[1].split(
         "\n## ", 1
     )[0]
-    assert (
-        "| s1 | block | no pull request twelve hours after the build started (a stall): " in stops
-    )
+    assert "| s1 | block | no pull request in time after the build started (a stall): " in stops
     assert "| plumbing | yes | 2026-11-09T04:00:00Z | 2.0 |" in stops
     assert "`| 0001 | 2 | blocks | fix rounds | retries | hours | notes added | 1 | 1 |`" in body
     assert "Notes learn only from agent, spec and design stops." in body
@@ -558,9 +560,7 @@ def test_the_closeout_carries_stops_by_cause_and_the_tick_numbers(tmp_path):
     section = failure_log_section_of(body)
     assert section.startswith("## 2026-11-09: campaign 0001 (Count close races)")
     assert "1 plumbing stop, 2.0 hours lost." in section
-    assert (
-        "| s1 | block | no pull request twelve hours after the build started (a stall)" in section
-    )
+    assert "| s1 | block | no pull request in time after the build started (a stall)" in section
     scope = body.split("## In scope", 1)[1].split("## Out of scope", 1)[0]
     assert f"- `{FAILURE_LOG_PATH}`: append the failure log section above at the end" in scope
 
